@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Pixel-art: Helenid (Unique, T6) — üçüncü ve en güçlü crossbow, çok
+       ihtişamlı bir görünüm: donmuş kristal/buz-mavi kollar, gümüş-beyaz
+       parıltılı dipçik. Crossbow'un (ham kahverengi) ve Horn Crossbow'un
+       (boynuz/altın) sıcak paletlerinden bilinçli olarak ayrışan soğuk,
+       kristalimsi bir tasarım. -->
+  <g>
+    <!-- buz kristali kollar (icy crystal horizontal arms) -->
+    <rect x="2" y="3" width="1" height="1" fill="#2E6E8E" />
+    <rect x="3" y="4" width="10" height="1" fill="#7EC8E3" />
+    <rect x="13" y="3" width="1" height="1" fill="#2E6E8E" />
+    <rect x="3" y="5" width="10" height="1" fill="#4FA8C9" />
+
+    <!-- kiriş, buzlu parıltı -->
+    <rect x="2" y="4" width="1" height="1" fill="#EAF6FF" />
+    <rect x="13" y="4" width="1" height="1" fill="#EAF6FF" />
+
+    <!-- gümüş-beyaz dipçik (frost-silver stock) -->
+    <rect x="7" y="5" width="2" height="7" fill="#3A4A5A" />
+    <rect x="7" y="5" width="1" height="7" fill="#6E8EA0" />
+
+    <!-- kristal bağlantı halkası -->
+    <rect x="6" y="5" width="4" height="1" fill="#B7E0F0" />
+
+    <!-- buz kristali uçları (crystal tip shards) -->
+    <rect x="1" y="2" width="1" height="1" fill="#EAF6FF" />
+    <rect x="14" y="2" width="1" height="1" fill="#EAF6FF" />
+    <rect x="2" y="2" width="1" height="1" fill="#B7E0F0" />
+    <rect x="13" y="2" width="1" height="1" fill="#B7E0F0" />
+
+    <!-- tetik mekanizması -->
+    <rect x="7" y="12" width="2" height="1" fill="#1A2530" />
+    <rect x="6" y="10" width="1" height="1" fill="#2E6E8E" />
+
+    <!-- ok yatağı, buzlu parıltı -->
+    <rect x="5" y="4" width="5" height="1" fill="#B7E0F0" opacity="0.85" />
+
+    <!-- merkezi buz kıvılcımı -->
+    <rect x="8" y="4" width="1" height="1" fill="#FFFFFF" opacity="0.9" />
+  </g>
+</svg>

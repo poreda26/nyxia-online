@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Pixel-art: Chitin Bow (Unique, T6) — müthiş bir eşya, gerçekten
+       alev alev parlayan bir bow. Koyu kitin-kabuk kahvesi gövde, uçları
+       ve orta noktası ateşle kaplı (turuncu-kırmızı parıltı). -->
+  <g>
+    <!-- yay gövdesi (C eğrisi) -->
+    <rect x="11" y="2" width="1" height="1" fill="#4A3220" />
+    <rect x="10" y="3" width="1" height="1" fill="#4A3220" />
+    <rect x="9" y="4" width="1" height="2" fill="#4A3220" />
+    <rect x="8" y="6" width="1" height="4" fill="#4A3220" />
+    <rect x="9" y="10" width="1" height="2" fill="#4A3220" />
+    <rect x="10" y="12" width="1" height="1" fill="#4A3220" />
+    <rect x="11" y="13" width="1" height="1" fill="#4A3220" />
+
+    <!-- alev parıltısı (flame glow at tips and midpoint) -->
+    <rect x="11" y="2" width="1" height="1" fill="#F2A65A" opacity="0.9" />
+    <rect x="11" y="13" width="1" height="1" fill="#F2A65A" opacity="0.9" />
+    <rect x="8" y="8" width="1" height="1" fill="#E8734A" />
+    <rect x="8" y="7" width="1" height="1" fill="#F2D149" opacity="0.7" />
+
+    <!-- kiriş (alevle ısıtılmış, hafif turuncu) -->
+    <rect x="12" y="2" width="1" height="12" fill="#E8A56A" opacity="0.6" />
+
+    <!-- ok, ateşli uç -->
+    <rect x="4" y="7" width="7" height="1" fill="#2E1E10" />
+    <rect x="3" y="7" width="1" height="1" fill="#F2A65A" />
+    <rect x="2" y="6" width="1" height="1" fill="#F2D149" opacity="0.8" />
+    <rect x="10" y="6" width="1" height="1" fill="#E8734A" />
+    <rect x="10" y="8" width="1" height="1" fill="#E8734A" />
+  </g>
+</svg>

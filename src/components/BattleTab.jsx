@@ -1,0 +1,529 @@
+import { useState, useEffect, useRef } from "react";
+import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen } from "lucide-react";
+import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
+import { rand, uid } from "../utils/random";
+import { rollLoot } from "../utils/loot";
+import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
+import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K } from "../utils/combat";
+import { addItemToInventory, makeScrollStack } from "../utils/inventory";
+import { usePotion, bestAvailablePotionTier } from "../utils/potions";
+import { premiumExpMultiplier, premiumDropMultiplier } from "../utils/premium";
+import { clanExpMultiplier } from "../utils/clan";
+import { classSkills, learnFreeSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
+import { styles } from "../styles";
+import SectionLabel from "./shared/SectionLabel";
+import EmptyState from "./shared/EmptyState";
+import BarTrack from "./shared/BarTrack";
+import SkillIcon from "./SkillIcon";
+
+// potionCooldowns: her tur bir azalır (bkz. tickBattleEffects) — Can/Mana
+// potları 2 turda bir kullanılabilir, ikisi birlikte de basılamaz (bir pot
+// kullanmak zaten bir tur harcar, bkz. handlePotion).
+const EMPTY_BATTLE_EFFECTS = { skillCooldowns: {}, buffs: [], dot: null, potionCooldowns: { hp: 0, mp: 0 } };
+const POTION_COOLDOWN_TURNS = 2;
+
+function buffMultiplier(buffs, stat) {
+  return buffs.filter((b) => b.stat === stat).reduce((mult, b) => mult * b.mult, 1);
+}
+
+export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
+  const [monster, setMonster] = useState(null); // active monster template
+  const [battle, setBattle] = useState(null); // {monsterHp, monsterMaxHp, log, playerHp}
+  const [shake, setShake] = useState(null); // 'player' | 'monster' | null
+  const [pendingMap, setPendingMap] = useState(null); // map awaiting teleport confirmation
+  const logRef = useRef(null);
+
+  // Oyuncunun en son ışınlandığı harita kalıcı — güvenlik amaçlı, artık
+  // seviyesinin yetmediği bir haritaya işaret ediyorsa en yüksek açık
+  // haritaya düş (normalde hiç olmamalı, bkz. utils/player.js#migratePlayer).
+  const map = player.level >= findMap(player.currentMapId).levelMin
+    ? findMap(player.currentMapId)
+    : highestUnlockedMap(player.level);
+  const locked = player.level < map.levelMin;
+
+  // Kapı: farklı bir haritaya geçmek GATE_TELEPORT_COST altın karşılığında —
+  // aynı haritaya tekrar tıklamak ya da kilitli bir haritaya tıklamak
+  // ücretsiz/etkisiz. Tıklama artık doğrudan ışınlamıyor, önce ücreti
+  // gösteren bir onay modalı açıyor (bkz. render'daki pendingMap modalı) —
+  // kullanıcının "ücreti belirt ve onay iste" isteği.
+  const requestTeleport = (targetMap) => {
+    if (player.level < targetMap.levelMin) return;
+    if (targetMap.id === player.currentMapId) return;
+    setPendingMap(targetMap);
+  };
+
+  const confirmTeleport = () => {
+    const targetMap = pendingMap;
+    if (!targetMap) return;
+    if (player.gold < GATE_TELEPORT_COST) { pushToast(`Işınlanmak için ${GATE_TELEPORT_COST} altın gerekiyor.`, "warn"); setPendingMap(null); return; }
+    setPlayer((p) => ({ ...p, gold: p.gold - GATE_TELEPORT_COST, currentMapId: targetMap.id }));
+    pushToast(`Kapı'dan ${targetMap.name}'e ışınlandın. (-${GATE_TELEPORT_COST} altın)`, "default");
+    setPendingMap(null);
+  };
+
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [battle?.log?.length]);
+
+  // Guards the "attack spam" bug: without this, rapid clicks fired several
+  // attack() calls before React committed the monster's death, so a single
+  // burst of clicks could trigger loot/level-up multiple times off one kill
+  // (or land hits on a monster that was already dead). attackLockRef blocks
+  // re-entrant calls synchronously; battle.finished blocks any call that
+  // arrives after the kill/defeat is already resolved but before the arena
+  // closes.
+  const attackLockRef = useRef(false);
+
+  const startBattle = (m) => {
+    attackLockRef.current = false;
+    setMonster(m);
+    setBattle({
+      monsterHp: m.hp,
+      monsterMaxHp: m.hp,
+      finished: false,
+      log: [`${m.name} karşına çıktı.`],
+      ...EMPTY_BATTLE_EFFECTS,
+    });
+  };
+
+  const endBattle = () => { attackLockRef.current = false; setMonster(null); setBattle(null); };
+
+  const pushLog = (log, line) => [...log.slice(-24), line];
+
+  // Resolves one "tick" of battle-scoped effects at the top of every player
+  // action (attack or skill) — süregelen (dot) damage lands, buff/dot/
+  // cooldown counters all shrink by one action. Doesn't touch React state
+  // itself; callers fold the result into their own setBattle call.
+  const tickBattleEffects = (b) => {
+    let monsterHp = b.monsterHp;
+    let log = b.log;
+    if (b.dot && b.dot.turnsLeft > 0) {
+      monsterHp = Math.max(0, monsterHp - b.dot.dmgPerTurn);
+      log = pushLog(log, `Süregelen etki ${b.dot.dmgPerTurn} hasar verdi.`);
+    }
+    const dot = b.dot && b.dot.turnsLeft > 1 ? { ...b.dot, turnsLeft: b.dot.turnsLeft - 1 } : null;
+    const buffs = b.buffs.map((buf) => ({ ...buf, turnsLeft: buf.turnsLeft - 1 })).filter((buf) => buf.turnsLeft > 0);
+    const skillCooldowns = Object.fromEntries(Object.entries(b.skillCooldowns).map(([id, t]) => [id, Math.max(0, t - 1)]));
+    const potionCooldowns = Object.fromEntries(Object.entries(b.potionCooldowns).map(([k, t]) => [k, Math.max(0, t - 1)]));
+    return { monsterHp, log, dot, buffs, skillCooldowns, potionCooldowns };
+  };
+
+  // IMPORTANT: setState updater functions must be pure. React 18 StrictMode
+  // (dev only) invokes them twice on purpose to catch side effects hiding
+  // inside — a setTimeout/pushToast/nested setPlayer call inside an updater
+  // fires twice as a result, which was silently doubling gold/XP/loot on
+  // kills. Every setPlayer call below is now either a pure updater or the
+  // side effects (pushToast) are read from a plain local variable *after*
+  // setPlayer returns, never from inside the updater itself.
+  const applyLoot = (m) => {
+    // Read once from the live player prop before the updater — see the
+    // StrictMode note above about keeping setState updaters pure; a
+    // Date.now()-backed lookup has no business running inside one.
+    const expMult = premiumExpMultiplier(player) * clanExpMultiplier(player);
+    const dropMult = premiumDropMultiplier(player);
+    let toastInfo = null;
+    setPlayer((p) => {
+      let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
+      np.monsterKills[m.id] = (np.monsterKills[m.id] || 0) + 1;
+      const goldGain = rand(m.goldMin, m.goldMax);
+      // No XP past the level cap — nothing left to spend it on. Seviye
+      // farkı çok açıldıysa (çok düşük seviyeli haritada avlanmak) XP
+      // kademeli olarak azalır — bkz. utils/player.js#xpLevelPenaltyMultiplier.
+      const levelPenalty = xpLevelPenaltyMultiplier(p.level, map.levelMax);
+      const xpGain = p.level >= MAX_LEVEL ? 0 : Math.round(m.xp * expMult * levelPenalty);
+      np.gold += goldGain;
+      np.xp += xpGain;
+
+      let drops = [`+${goldGain} altın`];
+      if (xpGain > 0) drops.push(`+${xpGain} XP`);
+
+      if (Math.random() < 0.15 * dropMult) {
+        const item = rollLoot(map.tier, np.class);
+        // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
+        // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
+        if (item) {
+          const addResult = addItemToInventory(np, item);
+          np = addResult.player;
+          const kindLabel = item.kind === "weapon" ? "Silah" : item.kind === "accessory" ? "Aksesuar" : "Zırh";
+          drops.push(addResult.added ? `${kindLabel} düştü: ${item.name}` : `${item.name} düştü ama ${addResult.reason}`);
+        }
+      }
+      if (Math.random() < 0.05 * dropMult) {
+        const chest = { id: uid(), tier: map.tier };
+        np.chests.push(chest);
+        drops.push(`Sandık düştü! (T${map.tier})`);
+      }
+      if (Math.random() < 0.06 * dropMult) {
+        const scroll = makeScrollStack(map.tier, 1);
+        const scrollResult = addItemToInventory(np, scroll);
+        np = scrollResult.player;
+        drops.push(scrollResult.added ? `T${map.tier} Yükseltme Parşömeni düştü!` : `T${map.tier} Parşömeni düştü ama ${scrollResult.reason}`);
+      }
+      // Tier 6 "Eşsiz" (Unique) gear never drops from monsters — only from
+      // Özel Etkinlik Sandığı (special event chests, see
+      // utils/loot.js#rollSpecialChestLoot), granted through events (not
+      // built yet) or GM commands.
+
+      // level up loop
+      let leveled = false;
+      let levelsGained = 0;
+      while (np.level < MAX_LEVEL && np.xp >= xpToNext(np.level)) {
+        np.xp -= xpToNext(np.level);
+        np.level += 1;
+        np.statPoints += 3;
+        levelsGained += 1;
+        leveled = true;
+      }
+      if (np.level >= MAX_LEVEL) np.xp = 0; // nothing left to carry toward
+      // Bir canavarı öldürünce bir sonraki savaşa tam can/mana ile
+      // başlanır — sadece seviye atlayınca değil, HER öldürmede.
+      np.hp = playerMaxHp(np);
+      np.mp = playerMaxMp(np);
+      if (leveled) {
+        drops.push(`Seviye atladın! Lv.${np.level} (+${levelsGained * 3} statü puanı)`);
+      }
+      // Idempotent — safe to call on every kill, not just level-ups (basic
+      // skills only need the level threshold, already met or not).
+      np = learnFreeSkills(np);
+
+      toastInfo = { msg: drops.join("  ·  "), tone: leveled ? "level" : "loot" };
+      return np;
+    });
+    if (toastInfo) pushToast(toastInfo.msg, toastInfo.tone);
+  };
+
+  // Shared tail-end for both attack() and useSkill(): the monster's counter
+  // swing (if it's still alive) plus win/loss resolution. `extra` folds in
+  // whatever the caller's own action already changed (buffs/dot/cooldowns/
+  // monsterHp/log) on top of the tick() result. `currentHp` defaults to the
+  // player prop's hp (fine for attack(), which never heals mid-action) but
+  // MUST be passed explicitly by any caller that just healed the player in
+  // this same action (useSkill's heal branch, handlePotion) — otherwise the
+  // death check below reads the stale pre-heal hp and can wrongly end the
+  // battle (or even show "Bayıldın") on a hit the player actually survived.
+  const resolveMonsterTurn = (monsterHp, log, extra, currentHp = player.hp) => {
+    if (monsterHp <= 0) {
+      log = pushLog(log, `${monster.name} yenildi.`);
+      setBattle({ ...battle, ...extra, monsterHp, log, finished: true });
+      // lock stays engaged through this window so extra clicks can't
+      // trigger a second loot/level-up off the same kill
+      setTimeout(() => { applyLoot(monster); endBattle(); }, 700);
+      return;
+    }
+    const defMult = buffMultiplier(extra.buffs, "def");
+    const mdmg = Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) + rand(-2, 3)));
+    const playerDied = currentHp - mdmg <= 0;
+    log = pushLog(log, `${monster.name} sana ${mdmg} hasar verdi.`);
+
+    // Getting hit wears the armor down — same durability/repair loop as
+    // the weapon uses on a landed hit (see utils/player.js's repair
+    // system, the intended gold sink for this).
+    setPlayer((p) => {
+      const worn = damageEquippedDurability(p, ARMOR_SLOTS, 1);
+      return { ...worn, hp: Math.max(0, worn.hp - mdmg) };
+    });
+    setBattle({ ...battle, ...extra, monsterHp, log, finished: playerDied });
+    setShake("player");
+    setTimeout(() => setShake(null), 260);
+
+    if (playerDied) {
+      setTimeout(() => {
+        pushToast("Bayıldın... Kasabaya taşındın, canın kısmen yenilendi.", "warn");
+        endBattle();
+      }, 500);
+    } else {
+      // normal exchange resolved — release the lock after a short cooldown
+      // so combat still feels turn-paced instead of instant multi-hits
+      setTimeout(() => { attackLockRef.current = false; }, 320);
+    }
+  };
+
+  const attack = () => {
+    if (attackLockRef.current) return;
+    if (!battle || battle.finished || player.hp <= 0) return;
+    attackLockRef.current = true;
+
+    const ticked = tickBattleEffects(battle);
+    if (ticked.monsterHp <= 0) { resolveMonsterTurn(ticked.monsterHp, ticked.log, ticked); return; }
+
+    const atkMult = buffMultiplier(ticked.buffs, "atk");
+    const isCrit = Math.random() < cls.crit;
+    const dmg = Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)));
+    const monsterHp = Math.max(0, ticked.monsterHp - dmg);
+    const log = pushLog(ticked.log, isCrit ? `Kritik vuruş! ${dmg} hasar verdin.` : `${dmg} hasar verdin.`);
+
+    // Every swing wears the weapon down a little — see utils/player.js's
+    // repair system, the intended gold sink for this.
+    setPlayer((p) => damageEquippedDurability(p, WEAPON_SLOTS, 1));
+
+    setShake("monster");
+    setTimeout(() => setShake(null), 260);
+
+    resolveMonsterTurn(monsterHp, log, ticked);
+  };
+
+  // Beceri kutucuklarından biri — aynı tur ritmine oturur (bkz. attack
+  // yukarıda): önce süregelen etkiler işler, sonra becerinin kendi etkisi,
+  // sonra canavarın karşılığı. effect.type ayrımı burada, hesap kısmı
+  // utils/skills.js#computeSkillDamage/computeSkillHeal'da.
+  const useSkill = (skillId) => {
+    if (attackLockRef.current) return;
+    if (!battle || battle.finished || player.hp <= 0) return;
+    const skill = classSkills(player.class).find((s) => s.id === skillId);
+    if (!skill) return;
+    if ((battle.skillCooldowns[skillId] || 0) > 0) { pushToast("Bu beceri hâlâ bekleme süresinde.", "warn"); return; }
+    if (player.mp < skill.mpCost) { pushToast("Yeterli manan yok.", "warn"); return; }
+    attackLockRef.current = true;
+
+    const ticked = tickBattleEffects(battle);
+    const skillCooldowns = { ...ticked.skillCooldowns, [skillId]: skill.cooldown };
+    const maxHp = playerMaxHp(player);
+    const e = skill.effect;
+
+    if (ticked.monsterHp <= 0) {
+      setPlayer((p) => ({ ...p, mp: p.mp - skill.mpCost }));
+      resolveMonsterTurn(ticked.monsterHp, ticked.log, { ...ticked, skillCooldowns });
+      return;
+    }
+
+    let monsterHp = ticked.monsterHp;
+    let log = ticked.log;
+    let buffs = ticked.buffs;
+    let dot = ticked.dot;
+    let healAmt = 0;
+
+    if (e.type === "damage" || e.type === "execute") {
+      const monsterHpPct = ticked.monsterHp / battle.monsterMaxHp;
+      const atkMult = buffMultiplier(ticked.buffs, "atk");
+      const dmg = Math.max(1, Math.round(computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct, rand }) * atkMult));
+      monsterHp = Math.max(0, ticked.monsterHp - dmg);
+      log = pushLog(log, `${skill.name}! ${dmg} hasar verdin.`);
+      setShake("monster");
+      setTimeout(() => setShake(null), 260);
+    } else if (e.type === "heal") {
+      healAmt = computeSkillHeal(skill, maxHp);
+      log = pushLog(log, `${skill.name}! +${healAmt} can.`);
+    } else if (e.type === "buffAtk" || e.type === "buffDef") {
+      buffs = [...buffs, { stat: e.type === "buffAtk" ? "atk" : "def", mult: e.mult, turnsLeft: e.turns }];
+      log = pushLog(log, `${skill.name}! Güçlendin.`);
+    } else if (e.type === "dot") {
+      const perTick = computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct: 1, rand: () => 0 });
+      dot = { dmgPerTurn: perTick, turnsLeft: e.turns };
+      log = pushLog(log, `${skill.name}! Hedef sürekli hasar almaya başladı.`);
+      setShake("monster");
+      setTimeout(() => setShake(null), 260);
+    }
+
+    const nextHp = healAmt ? Math.min(playerMaxHp(player), player.hp + healAmt) : player.hp;
+    setPlayer((p) => ({ ...p, mp: p.mp - skill.mpCost, hp: healAmt ? Math.min(playerMaxHp(p), p.hp + healAmt) : p.hp }));
+    resolveMonsterTurn(monsterHp, log, { buffs, dot, skillCooldowns, potionCooldowns: ticked.potionCooldowns }, nextHp);
+  };
+
+  // Pot içmek de bir savaş aksiyonu — canavarın karşılığını tetikler, aynı
+  // 2 turluk bekleme her iki pot için de ayrı ayrı işler (bkz.
+  // EMPTY_BATTLE_EFFECTS). Bu yüzden aynı anda hem can hem mana potu
+  // basılamaz — her ikisi de kendi turunu harcar.
+  const handlePotion = (kind) => {
+    if (attackLockRef.current) return;
+    if (!battle || battle.finished || player.hp <= 0) return;
+    if ((battle.potionCooldowns[kind] || 0) > 0) { pushToast("Bu pot hâlâ bekleme süresinde.", "warn"); return; }
+    const tier = bestAvailablePotionTier(player, kind);
+    if (!tier) { pushToast("Pot kalmadı.", "warn"); return; }
+    const result = usePotion(player, kind, tier);
+    if (result.reason) { pushToast(result.reason, "warn"); return; }
+    attackLockRef.current = true;
+
+    const ticked = tickBattleEffects(battle);
+    const potionCooldowns = { ...ticked.potionCooldowns, [kind]: POTION_COOLDOWN_TURNS };
+
+    if (ticked.monsterHp <= 0) {
+      setPlayer(() => result.player);
+      resolveMonsterTurn(ticked.monsterHp, ticked.log, { ...ticked, potionCooldowns });
+      return;
+    }
+
+    setPlayer(() => result.player);
+    const log = pushLog(ticked.log, kind === "hp" ? `+${result.healed} can kullandın.` : `+${result.healed} mana kullandın.`);
+    resolveMonsterTurn(ticked.monsterHp, log, { ...ticked, potionCooldowns }, result.player.hp);
+  };
+
+  const maxHp = playerMaxHp(player);
+  const maxMp = playerMaxMp(player);
+  const playerDead = player.hp <= 0;
+  const hpPotionTier = bestAvailablePotionTier(player, "hp");
+  const mpPotionTier = bestAvailablePotionTier(player, "mp");
+  const hpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "hp" && i.tier === hpPotionTier);
+  const mpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "mp" && i.tier === mpPotionTier);
+
+  return (
+    <div style={styles.panelScroll}>
+      {pendingMap && (
+        <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setPendingMap(null)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <DoorOpen size={28} color={pendingMap.color} strokeWidth={1.4} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
+              {pendingMap.name}'e ışınlanmak {GATE_TELEPORT_COST} altın tutar. Onaylıyor musun?
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPendingMap(null)}>Hayır</button>
+              <button style={{ ...styles.tinyBtn, background: pendingMap.color }} onClick={confirmTeleport}>Evet</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!monster && (
+        <>
+          <SectionLabel>Kapı · Bölge seç</SectionLabel>
+          <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: -6, marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+            <DoorOpen size={12} /> Başka bir haritaya ışınlanmak {GATE_TELEPORT_COST} altın tutar.
+          </p>
+          <div style={styles.tierScroller}>
+            {MAPS.map((m2) => {
+              const mlocked = player.level < m2.levelMin;
+              const isSel = m2.id === map.id;
+              return (
+                <button
+                  key={m2.id}
+                  onClick={() => requestTeleport(m2)}
+                  style={{
+                    ...styles.tierChip,
+                    borderColor: isSel ? m2.color : "var(--border)",
+                    opacity: mlocked ? 0.45 : 1,
+                    background: isSel ? `${m2.color}1A` : "var(--bg-panel)",
+                    cursor: mlocked ? "default" : "pointer",
+                  }}
+                >
+                  {mlocked && <Lock size={11} style={{ marginRight: 4 }} />}
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: m2.color }}>Lv.{m2.levelMin}-{m2.levelMax}</span>
+                  <span style={{ fontSize: 11, marginLeft: 6 }}>{m2.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {locked ? (
+            <EmptyState
+              icon={Lock}
+              title={`${map.name} kilitli`}
+              subtitle={`Bu bölgeye girmek için Lv.${map.levelMin} olman gerekiyor.`}
+            />
+          ) : (
+            <>
+              <SectionLabel>{map.name} · canavarlar</SectionLabel>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {map.monsters.map((m) => (
+                  <div key={m.id} style={{ ...styles.monsterCard, borderColor: `${map.color}44` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ ...styles.monsterIcon, background: `${map.color}22`, color: map.color }}>
+                        <Skull size={18} strokeWidth={1.6} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{m.name}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", gap: 10, marginTop: 3 }}>
+                          <span>HP {m.hp}</span><span>ATK {m.atk}</span><span>DEF {m.def}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button style={{ ...styles.smallBtn, background: map.color }} onClick={() => startBattle(m)}>
+                      Savaşı Başlat
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div style={styles.dropInfoRow}>
+                <span>Drop şansı: Ekipman (Zırh/Silah) %15 · Sandık %5</span>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {monster && battle && (
+        <div style={styles.battleArena}>
+          <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{monster.name}</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{battle.monsterHp}/{battle.monsterMaxHp}</span>
+            </div>
+            <BarTrack pct={(battle.monsterHp / battle.monsterMaxHp) * 100} color={map.color} />
+          </div>
+
+          <div style={styles.vsRow}>
+            <Flame size={14} color="var(--text-faint)" />
+          </div>
+
+          <div className={shake === "player" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{displayClassName(player)}</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{player.hp}/{maxHp}</span>
+            </div>
+            <BarTrack pct={(player.hp / maxHp) * 100} color="#C9425A" />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 8 }}>
+              <span style={{ fontSize: 10, color: "var(--text-faint)" }}>MP</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>{player.mp}/{maxMp}</span>
+            </div>
+            <BarTrack pct={(player.mp / maxMp) * 100} color="#4FC3D9" thin />
+          </div>
+
+          <div ref={logRef} style={styles.combatLog}>
+            {battle.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, marginBottom: 8 }}>
+            {player.skills.loadout.map((skillId, i) => {
+              if (!skillId) {
+                return (
+                  <div key={i} style={{ ...styles.equipSlotCard, opacity: 0.4 }}>
+                    <Plus size={12} color="var(--text-faint)" />
+                  </div>
+                );
+              }
+              const skill = classSkills(player.class).find((s) => s.id === skillId);
+              const cdLeft = battle.skillCooldowns[skillId] || 0;
+              const noMp = player.mp < skill.mpCost;
+              const disabled = cdLeft > 0 || noMp || playerDead || battle.finished;
+              return (
+                <button
+                  key={i}
+                  style={{ ...styles.equipSlotCard, borderColor: `${cls.color}66`, background: `${cls.color}12`, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1 }}
+                  onClick={() => useSkill(skillId)}
+                  disabled={disabled}
+                  title={`${skill.name} — MP ${skill.mpCost}`}
+                >
+                  <SkillIcon effectType={skill.effect.type} size={15} color={cls.color} />
+                  <div style={{ fontSize: 7, marginTop: 2, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+                    {cdLeft > 0 ? cdLeft : `${skill.mpCost}mp`}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={styles.battleControls}>
+            <button style={{ ...styles.primaryBtn, flex: 1, background: cls.color, opacity: (playerDead || battle.finished) ? 0.5 : 1 }} onClick={attack} disabled={playerDead || battle.finished}>
+              <Sword size={15} /> Saldır
+            </button>
+            <button
+              style={{ ...styles.potionBtn, opacity: (battle.potionCooldowns.hp > 0 || playerDead || battle.finished) ? 0.5 : 1 }}
+              onClick={() => handlePotion("hp")}
+              disabled={battle.potionCooldowns.hp > 0 || playerDead || battle.finished}
+            >
+              <Heart size={14} color="#C9425A" /> {battle.potionCooldowns.hp > 0 ? battle.potionCooldowns.hp : (hpPotion?.count || 0)}
+            </button>
+            <button
+              style={{ ...styles.potionBtn, opacity: (battle.potionCooldowns.mp > 0 || playerDead || battle.finished) ? 0.5 : 1 }}
+              onClick={() => handlePotion("mp")}
+              disabled={battle.potionCooldowns.mp > 0 || playerDead || battle.finished}
+            >
+              <Zap size={14} color="#4FC3D9" /> {battle.potionCooldowns.mp > 0 ? battle.potionCooldowns.mp : (mpPotion?.count || 0)}
+            </button>
+          </div>
+          <button style={styles.ghostBtn} onClick={endBattle}>
+            <ArrowLeft size={13} /> Geri Çekil
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

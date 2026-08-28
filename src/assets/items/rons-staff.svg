@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Pixel-art: Ron's Staff (Unique, T6) — Staff of <selfname> gibi üç
+       elementi birden taşıyor ama daha rustik/maceracı bir görünüm: altın
+       yerine bronz-demir çerçeve, üç elementin dönen bir küre içinde
+       kaynaştığı bir tepe süsü. -->
+  <g>
+    <!-- uzun koyu gövde (shared shaft) -->
+    <rect x="7" y="7" width="1" height="7" fill="#2A1E14" />
+    <rect x="8" y="7" width="1" height="7" fill="#1A1208" />
+    <rect x="7" y="14" width="2" height="1" fill="#0F0A05" />
+
+    <!-- bronz sarım (bronze grip wrap) -->
+    <rect x="6" y="10" width="4" height="1" fill="#8A6A3A" />
+
+    <!-- demir çerçeve (iron frame at the top) -->
+    <rect x="6" y="5" width="4" height="1" fill="#5A6478" />
+    <rect x="6" y="4" width="1" height="1" fill="#4A5068" />
+    <rect x="9" y="4" width="1" height="1" fill="#4A5068" />
+
+    <!-- dönen üç element küresi (swirling tri-elemental orb) -->
+    <rect x="7" y="2" width="2" height="2" fill="#E8734A" opacity="0.85" />
+    <rect x="6" y="2" width="1" height="1" fill="#7EC8E3" opacity="0.85" />
+    <rect x="9" y="3" width="1" height="1" fill="#B565D8" opacity="0.85" />
+    <rect x="7" y="1" width="1" height="1" fill="#F2D149" />
+
+    <!-- kıvılcımlar (mixed elemental sparks) -->
+    <rect x="5" y="3" width="1" height="1" fill="#7EC8E3" opacity="0.7" />
+    <rect x="10" y="2" width="1" height="1" fill="#E8734A" opacity="0.7" />
+  </g>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Pixel-art: Iron Crossbow (Normal, T3) — diğer bowlardan bilinçli
+       olarak FARKLI bir siluet: dikey C-eğrisi değil, yatay demir kollar
+       + dikey bir dipçik (stock) + tetik mekanizması, gerçek bir arbalet
+       görünümü. Bamboo Bow'dan daha ihtişamlı. -->
+  <g>
+    <!-- yatay demir kollar (horizontal iron arms, hafif aşağı kavisli) -->
+    <rect x="2" y="3" width="1" height="1" fill="#5A6478" />
+    <rect x="3" y="4" width="10" height="1" fill="#7E8CA8" />
+    <rect x="13" y="3" width="1" height="1" fill="#5A6478" />
+    <rect x="3" y="5" width="10" height="1" fill="#4A5068" />
+
+    <!-- kiriş -->
+    <rect x="2" y="4" width="1" height="1" fill="#D8D0C0" />
+    <rect x="13" y="4" width="1" height="1" fill="#D8D0C0" />
+
+    <!-- dipçik / gövde (vertical stock) -->
+    <rect x="7" y="5" width="2" height="7" fill="#4A3220" />
+    <rect x="7" y="5" width="1" height="7" fill="#6B4520" />
+
+    <!-- demir bağlantı halkası -->
+    <rect x="6" y="5" width="4" height="1" fill="#B7C0E0" />
+
+    <!-- tetik mekanizması (trigger guard) -->
+    <rect x="7" y="12" width="2" height="1" fill="#2A2E38" />
+    <rect x="6" y="10" width="1" height="1" fill="#5A6478" />
+
+    <!-- ok yatağı (bolt) -->
+    <rect x="5" y="4" width="5" height="1" fill="#8A8A8A" opacity="0.9" />
+  </g>
+</svg>

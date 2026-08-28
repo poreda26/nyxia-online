@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Pixel-art: Prismatic Triad Staff (Unique, T6) — üç elementi birden
+       (Alev/Buz/Yıldırım) taşıyan, kişiselleştirilmiş prestijli bir asa.
+       Ortak gövde/sarım iskeleti (bkz. diğer 5 asa) ama tepe süsü üç
+       renkli bir üçgen kristal takımı — altın çerçeveli, gösterişli. -->
+  <g>
+    <!-- uzun altın-koyu gövde (shared shaft, altın vurgulu) -->
+    <rect x="7" y="7" width="1" height="7" fill="#2A1E14" />
+    <rect x="8" y="7" width="1" height="7" fill="#1A1208" />
+    <rect x="7" y="14" width="2" height="1" fill="#0F0A05" />
+
+    <!-- altın sarım (gilded grip wrap) -->
+    <rect x="6" y="10" width="4" height="1" fill="#D4AF6A" />
+
+    <!-- altın çerçeve (ornate gold frame at the top) -->
+    <rect x="5" y="5" width="6" height="1" fill="#8A6A1A" />
+    <rect x="5" y="4" width="1" height="1" fill="#D4AF6A" />
+    <rect x="10" y="4" width="1" height="1" fill="#D4AF6A" />
+
+    <!-- üç element kristali (three elemental facets, side by side) -->
+    <rect x="6" y="2" width="1" height="2" fill="#E8734A" />
+    <rect x="7" y="1" width="2" height="3" fill="#7EC8E3" />
+    <rect x="9" y="2" width="1" height="2" fill="#B565D8" />
+
+    <!-- merkez parıltı (unifying white glow at the center) -->
+    <rect x="7" y="1" width="2" height="1" fill="#FFFFFF" opacity="0.9" />
+    <rect x="6" y="3" width="1" height="1" fill="#F2D149" opacity="0.6" />
+    <rect x="9" y="3" width="1" height="1" fill="#F2D149" opacity="0.6" />
+  </g>
+</svg>

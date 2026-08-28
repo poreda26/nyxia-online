@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Pixel-art: Eagle's Eye (Unique, T6) — bu partinin en güçlü ve en
+       ihtişamlı eşyası. Altın-beyaz kartal tüyü motifli, gerilimde
+       parlayan bir yay; diğer 7 bowdan (kahverengi, bambu, demir gri,
+       zehir yeşili, çelik mavisi, alev turuncu, yıldırım moru) net
+       ayrışan sıcak altın paleti. -->
+  <g>
+    <!-- yay gövdesi (C eğrisi) -->
+    <rect x="11" y="2" width="1" height="1" fill="#C9A227" />
+    <rect x="10" y="3" width="1" height="1" fill="#C9A227" />
+    <rect x="9" y="4" width="1" height="2" fill="#C9A227" />
+    <rect x="8" y="6" width="1" height="4" fill="#C9A227" />
+    <rect x="9" y="10" width="1" height="2" fill="#C9A227" />
+    <rect x="10" y="12" width="1" height="1" fill="#C9A227" />
+    <rect x="11" y="13" width="1" height="1" fill="#C9A227" />
+
+    <!-- altın parlaklığı -->
+    <rect x="8" y="7" width="1" height="2" fill="#EACD6A" />
+    <rect x="9" y="5" width="1" height="1" fill="#FFF3D0" />
+    <rect x="9" y="10" width="1" height="1" fill="#FFF3D0" />
+
+    <!-- tüy püskülü (feather tuft near the top tip) -->
+    <rect x="12" y="1" width="1" height="1" fill="#EAF0FF" />
+    <rect x="13" y="2" width="1" height="1" fill="#B7C0E0" />
+
+    <!-- kiriş, altın-beyaz -->
+    <rect x="12" y="2" width="1" height="12" fill="#FFF3D0" opacity="0.9" />
+
+    <!-- ok, altın uçlu -->
+    <rect x="4" y="7" width="7" height="1" fill="#8A6A1A" />
+    <rect x="3" y="7" width="1" height="1" fill="#FFF3D0" />
+    <rect x="10" y="6" width="1" height="1" fill="#EACD6A" />
+    <rect x="10" y="8" width="1" height="1" fill="#EACD6A" />
+  </g>
+</svg>
