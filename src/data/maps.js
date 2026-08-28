@@ -8,14 +8,30 @@
 // (Abyssal Pit, Crimson Battlefront) aynı tier'ı (5) paylaşıyor.
 export const GATE_TELEPORT_COST = 10;
 
-// Kullanıcı isteğiyle tüm canavarlar 2.5 kat güçlendirildi (hp/atk/def) —
-// xp/gold ödülleri bilinçli olarak SABİT bırakıldı, yoksa zorluk artışının
-// bir anlamı kalmazdı (hem daha zor hem daha kazançlı olmaz). Aşağıdaki ham
-// sayılar hâlâ önceki (1x) denge tablosu — okunabilir kalsın ve çarpan tek
-// satırdan ayarlanabilsin diye RAW_MAPS burada tanım anında ölçekleniyor.
-const MONSTER_POWER_MULT = 2.5;
-function scaleMonster(m) {
-  return { ...m, hp: Math.round(m.hp * MONSTER_POWER_MULT), atk: Math.round(m.atk * MONSTER_POWER_MULT), def: Math.round(m.def * MONSTER_POWER_MULT) };
+// ATK hâlâ tüm tier'larda düz 2.5x — oyuncunun kendi ATK formülü
+// değişmediği sürece (utils/player.js#totalStats, oyuncunun DEF'i) bunun
+// değişmesi gerekmiyor, sadece oyuncunun VURDUĞU hasar tarafı değişti.
+const MONSTER_ATK_MULT = 2.5;
+// HP/DEF artık tier'a göre değişen bir eğri — eski düz 2.5x, oyuncunun ATK
+// formülü KO'nun çarpma modeline geçtikten sonra (bkz. utils/player.js'teki
+// aynı not) T6'da canavarları saniyeler içinde eritir, T1'de ise neredeyse
+// hiç fark etmezdi hale gelmişti. Simülasyonla kalibre edildi (bkz. sohbet):
+// hedef, "tipik, yarı-yatırımlı bir oyuncunun" bir tier'daki en güçlü
+// canavarı ~5-7 vuruşta bitirmesi. HP tier arttıkça DÜŞÜYOR (oyuncunun gücü
+// artık katlanarak büyüdüğü için aynı mutlak HP'yi korumak gerekmiyor), DEF
+// tier arttıkça YÜKSELİYOR (üst tier canavarlar nispeten daha "zırhlı" —
+// ham hasarı emiyor, tek vuruşta erimiyor) — kullanıcının "HP/DEF dengesini
+// de ayarla" isteği bu ikisinin BİRLİKTE, zıt yönde hareket etmesiyle
+// karşılanıyor.
+const TIER_HP_MULT = { 1: 0.9, 2: 0.8, 3: 0.65, 4: 0.5, 5: 0.35, 6: 0.25 };
+const TIER_DEF_MULT = { 1: 2.0, 2: 2.3, 3: 2.6, 4: 3.0, 5: 3.4, 6: 3.8 };
+function scaleMonster(m, tier) {
+  return {
+    ...m,
+    hp: Math.round(m.hp * TIER_HP_MULT[tier]),
+    atk: Math.round(m.atk * MONSTER_ATK_MULT),
+    def: Math.round(m.def * TIER_DEF_MULT[tier]),
+  };
 }
 
 const RAW_MAPS = [
@@ -84,7 +100,13 @@ const RAW_MAPS = [
   },
 ];
 
-export const MAPS = RAW_MAPS.map((map) => ({ ...map, monsters: map.monsters.map(scaleMonster) }));
+// NOT: buradaki "combat tier" (index+1, 1-6) map.tier'dan (eşya/loot tier'ı,
+// hâlâ 1-5'te tavanlı — Abyssal Pit VE Crimson Battlefront ikisi de tier 5
+// paylaşıyor, bkz. RAW_MAPS'in üstündeki not) KASITLI olarak AYRI: Crimson
+// Battlefront loot açısından hâlâ T5 ama savaş gücü açısından kendi 6.
+// basamağını (en düşük HP çarpanı, en yüksek DEF çarpanı) alıyor — 6 harita,
+// 6 farklı zorluk basamağı, ama sadece 5 eşya tier'ı.
+export const MAPS = RAW_MAPS.map((map, i) => ({ ...map, monsters: map.monsters.map((m) => scaleMonster(m, i + 1)) }));
 
 export function findMap(mapId) {
   return MAPS.find((m) => m.id === mapId) || MAPS[0];

@@ -239,25 +239,39 @@ function equippedStatBonus(player) {
   return bonus;
 }
 
-// Allocated stat points feed combat power on top of gear: STR/DEX/INT/Magic
-// Power each add a small flat ATK, STA feeds max HP and INT feeds max MP
-// (see playerMaxMp below) — this is what makes /karakter's point allocation
-// actually matter in battle, not just gate equips. The coefficients are
-// deliberately small: baseStats alone put these numbers in the 50-70 range
-// from character creation, so a 1:1 translation into ATK/HP would dwarf
-// class and gear power.
-// Magic Power gets a Mage-only elevated weight (0.5 vs the usual 0.1) —
-// kullanıcı isteğiyle: "Magemizin asıl damage'ini yükselten şey Magic Power
-// olacak." Diğer 3 sınıf için mag hâlâ eski CHA'nın aldığı düz 0.1 ağırlığı
-// alıyor (baseStats değerleri de birebir eskisiyle aynı), bu yüzden bu
-// değişiklik Warrior/Rogue/Priest'in ATK'sını hiç etkilemiyor — sadece
-// Mage'e mag'ı gerçek bir "asıl statü" yapıyor.
+// Gerçek Knight Online'ın hasar formülü araştırıldı (AIServer/Ebenezer
+// User.cpp#SetUserAbility, "TotalHit = 0.005*SilahHasarı*(STAT+40) +
+// katsayı*SilahHasarı*Seviye*STAT") — KO'da STR/DEX/Magic Power ASLA düz
+// bir ATK bonusu vermiyor, SİLAHIN kendi hasarını çarpıyor: silah hasarı
+// 0 ise stat ne olursa olsun ATK sıfıra yakın kalıyor, ve çarpan seviyeyle
+// büyüyor (geç oyunda stat yatırımı katlanarak önem kazanıyor). Önceki
+// toplama modelimiz (silah.atk + statlar*sabit_ağırlık) bunun tam tersiydi:
+// silahsız bile küçük bir ATK tabanı vardı ve stat/silah yükseltmesinin
+// katkısı hep aynı küçük ağırlıkta kalıyordu — kullanıcının "silahların ve
+// STR bonusunun etkisi çok az" şikayetinin kök nedeni buydu. Sabitler
+// (C1/OFFSET/C2) KO'nun 0.005/40 değerleri BİREBİR değil, bizim çok daha
+// kısa seviye tavanımıza (65) ve silah atk aralığımıza göre simülasyonla
+// kalibre edildi (bkz. data/maps.js#TIER_HP_MULT/TIER_DEF_MULT'un aynı
+// kalibrasyonu) — hedef: T1'de eski sisteme yakın kalıp T6'da belirgin
+// şekilde daha güçlü, ama patlamayan bir eğri.
+const ATK_SCALE_C1 = 0.006;
+const ATK_SCALE_OFFSET = 40;
+const ATK_SCALE_C2 = 0.00016;
+// Hangi statü hangi sınıfın "hasar statüsü" (silahını çarpan statü) —
+// Warrior/Priest STR (gerçek KO'da Priest de STR'li melee "paper attacker",
+// bkz. data/classes.js), Rogue DEX, Mage Magic Power (kullanıcı isteğiyle
+// Mage'in asıl hasar kaynağı — artık ayrı bir "magWeight" hilesine değil,
+// doğrudan bu formülün kendisine bağlı).
+export const CLASS_DAMAGE_STAT = { warrior: "str", rogue: "dex", mage: "mag", priest: "str" };
+
+// STA hâlâ HP'yi besliyor (aşağıda ayrıca eklenir) — bu KO'nun kendi
+// modelinde de değişmeyen tek "düz statü" ilişkisi.
 export function totalStats(player) {
-  let hp = 0, def = 0, atk = 0, mp = 0;
+  let hp = 0, def = 0, weaponAtk = 0, mp = 0;
   ALL_EQUIP_KEYS.forEach((k) => {
     const it = player.equipped[k];
     if (it && !isBroken(it)) {
-      hp += it.hp || 0; def += it.def || 0; atk += it.atk || 0; mp += it.mp || 0;
+      hp += it.hp || 0; def += it.def || 0; weaponAtk += it.atk || 0; mp += it.mp || 0;
       if (it.kind === "armor") {
         const stat = ARMOR_CLASS_BONUS_STAT[it.class];
         const val = armorLevelBonus(it.upgradeLevel);
@@ -268,8 +282,10 @@ export function totalStats(player) {
   });
   const s = player.stats;
   const bonus = equippedStatBonus(player);
-  const magWeight = player.class === "mage" ? 0.5 : 0.1;
-  atk += Math.round((s.str + bonus.str + s.dex + bonus.dex + s.int + bonus.int) * 0.1 + (s.mag + bonus.mag) * magWeight);
+  const damageStat = CLASS_DAMAGE_STAT[player.class];
+  const statVal = s[damageStat] + bonus[damageStat];
+  const scaling = ATK_SCALE_C1 * (statVal + ATK_SCALE_OFFSET) + ATK_SCALE_C2 * player.level * statVal;
+  const atk = Math.round(weaponAtk * scaling);
   hp += s.sta + bonus.sta;
   return { hp, def, atk, mp };
 }
