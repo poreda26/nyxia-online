@@ -3,7 +3,7 @@ import { itemTierColor, ITEM_TIER_LABEL } from "../data/itemRarity";
 import { STAT_LABELS } from "../data/stats";
 import { ELEMENT_LABELS, ELEMENT_COLORS } from "../data/elements";
 import { itemSubLabel, isConsumable } from "../utils/itemDisplay";
-import { displayItemName } from "../utils/player";
+import { displayItemName, armorLevelBonus, ARMOR_CLASS_BONUS_STAT } from "../utils/player";
 import { styles } from "../styles";
 import BarTrack from "./shared/BarTrack";
 import ItemIcon from "./ItemIcon";
@@ -97,6 +97,19 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
         {item.statBonus && Object.entries(item.statBonus).filter(([, v]) => v).map(([key, value]) => (
           <StatLine key={key} label={STAT_LABELS[key]} value={`+${value}`} />
         ))}
+        {/* Zırhın kendi +seviyesine göre sabit sınıf bonusu (Warrior→STR,
+            Rogue→DEX, Mage→MP, Priest→HP) — item.statBonus gibi eşyanın
+            üzerinde SAKLANMIYOR, item.upgradeLevel'den her zaman TAZE
+            hesaplanıyor (bkz. utils/player.js#armorLevelBonus), forge'un
+            ×1.18 katlanmalı büyümesiyle karışmasın diye. Kullanıcı isteği:
+            eşyanın üstünde görünsün ki bonusun gerçekten işlediği belli olsun. */}
+        {item.kind === "armor" && armorLevelBonus(item.upgradeLevel) > 0 && (
+          <StatLine
+            label={STAT_LABELS[ARMOR_CLASS_BONUS_STAT[item.class]]}
+            value={`+${armorLevelBonus(item.upgradeLevel)}`}
+            color="#D4AF6A"
+          />
+        )}
       </div>
 
       {classLock && (

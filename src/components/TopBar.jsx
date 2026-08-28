@@ -3,7 +3,7 @@ import { xpToNext, MAX_LEVEL, displayClassName } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { styles } from "../styles";
 
-export default function TopBar({ player, cls, gearHp, def, atk }) {
+export default function TopBar({ player, cls, maxHp, def, atk }) {
   const atCap = player.level >= MAX_LEVEL;
   const need = xpToNext(player.level);
   const pct = atCap ? 100 : Math.min(100, (player.xp / need) * 100);
@@ -41,7 +41,7 @@ export default function TopBar({ player, cls, gearHp, def, atk }) {
         <span style={{ color: "var(--border)" }}>|</span>
         <span>DEF {def}</span>
         <span style={{ color: "var(--border)" }}>|</span>
-        <span>HP {gearHp}</span>
+        <span>HP {maxHp}</span>
       </div>
     </div>
   );

@@ -18,7 +18,7 @@ export const STAT_KEYS = ["str", "sta", "dex", "int", "mag"];
 // (bkz. data/casterWeapons.js#"Staff of <selfname>", "Required Level: 70")
 // reqStats etiketinde gösterilsin diye. equipItem bu anahtarı gördüğünde
 // player.stats.level'a değil doğrudan player.level'a bakıyor.
-export const STAT_LABELS = { str: "STR", sta: "STA", dex: "DEX", int: "INT", mag: "MPW", hp: "HP", level: "Seviye" };
+export const STAT_LABELS = { str: "STR", sta: "STA", dex: "DEX", int: "INT", mag: "MPW", hp: "HP", mp: "MP", level: "Seviye" };
 
 export const STAT_FULL_LABELS = {
   str: "Güç (STR)",
