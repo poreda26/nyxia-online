@@ -59,15 +59,15 @@ export default function CharacterTab({ player, setPlayer, cls, gearHp, def, atk,
         <div style={{ ...styles.charAvatar, borderColor: cls.color }}>
           <cls.icon size={28} color={cls.color} strokeWidth={1.6} />
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>{displayClassName(player)}</div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayClassName(player)}</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             Seviye {player.level}{race && <span style={{ color: race.color }}> · {race.name}</span>}
           </div>
         </div>
         {onChangeCharacter && (
           <button
-            style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5 }}
+            style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}
             onClick={onChangeCharacter}
           >
             <Repeat size={11} /> Karakter Değiştir

@@ -109,7 +109,13 @@ export function initialPlayer(cls, race, nickname) {
   const startingWeapon = buildStartingWeapon(cls);
   if (startingWeapon) {
     const result = equipItem(player, startingWeapon);
-    if (!result.blocked) return result.player;
+    if (!result.blocked) {
+      // hp/mp yukarıda sınıfın ÇIPLAK base.maxHp/maxMp'sine ayarlanmıştı —
+      // silah kuşandıktan sonra gerçek tavan (base + seviye + eşya bonusu,
+      // bkz. playerMaxHp/playerMaxMp) daha yüksek olabiliyor, o yüzden burada
+      // tekrar tam dolduruyoruz ki karakter gerçekten %100 canla başlasın.
+      return { ...result.player, hp: playerMaxHp(result.player), mp: playerMaxMp(result.player) };
+    }
   }
   return player;
 }
@@ -276,6 +282,23 @@ export function playerDef(player) {
 
 export function clampPlayerHp(player) {
   return { ...player, hp: Math.min(player.hp, playerMaxHp(player)) };
+}
+
+// Ölünce (canavar/Dünya Canavarı tarafından) uygulanan ceza — mevcut
+// seviyenin toplam XP ihtiyacının küçük bir yüzdesi kaybediliyor (gerçek
+// KO'daki ölüm cezasının ruhu), asla seviye düşürmüyor (xp 0'da tabanlanıyor)
+// ve asla dengeye/ilerlemeye bağlı istismar edilemiyor (seviye içindeki
+// mevcut xp'ye değil xpToNext'e göre sabit bir yüzde). HP/MP HER ZAMAN tam
+// yenileniyor — önceden buradaki "canın kısmen yenilendi" toast'ı YALANDI,
+// hiçbir yerde gerçekten can/mana geri yüklenmiyordu (kullanıcının bildirdiği
+// "düşük canla başlıyoruz" bug'ının kök nedeni: ölümden sonra hp 0'da
+// kalıp bir daha hiç dolmuyordu).
+export const DEATH_XP_LOSS_PCT = 0.05;
+
+export function applyDeathPenalty(player) {
+  const xpLost = Math.min(player.xp, Math.round(xpToNext(player.level) * DEATH_XP_LOSS_PCT));
+  const next = { ...player, xp: player.xp - xpLost, hp: playerMaxHp(player), mp: playerMaxMp(player) };
+  return { player: next, xpLost };
 }
 
 export const WEAPON_SLOTS = ["mainHand"];

@@ -8,7 +8,17 @@
 // (Abyssal Pit, Crimson Battlefront) aynı tier'ı (5) paylaşıyor.
 export const GATE_TELEPORT_COST = 10;
 
-export const MAPS = [
+// Kullanıcı isteğiyle tüm canavarlar 2.5 kat güçlendirildi (hp/atk/def) —
+// xp/gold ödülleri bilinçli olarak SABİT bırakıldı, yoksa zorluk artışının
+// bir anlamı kalmazdı (hem daha zor hem daha kazançlı olmaz). Aşağıdaki ham
+// sayılar hâlâ önceki (1x) denge tablosu — okunabilir kalsın ve çarpan tek
+// satırdan ayarlanabilsin diye RAW_MAPS burada tanım anında ölçekleniyor.
+const MONSTER_POWER_MULT = 2.5;
+function scaleMonster(m) {
+  return { ...m, hp: Math.round(m.hp * MONSTER_POWER_MULT), atk: Math.round(m.atk * MONSTER_POWER_MULT), def: Math.round(m.def * MONSTER_POWER_MULT) };
+}
+
+const RAW_MAPS = [
   {
     id: "fallow_valley", name: "Fallow Valley", levelMin: 1, levelMax: 15, tier: 1,
     color: "#8FA35E", glow: "rgba(143,163,94,0.45)",
@@ -73,6 +83,8 @@ export const MAPS = [
     ],
   },
 ];
+
+export const MAPS = RAW_MAPS.map((map) => ({ ...map, monsters: map.monsters.map(scaleMonster) }));
 
 export function findMap(mapId) {
   return MAPS.find((m) => m.id === mapId) || MAPS[0];

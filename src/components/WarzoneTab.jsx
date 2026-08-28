@@ -12,7 +12,7 @@ import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointCo
 import { leaderboardFor } from "../utils/leaderboard";
 import { rollLoot } from "../utils/loot";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
-import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName } from "../utils/player";
+import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty } from "../utils/player";
 import { premiumNpLossReduction } from "../utils/premium";
 import { mitigate, MONSTER_DEF_K } from "../utils/combat";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
@@ -21,6 +21,7 @@ import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
 import BarTrack from "./shared/BarTrack";
+import DeathModal from "./DeathModal";
 
 const RESPAWN_TICKS = Math.max(1, Math.round((WORLD_BOSS_RESPAWN_SECONDS * 1000) / WARZONE_TICK_MS));
 const GHOST_REPLACE_TICKS = Math.max(1, Math.round((GHOST_REPLACE_SECONDS * 1000) / WARZONE_TICK_MS));
@@ -131,6 +132,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   const [confirmingRetreat, setConfirmingRetreat] = useState(false);
   const [entered, setEntered] = useState(false);
   const [confirmingEntry, setConfirmingEntry] = useState(false);
+  const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal (Dünya Canavarı elinde ölüm)
   const [lbRace, setLbRace] = useState(player.race);
   const [lbCls, setLbCls] = useState(player.class);
   const [lbSort, setLbSort] = useState("weeklyPoint");
@@ -307,7 +309,18 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - counter) }));
       setWz((prev) => ({ ...prev, log: [...prev.log, `${WORLD_BOSS.name} sana ${counter} hasar verdi.`].slice(-24) }));
       if (wouldDie) {
-        setTimeout(() => pushToast("Bayıldın... Kasabaya taşındın, canın kısmen yenilendi.", "warn"), 400);
+        // Aynı düzeltme burada da geçerli — bkz. BattleTab.jsx#resolveMonsterTurn:
+        // eskiden "canın kısmen yenilendi" diyen toast hiçbir şeyi geri
+        // yüklemiyordu.
+        setTimeout(() => {
+          let xpLost = 0;
+          setPlayer((p) => {
+            const result = applyDeathPenalty(p);
+            xpLost = result.xpLost;
+            return result.player;
+          });
+          setDeathInfo({ xpLost });
+        }, 400);
       }
     }
     setTimeout(() => { lockRef.current = false; }, 320);
@@ -393,7 +406,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   // döner (bkz. endDuel'in ghostDefeated:false dalı).
   const finishDuelAsLoss = (ghostId) => {
     const loss = actualNpLoss();
-    setPlayer((p) => penalizeNationalPoint(p));
+    // National Point kaybı bu PvP kaybının kendi cezası zaten — burada ayrıca
+    // XP kaybettirmiyoruz (BattleTab/Dünya Canavarı ölümlerinden farklı),
+    // ama hp/mp'yi HER ZAMAN tam dolduruyoruz — eskiden burası da hiç
+    // yapmıyordu, "Bayıldın" sonrası can 0'da kalıp kalıyordu.
+    setPlayer((p) => ({ ...penalizeNationalPoint(p), hp: playerMaxHp(p), mp: playerMaxMp(p) }));
     pushToast(`Bayıldın... Kasabaya taşındın. -${loss} National Point kaybettin.`, "warn");
     endDuel(ghostId, false);
     lockRef.current = false;
@@ -729,6 +746,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
           </div>
         </>
       )}
+
+      {deathInfo && <DeathModal xpLost={deathInfo.xpLost} onClose={() => setDeathInfo(null)} />}
     </div>
   );
 }

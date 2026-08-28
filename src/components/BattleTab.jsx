@@ -3,18 +3,20 @@ import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen } from
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
 import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
-import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
+import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K } from "../utils/combat";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { premiumExpMultiplier, premiumDropMultiplier } from "../utils/premium";
 import { clanExpMultiplier } from "../utils/clan";
+import { eventExpMultiplier } from "../utils/events";
 import { classSkills, learnFreeSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
 import BarTrack from "./shared/BarTrack";
 import SkillIcon from "./SkillIcon";
+import DeathModal from "./DeathModal";
 
 // potionCooldowns: her tur bir azalır (bkz. tickBattleEffects) — Can/Mana
 // potları 2 turda bir kullanılabilir, ikisi birlikte de basılamaz (bir pot
@@ -31,6 +33,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const [battle, setBattle] = useState(null); // {monsterHp, monsterMaxHp, log, playerHp}
   const [shake, setShake] = useState(null); // 'player' | 'monster' | null
   const [pendingMap, setPendingMap] = useState(null); // map awaiting teleport confirmation
+  const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal
   const logRef = useRef(null);
 
   // Oyuncunun en son ışınlandığı harita kalıcı — güvenlik amaçlı, artık
@@ -119,7 +122,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     // Read once from the live player prop before the updater — see the
     // StrictMode note above about keeping setState updaters pure; a
     // Date.now()-backed lookup has no business running inside one.
-    const expMult = premiumExpMultiplier(player) * clanExpMultiplier(player);
+    const expMult = premiumExpMultiplier(player) * clanExpMultiplier(player) * eventExpMultiplier(player);
     const dropMult = premiumDropMultiplier(player);
     let toastInfo = null;
     setPlayer((p) => {
@@ -228,7 +231,19 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
     if (playerDied) {
       setTimeout(() => {
-        pushToast("Bayıldın... Kasabaya taşındın, canın kısmen yenilendi.", "warn");
+        // Önceden burada sadece "canın kısmen yenilendi" diyen bir toast
+        // vardı ama hiçbir kod gerçekten can/mana geri yüklemiyordu — hp 0'da
+        // kalıp bir sonraki savaşa öyle giriliyordu (kullanıcının bildirdiği
+        // "düşük canla başlıyoruz" bug'ı). Artık applyDeathPenalty hem
+        // hp/mp'yi gerçekten tam dolduruyor hem de küçük bir XP cezası
+        // uyguluyor, DeathModal da bunu net bir "Öldün!" uyarısıyla gösteriyor.
+        let xpLost = 0;
+        setPlayer((p) => {
+          const result = applyDeathPenalty(p);
+          xpLost = result.xpLost;
+          return result.player;
+        });
+        setDeathInfo({ xpLost });
         endBattle();
       }, 500);
     } else {
@@ -524,6 +539,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           </button>
         </div>
       )}
+
+      {deathInfo && <DeathModal xpLost={deathInfo.xpLost} onClose={() => setDeathInfo(null)} />}
     </div>
   );
 }
