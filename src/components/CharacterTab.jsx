@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Repeat, Crown, Lock, Check, X } from "lucide-react";
+import { Plus, Repeat, Crown, Lock, Check, X, Bot } from "lucide-react";
 import { STAT_KEYS, STAT_FULL_LABELS, STAT_COLORS, STAT_CAP } from "../data/stats";
 import { RACES } from "../data/races";
 import { allocateStat, displayClassName } from "../utils/player";
@@ -52,6 +52,14 @@ export default function CharacterTab({ player, setPlayer, cls, gearHp, def, atk,
     setPlayer((p) => setLoadoutSlot(p, emptySlot, skillId));
   };
 
+  // Savaş ekranındaki ikonla aynı, tek bir kaynağı (player.autoBattle)
+  // değiştiriyor — hangisinden değiştirilirse değiştirilsin ikisi de
+  // senkron kalır.
+  const autoBattle = player.autoBattle || { enabled: false, hpThreshold: 35, mpThreshold: 35 };
+  const toggleAutoBattle = () => setPlayer((p) => ({ ...p, autoBattle: { ...autoBattle, enabled: !autoBattle.enabled } }));
+  const setHpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || autoBattle), hpThreshold: v } }));
+  const setMpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || autoBattle), mpThreshold: v } }));
+
   return (
     <div style={styles.panelScroll}>
       <SectionLabel>Karakter</SectionLabel>
@@ -99,6 +107,9 @@ export default function CharacterTab({ player, setPlayer, cls, gearHp, def, atk,
         </button>
         <button onClick={() => setSubtab("skills")} style={{ ...styles.subtabBtn, ...(subtab === "skills" ? styles.subtabBtnActive : {}) }}>
           Beceriler ({player.skills.known.length})
+        </button>
+        <button onClick={() => setSubtab("auto")} style={{ ...styles.subtabBtn, ...(subtab === "auto" ? styles.subtabBtnActive : {}) }}>
+          Otomatik Saldırı
         </button>
       </div>
 
@@ -200,6 +211,59 @@ export default function CharacterTab({ player, setPlayer, cls, gearHp, def, atk,
             })}
           </div>
         </>
+      )}
+
+      {subtab === "auto" && (
+        <div style={styles.autoBattleCard}>
+          <div style={styles.toggleRow}>
+            <div>
+              <div style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                <Bot size={15} color={autoBattle.enabled ? "#5FA8A0" : "var(--text-faint)"} strokeWidth={1.6} /> Otomatik Saldırı
+              </div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>
+                Savaş ekranındaki botla aynı ayar — açıkken bir savaşın içinde otomatik saldırır.
+              </div>
+            </div>
+            <button
+              onClick={toggleAutoBattle}
+              style={{ ...styles.toggleSwitch, background: autoBattle.enabled ? "#5FA8A0" : "var(--bg-panel-alt)", justifyContent: autoBattle.enabled ? "flex-end" : "flex-start" }}
+            >
+              <div style={styles.toggleKnob} />
+            </button>
+          </div>
+
+          <div style={styles.sliderRow}>
+            <div style={styles.sliderLabelRow}>
+              <span>HP Pot Eşiği</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "#C9425A" }}>%{autoBattle.hpThreshold}</span>
+            </div>
+            <input
+              type="range" min={0} max={90} step={5}
+              value={autoBattle.hpThreshold}
+              onChange={(e) => setHpThreshold(parseInt(e.target.value, 10))}
+              style={styles.sliderInput}
+            />
+            <div style={{ fontSize: 9, color: "var(--text-faint)" }}>
+              Can bu yüzdenin altına düşünce otomatik olarak can iksiri içilir.
+            </div>
+          </div>
+
+          <div style={styles.sliderRow}>
+            <div style={styles.sliderLabelRow}>
+              <span>MP Pot Eşiği</span>
+              <span style={{ fontFamily: "var(--font-mono)", color: "#4FC3D9" }}>%{autoBattle.mpThreshold}</span>
+            </div>
+            <input
+              type="range" min={0} max={90} step={5}
+              value={autoBattle.mpThreshold}
+              onChange={(e) => setMpThreshold(parseInt(e.target.value, 10))}
+              style={styles.sliderInput}
+            />
+            <div style={{ fontSize: 9, color: "var(--text-faint)" }}>
+              Mana bu yüzdenin altına düşünce otomatik olarak mana iksiri içilir.
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

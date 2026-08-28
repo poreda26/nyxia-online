@@ -103,6 +103,11 @@ export function initialPlayer(cls, race, nickname) {
     // alone is trivially spoofable from devtools and must never be trusted
     // for a real multiplayer deployment.
     isGM: true,
+    // Otomatik Saldırı ayarları — bkz. components/BattleTab.jsx (savaş
+    // ekranındaki ikon aynı `enabled` alanını değiştirir) ve
+    // components/CharacterTab.jsx'in "Otomatik Saldırı" alt sekmesi. Eşikler
+    // yüzde (0-100), can/mana o yüzdenin ALTINA düşünce ilgili pot içiliyor.
+    autoBattle: { enabled: false, hpThreshold: 35, mpThreshold: 35 },
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -160,6 +165,7 @@ export function migratePlayer(player) {
     weeklyPoint: player.weeklyPoint ?? 0,
     weekId: player.weekId || currentWeekId(),
     clan: player.clan ?? null,
+    autoBattle: player.autoBattle || { enabled: false, hpThreshold: 35, mpThreshold: 35 },
   };
 }
 

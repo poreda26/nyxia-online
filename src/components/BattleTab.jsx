@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen } from "lucide-react";
+import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy } from "lucide-react";
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
 import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
@@ -34,6 +34,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const [shake, setShake] = useState(null); // 'player' | 'monster' | null
   const [pendingMap, setPendingMap] = useState(null); // map awaiting teleport confirmation
   const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal
+  const [victoryMonster, setVictoryMonster] = useState(null); // just-defeated monster template — drives the "Tekrar Savaş?" prompt
   const logRef = useRef(null);
 
   // Oyuncunun en son ışınlandığı harita kalıcı — güvenlik amaçlı, artık
@@ -207,10 +208,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const resolveMonsterTurn = (monsterHp, log, extra, currentHp = player.hp) => {
     if (monsterHp <= 0) {
       log = pushLog(log, `${monster.name} yenildi.`);
+      const wonMonster = monster;
       setBattle({ ...battle, ...extra, monsterHp, log, finished: true });
       // lock stays engaged through this window so extra clicks can't
       // trigger a second loot/level-up off the same kill
-      setTimeout(() => { applyLoot(monster); endBattle(); }, 700);
+      setTimeout(() => {
+        applyLoot(wonMonster);
+        attackLockRef.current = false;
+        setMonster(null);
+        setBattle(null);
+        // Ana ekrana otomatik dönmek yerine "Tekrar Savaş?" onayı çıkıyor
+        // (kullanıcı isteği) — Otomatik Saldırı açık olsa bile bu adım
+        // otomatikleşmiyor, yeni bir savaş HER ZAMAN buradan "Evet" ile
+        // manuel başlıyor (bkz. render'daki victoryMonster modalı).
+        setVictoryMonster(wonMonster);
+      }, 700);
       return;
     }
     const defMult = buffMultiplier(extra.buffs, "def");
@@ -370,6 +382,37 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const hpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "hp" && i.tier === hpPotionTier);
   const mpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "mp" && i.tier === mpPotionTier);
 
+  const autoBattleOn = !!player.autoBattle?.enabled;
+  const toggleAutoBattle = () => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { hpThreshold: 35, mpThreshold: 35 }), enabled: !p.autoBattle?.enabled } }));
+
+  // Otomatik Saldırı: her aksiyondan sonra `battle`/`player.hp`/`player.mp`
+  // değiştiği için bu effect yeniden tetiklenir ve bir sonraki aksiyonu
+  // planlar — kendi kendini besleyen bir döngü (bkz. WarzoneTab.jsx'teki
+  // gerçek-zamanlı tick effect'i, aynı desen). Kullanıcı isteği: bu ASLA
+  // yeni bir savaş BAŞLATMAZ (victoryMonster/deathInfo açıkken duruyor) —
+  // sadece mevcut savaşın içinde saldırır/pot içer.
+  useEffect(() => {
+    if (!autoBattleOn || !battle || battle.finished || player.hp <= 0 || victoryMonster || deathInfo) return;
+    const timer = setTimeout(() => {
+      if (attackLockRef.current) return;
+      const hpPct = (player.hp / maxHp) * 100;
+      const mpPct = (player.mp / maxMp) * 100;
+      const hpThreshold = player.autoBattle?.hpThreshold ?? 35;
+      const mpThreshold = player.autoBattle?.mpThreshold ?? 35;
+      const hpCd = battle.potionCooldowns.hp || 0;
+      const mpCd = battle.potionCooldowns.mp || 0;
+      if (hpPct < hpThreshold && hpCd === 0 && hpPotionTier) {
+        handlePotion("hp");
+      } else if (mpPct < mpThreshold && mpCd === 0 && mpPotionTier) {
+        handlePotion("mp");
+      } else {
+        attack();
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoBattleOn, battle, player.hp, player.mp, victoryMonster, deathInfo]);
+
   return (
     <div style={styles.panelScroll}>
       {pendingMap && (
@@ -458,7 +501,19 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         <div style={styles.battleArena}>
           <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{monster.name}</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
+                {monster.name}
+                <button
+                  onClick={toggleAutoBattle}
+                  title={autoBattleOn ? "Otomatik Saldırı açık — kapatmak için dokun" : "Otomatik Saldırıyı aç"}
+                  style={{
+                    background: autoBattleOn ? "#5FA8A022" : "var(--bg-panel-alt)", border: "1px solid",
+                    borderColor: autoBattleOn ? "#5FA8A088" : "var(--border)", borderRadius: 7, padding: 4, display: "flex",
+                  }}
+                >
+                  <Bot size={13} color={autoBattleOn ? "#5FA8A0" : "var(--text-faint)"} strokeWidth={1.8} />
+                </button>
+              </span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{battle.monsterHp}/{battle.monsterMaxHp}</span>
             </div>
             <BarTrack pct={(battle.monsterHp / battle.monsterMaxHp) * 100} color={map.color} />
@@ -541,6 +596,27 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       )}
 
       {deathInfo && <DeathModal xpLost={deathInfo.xpLost} onClose={() => setDeathInfo(null)} />}
+
+      {victoryMonster && (
+        <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setVictoryMonster(null)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <Trophy size={32} color="#D4AF6A" strokeWidth={1.3} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>Tekrar Savaş?</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 220 }}>
+              {victoryMonster.name}'i yendin. Tekrar savaşmak ister misin?
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setVictoryMonster(null)}>Hayır</button>
+              <button
+                style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#0B0C10" }}
+                onClick={() => { const m = victoryMonster; setVictoryMonster(null); startBattle(m); }}
+              >
+                Evet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

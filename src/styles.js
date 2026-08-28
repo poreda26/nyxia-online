@@ -266,6 +266,22 @@ export const styles = {
     borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)", borderRadius: 6, padding: "1px 5px", marginLeft: 6,
   },
 
+  // Karakter > Otomatik Saldırı alt sekmesi + savaş ekranındaki ikonun
+  // paylaştığı ayar kartı görünümü.
+  autoBattleCard: {
+    background: "var(--bg-panel)", borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)",
+    borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 14,
+  },
+  toggleRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  toggleSwitch: {
+    width: 42, height: 24, borderRadius: 12, border: "none", padding: 2, cursor: "pointer",
+    display: "flex", alignItems: "center", flexShrink: 0, transition: "background 0.15s ease",
+  },
+  toggleKnob: { width: 20, height: 20, borderRadius: 10, background: "#EDE8DC", transition: "transform 0.15s ease" },
+  sliderRow: { display: "flex", flexDirection: "column", gap: 6 },
+  sliderLabelRow: { display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" },
+  sliderInput: { width: "100%", accentColor: "#5FA8A0" },
+
   // 9 sekme artık tek satırda sağa-sola kaydırılarak geziliyor (kullanıcı
   // isteği) — her buton sabit bir genişlik taşıdığı için (navBtn) satırın
   // toplam genişliği konteynerı gerçekten aşıyor ve overflowX:auto devreye
