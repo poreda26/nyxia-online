@@ -26,6 +26,10 @@ export function premiumRepairDiscount(player) { return activePremiumTier(player)
 export function premiumNpBonus(player) { return activePremiumTier(player)?.nationalPointBonus ?? 0; }
 export function premiumNpLossReduction(player) { return activePremiumTier(player)?.nationalPointLossReduction ?? 0; }
 
+// Otomatik Saldırı her iki katmanda da açık bir perk (bkz. data/premium.js
+// perks) — tek şart aktif bir Premium'un olması, tier farketmiyor.
+export function hasAutoBattleAccess(player) { return !!activePremiumTier(player); }
+
 // Buying the SAME tier while it's still active extends the existing expiry
 // (time doesn't get wasted); buying a DIFFERENT tier replaces it and starts
 // a fresh 15-day window from now, matching how most VIP-tier games handle

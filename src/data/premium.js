@@ -27,6 +27,7 @@ export const PREMIUM_TIERS = {
       "Hediye: 1x Bonus Parşömen",
       "Depoda +2 sayfa",
       "Kaybedilen National Point %10 azalır",
+      "Otomatik Saldırı özelliği",
     ],
   },
   apex: {
@@ -50,6 +51,7 @@ export const PREMIUM_TIERS = {
       "%25 Tamir İndirimi",
       "Hediye: 1x Bonus Parşömen",
       "Kaybedilen National Point %5 azalır",
+      "Otomatik Saldırı özelliği",
     ],
   },
 };

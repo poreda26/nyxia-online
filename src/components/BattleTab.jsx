@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy } from "lucide-react";
+import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Crown } from "lucide-react";
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
 import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
@@ -7,7 +7,7 @@ import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K } from "../utils/combat";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
-import { premiumExpMultiplier, premiumDropMultiplier } from "../utils/premium";
+import { premiumExpMultiplier, premiumDropMultiplier, hasAutoBattleAccess } from "../utils/premium";
 import { clanExpMultiplier } from "../utils/clan";
 import { eventExpMultiplier } from "../utils/events";
 import { classSkills, learnFreeSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
@@ -382,8 +382,17 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const hpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "hp" && i.tier === hpPotionTier);
   const mpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "mp" && i.tier === mpPotionTier);
 
-  const autoBattleOn = !!player.autoBattle?.enabled;
-  const toggleAutoBattle = () => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { hpThreshold: 35, mpThreshold: 35 }), enabled: !p.autoBattle?.enabled } }));
+  // Otomatik Saldırı Apex/Mythic Premium'a özel bir perk (bkz. data/premium.js
+  // perks) — Premium süresi dolarsa `enabled` bayrağı localStorage'da kalsa
+  // bile `autoBattleOn` false'a düşer ve döngü otomatik durur.
+  const autoBattleAccess = hasAutoBattleAccess(player);
+  const autoBattleOn = !!player.autoBattle?.enabled && autoBattleAccess;
+  const toggleAutoBattle = () => {
+    if (!autoBattleAccess) { pushToast("Otomatik Saldırı bir Apex/Mythic Premium özelliğidir.", "warn"); return; }
+    setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { hpThreshold: 35, mpThreshold: 35 }), enabled: !p.autoBattle?.enabled } }));
+  };
+  const setHpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { enabled: false, mpThreshold: 35 }), hpThreshold: v } }));
+  const setMpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { enabled: false, hpThreshold: 35 }), mpThreshold: v } }));
 
   // Otomatik Saldırı: her aksiyondan sonra `battle`/`player.hp`/`player.mp`
   // değiştiği için bu effect yeniden tetiklenir ve bir sonraki aksiyonu
@@ -502,22 +511,59 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           {/* Savaşın en üstünde, gözden kaçmayacak kadar belirgin bir
               açık/kapalı anahtarı — önceki küçük ikon (canavar adının
               yanındaki) fark edilmiyordu (kullanıcı geri bildirimi).
-              Savaş sürerken de her an dokunup kapatılabiliyor/açılabiliyor. */}
+              Savaş sürerken de her an dokunup kapatılabiliyor/açılabiliyor.
+              Apex/Mythic Premium olmayanlar için kilitli görünür — tıklayınca
+              döngüyü açmaz, sadece uyarı toast'ı gösterir. */}
           <button
             onClick={toggleAutoBattle}
             style={{
               ...styles.toggleRow, width: "100%", background: autoBattleOn ? "#5FA8A014" : "var(--bg-panel)",
               border: "1px solid", borderColor: autoBattleOn ? "#5FA8A066" : "var(--border)",
               borderRadius: 10, padding: "8px 12px", cursor: "pointer",
+              opacity: autoBattleAccess ? 1 : 0.7,
             }}
           >
             <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: autoBattleOn ? "#5FA8A0" : "var(--text-muted)" }}>
-              <Bot size={15} strokeWidth={1.8} /> Otomatik Saldırı — {autoBattleOn ? "Açık" : "Kapalı"}
+              {autoBattleAccess ? <Bot size={15} strokeWidth={1.8} /> : <Lock size={13} strokeWidth={1.8} />}
+              Otomatik Saldırı — {autoBattleAccess ? (autoBattleOn ? "Açık" : "Kapalı") : "Premium Gerekli"}
             </span>
-            <span style={{ ...styles.toggleSwitch, background: autoBattleOn ? "#5FA8A0" : "var(--bg-panel-alt)", justifyContent: autoBattleOn ? "flex-end" : "flex-start" }}>
-              <span style={styles.toggleKnob} />
-            </span>
+            {autoBattleAccess ? (
+              <span style={{ ...styles.toggleSwitch, background: autoBattleOn ? "#5FA8A0" : "var(--bg-panel-alt)", justifyContent: autoBattleOn ? "flex-end" : "flex-start" }}>
+                <span style={styles.toggleKnob} />
+              </span>
+            ) : (
+              <Crown size={14} color="#8B6FC9" strokeWidth={1.8} />
+            )}
           </button>
+
+          {autoBattleAccess && (
+            <div style={styles.autoBattleCard}>
+              <div style={styles.sliderRow}>
+                <div style={styles.sliderLabelRow}>
+                  <span>HP Pot Eşiği</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "#C9425A" }}>%{player.autoBattle?.hpThreshold ?? 35}</span>
+                </div>
+                <input
+                  type="range" min={0} max={90} step={5}
+                  value={player.autoBattle?.hpThreshold ?? 35}
+                  onChange={(e) => setHpThreshold(parseInt(e.target.value, 10))}
+                  style={styles.sliderInput}
+                />
+              </div>
+              <div style={styles.sliderRow}>
+                <div style={styles.sliderLabelRow}>
+                  <span>MP Pot Eşiği</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "#4FC3D9" }}>%{player.autoBattle?.mpThreshold ?? 35}</span>
+                </div>
+                <input
+                  type="range" min={0} max={90} step={5}
+                  value={player.autoBattle?.mpThreshold ?? 35}
+                  onChange={(e) => setMpThreshold(parseInt(e.target.value, 10))}
+                  style={styles.sliderInput}
+                />
+              </div>
+            </div>
+          )}
 
           <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
