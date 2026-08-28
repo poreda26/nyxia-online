@@ -208,6 +208,19 @@ export function isBroken(item) {
   return item && item.durability > 0 && item.currentDurability <= 0;
 }
 
+// Zırh parçası başına, o parçanın kendi +seviyesine göre SABİT bir sınıf
+// bonusu (kullanıcı tablosu) — forge'un genel ×1.18 katlanmalı büyümesinden
+// (bkz. utils/upgrade.js#bumpedStats) BİLEREK ayrı tutuluyor: item.hp/mp/
+// statBonus alanlarına yazılsaydı her yükseltmede compound olurdu, oysa bu
+// sabit bir eşik tablosu, doğrudan item.upgradeLevel'den okunuyor.
+// Warrior→STR, Rogue→DEX (equippedStatBonus üzerinden ATK formülüne
+// karışıyor, weapon statBonus'la aynı yol), Mage→MP, Priest→HP (doğrudan
+// kaynak havuzuna — bkz. totalStats) — kullanıcı isteği: son iki sınıf
+// birincil statü yerine kaynak havuzu alıyor.
+const ARMOR_LEVEL_BONUS = { 0: 0, 1: 2, 2: 2, 3: 4, 4: 6, 5: 8, 6: 10, 7: 12, 8: 15 };
+export function armorLevelBonus(upgradeLevel) { return ARMOR_LEVEL_BONUS[upgradeLevel] ?? 0; }
+export const ARMOR_CLASS_BONUS_STAT = { warrior: "str", rogue: "dex", mage: "mp", priest: "hp" };
+
 // Some weapons (see data/warriorWeapons.js) grant a flat stat bonus while
 // equipped, on top of the player's own allocated points — kept separate
 // from player.stats itself so equip requirements (which check player.stats
@@ -216,7 +229,12 @@ function equippedStatBonus(player) {
   const bonus = { str: 0, sta: 0, dex: 0, int: 0, mag: 0 };
   ALL_EQUIP_KEYS.forEach((k) => {
     const it = player.equipped[k];
-    if (it && !isBroken(it) && it.statBonus) STAT_KEYS.forEach((key) => { bonus[key] += it.statBonus[key] || 0; });
+    if (!it || isBroken(it)) return;
+    if (it.statBonus) STAT_KEYS.forEach((key) => { bonus[key] += it.statBonus[key] || 0; });
+    if (it.kind === "armor") {
+      const stat = ARMOR_CLASS_BONUS_STAT[it.class];
+      if (stat === "str" || stat === "dex") bonus[stat] += armorLevelBonus(it.upgradeLevel);
+    }
   });
   return bonus;
 }
@@ -238,7 +256,15 @@ export function totalStats(player) {
   let hp = 0, def = 0, atk = 0, mp = 0;
   ALL_EQUIP_KEYS.forEach((k) => {
     const it = player.equipped[k];
-    if (it && !isBroken(it)) { hp += it.hp || 0; def += it.def || 0; atk += it.atk || 0; mp += it.mp || 0; }
+    if (it && !isBroken(it)) {
+      hp += it.hp || 0; def += it.def || 0; atk += it.atk || 0; mp += it.mp || 0;
+      if (it.kind === "armor") {
+        const stat = ARMOR_CLASS_BONUS_STAT[it.class];
+        const val = armorLevelBonus(it.upgradeLevel);
+        if (stat === "mp") mp += val;
+        if (stat === "hp") hp += val;
+      }
+    }
   });
   const s = player.stats;
   const bonus = equippedStatBonus(player);
@@ -264,7 +290,41 @@ export function allocateStat(player, statKey) {
 export function playerMaxHp(player) {
   const base = CLASSES[player.class];
   const { hp } = totalStats(player);
-  return base.maxHp + Math.round(player.level * 1.2) + hp;
+  const setBonus = activeArmorSetBonus(player);
+  return base.maxHp + Math.round(player.level * 1.2) + hp + (setBonus?.hp || 0);
+}
+
+// Tam 5 parça (Kask/Göğüslük/Don/Eldiven/Bot), AYNI tier'dan, oyuncunun
+// KENDİ sınıfına ait bir zırh seti giyiliyse ek bir set bonusu — kullanıcı
+// tablosu. T2/T3'ün hasar azaltması sadece canavarlara karşı ("Canavardan
+// %X daha az hasar ye"), T4/T5'inki "her şeyden" (PvP dahil). Aynı anda en
+// fazla 5 parça giyilebildiği için birden fazla tier'ın seti asla aynı anda
+// tamamlanamaz — çakışma/stack riski yok.
+export const ARMOR_SET_BONUS = {
+  1: { hp: 50, dmgReduction: 0, scope: null },
+  2: { hp: 60, dmgReduction: 0.01, scope: "monster" },
+  3: { hp: 75, dmgReduction: 0.02, scope: "monster" },
+  4: { hp: 100, dmgReduction: 0.01, scope: "all" },
+  5: { hp: 250, dmgReduction: 0.03, scope: "all" },
+};
+
+export function activeArmorSetBonus(player) {
+  const pieces = ARMOR_SLOTS.map((slot) => player.equipped[slot]);
+  if (pieces.some((it) => !it || it.kind !== "armor" || isBroken(it))) return null;
+  const tier = pieces[0].tier;
+  const complete = pieces.every((it) => it.class === player.class && it.tier === tier);
+  return complete ? (ARMOR_SET_BONUS[tier] || null) : null;
+}
+
+// source: 'monster' (PvE — canavar veya Dünya Canavarı) | 'pvp' (Savaş
+// Alanı hayalet düellosu). Çağıranlar mitigate() sonrası hasarı
+// `dmg * (1 - armorSetDamageReduction(player, source))` şeklinde çarpar.
+export function armorSetDamageReduction(player, source) {
+  const bonus = activeArmorSetBonus(player);
+  if (!bonus || bonus.dmgReduction <= 0) return 0;
+  if (bonus.scope === "all") return bonus.dmgReduction;
+  if (bonus.scope === "monster" && source === "monster") return bonus.dmgReduction;
+  return 0;
 }
 
 export function playerMaxMp(player) {

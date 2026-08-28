@@ -1,6 +1,6 @@
 import { rand, pick, uid } from "./random";
 import { CLASSES } from "../data/classes";
-import { totalStats, playerDef, playerMaxHp } from "./player";
+import { totalStats, playerDef, playerMaxHp, armorSetDamageReduction } from "./player";
 import { ghostNamesForRace } from "../data/warzoneNames";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K } from "./combat";
 
@@ -42,9 +42,13 @@ export function ghostDamageFromPlayer(cls, atk, ghost, isCrit) {
 }
 
 // Hayaletin oyuncuya vuruşu — BattleTab.jsx#resolveMonsterTurn'daki
-// canavar-karşılığı formülle aynı mantık.
-export function playerDamageFromGhost(ghost, defenderDef) {
-  return Math.max(1, Math.round(mitigate(ghost.atk, defenderDef, PLAYER_DEF_K) + rand(-2, 3)));
+// canavar-karşılığı formülle aynı mantık. PvP olduğu için zırh seti
+// bonusunun sadece "her şeyden" (T4/T5) kapsamı burada geçerli — T2/T3'ün
+// "canavardan" azaltması PvP'ye uygulanmıyor (bkz. utils/player.js#
+// armorSetDamageReduction'ın source ayrımı).
+export function playerDamageFromGhost(ghost, defenderDef, player) {
+  const setReduction = armorSetDamageReduction(player, "pvp");
+  return Math.max(1, Math.round(mitigate(ghost.atk, defenderDef, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)));
 }
 
 // Hayalet %30 altı candayken küçük ihtimalle kendini iyileştirir — Mana

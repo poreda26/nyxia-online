@@ -1,6 +1,126 @@
-// Hand-authored armor catalog — eski hazır liste kullanıcı isteğiyle
-// SİLİNDİ, yerine görsel görsel yeniden dolduruluyor (bkz.
-// utils/loot.js#rollArmor, GmItemPanel). Eski katalog
-// C:\Users\akcel\Desktop\RPGMarket\_legacy_items_backup\armorSets.js'te
-// yedekli duruyor, gerekirse referans alınabilir.
-export const ARMOR_SETS = [];
+// Hand-authored armor catalog, one 5-tier progression per class per slot —
+// sourced directly from Knight Online's real decrypted item tables (Kind
+// 210/220/230/240 = Warrior/Rogue/Mage/Priest armor, Slot 5/6/7/8/9 =
+// chest/legs/head/gauntlets/boots). Names and stats (def = real Ac,
+// reqStats = real ReqStr/ReqDex/ReqIntel) are the game's actual numbers,
+// picked one representative real family per our tier band from that slot's
+// 5-6 real upgrade stages (Leather/Half Plate/Plate Armor/Full Plate
+// Armor/Chitin Armor/Chitin Shell, or the Mage-specific Cotton/Linen/Silk/
+// Crystal-Crimson/Complete line, gated on INT instead of STR/DEX).
+// Sadece T1-T5 — kullanıcı isteğiyle Crimson Battlefront (T6) için zırh
+// EKLENMİYOR (gerçek KO verisinde de bu kadar ileri bir zırh tier'ı yok,
+// T6 sadece silahlarda "Eşsiz" olarak var). T4/T5'in levelMin/levelMax'ı
+// da kullanıcı isteğiyle map bantlarından SAPTIRILDI: T4 artık 40-60
+// (Ruined Sanctuary + Abyssal Pit'i birlikte kapsıyor), T5 artık 60-65
+// (Crimson Battlefront'un seviye aralığıyla aynı ama o haritaya BAĞLI
+// değil — sadece seviye eşiği). T1-T3 kendi map bantlarıyla aynı kaldı.
+// See utils/loot.js#rollArmor. Her parçanın ayrıca kendi upgradeLevel'ine
+// göre sabit bir sınıf bonusu var — bkz. utils/player.js#armorLevelBonus
+// (forge'un ×1.18 katlanmalı büyümesinden BİLEREK ayrı, sabit bir tablo).
+export const ARMOR_SETS = [
+  // warrior
+  { cls: "warrior", slot: "chest", tier: 1, levelMin: 1, levelMax: 15, name: "Quilted Pauldron", def: 20, reqStats: [{ key: "str", value: 62 }] },
+  { cls: "warrior", slot: "chest", tier: 2, levelMin: 15, levelMax: 25, name: "Half Plate Pauldron", def: 40, reqStats: [{ key: "str", value: 100 }] },
+  { cls: "warrior", slot: "chest", tier: 3, levelMin: 25, levelMax: 40, name: "Plate Armor Pauldron", def: 66, reqStats: [{ key: "str", value: 124 }] },
+  { cls: "warrior", slot: "chest", tier: 4, levelMin: 40, levelMax: 60, name: "Chitin Armor Pauldron", def: 135, reqStats: [{ key: "str", value: 160 }] },
+  { cls: "warrior", slot: "chest", tier: 5, levelMin: 60, levelMax: 65, name: "Chitin Shell Pauldron", def: 149, reqStats: [{ key: "str", value: 176 }] },
+  { cls: "warrior", slot: "legs", tier: 1, levelMin: 1, levelMax: 15, name: "Leather Pads", def: 16, reqStats: [{ key: "str", value: 58 }] },
+  { cls: "warrior", slot: "legs", tier: 2, levelMin: 15, levelMax: 25, name: "Half Plate Pads", def: 32, reqStats: [{ key: "str", value: 96 }] },
+  { cls: "warrior", slot: "legs", tier: 3, levelMin: 25, levelMax: 40, name: "Plate Armor Pads", def: 52, reqStats: [{ key: "str", value: 120 }] },
+  { cls: "warrior", slot: "legs", tier: 4, levelMin: 40, levelMax: 60, name: "Chitin Armor Pads", def: 108, reqStats: [{ key: "str", value: 156 }] },
+  { cls: "warrior", slot: "legs", tier: 5, levelMin: 60, levelMax: 65, name: "Chitin Shell Pads", def: 119, reqStats: [{ key: "str", value: 172 }] },
+  { cls: "warrior", slot: "head", tier: 1, levelMin: 1, levelMax: 15, name: "Leather Cap", def: 12, reqStats: [{ key: "str", value: 54 }] },
+  { cls: "warrior", slot: "head", tier: 2, levelMin: 15, levelMax: 25, name: "Half Plate Helmet", def: 24, reqStats: [{ key: "str", value: 92 }] },
+  { cls: "warrior", slot: "head", tier: 3, levelMin: 25, levelMax: 40, name: "Plate Armor Helmet", def: 39, reqStats: [{ key: "str", value: 116 }] },
+  { cls: "warrior", slot: "head", tier: 4, levelMin: 40, levelMax: 60, name: "Chitin Armor Helmet", def: 81, reqStats: [{ key: "str", value: 152 }] },
+  { cls: "warrior", slot: "head", tier: 5, levelMin: 60, levelMax: 65, name: "Chitin Shell Helmet", def: 89, reqStats: [{ key: "str", value: 168 }] },
+  { cls: "warrior", slot: "gauntlets", tier: 1, levelMin: 1, levelMax: 15, name: "Leather Gloves", def: 8, reqStats: [{ key: "str", value: 46 }] },
+  { cls: "warrior", slot: "gauntlets", tier: 2, levelMin: 15, levelMax: 25, name: "Half Plate Gauntlet", def: 16, reqStats: [{ key: "str", value: 84 }] },
+  { cls: "warrior", slot: "gauntlets", tier: 3, levelMin: 25, levelMax: 40, name: "Plate Armor Gauntlet", def: 26, reqStats: [{ key: "str", value: 108 }] },
+  { cls: "warrior", slot: "gauntlets", tier: 4, levelMin: 40, levelMax: 60, name: "Chitin Armor Gauntlet", def: 54, reqStats: [{ key: "str", value: 144 }] },
+  { cls: "warrior", slot: "gauntlets", tier: 5, levelMin: 60, levelMax: 65, name: "Chitin Shell Gauntlet", def: 60, reqStats: [{ key: "str", value: 160 }] },
+  { cls: "warrior", slot: "boots", tier: 1, levelMin: 1, levelMax: 15, name: "Leather Shoes", def: 8, reqStats: [{ key: "str", value: 50 }] },
+  { cls: "warrior", slot: "boots", tier: 2, levelMin: 15, levelMax: 25, name: "Half Plate Boots", def: 16, reqStats: [{ key: "str", value: 88 }] },
+  { cls: "warrior", slot: "boots", tier: 3, levelMin: 25, levelMax: 40, name: "Plate Armor Boots", def: 26, reqStats: [{ key: "str", value: 112 }] },
+  { cls: "warrior", slot: "boots", tier: 4, levelMin: 40, levelMax: 60, name: "Chitin Armor Boots", def: 54, reqStats: [{ key: "str", value: 148 }] },
+  { cls: "warrior", slot: "boots", tier: 5, levelMin: 60, levelMax: 65, name: "Chitin Shell Boots", def: 60, reqStats: [{ key: "str", value: 164 }] },
+  // rogue
+  { cls: "rogue", slot: "chest", tier: 1, levelMin: 1, levelMax: 15, name: "Rogue Shirt", def: 14, reqStats: [{ key: "dex", value: 62 }] },
+  { cls: "rogue", slot: "chest", tier: 2, levelMin: 15, levelMax: 25, name: "Rogue Half Plate Pauldron", def: 28, reqStats: [{ key: "dex", value: 100 }] },
+  { cls: "rogue", slot: "chest", tier: 3, levelMin: 25, levelMax: 40, name: "Rogue Plate Armor Pauldron", def: 46, reqStats: [{ key: "dex", value: 124 }] },
+  { cls: "rogue", slot: "chest", tier: 4, levelMin: 40, levelMax: 60, name: "Rogue Chitin Armor Pauldron", def: 94, reqStats: [{ key: "dex", value: 160 }] },
+  { cls: "rogue", slot: "chest", tier: 5, levelMin: 60, levelMax: 65, name: "Rogue Chitin Shell Pauldron", def: 104, reqStats: [{ key: "dex", value: 176 }] },
+  { cls: "rogue", slot: "legs", tier: 1, levelMin: 1, levelMax: 15, name: "Rogue Pads", def: 11, reqStats: [{ key: "dex", value: 58 }] },
+  { cls: "rogue", slot: "legs", tier: 2, levelMin: 15, levelMax: 25, name: "Rogue Half Plate Pads", def: 22, reqStats: [{ key: "dex", value: 96 }] },
+  { cls: "rogue", slot: "legs", tier: 3, levelMin: 25, levelMax: 40, name: "Rogue Plate Armor Pads", def: 36, reqStats: [{ key: "dex", value: 120 }] },
+  { cls: "rogue", slot: "legs", tier: 4, levelMin: 40, levelMax: 60, name: "Rogue Chitin Armor Pads", def: 75, reqStats: [{ key: "dex", value: 156 }] },
+  { cls: "rogue", slot: "legs", tier: 5, levelMin: 60, levelMax: 65, name: "Rogue Chitin Shell Pads", def: 83, reqStats: [{ key: "dex", value: 172 }] },
+  { cls: "rogue", slot: "head", tier: 1, levelMin: 1, levelMax: 15, name: "Rogue Cap", def: 8, reqStats: [{ key: "dex", value: 54 }] },
+  { cls: "rogue", slot: "head", tier: 2, levelMin: 15, levelMax: 25, name: "Rogue Helmet", def: 16, reqStats: [{ key: "dex", value: 92 }] },
+  { cls: "rogue", slot: "head", tier: 3, levelMin: 25, levelMax: 40, name: "Rogue Plate Helmet", def: 27, reqStats: [{ key: "dex", value: 116 }] },
+  { cls: "rogue", slot: "head", tier: 4, levelMin: 40, levelMax: 60, name: "Rogue Chitin Armor Helmet", def: 56, reqStats: [{ key: "dex", value: 152 }] },
+  { cls: "rogue", slot: "head", tier: 5, levelMin: 60, levelMax: 65, name: "Rogue Chitin Shell Helmet", def: 63, reqStats: [{ key: "dex", value: 168 }] },
+  { cls: "rogue", slot: "gauntlets", tier: 1, levelMin: 1, levelMax: 15, name: "Rogue Gloves", def: 5, reqStats: [{ key: "dex", value: 46 }] },
+  { cls: "rogue", slot: "gauntlets", tier: 2, levelMin: 15, levelMax: 25, name: "Rogue Gauntlet", def: 11, reqStats: [{ key: "dex", value: 84 }] },
+  { cls: "rogue", slot: "gauntlets", tier: 3, levelMin: 25, levelMax: 40, name: "Rogue Plate Gauntlet", def: 18, reqStats: [{ key: "dex", value: 108 }] },
+  { cls: "rogue", slot: "gauntlets", tier: 4, levelMin: 40, levelMax: 60, name: "Rogue Chitin Armor Gauntlet", def: 37, reqStats: [{ key: "dex", value: 144 }] },
+  { cls: "rogue", slot: "gauntlets", tier: 5, levelMin: 60, levelMax: 65, name: "Rogue Chitin Shell Gauntlet", def: 42, reqStats: [{ key: "dex", value: 160 }] },
+  { cls: "rogue", slot: "boots", tier: 1, levelMin: 1, levelMax: 15, name: "Rogue Shoes", def: 5, reqStats: [{ key: "dex", value: 50 }] },
+  { cls: "rogue", slot: "boots", tier: 2, levelMin: 15, levelMax: 25, name: "Rogue Boots", def: 11, reqStats: [{ key: "dex", value: 88 }] },
+  { cls: "rogue", slot: "boots", tier: 3, levelMin: 25, levelMax: 40, name: "Rogue Plate Boots", def: 18, reqStats: [{ key: "dex", value: 112 }] },
+  { cls: "rogue", slot: "boots", tier: 4, levelMin: 40, levelMax: 60, name: "Rogue Chitin Armor Boots", def: 37, reqStats: [{ key: "dex", value: 148 }] },
+  { cls: "rogue", slot: "boots", tier: 5, levelMin: 60, levelMax: 65, name: "Rogue Chitin Shell Boots", def: 42, reqStats: [{ key: "dex", value: 164 }] },
+  // mage
+  { cls: "mage", slot: "chest", tier: 1, levelMin: 1, levelMax: 15, name: "Mage Cotton Robe", def: 12, reqStats: [{ key: "int", value: 62 }] },
+  { cls: "mage", slot: "chest", tier: 2, levelMin: 15, levelMax: 25, name: "Mage Linen Robe", def: 24, reqStats: [{ key: "int", value: 100 }] },
+  { cls: "mage", slot: "chest", tier: 3, levelMin: 25, levelMax: 40, name: "Mage Silk Robe", def: 39, reqStats: [{ key: "int", value: 124 }] },
+  { cls: "mage", slot: "chest", tier: 4, levelMin: 40, levelMax: 60, name: "Crimson Robe", def: 81, reqStats: [{ key: "int", value: 160 }] },
+  { cls: "mage", slot: "chest", tier: 5, levelMin: 60, levelMax: 65, name: "Complete Robe", def: 89, reqStats: [{ key: "int", value: 160 }] },
+  { cls: "mage", slot: "legs", tier: 1, levelMin: 1, levelMax: 15, name: "Mage Cloth Pants", def: 9, reqStats: [{ key: "int", value: 58 }] },
+  { cls: "mage", slot: "legs", tier: 2, levelMin: 15, levelMax: 25, name: "Mage Linen Pants", def: 19, reqStats: [{ key: "int", value: 96 }] },
+  { cls: "mage", slot: "legs", tier: 3, levelMin: 25, levelMax: 40, name: "Mage Silk Pants", def: 31, reqStats: [{ key: "int", value: 120 }] },
+  { cls: "mage", slot: "legs", tier: 4, levelMin: 40, levelMax: 60, name: "Crimson Pants", def: 64, reqStats: [{ key: "int", value: 156 }] },
+  { cls: "mage", slot: "legs", tier: 5, levelMin: 60, levelMax: 65, name: "Complete Pants", def: 72, reqStats: [{ key: "int", value: 156 }] },
+  { cls: "mage", slot: "head", tier: 1, levelMin: 1, levelMax: 15, name: "Mage Hat", def: 7, reqStats: [{ key: "int", value: 54 }] },
+  { cls: "mage", slot: "head", tier: 2, levelMin: 15, levelMax: 25, name: "Mage Linen Cap", def: 14, reqStats: [{ key: "int", value: 92 }] },
+  { cls: "mage", slot: "head", tier: 3, levelMin: 25, levelMax: 40, name: "Mage Helmet", def: 23, reqStats: [{ key: "int", value: 116 }] },
+  { cls: "mage", slot: "head", tier: 4, levelMin: 40, levelMax: 60, name: "Crimson Helmet", def: 48, reqStats: [{ key: "int", value: 152 }] },
+  { cls: "mage", slot: "head", tier: 5, levelMin: 60, levelMax: 65, name: "Complete Helmet", def: 54, reqStats: [{ key: "int", value: 152 }] },
+  { cls: "mage", slot: "gauntlets", tier: 1, levelMin: 1, levelMax: 15, name: "Mage Gloves", def: 4, reqStats: [{ key: "int", value: 46 }] },
+  { cls: "mage", slot: "gauntlets", tier: 2, levelMin: 15, levelMax: 25, name: "Mage Leather Gloves", def: 9, reqStats: [{ key: "int", value: 84 }] },
+  { cls: "mage", slot: "gauntlets", tier: 3, levelMin: 25, levelMax: 40, name: "Mage Hard Leather Gloves", def: 15, reqStats: [{ key: "int", value: 108 }] },
+  { cls: "mage", slot: "gauntlets", tier: 4, levelMin: 40, levelMax: 60, name: "Crimson Gloves", def: 32, reqStats: [{ key: "int", value: 144 }] },
+  { cls: "mage", slot: "gauntlets", tier: 5, levelMin: 60, levelMax: 65, name: "Complete Glove", def: 36, reqStats: [{ key: "int", value: 144 }] },
+  { cls: "mage", slot: "boots", tier: 1, levelMin: 1, levelMax: 15, name: "Mage Shoes", def: 4, reqStats: [{ key: "int", value: 50 }] },
+  { cls: "mage", slot: "boots", tier: 2, levelMin: 15, levelMax: 25, name: "Mage Leather Boots", def: 9, reqStats: [{ key: "int", value: 88 }] },
+  { cls: "mage", slot: "boots", tier: 3, levelMin: 25, levelMax: 40, name: "Mage Hard Leather Boots", def: 15, reqStats: [{ key: "int", value: 112 }] },
+  { cls: "mage", slot: "boots", tier: 4, levelMin: 40, levelMax: 60, name: "Crimson Boots", def: 32, reqStats: [{ key: "int", value: 148 }] },
+  { cls: "mage", slot: "boots", tier: 5, levelMin: 60, levelMax: 65, name: "Complete Boots", def: 36, reqStats: [{ key: "int", value: 148 }] },
+  // priest — a hybrid class in the real data: every Priest armor row gates
+  // on BOTH Str and Intel simultaneously, not Str alone.
+  { cls: "priest", slot: "chest", tier: 1, levelMin: 1, levelMax: 15, name: "Fabric Coat", def: 16, reqStats: [{ key: "str", value: 51 }, { key: "int", value: 62 }] },
+  { cls: "priest", slot: "chest", tier: 2, levelMin: 15, levelMax: 25, name: "Silk Coat", def: 32, reqStats: [{ key: "str", value: 70 }, { key: "int", value: 100 }] },
+  { cls: "priest", slot: "chest", tier: 3, levelMin: 25, levelMax: 40, name: "Priest Plate Pauldron", def: 52, reqStats: [{ key: "str", value: 82 }, { key: "int", value: 124 }] },
+  { cls: "priest", slot: "chest", tier: 4, levelMin: 40, levelMax: 60, name: "Priest Chitin Armor Pauldron", def: 108, reqStats: [{ key: "str", value: 90 }, { key: "int", value: 160 }] },
+  { cls: "priest", slot: "chest", tier: 5, levelMin: 60, levelMax: 65, name: "Priest Chitin Shell Pauldron", def: 119, reqStats: [{ key: "str", value: 94 }, { key: "int", value: 176 }] },
+  { cls: "priest", slot: "legs", tier: 1, levelMin: 1, levelMax: 15, name: "Fabric Pants", def: 12, reqStats: [{ key: "str", value: 49 }, { key: "int", value: 58 }] },
+  { cls: "priest", slot: "legs", tier: 2, levelMin: 15, levelMax: 25, name: "Silk Pants", def: 25, reqStats: [{ key: "str", value: 68 }, { key: "int", value: 96 }] },
+  { cls: "priest", slot: "legs", tier: 3, levelMin: 25, levelMax: 40, name: "Priest Plate Pads", def: 41, reqStats: [{ key: "str", value: 80 }, { key: "int", value: 120 }] },
+  { cls: "priest", slot: "legs", tier: 4, levelMin: 40, levelMax: 60, name: "Priest Chitin Armor Pads", def: 86, reqStats: [{ key: "str", value: 88 }, { key: "int", value: 156 }] },
+  { cls: "priest", slot: "legs", tier: 5, levelMin: 60, levelMax: 65, name: "Priest Chitin Shell Pads", def: 95, reqStats: [{ key: "str", value: 92 }, { key: "int", value: 172 }] },
+  { cls: "priest", slot: "head", tier: 1, levelMin: 1, levelMax: 15, name: "Priest Cap", def: 9, reqStats: [{ key: "str", value: 47 }, { key: "int", value: 54 }] },
+  { cls: "priest", slot: "head", tier: 2, levelMin: 15, levelMax: 25, name: "Priest Helmet", def: 19, reqStats: [{ key: "str", value: 66 }, { key: "int", value: 92 }] },
+  { cls: "priest", slot: "head", tier: 3, levelMin: 25, levelMax: 40, name: "Priest Plate Helmet", def: 31, reqStats: [{ key: "str", value: 78 }, { key: "int", value: 116 }] },
+  { cls: "priest", slot: "head", tier: 4, levelMin: 40, levelMax: 60, name: "Priest Chitin Armor Helmet", def: 64, reqStats: [{ key: "str", value: 86 }, { key: "int", value: 152 }] },
+  { cls: "priest", slot: "head", tier: 5, levelMin: 60, levelMax: 65, name: "Priest Chitin Shell Helmet", def: 72, reqStats: [{ key: "str", value: 90 }, { key: "int", value: 168 }] },
+  { cls: "priest", slot: "gauntlets", tier: 1, levelMin: 1, levelMax: 15, name: "Priest Gloves", def: 6, reqStats: [{ key: "str", value: 43 }, { key: "int", value: 46 }] },
+  { cls: "priest", slot: "gauntlets", tier: 2, levelMin: 15, levelMax: 25, name: "Priest Gauntlet", def: 12, reqStats: [{ key: "str", value: 62 }, { key: "int", value: 84 }] },
+  { cls: "priest", slot: "gauntlets", tier: 3, levelMin: 25, levelMax: 40, name: "Priest Plate Gauntlet", def: 20, reqStats: [{ key: "str", value: 74 }, { key: "int", value: 108 }] },
+  { cls: "priest", slot: "gauntlets", tier: 4, levelMin: 40, levelMax: 60, name: "Priest Chitin Armor Gauntlet", def: 43, reqStats: [{ key: "str", value: 82 }, { key: "int", value: 144 }] },
+  { cls: "priest", slot: "gauntlets", tier: 5, levelMin: 60, levelMax: 65, name: "Priest Chitin Shell Gauntlet", def: 48, reqStats: [{ key: "str", value: 86 }, { key: "int", value: 160 }] },
+  { cls: "priest", slot: "boots", tier: 1, levelMin: 1, levelMax: 15, name: "Priest Shoes", def: 6, reqStats: [{ key: "str", value: 45 }, { key: "int", value: 50 }] },
+  { cls: "priest", slot: "boots", tier: 2, levelMin: 15, levelMax: 25, name: "Priest Boots", def: 12, reqStats: [{ key: "str", value: 64 }, { key: "int", value: 88 }] },
+  { cls: "priest", slot: "boots", tier: 3, levelMin: 25, levelMax: 40, name: "Priest Plate Boots", def: 20, reqStats: [{ key: "str", value: 76 }, { key: "int", value: 112 }] },
+  { cls: "priest", slot: "boots", tier: 4, levelMin: 40, levelMax: 60, name: "Priest Chitin Armor Boots", def: 43, reqStats: [{ key: "str", value: 84 }, { key: "int", value: 148 }] },
+  { cls: "priest", slot: "boots", tier: 5, levelMin: 60, levelMax: 65, name: "Priest Chitin Shell Boots", def: 48, reqStats: [{ key: "str", value: 88 }, { key: "int", value: 164 }] },
+];

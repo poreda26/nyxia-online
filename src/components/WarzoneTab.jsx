@@ -12,7 +12,7 @@ import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointCo
 import { leaderboardFor } from "../utils/leaderboard";
 import { rollLoot } from "../utils/loot";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
-import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty } from "../utils/player";
+import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty, armorSetDamageReduction } from "../utils/player";
 import { premiumNpLossReduction } from "../utils/premium";
 import { mitigate, MONSTER_DEF_K } from "../utils/combat";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
@@ -105,12 +105,12 @@ function warzoneTick(wz, player) {
 // Saf fonksiyon: ghostFirstDmg'i player.hp'ye uygulamak (ve gerekiyorsa
 // ölüm kontrolü yapmak) çağıranın işi — bkz. startDuel ve tick effect'teki
 // ambush dalı, ikisi de aynı setPlayer+ölüm-kontrolü desenini kullanıyor.
-function initiateDuel(ghost, def) {
+function initiateDuel(ghost, def, player) {
   const ghostFirst = Math.random() < 0.5;
   const log = [`${ghost.name} karşına çıktı.`, ghostFirst ? "Yazı tura: rakip önce saldırıyor!" : "Yazı tura: önce sen saldırıyorsun!"];
   let ghostFirstDmg = 0;
   if (ghostFirst) {
-    ghostFirstDmg = playerDamageFromGhost(ghost, def);
+    ghostFirstDmg = playerDamageFromGhost(ghost, def, player);
     log.push(`${ghost.name} sana ${ghostFirstDmg} hasar verdi.`);
   }
   const duel = {
@@ -181,7 +181,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       let next = { ...wz, boss: result.boss, bossDamage: result.bossDamage, ghosts: result.ghosts, log: [...wz.log, ...result.lines].slice(-24) };
       let ambushFirstDmg = 0;
       if (result.ambushGhost) {
-        const initiated = initiateDuel(result.ambushGhost, def);
+        const initiated = initiateDuel(result.ambushGhost, def, player);
         ambushFirstDmg = initiated.ghostFirstDmg;
         next = {
           ...next,
@@ -304,7 +304,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
 
     if (bossSurvived) {
       // Boss hâlâ ayaktaysa oyuncuya karşılık verir.
-      const counter = Math.max(1, Math.round(WORLD_BOSS.atk - def * 0.45 + rand(-2, 3)));
+      const bossSetReduction = armorSetDamageReduction(player, "monster");
+      const counter = Math.max(1, Math.round((WORLD_BOSS.atk - def * 0.45) * (1 - bossSetReduction) + rand(-2, 3)));
       const wouldDie = player.hp - counter <= 0;
       setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - counter) }));
       setWz((prev) => ({ ...prev, log: [...prev.log, `${WORLD_BOSS.name} sana ${counter} hasar verdi.`].slice(-24) }));
@@ -366,7 +367,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   const startDuel = (ghost) => {
     if (lockRef.current || wz.duel || player.hp <= 0) return;
     lockRef.current = true;
-    const { duel, ghostFirstDmg } = initiateDuel(ghost, def);
+    const { duel, ghostFirstDmg } = initiateDuel(ghost, def, player);
     setWz((prev) => ({
       ...prev,
       ghosts: prev.ghosts.map((g) => (g.id === ghost.id ? { ...g, dueling: true } : g)),
@@ -534,7 +535,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         log.push(`${duel.ghost.name} kendini iyileştirdi.`);
         healBlocked = false;
       } else {
-        const gdmg = playerDamageFromGhost(duel.ghost, def);
+        const gdmg = playerDamageFromGhost(duel.ghost, def, player);
         log.push(`${duel.ghost.name} sana ${gdmg} hasar verdi.`);
         setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - gdmg) }));
         playerDied = currentHp - gdmg <= 0;

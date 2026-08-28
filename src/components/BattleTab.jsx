@@ -3,7 +3,7 @@ import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, 
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
 import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
-import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
+import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K } from "../utils/combat";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
@@ -88,6 +88,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       log: [`${m.name} karşına çıktı.`],
       ...EMPTY_BATTLE_EFFECTS,
     });
+    // Kullanıcı isteği: Otomatik Saldırı her yeni savaş başında (Tekrar
+    // Savaş'taki "Evet" dahil) kapalı başlasın — önceki savaştan kalma bir
+    // "açık" durumu asla bir sonrakine sızmasın, her seferinde elle açılsın.
+    setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
   };
 
   const endBattle = () => { attackLockRef.current = false; setMonster(null); setBattle(null); };
@@ -226,7 +230,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       return;
     }
     const defMult = buffMultiplier(extra.buffs, "def");
-    const mdmg = Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) + rand(-2, 3)));
+    const setReduction = armorSetDamageReduction(player, "monster");
+    const mdmg = Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)));
     const playerDied = currentHp - mdmg <= 0;
     log = pushLog(log, `${monster.name} sana ${mdmg} hasar verdi.`);
 
