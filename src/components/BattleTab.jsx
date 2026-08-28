@@ -499,21 +499,29 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       {monster && battle && (
         <div style={styles.battleArena}>
+          {/* Savaşın en üstünde, gözden kaçmayacak kadar belirgin bir
+              açık/kapalı anahtarı — önceki küçük ikon (canavar adının
+              yanındaki) fark edilmiyordu (kullanıcı geri bildirimi).
+              Savaş sürerken de her an dokunup kapatılabiliyor/açılabiliyor. */}
+          <button
+            onClick={toggleAutoBattle}
+            style={{
+              ...styles.toggleRow, width: "100%", background: autoBattleOn ? "#5FA8A014" : "var(--bg-panel)",
+              border: "1px solid", borderColor: autoBattleOn ? "#5FA8A066" : "var(--border)",
+              borderRadius: 10, padding: "8px 12px", cursor: "pointer",
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: autoBattleOn ? "#5FA8A0" : "var(--text-muted)" }}>
+              <Bot size={15} strokeWidth={1.8} /> Otomatik Saldırı — {autoBattleOn ? "Açık" : "Kapalı"}
+            </span>
+            <span style={{ ...styles.toggleSwitch, background: autoBattleOn ? "#5FA8A0" : "var(--bg-panel-alt)", justifyContent: autoBattleOn ? "flex-end" : "flex-start" }}>
+              <span style={styles.toggleKnob} />
+            </span>
+          </button>
+
           <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
-                {monster.name}
-                <button
-                  onClick={toggleAutoBattle}
-                  title={autoBattleOn ? "Otomatik Saldırı açık — kapatmak için dokun" : "Otomatik Saldırıyı aç"}
-                  style={{
-                    background: autoBattleOn ? "#5FA8A022" : "var(--bg-panel-alt)", border: "1px solid",
-                    borderColor: autoBattleOn ? "#5FA8A088" : "var(--border)", borderRadius: 7, padding: 4, display: "flex",
-                  }}
-                >
-                  <Bot size={13} color={autoBattleOn ? "#5FA8A0" : "var(--text-faint)"} strokeWidth={1.8} />
-                </button>
-              </span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{monster.name}</span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{battle.monsterHp}/{battle.monsterMaxHp}</span>
             </div>
             <BarTrack pct={(battle.monsterHp / battle.monsterMaxHp) * 100} color={map.color} />
