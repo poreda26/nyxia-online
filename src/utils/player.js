@@ -264,8 +264,11 @@ const ATK_SCALE_C2 = 0.00016;
 // doğrudan bu formülün kendisine bağlı).
 export const CLASS_DAMAGE_STAT = { warrior: "str", rogue: "dex", mage: "mag", priest: "str" };
 
-// STA hâlâ HP'yi besliyor (aşağıda ayrıca eklenir) — bu KO'nun kendi
-// modelinde de değişmeyen tek "düz statü" ilişkisi.
+// NOT: `hp` burada SADECE eşyalardan gelen düz can bonusunu taşıyor (silah/
+// zırhın kendi hp alanı, Priest'in zırh sınıf bonusu) — STA'nın kendisi
+// artık burada TOPLANMIYOR, playerMaxHp'nin kendi kuadratik formülünde
+// (gerçek KO'nun Seviye²*STA'sı) ayrıca hesaplanıyor, aksi halde STA iki
+// kez sayılırdı.
 export function totalStats(player) {
   let hp = 0, def = 0, weaponAtk = 0, mp = 0;
   ALL_EQUIP_KEYS.forEach((k) => {
@@ -286,7 +289,6 @@ export function totalStats(player) {
   const statVal = s[damageStat] + bonus[damageStat];
   const scaling = ATK_SCALE_C1 * (statVal + ATK_SCALE_OFFSET) + ATK_SCALE_C2 * player.level * statVal;
   const atk = Math.round(weaponAtk * scaling);
-  hp += s.sta + bonus.sta;
   return { hp, def, atk, mp };
 }
 
@@ -300,14 +302,28 @@ export function allocateStat(player, statKey) {
   };
 }
 
+// Gerçek KO formülü araştırıldı (Ebenezer/User.cpp#SetMaxHp): MaxHp =
+// sınıfKatsayısı * Seviye² * STA + küçük doğrusal düzeltme terimleri —
+// STA'nın etkisi Seviye'nin KARESİYLE büyüyor (KO'da HP endgame'de
+// katlanarak şişiyor). Kendi sabitlerimiz (HP_COEFF/HP_SCALE) KO'nun
+// gerçek (bize kapalı, tablo tabanlı) sabitleri DEĞİL — bizim 65 seviye
+// tavanımıza göre simülasyonla kalibre edildi: Lv1'de eski sisteme yakın,
+// Lv65'te belirgin şekilde daha büyük ve hızlı büyüyen bir eğri (bkz.
+// sohbetteki kalibrasyon notları). Sınıf oranları eski base.maxHp
+// oranlarını (130/95/75/90) yansıtıyor.
+const HP_COEFF = { warrior: 1.15, rogue: 0.85, mage: 0.55, priest: 0.95 };
+const HP_SCALE = 0.0022;
 // Gear HP bonus raises the ceiling but never auto-heals — equipping/
 // unequipping only clamps current HP down if it would otherwise exceed
 // the new cap (see clampPlayerHp / equipItem below).
 export function playerMaxHp(player) {
   const base = CLASSES[player.class];
-  const { hp } = totalStats(player);
+  const { hp: gearHp } = totalStats(player);
   const setBonus = activeArmorSetBonus(player);
-  return base.maxHp + Math.round(player.level * 1.2) + hp + (setBonus?.hp || 0);
+  const sta = player.stats.sta + equippedStatBonus(player).sta;
+  const level = player.level;
+  const quadratic = HP_COEFF[player.class] * level * level * sta * HP_SCALE;
+  return Math.round(base.maxHp + quadratic + level * 0.4 + sta * 0.15 + gearHp + (setBonus?.hp || 0));
 }
 
 // Tam 5 parça (Kask/Göğüslük/Don/Eldiven/Bot), AYNI tier'dan, oyuncunun
@@ -343,23 +359,37 @@ export function armorSetDamageReduction(player, source) {
   return 0;
 }
 
+// Gerçek KO formülü (Ebenezer/User.cpp#SetMaxMp): MaxMp = sınıfKatsayısı *
+// Seviye² * (INT+30) — HP'yle birebir aynı kuadratik desen, sadece INT
+// üzerinden ve KO'nun kodundaki sabit +30 düzeltmesiyle. Mage/Priest'in
+// katsayısı Warrior/Rogue'dan belirgin yüksek — KO'da da "SP tabanlı"
+// (STA'dan mana üreten, INT'siz) sınıflar var ama bizim 4 sınıfımızın
+// hepsinde gerçek mana havuzu olduğu için hepsi INT yolunu kullanıyor.
+const MP_COEFF = { warrior: 0.35, rogue: 0.45, mage: 1.15, priest: 1.0 };
+const MP_SCALE = 0.0022;
 export function playerMaxMp(player) {
   const base = CLASSES[player.class];
   const { mp: gearMp } = totalStats(player);
   const bonus = equippedStatBonus(player);
-  return base.maxMp + Math.round(player.level * 0.6) + Math.round((player.stats.int + bonus.int) * 0.5) + gearMp;
+  const int_ = player.stats.int + bonus.int;
+  const level = player.level;
+  const quadratic = MP_COEFF[player.class] * level * level * (int_ + 30) * MP_SCALE;
+  return Math.round(base.maxMp + quadratic + level * 0.3 + int_ * 0.1 + gearMp);
 }
 
-// DEF artık HP/MP ile aynı desende: sınıf tabanı + seviye + zırh —
-// KO'nun `sınıf_katsayısı*(Seviye+eşya_AC)` formülünün ruhu, bizim
-// ölçeğimize (kısa seviye aralığı, küçük sınıf DEF'leri) uyarlanmış hali.
-// Önceden sınıf DEF'i (data/classes.js) hiç savaşa girmiyordu — sadece
-// karakter oluşturma önizlemesinde ve Savaş Alanı hayalet gücünde
-// kullanılıyordu, bu onu gerçek bir stat yapıyor.
+// Gerçek KO formülü (Ebenezer/User.cpp#SetUserAbility): AC = sınıfKatsayısı
+// * (Seviye + eşyaAC) — STA'nın ya da başka bir statünün AC'ye HİÇ katkısı
+// yok, sadece seviye + kuşanılan zırhların toplam AC'si, bir sınıf
+// çarpanıyla ölçekleniyor. Önceki toplama modelimiz (base.def + seviye*0.5
+// + gearDef) buna yakın GÖRÜNÜYORDU ama gerçekte hâlâ toplamaydı — burada
+// gerçekten çarpmaya çevrildi. Katsayılar (DEF_COEFF) KO'nun tablo tabanlı
+// gerçek sayıları DEĞİL, eski base.def oranlarına (9/5/3/4) yakın kalacak
+// ama toplam eşya AC'siyle çarpıldığında patlamayacak şekilde kalibre
+// edildi.
+const DEF_COEFF = { warrior: 0.75, rogue: 0.45, mage: 0.25, priest: 0.35 };
 export function playerDef(player) {
-  const base = CLASSES[player.class];
   const { def: gearDef } = totalStats(player);
-  return base.def + Math.round(player.level * 0.5) + gearDef;
+  return Math.round(DEF_COEFF[player.class] * (player.level + gearDef) + 2);
 }
 
 export function clampPlayerHp(player) {

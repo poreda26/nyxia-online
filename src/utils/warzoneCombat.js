@@ -2,7 +2,7 @@ import { rand, pick, uid } from "./random";
 import { CLASSES } from "../data/classes";
 import { totalStats, playerDef, playerMaxHp, armorSetDamageReduction } from "./player";
 import { ghostNamesForRace } from "../data/warzoneNames";
-import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K } from "./combat";
+import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "./combat";
 
 export function opposingRace(race) { return race === "karus" ? "elmorad" : "karus"; }
 
@@ -36,8 +36,11 @@ export function spawnGhost(player) {
 }
 
 // Oyuncunun düellodaki bir vuruşunun hayalete verdiği hasar —
-// BattleTab.jsx#attack'taki formülle aynı mantık.
-export function ghostDamageFromPlayer(cls, atk, ghost, isCrit) {
+// BattleTab.jsx#attack'taki formülle aynı mantık. Gerçek KO'nun DEX→Hit
+// Rate mantığı (bkz. utils/combat.js#hitChance) burada da geçerli — null
+// dönerse ıskalamış demektir, çağıran "ıskaladın" mesajı basar.
+export function ghostDamageFromPlayer(cls, atk, ghost, isCrit, player) {
+  if (!rollHit(player.stats.dex, ghost.atk, player.level)) return null;
   return Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), ghost.def, MONSTER_DEF_K) + rand(-2, 3)));
 }
 
@@ -45,8 +48,9 @@ export function ghostDamageFromPlayer(cls, atk, ghost, isCrit) {
 // canavar-karşılığı formülle aynı mantık. PvP olduğu için zırh seti
 // bonusunun sadece "her şeyden" (T4/T5) kapsamı burada geçerli — T2/T3'ün
 // "canavardan" azaltması PvP'ye uygulanmıyor (bkz. utils/player.js#
-// armorSetDamageReduction'ın source ayrımı).
+// armorSetDamageReduction'ın source ayrımı). null dönerse ıskalamış demektir.
 export function playerDamageFromGhost(ghost, defenderDef, player) {
+  if (!rollHit(ghost.atk, player.stats.dex, player.level)) return null;
   const setReduction = armorSetDamageReduction(player, "pvp");
   return Math.max(1, Math.round(mitigate(ghost.atk, defenderDef, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)));
 }

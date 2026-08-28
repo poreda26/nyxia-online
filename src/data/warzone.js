@@ -26,12 +26,12 @@ export const AMBUSH_CHANCE_PER_TICK = 0.10;
 
 // Normal canavarlara göre ~3 kat drop/sandık/parşömen şansı, artı garanti
 // bonus altın — "güçlü ama drop şansı yüksek" isteğini karşılıyor.
-// hp/def artık data/maps.js'teki T6 (Crimson Battlefront, en zorlu basamak)
-// ile AYNI çarpanları kullanıyor — Dünya Canavarı endgame'in bir parçası,
-// oyuncunun ATK formülü KO'nun çarpma modeline geçtikten sonra (bkz.
-// utils/player.js#totalStats) eski düz 2.5x'le saniyeler içinde ölürdü.
-// ATK hâlâ düz 2.5x (oyuncunun DEF'i değişmedi, bkz. maps.js'teki aynı not).
-const WORLD_BOSS_ATK_MULT = 2.5;
+// hp/atk/def artık üçü de data/maps.js'teki T6 (Crimson Battlefront, en
+// zorlu basamak) ile AYNI çarpanları kullanıyor — Dünya Canavarı endgame'in
+// bir parçası, oyuncunun ATK/HP/DEF formülleri KO'nun gerçek modeline
+// geçtikten sonra (bkz. utils/player.js) eski düz 2.5x'ler artık ne
+// oyuncuyu tehdit ediyor ne de dengeli düşüyordu.
+const WORLD_BOSS_ATK_MULT = 3.0;
 const WORLD_BOSS_HP_MULT = 0.25;
 const WORLD_BOSS_DEF_MULT = 3.8;
 export const WORLD_BOSS = {

@@ -14,7 +14,7 @@ import { rollLoot } from "../utils/loot";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty, armorSetDamageReduction } from "../utils/player";
 import { premiumNpLossReduction } from "../utils/premium";
-import { mitigate, MONSTER_DEF_K } from "../utils/combat";
+import { mitigate, MONSTER_DEF_K, rollHit } from "../utils/combat";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { rand, uid } from "../utils/random";
 import { styles } from "../styles";
@@ -110,8 +110,9 @@ function initiateDuel(ghost, def, player) {
   const log = [`${ghost.name} karşına çıktı.`, ghostFirst ? "Yazı tura: rakip önce saldırıyor!" : "Yazı tura: önce sen saldırıyorsun!"];
   let ghostFirstDmg = 0;
   if (ghostFirst) {
-    ghostFirstDmg = playerDamageFromGhost(ghost, def, player);
-    log.push(`${ghost.name} sana ${ghostFirstDmg} hasar verdi.`);
+    const dmg = playerDamageFromGhost(ghost, def, player);
+    ghostFirstDmg = dmg ?? 0;
+    log.push(dmg == null ? `${ghost.name} saldırdı ama ıskaladı.` : `${ghost.name} sana ${dmg} hasar verdi.`);
   }
   const duel = {
     ghost, ghostHp: ghost.hp, log, finished: false,
@@ -273,7 +274,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     if (lockRef.current || wz.duel || !wz.boss.alive || player.hp <= 0) return;
     lockRef.current = true;
     const isCrit = Math.random() < cls.crit;
-    const dmg = Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), WORLD_BOSS.def, MONSTER_DEF_K) + rand(-2, 3)));
+    // Gerçek KO'nun DEX→Hit/Evasion Rate mantığı (bkz. utils/combat.js#
+    // hitChance, BattleTab.jsx#attack'taki aynı desen) — boss'un gerçek bir
+    // DEX'i yok, kendi ATK'si vekil.
+    const playerHitsBoss = rollHit(player.stats.dex, WORLD_BOSS.atk, player.level);
+    const dmg = playerHitsBoss
+      ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), WORLD_BOSS.def, MONSTER_DEF_K) + rand(-2, 3)))
+      : 0;
 
     let toastMsg = null;
     let bossSurvived = false;
@@ -285,7 +292,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       if (!prev.boss.alive) return prev;
       const hp = Math.max(0, prev.boss.hp - dmg);
       const bossDamage = { ...prev.bossDamage, player: prev.bossDamage.player + dmg };
-      const log = [...prev.log, isCrit ? `Kritik! ${WORLD_BOSS.name}'a ${dmg} hasar verdin.` : `${WORLD_BOSS.name}'a ${dmg} hasar verdin.`];
+      const log = [...prev.log, !playerHitsBoss ? `${WORLD_BOSS.name}'ı ıskaladın.` : isCrit ? `Kritik! ${WORLD_BOSS.name}'a ${dmg} hasar verdin.` : `${WORLD_BOSS.name}'a ${dmg} hasar verdin.`];
       if (hp <= 0) {
         const resolved = resolveBossDeath(bossDamage, prev.ghosts);
         log.push(resolved.winner === "player" ? `${WORLD_BOSS.name} düştü — drop'u sen aldın!` : `${WORLD_BOSS.name} düştü — drop'u ${resolved.label} aldı.`);
@@ -305,10 +312,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     if (bossSurvived) {
       // Boss hâlâ ayaktaysa oyuncuya karşılık verir.
       const bossSetReduction = armorSetDamageReduction(player, "monster");
-      const counter = Math.max(1, Math.round((WORLD_BOSS.atk - def * 0.45) * (1 - bossSetReduction) + rand(-2, 3)));
+      const bossHitsPlayer = rollHit(WORLD_BOSS.atk, player.stats.dex, player.level);
+      const counter = bossHitsPlayer
+        ? Math.max(1, Math.round((WORLD_BOSS.atk - def * 0.45) * (1 - bossSetReduction) + rand(-2, 3)))
+        : 0;
       const wouldDie = player.hp - counter <= 0;
       setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - counter) }));
-      setWz((prev) => ({ ...prev, log: [...prev.log, `${WORLD_BOSS.name} sana ${counter} hasar verdi.`].slice(-24) }));
+      setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? `${WORLD_BOSS.name} sana ${counter} hasar verdi.` : `${WORLD_BOSS.name} saldırdı ama ıskaladı.`].slice(-24) }));
       if (wouldDie) {
         // Aynı düzeltme burada da geçerli — bkz. BattleTab.jsx#resolveMonsterTurn:
         // eskiden "canın kısmen yenilendi" diyen toast hiçbir şeyi geri
@@ -478,9 +488,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       log.push(potionKind === "hp" ? `+${potionResult.healed} can kullandın.` : `+${potionResult.healed} mana kullandın.`);
     } else if (!skill) {
       const isCrit = Math.random() < cls.crit;
-      const dmg = ghostDamageFromPlayer(cls, atk, duel.ghost, isCrit);
-      ghostHp = Math.max(0, ghostHp - dmg);
-      log.push(isCrit ? `Kritik! ${duel.ghost.name}'e ${dmg} hasar verdin.` : `${duel.ghost.name}'e ${dmg} hasar verdin.`);
+      const dmg = ghostDamageFromPlayer(cls, atk, duel.ghost, isCrit, player);
+      if (dmg == null) {
+        log.push(`${duel.ghost.name}'i ıskaladın.`);
+      } else {
+        ghostHp = Math.max(0, ghostHp - dmg);
+        log.push(isCrit ? `Kritik! ${duel.ghost.name}'e ${dmg} hasar verdin.` : `${duel.ghost.name}'e ${dmg} hasar verdin.`);
+      }
     } else if (skill.id === "pvp_stun") {
       mpCost = skill.mpCost;
       ghostStunned = true;
@@ -536,9 +550,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         healBlocked = false;
       } else {
         const gdmg = playerDamageFromGhost(duel.ghost, def, player);
-        log.push(`${duel.ghost.name} sana ${gdmg} hasar verdi.`);
-        setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - gdmg) }));
-        playerDied = currentHp - gdmg <= 0;
+        if (gdmg == null) {
+          log.push(`${duel.ghost.name} saldırdı ama ıskaladı.`);
+        } else {
+          log.push(`${duel.ghost.name} sana ${gdmg} hasar verdi.`);
+          setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - gdmg) }));
+          playerDied = currentHp - gdmg <= 0;
+        }
       }
     }
 

@@ -4,7 +4,7 @@ import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/m
 import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
 import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
-import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K } from "../utils/combat";
+import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { premiumExpMultiplier, premiumDropMultiplier, hasAutoBattleAccess } from "../utils/premium";
@@ -231,15 +231,22 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     }
     const defMult = buffMultiplier(extra.buffs, "def");
     const setReduction = armorSetDamageReduction(player, "monster");
-    const mdmg = Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)));
+    // Gerçek KO'nun DEX→Hit Rate/Evasion Rate mantığı (bkz. utils/combat.js#
+    // hitChance) — canavarın gerçek bir DEX'i yok, kendi ATK'sini bir
+    // "çeviklik" vekili olarak kullanıyoruz. Iskalarsa hasar 0, zırh
+    // yıpranmıyor, ama canavarın vuruşu yine de bir tur harcıyor.
+    const monsterHits = rollHit(monster.atk, player.stats.dex, map.levelMax);
+    const mdmg = monsterHits
+      ? Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
+      : 0;
     const playerDied = currentHp - mdmg <= 0;
-    log = pushLog(log, `${monster.name} sana ${mdmg} hasar verdi.`);
+    log = pushLog(log, monsterHits ? `${monster.name} sana ${mdmg} hasar verdi.` : `${monster.name} saldırdı ama ıskaladı.`);
 
     // Getting hit wears the armor down — same durability/repair loop as
     // the weapon uses on a landed hit (see utils/player.js's repair
     // system, the intended gold sink for this).
     setPlayer((p) => {
-      const worn = damageEquippedDurability(p, ARMOR_SLOTS, 1);
+      const worn = monsterHits ? damageEquippedDurability(p, ARMOR_SLOTS, 1) : p;
       return { ...worn, hp: Math.max(0, worn.hp - mdmg) };
     });
     setBattle({ ...battle, ...extra, monsterHp, log, finished: playerDied });
@@ -280,13 +287,19 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
     const atkMult = buffMultiplier(ticked.buffs, "atk");
     const isCrit = Math.random() < cls.crit;
-    const dmg = Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)));
+    // Aynı DEX→Hit Rate/Evasion Rate mekaniği (bkz. resolveMonsterTurn'daki
+    // aynı not) — oyuncu da ıskalayabiliyor artık, canavarın ATK'si yine
+    // onun "çeviklik" vekili.
+    const playerHits = rollHit(player.stats.dex, monster.atk, player.level);
+    const dmg = playerHits
+      ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)))
+      : 0;
     const monsterHp = Math.max(0, ticked.monsterHp - dmg);
-    const log = pushLog(ticked.log, isCrit ? `Kritik vuruş! ${dmg} hasar verdin.` : `${dmg} hasar verdin.`);
+    const log = pushLog(ticked.log, !playerHits ? "Vuruşunu ıskaladın." : isCrit ? `Kritik vuruş! ${dmg} hasar verdin.` : `${dmg} hasar verdin.`);
 
     // Every swing wears the weapon down a little — see utils/player.js's
-    // repair system, the intended gold sink for this.
-    setPlayer((p) => damageEquippedDurability(p, WEAPON_SLOTS, 1));
+    // repair system, the intended gold sink for this (misses don't wear it).
+    if (playerHits) setPlayer((p) => damageEquippedDurability(p, WEAPON_SLOTS, 1));
 
     setShake("monster");
     setTimeout(() => setShake(null), 260);
