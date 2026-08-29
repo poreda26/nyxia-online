@@ -103,13 +103,24 @@ export function initialPlayer(cls, race, nickname) {
     // alone is trivially spoofable from devtools and must never be trusted
     // for a real multiplayer deployment.
     isGM: true,
+    // Otomatik Saldırı ayarları — bkz. components/BattleTab.jsx (savaş
+    // ekranındaki ikon aynı `enabled` alanını değiştirir) ve
+    // components/CharacterTab.jsx'in "Otomatik Saldırı" alt sekmesi. Eşikler
+    // yüzde (0-100), can/mana o yüzdenin ALTINA düşünce ilgili pot içiliyor.
+    autoBattle: { enabled: false, hpThreshold: 35, mpThreshold: 35 },
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
   const startingWeapon = buildStartingWeapon(cls);
   if (startingWeapon) {
     const result = equipItem(player, startingWeapon);
-    if (!result.blocked) return result.player;
+    if (!result.blocked) {
+      // hp/mp yukarıda sınıfın ÇIPLAK base.maxHp/maxMp'sine ayarlanmıştı —
+      // silah kuşandıktan sonra gerçek tavan (base + seviye + eşya bonusu,
+      // bkz. playerMaxHp/playerMaxMp) daha yüksek olabiliyor, o yüzden burada
+      // tekrar tam dolduruyoruz ki karakter gerçekten %100 canla başlasın.
+      return { ...result.player, hp: playerMaxHp(result.player), mp: playerMaxMp(result.player) };
+    }
   }
   return player;
 }
@@ -154,6 +165,7 @@ export function migratePlayer(player) {
     weeklyPoint: player.weeklyPoint ?? 0,
     weekId: player.weekId || currentWeekId(),
     clan: player.clan ?? null,
+    autoBattle: player.autoBattle || { enabled: false, hpThreshold: 35, mpThreshold: 35 },
   };
 }
 
@@ -196,6 +208,19 @@ export function isBroken(item) {
   return item && item.durability > 0 && item.currentDurability <= 0;
 }
 
+// Zırh parçası başına, o parçanın kendi +seviyesine göre SABİT bir sınıf
+// bonusu (kullanıcı tablosu) — forge'un genel ×1.18 katlanmalı büyümesinden
+// (bkz. utils/upgrade.js#bumpedStats) BİLEREK ayrı tutuluyor: item.hp/mp/
+// statBonus alanlarına yazılsaydı her yükseltmede compound olurdu, oysa bu
+// sabit bir eşik tablosu, doğrudan item.upgradeLevel'den okunuyor.
+// Warrior→STR, Rogue→DEX (equippedStatBonus üzerinden ATK formülüne
+// karışıyor, weapon statBonus'la aynı yol), Mage→MP, Priest→HP (doğrudan
+// kaynak havuzuna — bkz. totalStats) — kullanıcı isteği: son iki sınıf
+// birincil statü yerine kaynak havuzu alıyor.
+const ARMOR_LEVEL_BONUS = { 0: 0, 1: 2, 2: 2, 3: 4, 4: 6, 5: 8, 6: 10, 7: 12, 8: 15 };
+export function armorLevelBonus(upgradeLevel) { return ARMOR_LEVEL_BONUS[upgradeLevel] ?? 0; }
+export const ARMOR_CLASS_BONUS_STAT = { warrior: "str", rogue: "dex", mage: "mp", priest: "hp" };
+
 // Some weapons (see data/warriorWeapons.js) grant a flat stat bonus while
 // equipped, on top of the player's own allocated points — kept separate
 // from player.stats itself so equip requirements (which check player.stats
@@ -204,35 +229,66 @@ function equippedStatBonus(player) {
   const bonus = { str: 0, sta: 0, dex: 0, int: 0, mag: 0 };
   ALL_EQUIP_KEYS.forEach((k) => {
     const it = player.equipped[k];
-    if (it && !isBroken(it) && it.statBonus) STAT_KEYS.forEach((key) => { bonus[key] += it.statBonus[key] || 0; });
+    if (!it || isBroken(it)) return;
+    if (it.statBonus) STAT_KEYS.forEach((key) => { bonus[key] += it.statBonus[key] || 0; });
+    if (it.kind === "armor") {
+      const stat = ARMOR_CLASS_BONUS_STAT[it.class];
+      if (stat === "str" || stat === "dex") bonus[stat] += armorLevelBonus(it.upgradeLevel);
+    }
   });
   return bonus;
 }
 
-// Allocated stat points feed combat power on top of gear: STR/DEX/INT/Magic
-// Power each add a small flat ATK, STA feeds max HP and INT feeds max MP
-// (see playerMaxMp below) — this is what makes /karakter's point allocation
-// actually matter in battle, not just gate equips. The coefficients are
-// deliberately small: baseStats alone put these numbers in the 50-70 range
-// from character creation, so a 1:1 translation into ATK/HP would dwarf
-// class and gear power.
-// Magic Power gets a Mage-only elevated weight (0.5 vs the usual 0.1) —
-// kullanıcı isteğiyle: "Magemizin asıl damage'ini yükselten şey Magic Power
-// olacak." Diğer 3 sınıf için mag hâlâ eski CHA'nın aldığı düz 0.1 ağırlığı
-// alıyor (baseStats değerleri de birebir eskisiyle aynı), bu yüzden bu
-// değişiklik Warrior/Rogue/Priest'in ATK'sını hiç etkilemiyor — sadece
-// Mage'e mag'ı gerçek bir "asıl statü" yapıyor.
+// Gerçek Knight Online'ın hasar formülü araştırıldı (AIServer/Ebenezer
+// User.cpp#SetUserAbility, "TotalHit = 0.005*SilahHasarı*(STAT+40) +
+// katsayı*SilahHasarı*Seviye*STAT") — KO'da STR/DEX/Magic Power ASLA düz
+// bir ATK bonusu vermiyor, SİLAHIN kendi hasarını çarpıyor: silah hasarı
+// 0 ise stat ne olursa olsun ATK sıfıra yakın kalıyor, ve çarpan seviyeyle
+// büyüyor (geç oyunda stat yatırımı katlanarak önem kazanıyor). Önceki
+// toplama modelimiz (silah.atk + statlar*sabit_ağırlık) bunun tam tersiydi:
+// silahsız bile küçük bir ATK tabanı vardı ve stat/silah yükseltmesinin
+// katkısı hep aynı küçük ağırlıkta kalıyordu — kullanıcının "silahların ve
+// STR bonusunun etkisi çok az" şikayetinin kök nedeni buydu. Sabitler
+// (C1/OFFSET/C2) KO'nun 0.005/40 değerleri BİREBİR değil, bizim çok daha
+// kısa seviye tavanımıza (65) ve silah atk aralığımıza göre simülasyonla
+// kalibre edildi (bkz. data/maps.js#TIER_HP_MULT/TIER_DEF_MULT'un aynı
+// kalibrasyonu) — hedef: T1'de eski sisteme yakın kalıp T6'da belirgin
+// şekilde daha güçlü, ama patlamayan bir eğri.
+const ATK_SCALE_C1 = 0.006;
+const ATK_SCALE_OFFSET = 40;
+const ATK_SCALE_C2 = 0.00016;
+// Hangi statü hangi sınıfın "hasar statüsü" (silahını çarpan statü) —
+// Warrior/Priest STR (gerçek KO'da Priest de STR'li melee "paper attacker",
+// bkz. data/classes.js), Rogue DEX, Mage Magic Power (kullanıcı isteğiyle
+// Mage'in asıl hasar kaynağı — artık ayrı bir "magWeight" hilesine değil,
+// doğrudan bu formülün kendisine bağlı).
+export const CLASS_DAMAGE_STAT = { warrior: "str", rogue: "dex", mage: "mag", priest: "str" };
+
+// NOT: `hp` burada SADECE eşyalardan gelen düz can bonusunu taşıyor (silah/
+// zırhın kendi hp alanı, Priest'in zırh sınıf bonusu) — STA'nın kendisi
+// artık burada TOPLANMIYOR, playerMaxHp'nin kendi kuadratik formülünde
+// (gerçek KO'nun Seviye²*STA'sı) ayrıca hesaplanıyor, aksi halde STA iki
+// kez sayılırdı.
 export function totalStats(player) {
-  let hp = 0, def = 0, atk = 0, mp = 0;
+  let hp = 0, def = 0, weaponAtk = 0, mp = 0;
   ALL_EQUIP_KEYS.forEach((k) => {
     const it = player.equipped[k];
-    if (it && !isBroken(it)) { hp += it.hp || 0; def += it.def || 0; atk += it.atk || 0; mp += it.mp || 0; }
+    if (it && !isBroken(it)) {
+      hp += it.hp || 0; def += it.def || 0; weaponAtk += it.atk || 0; mp += it.mp || 0;
+      if (it.kind === "armor") {
+        const stat = ARMOR_CLASS_BONUS_STAT[it.class];
+        const val = armorLevelBonus(it.upgradeLevel);
+        if (stat === "mp") mp += val;
+        if (stat === "hp") hp += val;
+      }
+    }
   });
   const s = player.stats;
   const bonus = equippedStatBonus(player);
-  const magWeight = player.class === "mage" ? 0.5 : 0.1;
-  atk += Math.round((s.str + bonus.str + s.dex + bonus.dex + s.int + bonus.int) * 0.1 + (s.mag + bonus.mag) * magWeight);
-  hp += s.sta + bonus.sta;
+  const damageStat = CLASS_DAMAGE_STAT[player.class];
+  const statVal = s[damageStat] + bonus[damageStat];
+  const scaling = ATK_SCALE_C1 * (statVal + ATK_SCALE_OFFSET) + ATK_SCALE_C2 * player.level * statVal;
+  const atk = Math.round(weaponAtk * scaling);
   return { hp, def, atk, mp };
 }
 
@@ -246,36 +302,115 @@ export function allocateStat(player, statKey) {
   };
 }
 
+// Gerçek KO formülü araştırıldı (Ebenezer/User.cpp#SetMaxHp): MaxHp =
+// sınıfKatsayısı * Seviye² * STA + küçük doğrusal düzeltme terimleri —
+// STA'nın etkisi Seviye'nin KARESİYLE büyüyor (KO'da HP endgame'de
+// katlanarak şişiyor). Kendi sabitlerimiz (HP_COEFF/HP_SCALE) KO'nun
+// gerçek (bize kapalı, tablo tabanlı) sabitleri DEĞİL — bizim 65 seviye
+// tavanımıza göre simülasyonla kalibre edildi: Lv1'de eski sisteme yakın,
+// Lv65'te belirgin şekilde daha büyük ve hızlı büyüyen bir eğri (bkz.
+// sohbetteki kalibrasyon notları). Sınıf oranları eski base.maxHp
+// oranlarını (130/95/75/90) yansıtıyor.
+const HP_COEFF = { warrior: 1.15, rogue: 0.85, mage: 0.55, priest: 0.95 };
+const HP_SCALE = 0.0022;
 // Gear HP bonus raises the ceiling but never auto-heals — equipping/
 // unequipping only clamps current HP down if it would otherwise exceed
 // the new cap (see clampPlayerHp / equipItem below).
 export function playerMaxHp(player) {
   const base = CLASSES[player.class];
-  const { hp } = totalStats(player);
-  return base.maxHp + Math.round(player.level * 1.2) + hp;
+  const { hp: gearHp } = totalStats(player);
+  const setBonus = activeArmorSetBonus(player);
+  const sta = player.stats.sta + equippedStatBonus(player).sta;
+  const level = player.level;
+  const quadratic = HP_COEFF[player.class] * level * level * sta * HP_SCALE;
+  return Math.round(base.maxHp + quadratic + level * 0.4 + sta * 0.15 + gearHp + (setBonus?.hp || 0));
 }
 
+// Tam 5 parça (Kask/Göğüslük/Don/Eldiven/Bot), AYNI tier'dan, oyuncunun
+// KENDİ sınıfına ait bir zırh seti giyiliyse ek bir set bonusu — kullanıcı
+// tablosu. T2/T3'ün hasar azaltması sadece canavarlara karşı ("Canavardan
+// %X daha az hasar ye"), T4/T5'inki "her şeyden" (PvP dahil). Aynı anda en
+// fazla 5 parça giyilebildiği için birden fazla tier'ın seti asla aynı anda
+// tamamlanamaz — çakışma/stack riski yok.
+export const ARMOR_SET_BONUS = {
+  1: { hp: 50, dmgReduction: 0, scope: null },
+  2: { hp: 60, dmgReduction: 0.01, scope: "monster" },
+  3: { hp: 75, dmgReduction: 0.02, scope: "monster" },
+  4: { hp: 100, dmgReduction: 0.01, scope: "all" },
+  5: { hp: 250, dmgReduction: 0.03, scope: "all" },
+};
+
+export function activeArmorSetBonus(player) {
+  const pieces = ARMOR_SLOTS.map((slot) => player.equipped[slot]);
+  if (pieces.some((it) => !it || it.kind !== "armor" || isBroken(it))) return null;
+  const tier = pieces[0].tier;
+  const complete = pieces.every((it) => it.class === player.class && it.tier === tier);
+  return complete ? (ARMOR_SET_BONUS[tier] || null) : null;
+}
+
+// source: 'monster' (PvE — canavar veya Dünya Canavarı) | 'pvp' (Savaş
+// Alanı hayalet düellosu). Çağıranlar mitigate() sonrası hasarı
+// `dmg * (1 - armorSetDamageReduction(player, source))` şeklinde çarpar.
+export function armorSetDamageReduction(player, source) {
+  const bonus = activeArmorSetBonus(player);
+  if (!bonus || bonus.dmgReduction <= 0) return 0;
+  if (bonus.scope === "all") return bonus.dmgReduction;
+  if (bonus.scope === "monster" && source === "monster") return bonus.dmgReduction;
+  return 0;
+}
+
+// Gerçek KO formülü (Ebenezer/User.cpp#SetMaxMp): MaxMp = sınıfKatsayısı *
+// Seviye² * (INT+30) — HP'yle birebir aynı kuadratik desen, sadece INT
+// üzerinden ve KO'nun kodundaki sabit +30 düzeltmesiyle. Mage/Priest'in
+// katsayısı Warrior/Rogue'dan belirgin yüksek — KO'da da "SP tabanlı"
+// (STA'dan mana üreten, INT'siz) sınıflar var ama bizim 4 sınıfımızın
+// hepsinde gerçek mana havuzu olduğu için hepsi INT yolunu kullanıyor.
+const MP_COEFF = { warrior: 0.35, rogue: 0.45, mage: 1.15, priest: 1.0 };
+const MP_SCALE = 0.0022;
 export function playerMaxMp(player) {
   const base = CLASSES[player.class];
   const { mp: gearMp } = totalStats(player);
   const bonus = equippedStatBonus(player);
-  return base.maxMp + Math.round(player.level * 0.6) + Math.round((player.stats.int + bonus.int) * 0.5) + gearMp;
+  const int_ = player.stats.int + bonus.int;
+  const level = player.level;
+  const quadratic = MP_COEFF[player.class] * level * level * (int_ + 30) * MP_SCALE;
+  return Math.round(base.maxMp + quadratic + level * 0.3 + int_ * 0.1 + gearMp);
 }
 
-// DEF artık HP/MP ile aynı desende: sınıf tabanı + seviye + zırh —
-// KO'nun `sınıf_katsayısı*(Seviye+eşya_AC)` formülünün ruhu, bizim
-// ölçeğimize (kısa seviye aralığı, küçük sınıf DEF'leri) uyarlanmış hali.
-// Önceden sınıf DEF'i (data/classes.js) hiç savaşa girmiyordu — sadece
-// karakter oluşturma önizlemesinde ve Savaş Alanı hayalet gücünde
-// kullanılıyordu, bu onu gerçek bir stat yapıyor.
+// Gerçek KO formülü (Ebenezer/User.cpp#SetUserAbility): AC = sınıfKatsayısı
+// * (Seviye + eşyaAC) — STA'nın ya da başka bir statünün AC'ye HİÇ katkısı
+// yok, sadece seviye + kuşanılan zırhların toplam AC'si, bir sınıf
+// çarpanıyla ölçekleniyor. Önceki toplama modelimiz (base.def + seviye*0.5
+// + gearDef) buna yakın GÖRÜNÜYORDU ama gerçekte hâlâ toplamaydı — burada
+// gerçekten çarpmaya çevrildi. Katsayılar (DEF_COEFF) KO'nun tablo tabanlı
+// gerçek sayıları DEĞİL, eski base.def oranlarına (9/5/3/4) yakın kalacak
+// ama toplam eşya AC'siyle çarpıldığında patlamayacak şekilde kalibre
+// edildi.
+const DEF_COEFF = { warrior: 0.75, rogue: 0.45, mage: 0.25, priest: 0.35 };
 export function playerDef(player) {
-  const base = CLASSES[player.class];
   const { def: gearDef } = totalStats(player);
-  return base.def + Math.round(player.level * 0.5) + gearDef;
+  return Math.round(DEF_COEFF[player.class] * (player.level + gearDef) + 2);
 }
 
 export function clampPlayerHp(player) {
   return { ...player, hp: Math.min(player.hp, playerMaxHp(player)) };
+}
+
+// Ölünce (canavar/Dünya Canavarı tarafından) uygulanan ceza — mevcut
+// seviyenin toplam XP ihtiyacının küçük bir yüzdesi kaybediliyor (gerçek
+// KO'daki ölüm cezasının ruhu), asla seviye düşürmüyor (xp 0'da tabanlanıyor)
+// ve asla dengeye/ilerlemeye bağlı istismar edilemiyor (seviye içindeki
+// mevcut xp'ye değil xpToNext'e göre sabit bir yüzde). HP/MP HER ZAMAN tam
+// yenileniyor — önceden buradaki "canın kısmen yenilendi" toast'ı YALANDI,
+// hiçbir yerde gerçekten can/mana geri yüklenmiyordu (kullanıcının bildirdiği
+// "düşük canla başlıyoruz" bug'ının kök nedeni: ölümden sonra hp 0'da
+// kalıp bir daha hiç dolmuyordu).
+export const DEATH_XP_LOSS_PCT = 0.05;
+
+export function applyDeathPenalty(player) {
+  const xpLost = Math.min(player.xp, Math.round(xpToNext(player.level) * DEATH_XP_LOSS_PCT));
+  const next = { ...player, xp: player.xp - xpLost, hp: playerMaxHp(player), mp: playerMaxMp(player) };
+  return { player: next, xpLost };
 }
 
 export const WEAPON_SLOTS = ["mainHand"];

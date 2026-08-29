@@ -1,5 +1,5 @@
 import { CLASSES } from "../data/classes";
-import { totalStats, playerDef } from "../utils/player";
+import { totalStats, playerDef, playerMaxHp } from "../utils/player";
 import { styles } from "../styles";
 import TopBar from "./TopBar";
 import BottomNav from "./BottomNav";
@@ -15,12 +15,17 @@ import ClanTab from "./ClanTab";
 
 export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pushToast, onChangeCharacter, onChangeRace }) {
   const cls = CLASSES[player.class];
-  const { hp: gearHp, atk } = totalStats(player);
+  const { atk } = totalStats(player);
   const def = playerDef(player);
+  // Kullanıcı isteği: üst şeritteki ve Karakter sekmesindeki "HP" artık
+  // sadece eşya/STA bileşenini (totalStats().hp) değil, gerçek toplam canı
+  // (taban + seviye + eşya + set bonusu) gösteriyor — "Can Bonusu" değil,
+  // doğrudan "Can".
+  const maxHp = playerMaxHp(player);
 
   return (
     <div style={styles.hubRoot}>
-      <TopBar player={player} cls={cls} gearHp={gearHp} def={def} atk={atk} />
+      <TopBar player={player} cls={cls} maxHp={maxHp} def={def} atk={atk} />
 
       <div style={styles.tabContent}>
         {tab === "battle" && (
@@ -48,7 +53,7 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
           <ChatTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast} />
         )}
         {tab === "character" && (
-          <CharacterTab player={player} setPlayer={setPlayer} cls={cls} gearHp={gearHp} def={def} atk={atk} pushToast={pushToast} onChangeCharacter={onChangeCharacter} />
+          <CharacterTab player={player} setPlayer={setPlayer} cls={cls} maxHp={maxHp} def={def} atk={atk} pushToast={pushToast} onChangeCharacter={onChangeCharacter} />
         )}
       </div>
 

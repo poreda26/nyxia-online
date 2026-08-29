@@ -8,7 +8,32 @@
 // (Abyssal Pit, Crimson Battlefront) aynı tier'ı (5) paylaşıyor.
 export const GATE_TELEPORT_COST = 10;
 
-export const MAPS = [
+// HP/DEF tier'a göre değişen bir eğri — oyuncunun ATK formülü KO'nun
+// çarpma modeline geçtikten sonra (bkz. utils/player.js'teki aynı not) T6'da
+// canavarları saniyeler içinde eritir, T1'de ise neredeyse hiç fark
+// etmezdi hale gelmişti. HP tier arttıkça DÜŞÜYOR (oyuncunun gücü artık
+// katlanarak büyüdüğü için aynı mutlak HP'yi korumak gerekmiyor), DEF tier
+// arttıkça YÜKSELİYOR (üst tier canavarlar nispeten daha "zırhlı").
+const TIER_HP_MULT = { 1: 0.9, 2: 0.8, 3: 0.65, 4: 0.5, 5: 0.35, 6: 0.25 };
+const TIER_DEF_MULT = { 1: 2.0, 2: 2.3, 3: 2.6, 4: 3.0, 5: 3.4, 6: 3.8 };
+// ATK da artık tier'a göre değişiyor — oyuncunun HP/DEF'i de KO'nun gerçek
+// Seviye²*STA (HP) ve sınıfKatsayısı*(Seviye+eşyaAC) (DEF) formüllerine
+// geçtikten sonra (bkz. utils/player.js#playerMaxHp/playerDef) HP endgame'de
+// katlanarak büyüyor — canavar ATK'si de buna ayak uydurmazsa üst tier
+// canavarlar tehdit olmaktan çıkardı. Simülasyonla kalibre edildi: hedef,
+// "tipik bir oyuncunun" bir tier'ın en güçlü canavarından ~9 vuruşta ölmesi
+// (bkz. sohbetteki kalibrasyon notları).
+const TIER_ATK_MULT = { 1: 0.85, 2: 1.0, 3: 1.2, 4: 1.8, 5: 2.4, 6: 3.0 };
+function scaleMonster(m, tier) {
+  return {
+    ...m,
+    hp: Math.round(m.hp * TIER_HP_MULT[tier]),
+    atk: Math.round(m.atk * TIER_ATK_MULT[tier]),
+    def: Math.round(m.def * TIER_DEF_MULT[tier]),
+  };
+}
+
+const RAW_MAPS = [
   {
     id: "fallow_valley", name: "Fallow Valley", levelMin: 1, levelMax: 15, tier: 1,
     color: "#8FA35E", glow: "rgba(143,163,94,0.45)",
@@ -73,6 +98,14 @@ export const MAPS = [
     ],
   },
 ];
+
+// NOT: buradaki "combat tier" (index+1, 1-6) map.tier'dan (eşya/loot tier'ı,
+// hâlâ 1-5'te tavanlı — Abyssal Pit VE Crimson Battlefront ikisi de tier 5
+// paylaşıyor, bkz. RAW_MAPS'in üstündeki not) KASITLI olarak AYRI: Crimson
+// Battlefront loot açısından hâlâ T5 ama savaş gücü açısından kendi 6.
+// basamağını (en düşük HP çarpanı, en yüksek DEF çarpanı) alıyor — 6 harita,
+// 6 farklı zorluk basamağı, ama sadece 5 eşya tier'ı.
+export const MAPS = RAW_MAPS.map((map, i) => ({ ...map, monsters: map.monsters.map((m) => scaleMonster(m, i + 1)) }));
 
 export function findMap(mapId) {
   return MAPS.find((m) => m.id === mapId) || MAPS[0];

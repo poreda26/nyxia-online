@@ -204,29 +204,6 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
         </div>
 
         <div>
-          <div style={styles.forgeColLabel}>Parşömenler</div>
-          <div style={styles.forgeScrollGrid}>
-            {scrollBoxes.map((box, i) => {
-              const isMatch = !!stagedItem && !!box && box.tier === stagedItem.tier;
-              return (
-                <button
-                  key={i}
-                  style={{
-                    ...styles.forgeScrollSlot,
-                    ...(box ? { borderColor: `${itemTierColor(box.tier)}88`, background: `${itemTierColor(box.tier)}1c` } : styles.bagSlotEmpty),
-                    ...(isMatch ? styles.bagSlotSelected : {}),
-                  }}
-                  onClick={() => returnScroll(i)}
-                >
-                  {box && <ScrollText size={15} color={itemTierColor(box.tier)} strokeWidth={1.6} />}
-                  {box && <span style={{ fontSize: 7, color: itemTierColor(box.tier), marginTop: 1 }}>T{box.tier}</span>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div>
           <div style={styles.forgeColLabel}>Bonus</div>
           <button
             style={{ ...styles.forgeSmallSlot, ...(bonusScrollActive ? { borderColor: "#D4AF6A88", background: "#D4AF6A1c" } : styles.bagSlotEmpty) }}
@@ -249,6 +226,33 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
           <button style={styles.forgeSmallSlot} onClick={() => setShopOpen((v) => !v)}>
             <ScrollText size={18} color="#D4AF6A" strokeWidth={1.6} />
           </button>
+        </div>
+      </div>
+
+      {/* Kendi satırında — üsttekiyle (Eşya+Bonus+Sonuç+Mağaza, 238px) aynı
+          satıra sığdırılmaya çalışılırsa (eski hâl) toplam genişlik 420px'i
+          aşıp dar telefon ekranlarında taşıyordu (kullanıcı: "her telefon
+          için ekran uyumluluğu olmalı"). */}
+      <div style={{ marginTop: 10 }}>
+        <div style={styles.forgeColLabel}>Parşömenler</div>
+        <div style={styles.forgeScrollGrid}>
+          {scrollBoxes.map((box, i) => {
+            const isMatch = !!stagedItem && !!box && box.tier === stagedItem.tier;
+            return (
+              <button
+                key={i}
+                style={{
+                  ...styles.forgeScrollSlot,
+                  ...(box ? { borderColor: `${itemTierColor(box.tier)}88`, background: `${itemTierColor(box.tier)}1c` } : styles.bagSlotEmpty),
+                  ...(isMatch ? styles.bagSlotSelected : {}),
+                }}
+                onClick={() => returnScroll(i)}
+              >
+                {box && <ScrollText size={15} color={itemTierColor(box.tier)} strokeWidth={1.6} />}
+                {box && <span style={{ fontSize: 7, color: itemTierColor(box.tier), marginTop: 1 }}>T{box.tier}</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 

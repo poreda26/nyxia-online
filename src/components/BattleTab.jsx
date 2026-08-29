@@ -1,20 +1,22 @@
 import { useState, useEffect, useRef } from "react";
-import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen } from "lucide-react";
+import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Crown } from "lucide-react";
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
 import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
-import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
-import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K } from "../utils/combat";
+import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
+import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
-import { premiumExpMultiplier, premiumDropMultiplier } from "../utils/premium";
+import { premiumExpMultiplier, premiumDropMultiplier, hasAutoBattleAccess } from "../utils/premium";
 import { clanExpMultiplier } from "../utils/clan";
+import { eventExpMultiplier } from "../utils/events";
 import { classSkills, learnFreeSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
 import BarTrack from "./shared/BarTrack";
 import SkillIcon from "./SkillIcon";
+import DeathModal from "./DeathModal";
 
 // potionCooldowns: her tur bir azalır (bkz. tickBattleEffects) — Can/Mana
 // potları 2 turda bir kullanılabilir, ikisi birlikte de basılamaz (bir pot
@@ -31,6 +33,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const [battle, setBattle] = useState(null); // {monsterHp, monsterMaxHp, log, playerHp}
   const [shake, setShake] = useState(null); // 'player' | 'monster' | null
   const [pendingMap, setPendingMap] = useState(null); // map awaiting teleport confirmation
+  const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal
+  const [victoryMonster, setVictoryMonster] = useState(null); // just-defeated monster template — drives the "Tekrar Savaş?" prompt
   const logRef = useRef(null);
 
   // Oyuncunun en son ışınlandığı harita kalıcı — güvenlik amaçlı, artık
@@ -84,6 +88,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       log: [`${m.name} karşına çıktı.`],
       ...EMPTY_BATTLE_EFFECTS,
     });
+    // Kullanıcı isteği: Otomatik Saldırı her yeni savaş başında (Tekrar
+    // Savaş'taki "Evet" dahil) kapalı başlasın — önceki savaştan kalma bir
+    // "açık" durumu asla bir sonrakine sızmasın, her seferinde elle açılsın.
+    setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
   };
 
   const endBattle = () => { attackLockRef.current = false; setMonster(null); setBattle(null); };
@@ -119,7 +127,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     // Read once from the live player prop before the updater — see the
     // StrictMode note above about keeping setState updaters pure; a
     // Date.now()-backed lookup has no business running inside one.
-    const expMult = premiumExpMultiplier(player) * clanExpMultiplier(player);
+    const expMult = premiumExpMultiplier(player) * clanExpMultiplier(player) * eventExpMultiplier(player);
     const dropMult = premiumDropMultiplier(player);
     let toastInfo = null;
     setPlayer((p) => {
@@ -204,22 +212,41 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const resolveMonsterTurn = (monsterHp, log, extra, currentHp = player.hp) => {
     if (monsterHp <= 0) {
       log = pushLog(log, `${monster.name} yenildi.`);
+      const wonMonster = monster;
       setBattle({ ...battle, ...extra, monsterHp, log, finished: true });
       // lock stays engaged through this window so extra clicks can't
       // trigger a second loot/level-up off the same kill
-      setTimeout(() => { applyLoot(monster); endBattle(); }, 700);
+      setTimeout(() => {
+        applyLoot(wonMonster);
+        attackLockRef.current = false;
+        setMonster(null);
+        setBattle(null);
+        // Ana ekrana otomatik dönmek yerine "Tekrar Savaş?" onayı çıkıyor
+        // (kullanıcı isteği) — Otomatik Saldırı açık olsa bile bu adım
+        // otomatikleşmiyor, yeni bir savaş HER ZAMAN buradan "Evet" ile
+        // manuel başlıyor (bkz. render'daki victoryMonster modalı).
+        setVictoryMonster(wonMonster);
+      }, 700);
       return;
     }
     const defMult = buffMultiplier(extra.buffs, "def");
-    const mdmg = Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) + rand(-2, 3)));
+    const setReduction = armorSetDamageReduction(player, "monster");
+    // Gerçek KO'nun DEX→Hit Rate/Evasion Rate mantığı (bkz. utils/combat.js#
+    // hitChance) — canavarın gerçek bir DEX'i yok, kendi ATK'sini bir
+    // "çeviklik" vekili olarak kullanıyoruz. Iskalarsa hasar 0, zırh
+    // yıpranmıyor, ama canavarın vuruşu yine de bir tur harcıyor.
+    const monsterHits = rollHit(monster.atk, player.stats.dex, map.levelMax);
+    const mdmg = monsterHits
+      ? Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
+      : 0;
     const playerDied = currentHp - mdmg <= 0;
-    log = pushLog(log, `${monster.name} sana ${mdmg} hasar verdi.`);
+    log = pushLog(log, monsterHits ? `${monster.name} sana ${mdmg} hasar verdi.` : `${monster.name} saldırdı ama ıskaladı.`);
 
     // Getting hit wears the armor down — same durability/repair loop as
     // the weapon uses on a landed hit (see utils/player.js's repair
     // system, the intended gold sink for this).
     setPlayer((p) => {
-      const worn = damageEquippedDurability(p, ARMOR_SLOTS, 1);
+      const worn = monsterHits ? damageEquippedDurability(p, ARMOR_SLOTS, 1) : p;
       return { ...worn, hp: Math.max(0, worn.hp - mdmg) };
     });
     setBattle({ ...battle, ...extra, monsterHp, log, finished: playerDied });
@@ -228,7 +255,19 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
     if (playerDied) {
       setTimeout(() => {
-        pushToast("Bayıldın... Kasabaya taşındın, canın kısmen yenilendi.", "warn");
+        // Önceden burada sadece "canın kısmen yenilendi" diyen bir toast
+        // vardı ama hiçbir kod gerçekten can/mana geri yüklemiyordu — hp 0'da
+        // kalıp bir sonraki savaşa öyle giriliyordu (kullanıcının bildirdiği
+        // "düşük canla başlıyoruz" bug'ı). Artık applyDeathPenalty hem
+        // hp/mp'yi gerçekten tam dolduruyor hem de küçük bir XP cezası
+        // uyguluyor, DeathModal da bunu net bir "Öldün!" uyarısıyla gösteriyor.
+        let xpLost = 0;
+        setPlayer((p) => {
+          const result = applyDeathPenalty(p);
+          xpLost = result.xpLost;
+          return result.player;
+        });
+        setDeathInfo({ xpLost });
         endBattle();
       }, 500);
     } else {
@@ -248,13 +287,19 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
     const atkMult = buffMultiplier(ticked.buffs, "atk");
     const isCrit = Math.random() < cls.crit;
-    const dmg = Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)));
+    // Aynı DEX→Hit Rate/Evasion Rate mekaniği (bkz. resolveMonsterTurn'daki
+    // aynı not) — oyuncu da ıskalayabiliyor artık, canavarın ATK'si yine
+    // onun "çeviklik" vekili.
+    const playerHits = rollHit(player.stats.dex, monster.atk, player.level);
+    const dmg = playerHits
+      ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)))
+      : 0;
     const monsterHp = Math.max(0, ticked.monsterHp - dmg);
-    const log = pushLog(ticked.log, isCrit ? `Kritik vuruş! ${dmg} hasar verdin.` : `${dmg} hasar verdin.`);
+    const log = pushLog(ticked.log, !playerHits ? "Vuruşunu ıskaladın." : isCrit ? `Kritik vuruş! ${dmg} hasar verdin.` : `${dmg} hasar verdin.`);
 
     // Every swing wears the weapon down a little — see utils/player.js's
-    // repair system, the intended gold sink for this.
-    setPlayer((p) => damageEquippedDurability(p, WEAPON_SLOTS, 1));
+    // repair system, the intended gold sink for this (misses don't wear it).
+    if (playerHits) setPlayer((p) => damageEquippedDurability(p, WEAPON_SLOTS, 1));
 
     setShake("monster");
     setTimeout(() => setShake(null), 260);
@@ -355,6 +400,46 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const hpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "hp" && i.tier === hpPotionTier);
   const mpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "mp" && i.tier === mpPotionTier);
 
+  // Otomatik Saldırı Apex/Mythic Premium'a özel bir perk (bkz. data/premium.js
+  // perks) — Premium süresi dolarsa `enabled` bayrağı localStorage'da kalsa
+  // bile `autoBattleOn` false'a düşer ve döngü otomatik durur.
+  const autoBattleAccess = hasAutoBattleAccess(player);
+  const autoBattleOn = !!player.autoBattle?.enabled && autoBattleAccess;
+  const toggleAutoBattle = () => {
+    if (!autoBattleAccess) { pushToast("Otomatik Saldırı bir Apex/Mythic Premium özelliğidir.", "warn"); return; }
+    setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { hpThreshold: 35, mpThreshold: 35 }), enabled: !p.autoBattle?.enabled } }));
+  };
+  const setHpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { enabled: false, mpThreshold: 35 }), hpThreshold: v } }));
+  const setMpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { enabled: false, hpThreshold: 35 }), mpThreshold: v } }));
+
+  // Otomatik Saldırı: her aksiyondan sonra `battle`/`player.hp`/`player.mp`
+  // değiştiği için bu effect yeniden tetiklenir ve bir sonraki aksiyonu
+  // planlar — kendi kendini besleyen bir döngü (bkz. WarzoneTab.jsx'teki
+  // gerçek-zamanlı tick effect'i, aynı desen). Kullanıcı isteği: bu ASLA
+  // yeni bir savaş BAŞLATMAZ (victoryMonster/deathInfo açıkken duruyor) —
+  // sadece mevcut savaşın içinde saldırır/pot içer.
+  useEffect(() => {
+    if (!autoBattleOn || !battle || battle.finished || player.hp <= 0 || victoryMonster || deathInfo) return;
+    const timer = setTimeout(() => {
+      if (attackLockRef.current) return;
+      const hpPct = (player.hp / maxHp) * 100;
+      const mpPct = (player.mp / maxMp) * 100;
+      const hpThreshold = player.autoBattle?.hpThreshold ?? 35;
+      const mpThreshold = player.autoBattle?.mpThreshold ?? 35;
+      const hpCd = battle.potionCooldowns.hp || 0;
+      const mpCd = battle.potionCooldowns.mp || 0;
+      if (hpPct < hpThreshold && hpCd === 0 && hpPotionTier) {
+        handlePotion("hp");
+      } else if (mpPct < mpThreshold && mpCd === 0 && mpPotionTier) {
+        handlePotion("mp");
+      } else {
+        attack();
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoBattleOn, battle, player.hp, player.mp, victoryMonster, deathInfo]);
+
   return (
     <div style={styles.panelScroll}>
       {pendingMap && (
@@ -441,6 +526,63 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       {monster && battle && (
         <div style={styles.battleArena}>
+          {/* Savaşın en üstünde, gözden kaçmayacak kadar belirgin bir
+              açık/kapalı anahtarı — önceki küçük ikon (canavar adının
+              yanındaki) fark edilmiyordu (kullanıcı geri bildirimi).
+              Savaş sürerken de her an dokunup kapatılabiliyor/açılabiliyor.
+              Apex/Mythic Premium olmayanlar için kilitli görünür — tıklayınca
+              döngüyü açmaz, sadece uyarı toast'ı gösterir. */}
+          <button
+            onClick={toggleAutoBattle}
+            style={{
+              ...styles.toggleRow, width: "100%", background: autoBattleOn ? "#5FA8A014" : "var(--bg-panel)",
+              border: "1px solid", borderColor: autoBattleOn ? "#5FA8A066" : "var(--border)",
+              borderRadius: 10, padding: "8px 12px", cursor: "pointer",
+              opacity: autoBattleAccess ? 1 : 0.7,
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: autoBattleOn ? "#5FA8A0" : "var(--text-muted)" }}>
+              {autoBattleAccess ? <Bot size={15} strokeWidth={1.8} /> : <Lock size={13} strokeWidth={1.8} />}
+              Otomatik Saldırı — {autoBattleAccess ? (autoBattleOn ? "Açık" : "Kapalı") : "Premium Gerekli"}
+            </span>
+            {autoBattleAccess ? (
+              <span style={{ ...styles.toggleSwitch, background: autoBattleOn ? "#5FA8A0" : "var(--bg-panel-alt)", justifyContent: autoBattleOn ? "flex-end" : "flex-start" }}>
+                <span style={styles.toggleKnob} />
+              </span>
+            ) : (
+              <Crown size={14} color="#8B6FC9" strokeWidth={1.8} />
+            )}
+          </button>
+
+          {autoBattleAccess && (
+            <div style={styles.autoBattleCard}>
+              <div style={styles.sliderRow}>
+                <div style={styles.sliderLabelRow}>
+                  <span>HP Pot Eşiği</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "#C9425A" }}>%{player.autoBattle?.hpThreshold ?? 35}</span>
+                </div>
+                <input
+                  type="range" min={0} max={90} step={5}
+                  value={player.autoBattle?.hpThreshold ?? 35}
+                  onChange={(e) => setHpThreshold(parseInt(e.target.value, 10))}
+                  style={styles.sliderInput}
+                />
+              </div>
+              <div style={styles.sliderRow}>
+                <div style={styles.sliderLabelRow}>
+                  <span>MP Pot Eşiği</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "#4FC3D9" }}>%{player.autoBattle?.mpThreshold ?? 35}</span>
+                </div>
+                <input
+                  type="range" min={0} max={90} step={5}
+                  value={player.autoBattle?.mpThreshold ?? 35}
+                  onChange={(e) => setMpThreshold(parseInt(e.target.value, 10))}
+                  style={styles.sliderInput}
+                />
+              </div>
+            </div>
+          )}
+
           <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{monster.name}</span>
@@ -522,6 +664,29 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           <button style={styles.ghostBtn} onClick={endBattle}>
             <ArrowLeft size={13} /> Geri Çekil
           </button>
+        </div>
+      )}
+
+      {deathInfo && <DeathModal xpLost={deathInfo.xpLost} onClose={() => setDeathInfo(null)} />}
+
+      {victoryMonster && (
+        <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setVictoryMonster(null)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <Trophy size={32} color="#D4AF6A" strokeWidth={1.3} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>Tekrar Savaş?</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 220 }}>
+              {victoryMonster.name}'i yendin. Tekrar savaşmak ister misin?
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setVictoryMonster(null)}>Hayır</button>
+              <button
+                style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#0B0C10" }}
+                onClick={() => { const m = victoryMonster; setVictoryMonster(null); startBattle(m); }}
+              >
+                Evet
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

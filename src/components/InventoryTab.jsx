@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine } from "lucide-react";
+import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, X } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
@@ -169,84 +169,6 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
           {bagSlotsFilled === 0 && (
             <EmptyState icon={Package} title="Çanta boş" subtitle="Canavar avlayarak zırh, silah ve aksesuar toplayabilirsin." />
           )}
-
-          {selectedItem && (
-            <>
-              <ItemTooltip item={selectedItem} player={player} unmetReqs={unmetReqs} />
-              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                {selectedItem.kind === "potion" ? (
-                  <button style={styles.tinyBtn} onClick={() => handleUsePotion(selectedItem)}>Kullan</button>
-                ) : selectedItem.kind === "scroll" || selectedItem.kind === "bonusScroll" ? (
-                  // Bonus Parşömen'in de tıpkı normal parşömen gibi buradan
-                  // hiçbir işlevi yok — sadece Yükselt sekmesindeki forge'a
-                  // sürüklenip kullanılıyor. Önceden burada hiç eşleşmiyordu
-                  // ve akış son "else" dalına (Kuşan butonu) düşüyordu —
-                  // `item.slot` tanımsız olduğu için equipItem onu
-                  // `equipped.undefined`'a yazıp envanterden siliyordu
-                  // (kullanıcının bildirdiği "kullanılabiliyor" hatası).
-                  <span style={{ fontSize: 10, color: "var(--text-faint)" }}>Yükselt sekmesinden kullanılır.</span>
-                ) : selectedItem.kind === "raceScroll" ? (
-                  player.clan ? (
-                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
-                      <Ban size={11} /> Bir klana üyeyken ırk değiştiremezsin.
-                    </button>
-                  ) : (
-                    Object.entries(RACES).map(([key, r]) => (
-                      <button
-                        key={key}
-                        style={{ ...styles.tinyBtn, background: r.color, opacity: player.race === key ? 0.4 : 1 }}
-                        disabled={player.race === key}
-                        onClick={() => useRaceScroll(selectedItem, key)}
-                      >
-                        {r.name} Ol
-                      </button>
-                    ))
-                  )
-                ) : selectedItem.kind === "jobScroll" ? (
-                  !canChangeJob(player).ok ? (
-                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
-                      <Ban size={11} /> {canChangeJob(player).reason}
-                    </button>
-                  ) : (
-                    Object.entries(CLASSES).filter(([key]) => key !== player.class).map(([key, c]) => (
-                      <button key={key} style={{ ...styles.tinyBtn, background: c.color }} onClick={() => useJobScroll(selectedItem, key)}>
-                        {c.name} Ol
-                      </button>
-                    ))
-                  )
-                ) : selectedItem.kind === "armor" && selectedItem.class !== player.class ? (
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
-                    <Ban size={11} /> Kilitli
-                  </button>
-                ) : selectedItem.kind === "armor" && selectedItem.tier === 5 && !player.awakened ? (
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
-                    <Ban size={11} /> Master gerekiyor
-                  </button>
-                ) : !statReqMet ? (
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
-                    <Ban size={11} /> Yetersiz Statü
-                  </button>
-                ) : (
-                  <button style={styles.tinyBtn} onClick={() => equip(selectedItem)}>Kuşan</button>
-                )}
-                {repairAmount > 0 && (
-                  <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
-                    <Wrench size={11} /> Tamir ({repairAmount}g)
-                  </button>
-                )}
-                {!isConsumable(selectedItem) && (
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }} onClick={() => depositItem(selectedItem)}>
-                    <Archive size={11} /> Depoya Koy
-                  </button>
-                )}
-                {!isConsumable(selectedItem) && !selectedItem.noTrade && (
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => sellItem(selectedItem)}>
-                    Sat ({Math.round(sellPrice(selectedItem) * premiumSellMultiplier(player))}g)
-                  </button>
-                )}
-              </div>
-            </>
-          )}
         </>
       )}
 
@@ -273,22 +195,6 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
           {bank[bankPage].length === 0 && (
             <EmptyState icon={Archive} title="Bu sayfa boş" subtitle="Çantandan bir eşya seçip depoya koyabilirsin." />
           )}
-
-          {selectedItem && (
-            <>
-              <ItemTooltip item={selectedItem} player={player} unmetReqs={unmetReqs} />
-              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                <button style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={() => withdrawItem(selectedItem)}>
-                  <ArrowUpFromLine size={11} /> Çantaya Al
-                </button>
-                {repairAmount > 0 && (
-                  <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
-                    <Wrench size={11} /> Tamir ({repairAmount}g)
-                  </button>
-                )}
-              </div>
-            </>
-          )}
         </>
       )}
 
@@ -312,6 +218,105 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
             })}
           </div>
         )
+      )}
+
+      {selectedItem && (subtab === "armor" || subtab === "bank") && (
+        <div style={styles.itemSheetOverlay} onClick={() => setSelectedId(null)}>
+          <div style={styles.itemSheet} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.itemSheetHandle} />
+            <ItemTooltip item={selectedItem} player={player} unmetReqs={unmetReqs} />
+            <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+              {subtab === "bank" ? (
+                <>
+                  <button style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={() => withdrawItem(selectedItem)}>
+                    <ArrowUpFromLine size={11} /> Çantaya Al
+                  </button>
+                  {repairAmount > 0 && (
+                    <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
+                      <Wrench size={11} /> Tamir ({repairAmount}g)
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  {selectedItem.kind === "potion" ? (
+                    <button style={styles.tinyBtn} onClick={() => handleUsePotion(selectedItem)}>Kullan</button>
+                  ) : selectedItem.kind === "scroll" || selectedItem.kind === "bonusScroll" ? (
+                    // Bonus Parşömen'in de tıpkı normal parşömen gibi buradan
+                    // hiçbir işlevi yok — sadece Yükselt sekmesindeki forge'a
+                    // sürüklenip kullanılıyor. Önceden burada hiç eşleşmiyordu
+                    // ve akış son "else" dalına (Kuşan butonu) düşüyordu —
+                    // `item.slot` tanımsız olduğu için equipItem onu
+                    // `equipped.undefined`'a yazıp envanterden siliyordu
+                    // (kullanıcının bildirdiği "kullanılabiliyor" hatası).
+                    <span style={{ fontSize: 10, color: "var(--text-faint)" }}>Yükselt sekmesinden kullanılır.</span>
+                  ) : selectedItem.kind === "raceScroll" ? (
+                    player.clan ? (
+                      <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                        <Ban size={11} /> Bir klana üyeyken ırk değiştiremezsin.
+                      </button>
+                    ) : (
+                      Object.entries(RACES).map(([key, r]) => (
+                        <button
+                          key={key}
+                          style={{ ...styles.tinyBtn, background: r.color, opacity: player.race === key ? 0.4 : 1 }}
+                          disabled={player.race === key}
+                          onClick={() => useRaceScroll(selectedItem, key)}
+                        >
+                          {r.name} Ol
+                        </button>
+                      ))
+                    )
+                  ) : selectedItem.kind === "jobScroll" ? (
+                    !canChangeJob(player).ok ? (
+                      <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                        <Ban size={11} /> {canChangeJob(player).reason}
+                      </button>
+                    ) : (
+                      Object.entries(CLASSES).filter(([key]) => key !== player.class).map(([key, c]) => (
+                        <button key={key} style={{ ...styles.tinyBtn, background: c.color }} onClick={() => useJobScroll(selectedItem, key)}>
+                          {c.name} Ol
+                        </button>
+                      ))
+                    )
+                  ) : selectedItem.kind === "armor" && selectedItem.class !== player.class ? (
+                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                      <Ban size={11} /> Kilitli
+                    </button>
+                  ) : selectedItem.kind === "armor" && selectedItem.tier === 5 && !player.awakened ? (
+                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                      <Ban size={11} /> Master gerekiyor
+                    </button>
+                  ) : !statReqMet ? (
+                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                      <Ban size={11} /> Yetersiz Statü
+                    </button>
+                  ) : (
+                    <button style={styles.tinyBtn} onClick={() => equip(selectedItem)}>Kuşan</button>
+                  )}
+                  {repairAmount > 0 && (
+                    <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
+                      <Wrench size={11} /> Tamir ({repairAmount}g)
+                    </button>
+                  )}
+                  {!isConsumable(selectedItem) && (
+                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }} onClick={() => depositItem(selectedItem)}>
+                      <Archive size={11} /> Depoya Koy
+                    </button>
+                  )}
+                  {!isConsumable(selectedItem) && !selectedItem.noTrade && (
+                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => sellItem(selectedItem)}>
+                      Sat ({Math.round(sellPrice(selectedItem) * premiumSellMultiplier(player))}g)
+                    </button>
+                  )}
+                </>
+              )}
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)", marginLeft: "auto" }} onClick={() => setSelectedId(null)}>
+                <X size={11} />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {openingChest && (

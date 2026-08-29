@@ -26,16 +26,20 @@ export const AMBUSH_CHANCE_PER_TICK = 0.10;
 
 // Normal canavarlara göre ~3 kat drop/sandık/parşömen şansı, artı garanti
 // bonus altın — "güçlü ama drop şansı yüksek" isteğini karşılıyor.
-// hp/atk/def data/maps.js'teki genel canavar zorluk ayarıyla aynı oranda
-// (×2.3/×1.3/×1.9) büyütüldü — yoksa yeni, zorlaşmış endgame canavarlarına
-// kıyasla artık "dünya canavarı" olmaktan çıkıp sıradan bir T5 canavarı
-// gibi kalırdı.
+// hp/atk/def artık üçü de data/maps.js'teki T6 (Crimson Battlefront, en
+// zorlu basamak) ile AYNI çarpanları kullanıyor — Dünya Canavarı endgame'in
+// bir parçası, oyuncunun ATK/HP/DEF formülleri KO'nun gerçek modeline
+// geçtikten sonra (bkz. utils/player.js) eski düz 2.5x'ler artık ne
+// oyuncuyu tehdit ediyor ne de dengeli düşüyordu.
+const WORLD_BOSS_ATK_MULT = 3.0;
+const WORLD_BOSS_HP_MULT = 0.25;
+const WORLD_BOSS_DEF_MULT = 3.8;
 export const WORLD_BOSS = {
   id: "meydan_cellati",
   name: "Meydan Cellâdı",
-  hp: 7360,
-  atk: 81,
-  def: 68,
+  hp: Math.round(7360 * WORLD_BOSS_HP_MULT),
+  atk: Math.round(81 * WORLD_BOSS_ATK_MULT),
+  def: Math.round(68 * WORLD_BOSS_DEF_MULT),
   lootTier: 5,
   bonusGoldMin: 300,
   bonusGoldMax: 550,

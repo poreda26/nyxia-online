@@ -40,7 +40,7 @@ function grant(player, item, bank) {
 
 const HELP_TEXT = "Komutlar: /altın [miktar], /elmas [miktar], /zırh [tier] [sınıf], /silah [tier], "
   + "/aksesuar [tier], /parşömen [tier], /bonus [adet], /premium [mythic|apex], /iksir [hp|mp] [adet] [tier], /sandık [tier|özel], "
-  + "/skill [id], /uyan, /seviye [1-65], /np [miktar], /yardım";
+  + "/skill [id], /uyan, /seviye [1-65], /np [miktar], /expevent [saat] [yüzde], /yardım";
 
 // Executes a recognized GM command against the current player and returns
 // the next player state plus a human-readable result to post back into
@@ -154,6 +154,20 @@ export function executeGmCommand(player, cmd, args, bank) {
       next.hp = playerMaxHp(next);
       next.mp = playerMaxMp(next);
       return { player: next, bank, resultText: `Seviye ${target} olarak ayarlandı. (+${levelsGained * 3} statü puanı, sonraki seviyeye ${xpToNext(target)} XP gerekiyor.)` };
+    }
+    case "expevent": {
+      // Kullanıcı isteği: "1 saatliğine %100 exp bonus açma yetkisi olsun" —
+      // varsayılan tam da bu (1 saat, %100 = 2x çarpan), ama GM isterse
+      // saat/yüzdeyi de değiştirebilir.
+      const hours = Math.max(0.1, parseFloat(args[0]) || 1);
+      const pct = Math.max(1, parseFloat(args[1]) || 100);
+      const mult = 1 + pct / 100;
+      const expiresAt = Date.now() + hours * 60 * 60 * 1000;
+      return {
+        player: { ...player, eventExpBonus: { mult, expiresAt } },
+        bank,
+        resultText: `%${pct} EXP bonusu ${hours} saatliğine açıldı.`,
+      };
     }
     case "np": {
       const amount = Math.max(1, parseInt(args[0], 10) || 50);

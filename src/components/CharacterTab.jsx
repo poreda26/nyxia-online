@@ -11,7 +11,7 @@ import SectionLabel from "./shared/SectionLabel";
 import StatBlock from "./shared/StatBlock";
 import SkillIcon from "./SkillIcon";
 
-export default function CharacterTab({ player, setPlayer, cls, gearHp, def, atk, pushToast, onChangeCharacter }) {
+export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter }) {
   const [subtab, setSubtab] = useState("stats");
   const addStat = (key) => setPlayer((p) => allocateStat(p, key));
   const race = RACES[player.race];
@@ -59,15 +59,15 @@ export default function CharacterTab({ player, setPlayer, cls, gearHp, def, atk,
         <div style={{ ...styles.charAvatar, borderColor: cls.color }}>
           <cls.icon size={28} color={cls.color} strokeWidth={1.6} />
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 18 }}>{displayClassName(player)}</div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayClassName(player)}</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             Seviye {player.level}{race && <span style={{ color: race.color }}> · {race.name}</span>}
           </div>
         </div>
         {onChangeCharacter && (
           <button
-            style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5 }}
+            style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}
             onClick={onChangeCharacter}
           >
             <Repeat size={11} /> Karakter Değiştir
@@ -87,7 +87,7 @@ export default function CharacterTab({ player, setPlayer, cls, gearHp, def, atk,
       <div style={styles.statsGrid}>
         <StatBlock label="Silah Gücü (ATK)" value={atk} color="#C9425A" />
         <StatBlock label="Defans (DEF)" value={def} color="#4FC3D9" />
-        <StatBlock label="Can Bonusu (HP)" value={gearHp} color="#5FA8A0" />
+        <StatBlock label="Can (HP)" value={maxHp} color="#5FA8A0" />
         <StatBlock label="Kritik" value={`${Math.round(cls.crit * 100)}%`} color="#8B6FC9" />
         <StatBlock label="Altın" value={player.gold} color="#D4AF6A" />
         <StatBlock label="Elmas" value={player.diamonds} color="#8B6FC9" />

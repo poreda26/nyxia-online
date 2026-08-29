@@ -266,30 +266,48 @@ export const styles = {
     borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)", borderRadius: 6, padding: "1px 5px", marginLeft: 6,
   },
 
+  // Karakter > Otomatik Saldırı alt sekmesi + savaş ekranındaki ikonun
+  // paylaştığı ayar kartı görünümü.
+  autoBattleCard: {
+    background: "var(--bg-panel)", borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)",
+    borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 14,
+  },
+  toggleRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  toggleSwitch: {
+    width: 42, height: 24, borderRadius: 12, border: "none", padding: 2, cursor: "pointer",
+    display: "flex", alignItems: "center", flexShrink: 0, transition: "background 0.15s ease",
+  },
+  toggleKnob: { width: 20, height: 20, borderRadius: 10, background: "#EDE8DC", transition: "transform 0.15s ease" },
+  sliderRow: { display: "flex", flexDirection: "column", gap: 6 },
+  sliderLabelRow: { display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" },
+  sliderInput: { width: "100%", accentColor: "#5FA8A0" },
+
+  // 9 sekme artık tek satırda sağa-sola kaydırılarak geziliyor (kullanıcı
+  // isteği) — her buton sabit bir genişlik taşıdığı için (navBtn) satırın
+  // toplam genişliği konteynerı gerçekten aşıyor ve overflowX:auto devreye
+  // giriyor; flex:1 olsaydı (eski hâl) hepsi sıkışıp asla kaydırılamazdı.
   bottomNav: {
     display: "flex", borderTop: "1px solid var(--border)", background: "var(--bg-void)",
-    padding: "8px 6px 12px",
+    padding: "8px 6px 12px", overflowX: "auto", WebkitOverflowScrolling: "touch",
   },
   navBtn: {
-    flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column",
+    flex: "0 0 auto", width: 68, background: "none", border: "none", display: "flex", flexDirection: "column",
     alignItems: "center", padding: "6px 0", position: "relative",
   },
   navActiveDot: { width: 3, height: 3, borderRadius: 2, background: "var(--text-primary)", marginTop: 3 },
 
-  moreSheetOverlay: {
-    position: "fixed", inset: 0, background: "rgba(11,12,16,0.7)", zIndex: 50,
+  // Bag/depo'da bir eşyaya dokununca çıkan detay widget'ı — önceden eşya
+  // detayı ızgaranın altına, sayfa akışının içine ekleniyordu (kullanıcı
+  // kaydırmadan göremiyordu); artık "Daha Fazla" sheet'iyle aynı mantıkta
+  // alttan kayarak açılan, tüm ekranı (alt menü dahil) kaplayan bir widget.
+  itemSheetOverlay: {
+    position: "fixed", inset: 0, background: "rgba(11,12,16,0.7)", zIndex: 60,
     display: "flex", alignItems: "flex-end", justifyContent: "center", backdropFilter: "blur(2px)",
   },
-  moreSheet: {
-    width: "100%", maxWidth: 420, background: "var(--bg-panel)", borderTop: "1px solid var(--border)",
+  itemSheet: {
+    width: "100%", maxWidth: 420, maxHeight: "82vh", overflowY: "auto",
+    background: "var(--bg-panel)", borderTop: "1px solid var(--border)",
     borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: "14px 16px 22px",
   },
-  moreSheetHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  moreSheetClose: { background: "var(--bg-panel-alt)", border: "none", borderRadius: 8, padding: 5, color: "var(--text-faint)", display: "flex" },
-  moreSheetGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 },
-  moreSheetItem: {
-    background: "var(--bg-panel-alt)", border: "1px solid var(--border)", borderRadius: 12,
-    padding: "14px 6px", display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer",
-  },
-  moreSheetItemActive: { borderColor: "var(--text-faint)", background: "var(--bg-panel)" },
+  itemSheetHandle: { width: 36, height: 4, borderRadius: 2, background: "var(--border)", margin: "0 auto 12px" },
 };
