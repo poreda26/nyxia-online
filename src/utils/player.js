@@ -110,6 +110,10 @@ export function initialPlayer(cls, race, nickname) {
     // autoSkill: açıkken döngü her turda düz saldırı yerine kullanılabilir
     // en iyi becerisini seçer (bkz. BattleTab.jsx#pickAutoSkill).
     autoBattle: { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false },
+    // Yeni karakterler Hub'a ilk girişte tutorial'ı görür (bkz.
+    // components/Hub.jsx, components/TutorialModal.jsx) — "Atla" ile her an
+    // geçilebilir, Karakter sekmesinden istenirse tekrar açılabilir.
+    tutorialSeen: false,
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -170,6 +174,10 @@ export function migratePlayer(player) {
     autoBattle: player.autoBattle
       ? { autoSkill: false, ...player.autoBattle }
       : { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false },
+    // Bu alan eklenmeden önce oluşturulmuş karakterler zaten oyunu
+    // biliyordur — tutorial'ın onlara aniden çıkmaması için varsayılan
+    // olarak "görüldü" sayılırlar (Karakter sekmesinden yine de açabilirler).
+    tutorialSeen: player.tutorialSeen ?? true,
   };
 }
 

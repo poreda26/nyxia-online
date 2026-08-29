@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Repeat, Crown, Lock, Check, X } from "lucide-react";
+import { Plus, Repeat, Crown, Lock, Check, X, BookOpen } from "lucide-react";
 import { STAT_KEYS, STAT_FULL_LABELS, STAT_COLORS, STAT_CAP } from "../data/stats";
 import { RACES } from "../data/races";
 import { allocateStat, displayClassName } from "../utils/player";
@@ -11,7 +11,7 @@ import SectionLabel from "./shared/SectionLabel";
 import StatBlock from "./shared/StatBlock";
 import SkillIcon from "./SkillIcon";
 
-export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter }) {
+export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter, onReplayTutorial }) {
   const [subtab, setSubtab] = useState("stats");
   const addStat = (key) => setPlayer((p) => allocateStat(p, key));
   const race = RACES[player.race];
@@ -74,6 +74,15 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
           </button>
         )}
       </div>
+
+      {onReplayTutorial && (
+        <button
+          style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginBottom: 12 }}
+          onClick={onReplayTutorial}
+        >
+          <BookOpen size={12} /> Tutorial'ı Tekrar Göster
+        </button>
+      )}
 
       {premiumTier && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", marginBottom: 12, borderRadius: 8, borderWidth: 1, borderStyle: "solid", borderColor: `${premiumTier.color}66`, background: `${premiumTier.color}14` }}>

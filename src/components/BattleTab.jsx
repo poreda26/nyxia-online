@@ -11,6 +11,7 @@ import { premiumExpMultiplier, premiumDropMultiplier, hasAutoBattleAccess } from
 import { clanExpMultiplier } from "../utils/clan";
 import { eventExpMultiplier } from "../utils/events";
 import { classSkills, learnFreeSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
+import { MONSTER_QUESTS } from "../data/quests";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -159,7 +160,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     let toastInfo = null;
     setPlayer((p) => {
       let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
-      np.monsterKills[m.id] = (np.monsterKills[m.id] || 0) + 1;
+      const killsBefore = np.monsterKills[m.id] || 0;
+      np.monsterKills[m.id] = killsBefore + 1;
       const goldGain = rand(m.goldMin, m.goldMax);
       // No XP past the level cap — nothing left to spend it on. Seviye
       // farkı çok açıldıysa (çok düşük seviyeli haritada avlanmak) XP
@@ -171,6 +173,16 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       let drops = [`+${goldGain} altın`];
       if (xpGain > 0) drops.push(`+${xpGain} XP`);
+
+      // Bu öldürme tam olarak bir görevin hedefini tamamladıysa (daha önce
+      // değil) ve ödülü henüz alınmadıysa, oyuncuyu Kaptan'a yönlendiren
+      // ayrı bir satır ekleniyor (kullanıcı isteği) — hem loot toast'ının
+      // hem bu satırın aynı anda görünmesi için tek bir toast'a birleştirdik
+      // (App.jsx#pushToast tek seferde tek toast gösteriyor, bkz. ilgili not).
+      const finishedQuest = MONSTER_QUESTS.find((q) => q.monsterId === m.id);
+      if (finishedQuest && killsBefore < finishedQuest.target && np.monsterKills[m.id] >= finishedQuest.target && !(p.claimedQuests || []).includes(finishedQuest.id)) {
+        drops.push("Görev tamamlandı! Kaptan'ın yanına uğra.");
+      }
 
       if (Math.random() < 0.15 * dropMult) {
         const item = rollLoot(map.tier, np.class);
