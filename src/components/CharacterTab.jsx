@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Repeat, Crown, Lock, Check, X, BookOpen } from "lucide-react";
+import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw } from "lucide-react";
 import { STAT_KEYS, STAT_FULL_LABELS, STAT_COLORS, STAT_CAP } from "../data/stats";
 import { RACES } from "../data/races";
-import { allocateStat, displayClassName } from "../utils/player";
+import { allocateStat, displayClassName, respecCost, canRespecStats, respecStats } from "../utils/player";
 import { activePremiumTier, premiumDaysLeft } from "../utils/premium";
 import { classSkills, isKnown, canUnlockSkill, unlockSkill, setLoadoutSlot, describeEffect } from "../utils/skills";
 import { MAX_LOADOUT_SLOTS } from "../data/skills";
@@ -13,9 +13,19 @@ import SkillIcon from "./SkillIcon";
 
 export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter, onReplayTutorial }) {
   const [subtab, setSubtab] = useState("stats");
+  const [confirmingRespec, setConfirmingRespec] = useState(false);
   const addStat = (key) => setPlayer((p) => allocateStat(p, key));
   const race = RACES[player.race];
   const premiumTier = activePremiumTier(player);
+  const respecCheck = canRespecStats(player);
+
+  const handleRespec = () => {
+    const result = respecStats(player);
+    if (!result.reset) { pushToast(result.reason || "Sıfırlanamadı.", "warn"); return; }
+    setPlayer(result.player);
+    pushToast(`Statüler sıfırlandı — ${result.player.statPoints} puan tekrar dağıtılmayı bekliyor.`, "loot");
+    setConfirmingRespec(false);
+  };
 
   // "+" tuşuna basılı tutunca hızlı dağıtım — kısa bir gecikmenin ardından
   // tekrar tekrar addStat çağırır. allocateStat zaten statPoints/STAT_CAP
@@ -147,6 +157,13 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
               );
             })}
           </div>
+
+          <button
+            style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginTop: 12 }}
+            onClick={() => setConfirmingRespec(true)}
+          >
+            <RotateCcw size={12} /> Statüleri Sıfırla ({respecCost(player)}g)
+          </button>
         </>
       )}
 
@@ -209,6 +226,30 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
             })}
           </div>
         </>
+      )}
+
+      {confirmingRespec && (
+        <div style={styles.modalOverlay} onClick={() => setConfirmingRespec(false)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <RotateCcw size={28} color="#8B6FC9" strokeWidth={1.4} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
+              Tüm dağıtılmış statü puanların geri alınıp yeniden dağıtman için serbest bırakılacak. Bunun için <b>{respecCost(player)} altın</b> gerekiyor. Emin misin?
+            </div>
+            {!respecCheck.ok && (
+              <div style={{ marginTop: 8, fontSize: 11, color: "#E8A5AF", textAlign: "center" }}>{respecCheck.reason}</div>
+            )}
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingRespec(false)}>Vazgeç</button>
+              <button
+                style={{ ...styles.tinyBtn, background: "#8B6FC9", ...(!respecCheck.ok ? { opacity: 0.5 } : {}) }}
+                disabled={!respecCheck.ok}
+                onClick={handleRespec}
+              >
+                Evet, Sıfırla
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

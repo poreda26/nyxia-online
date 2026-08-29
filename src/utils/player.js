@@ -1,5 +1,5 @@
 import { CLASSES } from "../data/classes";
-import { STAT_LABELS, STAT_KEYS, STAT_CAP } from "../data/stats";
+import { STAT_LABELS, STAT_KEYS, STAT_CAP, POINTS_PER_LEVEL } from "../data/stats";
 import { makePotionStack } from "./inventory";
 import { MAPS } from "../data/maps";
 import { currentWeekId } from "./week";
@@ -317,6 +317,35 @@ export function allocateStat(player, statKey) {
     ...player,
     statPoints: player.statPoints - 1,
     stats: { ...player.stats, [statKey]: player.stats[statKey] + 1 },
+  };
+}
+
+// Statü sıfırlama (respec) maliyeti seviyeyle orantılı büyüyor (kullanıcı
+// isteği) — düşük seviyede ucuz bir deneme-yanılma imkanı, yüksek seviyede
+// gerçek bir altın harcaması. Sabit (RESPEC_GOLD_PER_LEVEL) ilk kalibrasyon,
+// ekonomi oturdukça ayarlanabilir.
+const RESPEC_GOLD_PER_LEVEL = 200;
+export function respecCost(player) {
+  return player.level * RESPEC_GOLD_PER_LEVEL;
+}
+
+export function canRespecStats(player) {
+  const cost = respecCost(player);
+  if (player.gold < cost) return { ok: false, reason: `Yeterli altının yok (gerekiyor: ${cost}g).`, cost };
+  return { ok: true, cost };
+}
+
+// Dağıtılmış TÜM statü puanlarını (başlangıç + seviye başına kazanılanlar)
+// geri toplayıp player.stats'ı sınıfın çıplak baseStats'ına döndürür —
+// böylece statPoints tekrar tam olarak yeniden dağıtılabilir hale gelir.
+export function respecStats(player) {
+  const check = canRespecStats(player);
+  if (!check.ok) return { player, reset: false, reason: check.reason };
+  const totalPoints = STARTING_STAT_POINTS + POINTS_PER_LEVEL * (player.level - 1);
+  return {
+    player: { ...player, gold: player.gold - check.cost, stats: { ...CLASSES[player.class].baseStats }, statPoints: totalPoints },
+    reset: true,
+    cost: check.cost,
   };
 }
 

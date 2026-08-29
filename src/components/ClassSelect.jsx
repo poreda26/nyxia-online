@@ -15,8 +15,15 @@ function StatPill({ label, value }) {
 export default function ClassSelect({ onChoose }) {
   const [hovered, setHovered] = useState("warrior");
   const [nickname, setNickname] = useState("");
+  const [nicknameError, setNicknameError] = useState(false);
   const active = CLASSES[hovered];
-  const choose = (cls) => onChoose(cls, nickname.trim() || undefined);
+  // Her yeni karakter için bir nickname artık zorunlu (kullanıcı isteği) —
+  // eskiden "(opsiyonel)" olup boş bırakılabiliyordu, sınıf adına düşüyordu.
+  const choose = (cls) => {
+    const trimmed = nickname.trim();
+    if (!trimmed) { setNicknameError(true); return; }
+    onChoose(cls, trimmed);
+  };
   return (
     <div style={styles.classSelectRoot}>
       <div style={styles.classSelectHeader}>
@@ -28,11 +35,14 @@ export default function ClassSelect({ onChoose }) {
       <input
         type="text"
         value={nickname}
-        onChange={(e) => setNickname(e.target.value)}
-        placeholder="Karakter adı (opsiyonel)"
+        onChange={(e) => { setNickname(e.target.value); if (nicknameError) setNicknameError(false); }}
+        placeholder="Karakter adı"
         maxLength={20}
-        style={{ ...styles.numInput, width: "100%", maxWidth: 320, alignSelf: "center", textAlign: "center", marginBottom: 20 }}
+        style={{ ...styles.numInput, width: "100%", maxWidth: 320, alignSelf: "center", textAlign: "center", marginBottom: nicknameError ? 6 : 20, ...(nicknameError ? { borderColor: "#C9425A" } : {}) }}
       />
+      {nicknameError && (
+        <div style={{ fontSize: 11, color: "#E8A5AF", textAlign: "center", marginBottom: 14 }}>Bir karakter adı girmelisin.</div>
+      )}
 
       <div style={styles.classGrid}>
         {Object.entries(CLASSES).map(([key, c]) => {

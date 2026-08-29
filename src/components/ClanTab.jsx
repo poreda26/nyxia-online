@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { Shield, LogOut, Plus, ChevronUp, ChevronDown, Swords, Coins, Gem, Flag, Landmark, Skull, Lock, Clock } from "lucide-react";
 import { CLASSES } from "../data/classes";
+import { RACES } from "../data/races";
 import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS } from "../data/clan";
 import { CLAN_BOSS_STAGES, CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from "../data/clanBoss";
 import {
   foundClan, generateDecoyClans, joinClan, leaveClan, promoteMember, demoteMember,
   onlineCountFor, clanExpBonus, canStartDungeon, startDungeon,
   donateNP, donateGold, donateDiamonds, canUpgradeClanBuilding, upgradeClanBuilding,
+  clanLeaderboardFor,
 } from "../utils/clan";
 import {
   unlockedBossStages, openClanBoss, bossTimeLeftMs, bossCurrentHp, bossMaxHp,
@@ -33,6 +35,8 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   const [donateNpInput, setDonateNpInput] = useState("");
   const [donateGoldInput, setDonateGoldInput] = useState("");
   const [donateDiamondInput, setDonateDiamondInput] = useState("");
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  const [lbRace, setLbRace] = useState(player.race);
 
   // Boss açıkken geri sayım/HP saniyeler içinde eskir — bu tick sadece
   // yeniden render tetikler (bkz. utils/clanBoss.js'in "Date.now()'dan
@@ -64,6 +68,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     const result = leaveClan(player);
     setPlayer(result.player);
     pushToast(result.refund > 0 ? `Klandan ayrıldın. +${fmt(result.refund)} NP iade edildi.` : "Klandan ayrıldın.", "default");
+    setConfirmingLeave(false);
   };
 
   const handlePromote = (memberId) => setPlayer((p) => promoteMember(p, memberId));
@@ -124,6 +129,35 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     pushToast(result.isCrit ? `Kritik vuruş! ${result.dmg} hasar verdin.` : `${result.dmg} hasar verdin.`, "loot");
   };
 
+  const lbEntries = clanLeaderboardFor(lbRace, player);
+  const leaderboardSection = (
+    <>
+      <SectionLabel>Klan Sıralaması</SectionLabel>
+      <div style={styles.tierScroller}>
+        {Object.entries(RACES).map(([key, r]) => (
+          <button
+            key={key}
+            onClick={() => setLbRace(key)}
+            style={{ ...styles.tierChip, borderColor: lbRace === key ? r.color : "var(--border)", background: lbRace === key ? `${r.color}1A` : "var(--bg-panel)" }}
+          >
+            <span style={{ fontSize: 11, color: r.color }}>{r.name}</span>
+          </button>
+        ))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+        {lbEntries.map((e) => (
+          <div key={e.rank} style={{ ...styles.itemRow, ...(e.isPlayerClan ? { borderColor: "#D4AF6A" } : {}) }}>
+            <div style={{ width: 20, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, color: e.rank <= 3 ? "#D4AF6A" : "var(--text-faint)" }}>{e.rank}</div>
+            <div style={{ flex: 1, fontSize: 12, color: e.isPlayerClan ? "var(--text-primary)" : "var(--text-muted)" }}>{e.name}{e.isPlayerClan ? " (Senin Klanın)" : ""}</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 3 }}>
+              <Flag size={10} color="#8B6FC9" /> {fmt(e.nationalPoint)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
   if (!player.clan) {
     const decoyClans = generateDecoyClans(player);
     return (
@@ -167,6 +201,8 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             </div>
           ))}
         </div>
+
+        {leaderboardSection}
       </div>
     );
   }
@@ -379,9 +415,26 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         })}
       </div>
 
-      <button style={{ ...styles.ghostBtn, marginTop: 14 }} onClick={handleLeave}>
+      {leaderboardSection}
+
+      <button style={{ ...styles.ghostBtn, marginTop: 14 }} onClick={() => setConfirmingLeave(true)}>
         <LogOut size={13} /> Klanı Terk Et
       </button>
+
+      {confirmingLeave && (
+        <div style={styles.modalOverlay} onClick={() => setConfirmingLeave(false)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <LogOut size={28} color="#C9425A" strokeWidth={1.4} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 260 }}>
+              {clan.name} klanından ayrılmak üzeresin. Rütbeni ve klan hazinesindeki payını kaybedersin — sadece kendi bağışladığın NP'nin %35'i geri döner. Emin misin?
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingLeave(false)}>Vazgeç</button>
+              <button style={{ ...styles.tinyBtn, background: "#C9425A" }} onClick={handleLeave}>Evet, Ayrıl</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

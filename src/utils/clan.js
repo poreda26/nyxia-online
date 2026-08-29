@@ -115,12 +115,22 @@ export function foundClan(player, name) {
   return { player: { ...player, diamonds: player.diamonds - CLAN_FOUND_COST_DIAMONDS, clan }, founded: true };
 }
 
+// Bir ırk için "var olan" 5 klanın isimleri — deterministik (seed: ırk),
+// hem "Mevcut Klanlar" katılma listesinde (generateDecoyClans) hem de Klan
+// Sıralaması'nda (clanLeaderboardFor) AYNI isimler kullanılsın diye ortak
+// bir yerden türetiliyor; aksi halde ikisi tutarsız iki farklı klan seti
+// gösterirdi.
+function decoyClanNamesForRace(race) {
+  const rng = seededRng(`clans:${race}`);
+  return seededShuffle(CLAN_NAMES, rng).slice(0, 5);
+}
+
 // Katılınabilecek sahte klanlar — oyuncunun ırkına göre seed'lenir, bu
 // yüzden aynı ırktaki her karakter için aynı 5 klan görünür (gerçek sunucu
 // gelince bu fonksiyonun yerini gerçek bir "klanları listele" API'si alacak).
 export function generateDecoyClans(player) {
   const rng = seededRng(`clans:${player.race}`);
-  const names = seededShuffle(CLAN_NAMES, rng).slice(0, 5);
+  const names = decoyClanNamesForRace(player.race);
   return names.map((name) => {
     const memberCount = 14 + Math.floor(rng() * 24); // 14-37
     return {
@@ -130,6 +140,33 @@ export function generateDecoyClans(player) {
       members: generateMembersSeeded(player.race, memberCount, rng, true),
     };
   });
+}
+
+// Bir decoy klanın NP'si — zamanla/haftaya göre değişmez (klan NP'si gerçek
+// oyunda da kalıcı, hiç sıfırlanmıyor, bkz. treasury.np), sadece ırk+isme
+// göre sabit deterministik bir değer.
+function decoyClanNP(race, name) {
+  const rng = seededRng(`clanNP:${race}:${name}`);
+  return Math.round(3000 + rng() * 900000);
+}
+
+// Klan Sıralaması — NP'ye göre, ırk başına AYRI (kullanıcı isteği: "İki ırk
+// için ayrı sıralama istiyorum"). O ırkın 5 klanının hepsi decoy NP alır;
+// oyuncu bu ırktansa VE bir klana üyeyse kendi klanı da listeye girer —
+// katıldığı klan zaten bu 5'ten biriyse (isim eşleşir) o satırın NP'si
+// gerçek clan.treasury.np ile değiştirilir (aynı klan iki kez görünmesin),
+// kendi kurduğu (havuzda olmayan bir isimdeki) bir klansa ayrı bir satır
+// olarak eklenir.
+export function clanLeaderboardFor(race, player) {
+  const entries = decoyClanNamesForRace(race).map((name) => ({ name, nationalPoint: decoyClanNP(race, name), isPlayerClan: false }));
+  if (player?.clan && player.race === race) {
+    const idx = entries.findIndex((e) => e.name === player.clan.name);
+    const own = { name: player.clan.name, nationalPoint: player.clan.treasury.np, isPlayerClan: true };
+    if (idx >= 0) entries[idx] = own;
+    else entries.push(own);
+  }
+  entries.sort((a, b) => b.nationalPoint - a.nationalPoint);
+  return entries.map((e, i) => ({ ...e, rank: i + 1 }));
 }
 
 export function joinClan(player, decoyClan) {
