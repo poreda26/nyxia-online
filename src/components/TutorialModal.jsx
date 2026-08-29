@@ -22,12 +22,12 @@ const STEPS = [
   {
     icon: Package, color: "#5FA8A0",
     title: "Envanter",
-    text: "Düşen eşyaları buradan kuşan. 13 slotluk bir kuşanma paneli var — sınıfına uymayan zırhlar kilitli görünür, onları Pazar'da değerlendirebilirsin.",
+    text: "Düşen eşyaları buradan kuşan. 12 slotluk bir kuşanma paneli var — sınıfına uymayan zırhlar kilitli görünür (kuşanamazsın), ama yine de Pazar'dan satabilir ya da ilana çıkarabilirsin.",
   },
   {
     icon: Store, color: "#8B6FC9",
     title: "Pazar",
-    text: "NPC'lerden Tier 1 sandık satın alabilirsin. Sınıfına uymayan zırhları Takas Postası'nda altına çevir ya da kendi sınıfına uygun bir eşyayla takas et.",
+    text: "Oyuncu Pazarı'nda çantandaki eşyaları (sınıfına uymayan zırhlar dahil) ilana çıkar ya da başkalarının ilanlarından satın al. Dükkan'dan iksir, Özel Market'ten elmas karşılığı premium ve özel parşömenler alabilirsin.",
   },
   {
     icon: ShieldCheck, color: "#D4AF6A",
@@ -37,12 +37,12 @@ const STEPS = [
   {
     icon: ArrowUpCircle, color: "#4FC3D9",
     title: "Yükselt",
-    text: "Parşömen ve altın karşılığında ekipmanını +5'e kadar güçlendirebilirsin — Yükseltme Ustası'nı \"Daha Fazla\" menüsünde bulursun.",
+    text: "Parşömen ve altın karşılığında ekipmanını +8'e kadar güçlendirebilirsin — Yükseltme Ustası'nı \"Daha Fazla\" menüsünde bulursun.",
   },
   {
     icon: Shield, color: "#A34FD9",
     title: "Klan & Savaş Alanı",
-    text: "Bir klana katıl, Savaş Alanı'nda diğer oyunculara karşı savaş ve haftalık National Point sıralamasında yüksel — üst sıralar elmas kazandırır.",
+    text: "Bir klana katıl, Savaş Alanı'nda diğer oyunculara karşı savaş ve haftalık National Point sıralamasında yüksel. Klanına NP/altın/elmas bağışlayarak Klan Binası'nı geliştirebilir, Klan Boss'unu açabilirsin.",
   },
 ];
 

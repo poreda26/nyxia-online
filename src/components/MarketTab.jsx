@@ -23,6 +23,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState("item"); // "item" | "chest" — hangi havuzdan (çanta ya da sandıklar) seçildiğini belirler
   const [pickedItem, setPickedItem] = useState(null);
   const [priceInput, setPriceInput] = useState("");
   // 0 = no dialog, 1 = "yükseltmek ister misiniz?", 2 = "Mythic alınsın mı?" —
@@ -114,9 +115,16 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
     if (player.gold < listing.price) { pushToast("Yeterli altının yok.", "warn"); return; }
     const result = await marketService.buyListing(listing.id);
     if (!result.ok) { pushToast(result.reason || "Satın alınamadı.", "warn"); refreshListings(); return; }
-    const addResult = addItemToInventory({ ...player, gold: player.gold - listing.price }, result.listing.item);
-    if (!addResult.added) { pushToast(`Satın alındı ama çantana sığmadı — ${addResult.reason}`, "warn"); }
-    setPlayer(addResult.player);
+    // Sandık ilanları çantaya değil player.chests'e gider — inventory'deki
+    // gerçek eşyalardan yapısal olarak ayrı bir liste (bkz. sellableChests,
+    // confirmListing'in "chest" dalı).
+    if (result.listing.item.kind === "chest") {
+      setPlayer((p) => ({ ...p, gold: p.gold - listing.price, chests: [...p.chests, { id: result.listing.item.id, tier: result.listing.item.tier, special: result.listing.item.special }] }));
+    } else {
+      const addResult = addItemToInventory({ ...player, gold: player.gold - listing.price }, result.listing.item);
+      if (!addResult.added) { pushToast(`Satın alındı ama çantana sığmadı — ${addResult.reason}`, "warn"); }
+      setPlayer(addResult.player);
+    }
     setListings((ls) => ls.filter((l) => l.id !== listing.id));
     pushToast(`${result.listing.item.name} satın alındı.`, "loot");
   };
@@ -124,16 +132,29 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
   const cancelListing = async (listing) => {
     const cancelled = await marketService.cancelListing(listing.id);
     if (!cancelled) { pushToast("İlan zaten kaldırılmış.", "warn"); refreshListings(); return; }
-    const addResult = addItemToInventory(player, cancelled.item);
-    setPlayer(addResult.player);
-    if (!addResult.added) pushToast(`İlan iptal edildi ama ${addResult.reason}`, "warn");
-    else pushToast("İlan iptal edildi, eşya çantana döndü.", "default");
+    if (cancelled.item.kind === "chest") {
+      setPlayer((p) => ({ ...p, chests: [...p.chests, { id: cancelled.item.id, tier: cancelled.item.tier, special: cancelled.item.special }] }));
+      pushToast("İlan iptal edildi, sandık geri döndü.", "default");
+    } else {
+      const addResult = addItemToInventory(player, cancelled.item);
+      setPlayer(addResult.player);
+      if (!addResult.added) pushToast(`İlan iptal edildi ama ${addResult.reason}`, "warn");
+      else pushToast("İlan iptal edildi, eşya çantana döndü.", "default");
+    }
     setListings((ls) => ls.filter((l) => l.id !== listing.id));
   };
 
   const sellableItems = player.inventory.filter((i) => i.kind === "armor" || i.kind === "weapon" || i.kind === "accessory");
+  // Sandıklar player.chests'te yaşıyor, player.inventory'de değil (bkz.
+  // InventoryTab'ın ayrı "Sandıklar" alt sekmesi) — ilan için de ayrı bir
+  // havuz olarak sunuluyor, kullanıcı isteği: "Pazar bölümümüzde sandık
+  // satışımız yok."
+  const sellableChests = player.chests.map((c) => ({
+    id: c.id, kind: "chest", tier: c.tier, special: c.special,
+    name: c.special ? "Özel Etkinlik Sandığı" : `T${c.tier} Sandık`,
+  }));
 
-  const openPicker = () => { setPickerOpen(true); setPickedItem(null); setPriceInput(""); };
+  const openPicker = (mode) => { setPickerOpen(true); setPickerMode(mode); setPickedItem(null); setPriceInput(""); };
   const pickItem = (item) => { setPickedItem(item); setPriceInput(""); };
 
   const confirmListing = async () => {
@@ -142,7 +163,11 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
     if (!Number.isFinite(price) || price <= 0) { pushToast("Geçerli bir fiyat gir.", "warn"); return; }
     const fee = marketService.listingFeeFor(price);
     if (player.gold < fee) { pushToast(`İlan ücretini (${fee}g) karşılayacak altının yok.`, "warn"); return; }
-    setPlayer((p) => ({ ...p, gold: p.gold - fee, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
+    if (pickerMode === "chest") {
+      setPlayer((p) => ({ ...p, gold: p.gold - fee, chests: p.chests.filter((c) => c.id !== pickedItem.id) }));
+    } else {
+      setPlayer((p) => ({ ...p, gold: p.gold - fee, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
+    }
     const listing = await marketService.createListing(pickedItem, price);
     setListings((ls) => [listing, ...ls]);
     pushToast(`İlan yayınlandı: ${pickedItem.name} — ${price}g (-${fee}g ilan ücreti)`, "loot");
@@ -307,23 +332,32 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
             Diğer oyuncuların ilanlarından da istediğini satın alabilirsin.
           </p>
 
-          <button style={{ ...styles.smallBtn, background: "#5FA8A0", width: "100%", marginBottom: 12 }} onClick={openPicker}>
-            <Plus size={14} /> İlan Ver
-          </button>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button style={{ ...styles.smallBtn, background: "#5FA8A0", flex: 1 }} onClick={() => openPicker("item")}>
+              <Plus size={14} /> Eşya İlanı Ver
+            </button>
+            <button style={{ ...styles.smallBtn, background: "#D4AF6A", flex: 1 }} onClick={() => openPicker("chest")}>
+              <Plus size={14} /> Sandık İlanı Ver
+            </button>
+          </div>
 
           {pickerOpen && (
             <div style={styles.pickerCard}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{pickedItem ? "Fiyat belirle" : "Satılacak eşyayı seç"}</span>
+                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>
+                  {pickedItem ? "Fiyat belirle" : pickerMode === "chest" ? "Satılacak sandığı seç" : "Satılacak eşyayı seç"}
+                </span>
                 <button onClick={() => setPickerOpen(false)} style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer" }}>
                   <X size={14} />
                 </button>
               </div>
               {!pickedItem ? (
-                sellableItems.length === 0 ? (
-                  <div style={{ fontSize: 11, color: "var(--text-faint)" }}>Çantanda satılabilecek eşya yok.</div>
+                (pickerMode === "chest" ? sellableChests : sellableItems).length === 0 ? (
+                  <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                    {pickerMode === "chest" ? "Satılabilecek sandığın yok." : "Çantanda satılabilecek eşya yok."}
+                  </div>
                 ) : (
-                  sellableItems.map((item) => (
+                  (pickerMode === "chest" ? sellableChests : sellableItems).map((item) => (
                     <button key={item.id} style={styles.pickerRow} onClick={() => pickItem(item)}>
                       <ItemIcon item={item} size={20} color={itemTierColor(item.tier)} strokeWidth={1.6} />
                       <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item)}</span>

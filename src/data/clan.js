@@ -12,6 +12,11 @@ export const CLAN_EXP_TIERS = [
   { min: 11, bonus: 0.01 },
 ];
 
+// NP bağışı — klandan ayrılınca oyuncunun KENDİ bağışladığı toplam NP'nin
+// bu oranı geri veriliyor (kullanıcı isteği). Klanın diğer üyelerinin
+// bağışları etkilenmez, sadece ayrılan oyuncunun kendi payı.
+export const CLAN_NP_DONATION_REFUND_RATE = 0.35;
+
 export const CLAN_NAMES = [
   "Kızıl Şafak", "Gölge Kardeşliği", "Demir Ahit", "Kutsal Meşale", "Kara Sancak",
   "Ejder Yürüyüşü", "Sessiz Kılıç", "Altın Şahin", "Fırtına Muhafızları", "Unutulmuş Tapınak",

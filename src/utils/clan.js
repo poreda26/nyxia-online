@@ -2,7 +2,8 @@ import { rand, pick, uid } from "./random";
 import { CLASSES } from "../data/classes";
 import { ghostNamesForRace } from "../data/warzoneNames";
 import { seededRng, seededShuffle } from "./seededRng";
-import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS, CLAN_EXP_TIERS, CLAN_NAMES, CLAN_COLORS } from "../data/clan";
+import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS, CLAN_EXP_TIERS, CLAN_NAMES, CLAN_COLORS, CLAN_NP_DONATION_REFUND_RATE } from "../data/clan";
+import { CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from "../data/clanBoss";
 
 // Gerçek sunucu gelene kadar hem kurulan hem katılınan klanlar tamamen
 // simüle — data/warzoneNames.js'teki (Savaş Alanı hayaletleri için zaten
@@ -80,6 +81,16 @@ function freshDungeon() {
   return { lastStartedDay: null, startedBy: null };
 }
 
+// Klan Binası + Boss hazinesi — bkz. data/clanBoss.js. treasury.np sadece
+// OYUNCUNUN KENDİ bağışlarıyla büyür (gerçek çok-oyunculu backend yok, bkz.
+// dosyanın üstündeki genel not); myNpDonated aynı toplamı ayrı tutar çünkü
+// klandan ayrılınca sadece kendi payının bir kısmı geri veriliyor (bkz.
+// leaveClan), treasury.np'nin kendisi (varsayımsal diğer üyelerin payı da
+// içerdiğinden) o hesaplamada kullanılmıyor.
+function freshTreasury() {
+  return { np: 0, gold: 0, diamonds: 0 };
+}
+
 export function foundClan(player, name) {
   if (player.clan) return { player, founded: false, reason: "Zaten bir klana üyesin." };
   const trimmed = (name || "").trim();
@@ -96,6 +107,10 @@ export function foundClan(player, name) {
     createdAt: Date.now(),
     members: Array.from({ length: memberCount }, () => spawnClanMemberRandom(player.race, "member")),
     dungeon: freshDungeon(),
+    treasury: freshTreasury(),
+    buildingLevel: 1,
+    myNpDonated: 0,
+    boss: null,
   };
   return { player: { ...player, diamonds: player.diamonds - CLAN_FOUND_COST_DIAMONDS, clan }, founded: true };
 }
@@ -124,12 +139,22 @@ export function joinClan(player, decoyClan) {
     id: decoyClan.id, name: decoyClan.name, color: decoyClan.color,
     role: "member", founded: false, createdAt: Date.now(),
     members: decoyClan.members, dungeon: freshDungeon(),
+    treasury: freshTreasury(),
+    buildingLevel: 1,
+    myNpDonated: 0,
+    boss: null,
   };
   return { player: { ...player, clan }, joined: true };
 }
 
+// Klandan ayrılınca kendi bağışladığın toplam NP'nin
+// CLAN_NP_DONATION_REFUND_RATE'i geri veriliyor (kullanıcı isteği) —
+// klanın kendisi (diğer üyelerin bağışları, hazine, bina, boss durumu)
+// hiç etkilenmiyor, çünkü ayrılan tek kişi sen olduğun için o veri artık
+// senin player nesnende yaşamıyor olacak.
 export function leaveClan(player) {
-  return { ...player, clan: null };
+  const refund = Math.round((player.clan?.myNpDonated || 0) * CLAN_NP_DONATION_REFUND_RATE);
+  return { player: { ...player, clan: null, nationalPoint: player.nationalPoint + refund }, refund };
 }
 
 export function promoteMember(player, memberId) {
@@ -146,8 +171,82 @@ export function demoteMember(player, memberId) {
   return { ...player, clan: { ...player.clan, members } };
 }
 
-function todayKey() {
+export function todayKey() {
   return new Date().toDateString();
+}
+
+// NP/gold/elmas bağışı — üçü de klan hazinesini besler (bkz. data/clanBoss.js
+// için boss açma şartları ve bina yükseltme maliyeti). NP ayrıca kendi payını
+// (myNpDonated) ayrı tutar çünkü ayrılınca sadece o geri veriliyor (bkz.
+// leaveClan) — gold/elmas bağışının hiçbir geri ödemesi yok (kullanıcı
+// isteği: sadece NP için %35 iade var).
+export function donateNP(player, amount) {
+  if (!player.clan) return { player, donated: false, reason: "Bir klana üye değilsin." };
+  if (!Number.isFinite(amount) || amount <= 0) return { player, donated: false, reason: "Geçerli bir miktar gir." };
+  if (player.nationalPoint < amount) return { player, donated: false, reason: "Yeterli NP'in yok." };
+  return {
+    player: {
+      ...player,
+      nationalPoint: player.nationalPoint - amount,
+      clan: { ...player.clan, treasury: { ...player.clan.treasury, np: player.clan.treasury.np + amount }, myNpDonated: player.clan.myNpDonated + amount },
+    },
+    donated: true,
+  };
+}
+
+export function donateGold(player, amount) {
+  if (!player.clan) return { player, donated: false, reason: "Bir klana üye değilsin." };
+  if (!Number.isFinite(amount) || amount <= 0) return { player, donated: false, reason: "Geçerli bir miktar gir." };
+  if (player.gold < amount) return { player, donated: false, reason: "Yeterli altının yok." };
+  return {
+    player: { ...player, gold: player.gold - amount, clan: { ...player.clan, treasury: { ...player.clan.treasury, gold: player.clan.treasury.gold + amount } } },
+    donated: true,
+  };
+}
+
+export function donateDiamonds(player, amount) {
+  if (!player.clan) return { player, donated: false, reason: "Bir klana üye değilsin." };
+  if (!Number.isFinite(amount) || amount <= 0) return { player, donated: false, reason: "Geçerli bir miktar gir." };
+  if (player.diamonds < amount) return { player, donated: false, reason: "Yeterli elmasın yok." };
+  return {
+    player: { ...player, diamonds: player.diamonds - amount, clan: { ...player.clan, treasury: { ...player.clan.treasury, diamonds: player.clan.treasury.diamonds + amount } } },
+    donated: true,
+  };
+}
+
+// Klan Binası — tek genel seviye (1-5), bkz. data/clanBoss.js'teki notlar
+// (gerçek bina türleri kullanıcı tarafından sonra tanımlanacak). Sadece
+// lider/yardımcı yükseltebilir — Klan Zindanı'nı başlatma yetkisiyle aynı
+// kural (bkz. canStartDungeon).
+export function canUpgradeClanBuilding(player) {
+  if (!player.clan) return { ok: false, reason: "Bir klana üye değilsin." };
+  if (player.clan.role !== "leader" && player.clan.role !== "officer") return { ok: false, reason: "Sadece lider/yardımcı yükseltebilir." };
+  if (player.clan.buildingLevel >= CLAN_BUILDING_MAX_LEVEL) return { ok: false, reason: "Klan Binası zaten en üst seviyede." };
+  const cost = CLAN_BUILDING_UPGRADE_COST[player.clan.buildingLevel + 1];
+  if (player.clan.treasury.gold < cost.gold || player.clan.treasury.diamonds < cost.diamonds) {
+    return { ok: false, reason: `Hazinede ${cost.gold}g ve ${cost.diamonds} elmas gerekiyor.` };
+  }
+  return { ok: true, cost };
+}
+
+export function upgradeClanBuilding(player) {
+  const check = canUpgradeClanBuilding(player);
+  if (!check.ok) return { player, upgraded: false, reason: check.reason };
+  return {
+    player: {
+      ...player,
+      clan: {
+        ...player.clan,
+        buildingLevel: player.clan.buildingLevel + 1,
+        treasury: {
+          ...player.clan.treasury,
+          gold: player.clan.treasury.gold - check.cost.gold,
+          diamonds: player.clan.treasury.diamonds - check.cost.diamonds,
+        },
+      },
+    },
+    upgraded: true,
+  };
 }
 
 export function canStartDungeon(player) {

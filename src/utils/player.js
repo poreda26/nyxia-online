@@ -170,7 +170,13 @@ export function migratePlayer(player) {
     nationalPoint: player.nationalPoint ?? STARTING_NATIONAL_POINT,
     weeklyPoint: player.weeklyPoint ?? 0,
     weekId: player.weekId || currentWeekId(),
-    clan: player.clan ?? null,
+    // Bu alanlar (treasury/buildingLevel/myNpDonated/boss) klan bağış/boss
+    // sisteminden ÖNCE oluşturulmuş bir klanda eksik olabilir — spread sırası
+    // sayesinde player.clan'daki mevcut değerler bu varsayılanların üzerine
+    // yazıyor, sadece GERÇEKTEN eksik olanlar dolduruluyor.
+    clan: player.clan
+      ? { treasury: { np: 0, gold: 0, diamonds: 0 }, buildingLevel: 1, myNpDonated: 0, boss: null, ...player.clan }
+      : null,
     autoBattle: player.autoBattle
       ? { autoSkill: false, ...player.autoBattle }
       : { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false },
