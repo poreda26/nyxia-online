@@ -1,4 +1,5 @@
 import { MONSTER_QUESTS, AWAKENING_QUEST } from "../data/quests";
+import { uid } from "./random";
 
 // Progress is always derived live from player.monsterKills (a plain
 // cumulative counter incremented in BattleTab#applyLoot on every kill) —
@@ -19,11 +20,16 @@ export function claimQuest(player, questId) {
   if (isQuestClaimed(player, questId)) return { player, claimed: false, reason: "Ödül zaten alındı." };
   const { done } = questProgress(player, quest);
   if (!done) return { player, claimed: false, reason: "Görev henüz tamamlanmadı." };
+  // Her görev, kendi haritasının tier'ından bir Sandık da veriyor — Kırma
+  // panelinden açılır, aynı rollLoot(tier, playerClass) havuzunu kullanır
+  // (bkz. utils/loot.js, components/ChestModal.jsx).
+  const chest = { id: uid(), tier: quest.tier };
   return {
     player: {
       ...player,
       gold: player.gold + quest.goldReward,
       xp: player.xp + quest.xpReward,
+      chests: [...(player.chests || []), chest],
       claimedQuests: [...(player.claimedQuests || []), questId],
     },
     claimed: true,

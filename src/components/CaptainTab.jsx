@@ -19,7 +19,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
     const result = claimQuest(player, questId);
     if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
     setPlayer(result.player);
-    pushToast(`Ödül alındı: +${result.quest.goldReward} altın, +${result.quest.xpReward} XP`, "loot");
+    pushToast(`Ödül alındı: +${result.quest.goldReward} altın, +${result.quest.xpReward} XP, T${result.quest.tier} Sandık`, "loot");
   };
 
   const awaken = () => {
@@ -124,7 +124,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
               <BarTrack pct={(current / target) * 100} color={color} thin />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <div style={{ fontSize: 10, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 4 }}>
-                  <Gift size={11} /> {q.goldReward}g · {q.xpReward} XP
+                  <Gift size={11} /> {q.goldReward}g · {q.xpReward} XP · T{q.tier} Sandık
                 </div>
                 <button
                   style={{ ...styles.tinyBtn, background: done && !claimed ? color : "var(--bg-panel-alt)", color: done && !claimed ? "#0B0C10" : "var(--text-faint)" }}

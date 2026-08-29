@@ -6,15 +6,17 @@ import { MAPS } from "./maps";
 // bir tabloya (TIER_QUEST_TABLE) göre belirlenir — o tier'ın doğal grind
 // hacminin küçük ama fark edilir bir dilimi, tamamen kendiliğinden dolmasın
 // diye. See utils/quests.js.
-// Altın ödülleri sabit tutuldu, XP ödülleri ×2'ye çıkarıldı (kullanıcı
+// Altın ödülleri sabit tutuldu, XP ödülleri ~×3'e çıkarıldı (kullanıcı
 // isteği) — görev panosu artık ekonomiyi şişirmeden seviye ilerlemesinde
-// daha büyük bir katkı sağlıyor.
+// çok daha büyük bir katkı sağlıyor. Ayrıca her görev artık kendi
+// haritasının tier'ından bir Sandık da veriyor (bkz. utils/quests.js#
+// claimQuest) — chestTier, MONSTER_QUESTS'teki map.tier ile aynı.
 const TIER_QUEST_TABLE = {
-  1: { target: 50, goldReward: 150, xpReward: 500 },
-  2: { target: 70, goldReward: 400, xpReward: 1300 },
-  3: { target: 90, goldReward: 800, xpReward: 2600 },
-  4: { target: 110, goldReward: 1300, xpReward: 4400 },
-  5: { target: 60, goldReward: 2000, xpReward: 8000 },
+  1: { target: 50, goldReward: 150, xpReward: 1450 },
+  2: { target: 70, goldReward: 400, xpReward: 3750 },
+  3: { target: 90, goldReward: 800, xpReward: 7500 },
+  4: { target: 110, goldReward: 1300, xpReward: 12700 },
+  5: { target: 60, goldReward: 2000, xpReward: 23000 },
 };
 
 const QUEST_NAMES = {
