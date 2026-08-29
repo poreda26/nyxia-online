@@ -22,7 +22,7 @@ const STEPS = [
   {
     icon: Package, color: "#5FA8A0",
     title: "Envanter",
-    text: "Düşen eşyaları buradan kuşan. 12 slotluk bir kuşanma paneli var — sınıfına uymayan zırhlar kilitli görünür (kuşanamazsın), ama yine de Pazar'dan satabilir ya da ilana çıkarabilirsin.",
+    text: "Düşen eşyaları buradan kuşan. 12 slotluk bir kuşanma paneli var — sınıfına uymayan zırhlar kilitli görünür, kuşanamazsın.",
   },
   {
     icon: Store, color: "#8B6FC9",
@@ -37,7 +37,7 @@ const STEPS = [
   {
     icon: ArrowUpCircle, color: "#4FC3D9",
     title: "Yükselt",
-    text: "Parşömen ve altın karşılığında ekipmanını +8'e kadar güçlendirebilirsin — Yükseltme Ustası'nı \"Daha Fazla\" menüsünde bulursun.",
+    text: "Parşömen ve altın karşılığında ekipmanını +8'e kadar güçlendirebilirsin — Yükseltme Ustası'nı alt menüyü kaydırarak bulursun.",
   },
   {
     icon: Shield, color: "#A34FD9",
