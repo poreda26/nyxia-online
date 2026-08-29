@@ -140,6 +140,7 @@ export const styles = {
   bagSlotDragOver: { borderStyle: "solid", borderColor: "#D4AF6A", background: "var(--bg-panel-alt)" },
 
   forgeRow: { display: "flex", gap: 10, alignItems: "flex-start", marginTop: 10 },
+  forgeCol: { display: "flex", flexDirection: "column", alignItems: "center", gap: 10 },
   forgeColLabel: { fontSize: 8, color: "var(--text-faint)", marginBottom: 5, textAlign: "center", letterSpacing: 0.5, textTransform: "uppercase" },
   forgeItemSlot: {
     position: "relative", width: 58, height: 58, borderRadius: 10, background: "var(--bg-panel)",
@@ -149,7 +150,7 @@ export const styles = {
     position: "relative", width: 50, height: 50, borderRadius: 10, background: "var(--bg-panel)",
     borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
   },
-  forgeScrollGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, width: 142 },
+  forgeScrollGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, width: "100%", maxWidth: 190 },
   forgeScrollSlot: {
     position: "relative", width: "100%", aspectRatio: "1 / 1", borderRadius: 8, background: "var(--bg-panel)",
     borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)", display: "flex", flexDirection: "column",

@@ -185,74 +185,82 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
         Kuşanılı bir eşyayı yükseltmek için önce Envanter'den çıkar, çantana düşsün. Maksimum seviye +{MAX_UPGRADE_LEVEL}.
       </p>
 
+      {/* Sıra: Eşya (basacağımız eşya) → 9 kutuluk parşömen ızgarası → Sonuç,
+          soldan sağa okunacak şekilde. Izgara flex:1 ile satırın kalan tüm
+          genişliğini dolduruyor (bkz. forgeScrollGrid, artık sabit 142px
+          değil) — bu sayede sağda boş alan kalmıyor ve dar telefon
+          ekranlarında da kutular otomatik küçülüyor. Bonus, Eşya'nın altına
+          (ikisi de forge'a "girdi" olarak konan şeyler); Mağaza da Sonuç'un
+          altına (yardımcı eylemler) yerleştirildi — satır artık dört ayrı
+          sütun yerine üç dengeli sütun. */}
       <div style={styles.forgeRow}>
-        <div>
-          <div style={styles.forgeColLabel}>Eşya</div>
-          <button
-            style={{ ...styles.forgeItemSlot, ...(stagedItem ? { borderColor: `${itemTierColor(stagedItem.tier)}88`, background: `${itemTierColor(stagedItem.tier)}1c` } : styles.bagSlotEmpty) }}
-            onClick={returnStagedItem}
-          >
-            {stagedItem ? (
-              <>
-                <ItemIcon item={stagedItem} size={42} color={itemTierColor(stagedItem.tier)} strokeWidth={1.4} />
-                {stagedItem.upgradeLevel > 0 && <span style={styles.bagSlotBadge}>+{stagedItem.upgradeLevel}</span>}
-              </>
-            ) : (
-              <Plus size={18} color="var(--text-faint)" strokeWidth={1.6} />
-            )}
-          </button>
-        </div>
+        <div style={styles.forgeCol}>
+          <div>
+            <div style={styles.forgeColLabel}>Eşya</div>
+            <button
+              style={{ ...styles.forgeItemSlot, ...(stagedItem ? { borderColor: `${itemTierColor(stagedItem.tier)}88`, background: `${itemTierColor(stagedItem.tier)}1c` } : styles.bagSlotEmpty) }}
+              onClick={returnStagedItem}
+            >
+              {stagedItem ? (
+                <>
+                  <ItemIcon item={stagedItem} size={42} color={itemTierColor(stagedItem.tier)} strokeWidth={1.4} />
+                  {stagedItem.upgradeLevel > 0 && <span style={styles.bagSlotBadge}>+{stagedItem.upgradeLevel}</span>}
+                </>
+              ) : (
+                <Plus size={18} color="var(--text-faint)" strokeWidth={1.6} />
+              )}
+            </button>
+          </div>
 
-        <div>
-          <div style={styles.forgeColLabel}>Bonus</div>
-          <button
-            style={{ ...styles.forgeSmallSlot, ...(bonusScrollActive ? { borderColor: "#D4AF6A88", background: "#D4AF6A1c" } : styles.bagSlotEmpty) }}
-            onClick={returnBonusScroll}
-            title="Yükseltme şansını artırır"
-          >
-            {bonusScrollActive ? <Star size={16} color="#D4AF6A" strokeWidth={1.6} /> : <Plus size={14} color="var(--text-faint)" strokeWidth={1.6} />}
-          </button>
-        </div>
-
-        <div>
-          <div style={styles.forgeColLabel}>Sonuç</div>
-          <div style={{ ...styles.forgeSmallSlot, ...(outputItem ? { borderColor: `${itemTierColor(outputItem.tier)}88`, background: `${itemTierColor(outputItem.tier)}1c` } : {}) }}>
-            {outputItem && <ItemIcon item={outputItem} size={36} color={itemTierColor(outputItem.tier)} strokeWidth={1.4} />}
+          <div>
+            <div style={styles.forgeColLabel}>Bonus</div>
+            <button
+              style={{ ...styles.forgeSmallSlot, ...(bonusScrollActive ? { borderColor: "#D4AF6A88", background: "#D4AF6A1c" } : styles.bagSlotEmpty) }}
+              onClick={returnBonusScroll}
+              title="Yükseltme şansını artırır"
+            >
+              {bonusScrollActive ? <Star size={16} color="#D4AF6A" strokeWidth={1.6} /> : <Plus size={14} color="var(--text-faint)" strokeWidth={1.6} />}
+            </button>
           </div>
         </div>
 
-        <div>
-          <div style={styles.forgeColLabel}>Mağaza</div>
-          <button style={styles.forgeSmallSlot} onClick={() => setShopOpen((v) => !v)}>
-            <ScrollText size={18} color="#D4AF6A" strokeWidth={1.6} />
-          </button>
+        <div style={{ ...styles.forgeCol, flex: 1, minWidth: 0 }}>
+          <div style={styles.forgeColLabel}>Parşömenler</div>
+          <div style={styles.forgeScrollGrid}>
+            {scrollBoxes.map((box, i) => {
+              const isMatch = !!stagedItem && !!box && box.tier === stagedItem.tier;
+              return (
+                <button
+                  key={i}
+                  style={{
+                    ...styles.forgeScrollSlot,
+                    ...(box ? { borderColor: `${itemTierColor(box.tier)}88`, background: `${itemTierColor(box.tier)}1c` } : styles.bagSlotEmpty),
+                    ...(isMatch ? styles.bagSlotSelected : {}),
+                  }}
+                  onClick={() => returnScroll(i)}
+                >
+                  {box && <ScrollText size={15} color={itemTierColor(box.tier)} strokeWidth={1.6} />}
+                  {box && <span style={{ fontSize: 7, color: itemTierColor(box.tier), marginTop: 1 }}>T{box.tier}</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      {/* Kendi satırında — üsttekiyle (Eşya+Bonus+Sonuç+Mağaza, 238px) aynı
-          satıra sığdırılmaya çalışılırsa (eski hâl) toplam genişlik 420px'i
-          aşıp dar telefon ekranlarında taşıyordu (kullanıcı: "her telefon
-          için ekran uyumluluğu olmalı"). */}
-      <div style={{ marginTop: 10 }}>
-        <div style={styles.forgeColLabel}>Parşömenler</div>
-        <div style={styles.forgeScrollGrid}>
-          {scrollBoxes.map((box, i) => {
-            const isMatch = !!stagedItem && !!box && box.tier === stagedItem.tier;
-            return (
-              <button
-                key={i}
-                style={{
-                  ...styles.forgeScrollSlot,
-                  ...(box ? { borderColor: `${itemTierColor(box.tier)}88`, background: `${itemTierColor(box.tier)}1c` } : styles.bagSlotEmpty),
-                  ...(isMatch ? styles.bagSlotSelected : {}),
-                }}
-                onClick={() => returnScroll(i)}
-              >
-                {box && <ScrollText size={15} color={itemTierColor(box.tier)} strokeWidth={1.6} />}
-                {box && <span style={{ fontSize: 7, color: itemTierColor(box.tier), marginTop: 1 }}>T{box.tier}</span>}
-              </button>
-            );
-          })}
+        <div style={styles.forgeCol}>
+          <div>
+            <div style={styles.forgeColLabel}>Sonuç</div>
+            <div style={{ ...styles.forgeSmallSlot, ...(outputItem ? { borderColor: `${itemTierColor(outputItem.tier)}88`, background: `${itemTierColor(outputItem.tier)}1c` } : {}) }}>
+              {outputItem && <ItemIcon item={outputItem} size={36} color={itemTierColor(outputItem.tier)} strokeWidth={1.4} />}
+            </div>
+          </div>
+
+          <div>
+            <div style={styles.forgeColLabel}>Mağaza</div>
+            <button style={styles.forgeSmallSlot} onClick={() => setShopOpen((v) => !v)}>
+              <ScrollText size={18} color="#D4AF6A" strokeWidth={1.6} />
+            </button>
+          </div>
         </div>
       </div>
 
