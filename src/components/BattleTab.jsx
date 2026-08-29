@@ -28,6 +28,33 @@ function buffMultiplier(buffs, stat) {
   return buffs.filter((b) => b.stat === stat).reduce((mult, b) => mult * b.mult, 1);
 }
 
+// Otomatik Saldırı için beceri seçimi — düz saldırıdan önce denenir (bkz.
+// aşağıdaki auto-battle effect'i). Öncelik sırası: bitirici (canavar eşiğin
+// altındaysa) > henüz aktif olmayan bir güçlendirme > en güçlü hasar/DoT
+// becerisi. Sadece bekleme süresi dolmuş VE mana yeten becerileri dener;
+// hiçbiri uygun değilse null döner ve çağıran düz saldırıya düşer.
+function pickAutoSkill({ loadout, playerClass, skillCooldowns, mp, monsterHpPct, buffs }) {
+  const usable = loadout
+    .filter(Boolean)
+    .map((id) => classSkills(playerClass).find((s) => s.id === id))
+    .filter((s) => s && (skillCooldowns[s.id] || 0) === 0 && mp >= s.mpCost);
+  if (usable.length === 0) return null;
+
+  const execute = usable.find((s) => s.effect.type === "execute" && monsterHpPct <= s.effect.hpPctThreshold);
+  if (execute) return execute.id;
+
+  const activeBuffStats = new Set(buffs.map((b) => b.stat));
+  const buff = usable.find(
+    (s) => (s.effect.type === "buffAtk" && !activeBuffStats.has("atk")) || (s.effect.type === "buffDef" && !activeBuffStats.has("def"))
+  );
+  if (buff) return buff.id;
+
+  const damage = usable
+    .filter((s) => s.effect.type === "damage" || s.effect.type === "dot")
+    .sort((a, b) => (b.effect.mult || 1) - (a.effect.mult || 1))[0];
+  return damage ? damage.id : null;
+}
+
 export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
   const [monster, setMonster] = useState(null); // active monster template
   const [battle, setBattle] = useState(null); // {monsterHp, monsterMaxHp, log, playerHp}
@@ -405,12 +432,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // bile `autoBattleOn` false'a düşer ve döngü otomatik durur.
   const autoBattleAccess = hasAutoBattleAccess(player);
   const autoBattleOn = !!player.autoBattle?.enabled && autoBattleAccess;
+  const AUTO_BATTLE_DEFAULTS = { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false };
   const toggleAutoBattle = () => {
     if (!autoBattleAccess) { pushToast("Otomatik Saldırı bir Apex/Mythic Premium özelliğidir.", "warn"); return; }
-    setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { hpThreshold: 35, mpThreshold: 35 }), enabled: !p.autoBattle?.enabled } }));
+    setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, enabled: !p.autoBattle?.enabled } }));
   };
-  const setHpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { enabled: false, mpThreshold: 35 }), hpThreshold: v } }));
-  const setMpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { enabled: false, hpThreshold: 35 }), mpThreshold: v } }));
+  const setHpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, hpThreshold: v } }));
+  const setMpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, mpThreshold: v } }));
+  const toggleAutoSkill = () => setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, autoSkill: !p.autoBattle?.autoSkill } }));
 
   // Otomatik Saldırı: her aksiyondan sonra `battle`/`player.hp`/`player.mp`
   // değiştiği için bu effect yeniden tetiklenir ve bir sonraki aksiyonu
@@ -430,11 +459,24 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const mpCd = battle.potionCooldowns.mp || 0;
       if (hpPct < hpThreshold && hpCd === 0 && hpPotionTier) {
         handlePotion("hp");
-      } else if (mpPct < mpThreshold && mpCd === 0 && mpPotionTier) {
-        handlePotion("mp");
-      } else {
-        attack();
+        return;
       }
+      if (mpPct < mpThreshold && mpCd === 0 && mpPotionTier) {
+        handlePotion("mp");
+        return;
+      }
+      if (player.autoBattle?.autoSkill) {
+        const skillId = pickAutoSkill({
+          loadout: player.skills.loadout,
+          playerClass: player.class,
+          skillCooldowns: battle.skillCooldowns,
+          mp: player.mp,
+          monsterHpPct: battle.monsterHp / battle.monsterMaxHp,
+          buffs: battle.buffs,
+        });
+        if (skillId) { useSkill(skillId); return; }
+      }
+      attack();
     }, 700);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -580,6 +622,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                   style={styles.sliderInput}
                 />
               </div>
+              <button
+                onClick={toggleAutoSkill}
+                style={{
+                  ...styles.toggleRow, width: "100%", marginTop: 8, background: player.autoBattle?.autoSkill ? "#8B6FC914" : "var(--bg-panel-alt)",
+                  border: "1px solid", borderColor: player.autoBattle?.autoSkill ? "#8B6FC966" : "var(--border)",
+                  borderRadius: 10, padding: "8px 12px", cursor: "pointer",
+                }}
+              >
+                <span style={{ fontSize: 11, color: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--text-muted)" }}>
+                  Otomatik Beceri Kullan — {player.autoBattle?.autoSkill ? "Açık" : "Kapalı"}
+                </span>
+                <span style={{ ...styles.toggleSwitch, background: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--bg-panel-alt)", justifyContent: player.autoBattle?.autoSkill ? "flex-end" : "flex-start" }}>
+                  <span style={styles.toggleKnob} />
+                </span>
+              </button>
             </div>
           )}
 

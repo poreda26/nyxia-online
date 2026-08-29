@@ -107,7 +107,9 @@ export function initialPlayer(cls, race, nickname) {
     // ekranındaki ikon aynı `enabled` alanını değiştirir) ve
     // components/CharacterTab.jsx'in "Otomatik Saldırı" alt sekmesi. Eşikler
     // yüzde (0-100), can/mana o yüzdenin ALTINA düşünce ilgili pot içiliyor.
-    autoBattle: { enabled: false, hpThreshold: 35, mpThreshold: 35 },
+    // autoSkill: açıkken döngü her turda düz saldırı yerine kullanılabilir
+    // en iyi becerisini seçer (bkz. BattleTab.jsx#pickAutoSkill).
+    autoBattle: { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false },
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -165,7 +167,9 @@ export function migratePlayer(player) {
     weeklyPoint: player.weeklyPoint ?? 0,
     weekId: player.weekId || currentWeekId(),
     clan: player.clan ?? null,
-    autoBattle: player.autoBattle || { enabled: false, hpThreshold: 35, mpThreshold: 35 },
+    autoBattle: player.autoBattle
+      ? { autoSkill: false, ...player.autoBattle }
+      : { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false },
   };
 }
 

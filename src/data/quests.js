@@ -6,12 +6,15 @@ import { MAPS } from "./maps";
 // bir tabloya (TIER_QUEST_TABLE) göre belirlenir — o tier'ın doğal grind
 // hacminin küçük ama fark edilir bir dilimi, tamamen kendiliğinden dolmasın
 // diye. See utils/quests.js.
+// Altın ödülleri sabit tutuldu, XP ödülleri ×2'ye çıkarıldı (kullanıcı
+// isteği) — görev panosu artık ekonomiyi şişirmeden seviye ilerlemesinde
+// daha büyük bir katkı sağlıyor.
 const TIER_QUEST_TABLE = {
-  1: { target: 50, goldReward: 150, xpReward: 250 },
-  2: { target: 70, goldReward: 400, xpReward: 650 },
-  3: { target: 90, goldReward: 800, xpReward: 1300 },
-  4: { target: 110, goldReward: 1300, xpReward: 2200 },
-  5: { target: 60, goldReward: 2000, xpReward: 4000 },
+  1: { target: 50, goldReward: 150, xpReward: 500 },
+  2: { target: 70, goldReward: 400, xpReward: 1300 },
+  3: { target: 90, goldReward: 800, xpReward: 2600 },
+  4: { target: 110, goldReward: 1300, xpReward: 4400 },
+  5: { target: 60, goldReward: 2000, xpReward: 8000 },
 };
 
 const QUEST_NAMES = {
