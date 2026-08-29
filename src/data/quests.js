@@ -39,16 +39,26 @@ const QUEST_NAMES = {
 // göstermenin bir anlamı yok (bkz. components/CaptainTab.jsx'in bu alana
 // göre filtrelemesi, kullanıcı isteği: "Oyunun başından sonuna kadar tüm
 // görevler gözükmesin").
-export const MONSTER_QUESTS = MAPS.flatMap((map) =>
-  map.monsters.map((m) => ({
+// xpReward artık TIER_QUEST_TABLE'daki sabit değeri o haritanın canavarları
+// arasında canavarın kendi kill-XP'sine (m.xp) göre ORANTILI dağıtıyor
+// (kullanıcı isteği: "canavarlar güçlendikçe görevdeki exp ödülleri de
+// yükselsin") — haritanın ortalama canavarı hâlâ tablo değerini alır, ama
+// haritanın en güçlü canavarının görevi belirgin şekilde daha çok, en
+// zayıfınki daha az XP verir. goldReward ve target tier bazında sabit kaldı.
+export const MONSTER_QUESTS = MAPS.flatMap((map) => {
+  const table = TIER_QUEST_TABLE[map.tier];
+  const avgXp = map.monsters.reduce((sum, m) => sum + m.xp, 0) / map.monsters.length;
+  return map.monsters.map((m) => ({
     id: m.id,
     monsterId: m.id,
     tier: map.tier,
     requiredLevel: map.levelMin,
     name: QUEST_NAMES[m.id] || m.name,
-    ...TIER_QUEST_TABLE[map.tier],
-  }))
-);
+    target: table.target,
+    goldReward: table.goldReward,
+    xpReward: Math.round((table.xpReward * (m.xp / avgXp)) / 10) * 10,
+  }));
+});
 
 // Uyanış Sınavı — Lv.60'ta açılır, tamamlanınca player.awakened = true olur
 // ve karakter "Master X" unvanını alır (bkz. utils/quests.js#claimQuest,
