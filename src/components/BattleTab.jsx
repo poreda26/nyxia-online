@@ -193,14 +193,23 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       let drops = [`+${goldGain} altın`];
       if (xpGain > 0) drops.push(`+${xpGain} XP`);
 
-      // Bu öldürme tam olarak bir görevin hedefini tamamladıysa (daha önce
-      // değil) ve ödülü henüz alınmadıysa, oyuncuyu Kaptan'a yönlendiren
-      // ayrı bir satır ekleniyor (kullanıcı isteği) — hem loot toast'ının
-      // hem bu satırın aynı anda görünmesi için tek bir toast'a birleştirdik
-      // (App.jsx#pushToast tek seferde tek toast gösteriyor, bkz. ilgili not).
-      const finishedQuest = MONSTER_QUESTS.find((q) => q.monsterId === m.id);
-      if (finishedQuest && killsBefore < finishedQuest.target && np.monsterKills[m.id] >= finishedQuest.target && !(p.claimedQuests || []).includes(finishedQuest.id)) {
-        drops.push("Görev tamamlandı! Kaptan'ın yanına uğra.");
+      // Kullanıcı: "canavarı kestiğim zaman görev ilerlemesini göremiyorum"
+      // — önceden sadece hedefi TAM O ÖLDÜRMEDE tamamlayınca bir satır
+      // ekleniyordu, aradaki her öldürmede hiçbir ilerleme görünmüyordu.
+      // Artık ilgili görev bitene kadar HER öldürmede "Görev: X/Y" satırı
+      // ekleniyor; tamamlandığı öldürmede onun yerine yönlendirme satırı
+      // geliyor (tekrar tekrar "tamamlandı" spamlanmasın diye sadece o TEK
+      // öldürmede, sonrasında zaten Kaptan'a gidip alması gerekiyor).
+      const relatedQuest = MONSTER_QUESTS.find((q) => q.monsterId === m.id);
+      if (relatedQuest && !(p.claimedQuests || []).includes(relatedQuest.id)) {
+        const current = np.monsterKills[m.id];
+        if (current >= relatedQuest.target) {
+          if (killsBefore < relatedQuest.target) {
+            drops.push("Görev tamamlandı! Kaptan'ın yanına uğra.");
+          }
+        } else {
+          drops.push(`Görev: ${current}/${relatedQuest.target}`);
+        }
       }
 
       if (Math.random() < 0.10 * dropMult) {
