@@ -114,6 +114,11 @@ export function initialPlayer(cls, race, nickname) {
     // components/Hub.jsx, components/TutorialModal.jsx) — "Atla" ile her an
     // geçilebilir, Karakter sekmesinden istenirse tekrar açılabilir.
     tutorialSeen: false,
+    // Alt menüdeki "Envanter" sekmesine bir bildirim noktası koymak için —
+    // bir canavar/sandıktan yeni eşya düşünce true olur (bkz. BattleTab.jsx
+    // #applyLoot, InventoryTab.jsx#openChest), Envanter sekmesi açılınca
+    // Hub.jsx tarafından false'a çekilir.
+    hasNewItemNotice: false,
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -184,6 +189,7 @@ export function migratePlayer(player) {
     // biliyordur — tutorial'ın onlara aniden çıkmaması için varsayılan
     // olarak "görüldü" sayılırlar (Karakter sekmesinden yine de açabilirler).
     tutorialSeen: player.tutorialSeen ?? true,
+    hasNewItemNotice: player.hasNewItemNotice ?? false,
   };
 }
 
@@ -513,6 +519,27 @@ export function repairItem(player, item, discount = 0, bank = null) {
   const nextBank = bank ? bank.map((page) => page.map(patch)) : bank;
 
   return { player: { ...player, gold: player.gold - cost, equipped, inventory }, bank: nextBank, repaired: true, cost };
+}
+
+// Kullanıcı isteği: "Eşyaları çıkarmadan rot tamir yapılamıyor. Envanter'de
+// tamir butonu olsun." — repairItem zaten kuşanılı eşyaları da yerinde
+// yamıyordu (equipped bloğu, yukarıda), eksik olan tek şey UI'da o eşyaya
+// çıkarmadan ulaşacak bir yoldu. Bu ikili, üstündeki HER şeyi (silah+zırh)
+// TEK seferde, tek bir toplam ücret üzerinden tamir ediyor.
+export function totalEquippedRepairCost(player, discount = 0) {
+  return ALL_EQUIP_KEYS.reduce((sum, k) => sum + discountedRepairCost(player.equipped[k], discount), 0);
+}
+
+export function repairAllEquipped(player, discount = 0) {
+  const cost = totalEquippedRepairCost(player, discount);
+  if (cost <= 0) return { player, repaired: false, cost: 0 };
+  if (player.gold < cost) return { player, repaired: false, cost, reason: "Yeterli altının yok." };
+  const equipped = { ...player.equipped };
+  ALL_EQUIP_KEYS.forEach((k) => {
+    const it = equipped[k];
+    if (it && it.durability) equipped[k] = { ...it, currentDurability: it.durability };
+  });
+  return { player: { ...player, gold: player.gold - cost, equipped }, repaired: true, cost };
 }
 
 export function sellPrice(item) {

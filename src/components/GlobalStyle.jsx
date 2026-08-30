@@ -53,17 +53,17 @@ export default function GlobalStyle() {
       }
 
       .toast {
-        position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%);
-        background: var(--bg-panel-alt); border: 1px solid var(--border);
-        color: var(--text-primary); font-family: var(--font-body); font-size: 12px;
-        padding: 10px 16px; border-radius: 10px; z-index: 999; max-width: 90%;
-        box-shadow: 0 8px 24px -8px rgba(0,0,0,0.6);
-        animation: toastIn 0.25s ease;
-        text-align: center;
+        position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%);
+        background: var(--bg-panel-alt); border: 1.5px solid var(--border);
+        color: var(--text-primary); font-family: var(--font-body); font-size: 13px; font-weight: 600;
+        padding: 12px 18px; border-radius: 12px; z-index: 999; max-width: 92%;
+        box-shadow: 0 10px 28px -8px rgba(0,0,0,0.7);
+        animation: toastIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+        text-align: center; line-height: 1.5;
       }
       @keyframes toastIn {
-        0% { opacity: 0; transform: translate(-50%, 8px); }
-        100% { opacity: 1; transform: translate(-50%, 0); }
+        0% { opacity: 0; transform: translate(-50%, 14px) scale(0.92); }
+        100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
       }
       .forge-hit { animation: forgeHit 0.5s ease-in-out infinite; display: inline-block; }
       @keyframes forgeHit {
@@ -87,10 +87,17 @@ export default function GlobalStyle() {
         80% { transform: translateX(4px); }
       }
 
-      .toast-loot { border-color: #D4AF6A55; }
+      /* Kullanıcı: "exp gold düşen eşya bildirimi... yakalamakta
+         zorlanıyorum" — her öldürmede görünen loot bildirimi artık sadece
+         ince bir kenarlık değil, dolgun bir altın arka plan + daha güçlü
+         bir gölge taşıyor, göz kaçırmasın diye. */
+      .toast-loot {
+        border-color: #D4AF6A; background: linear-gradient(180deg, #D4AF6A2E, var(--bg-panel-alt) 65%);
+        box-shadow: 0 10px 32px -6px #D4AF6A66;
+      }
       .toast-warn { border-color: #C9425A55; color: #E8A5AF; }
       .toast-heal { border-color: #5FA8A055; }
-      .toast-level { border-color: #4FC3D955; box-shadow: 0 8px 24px -6px #4FC3D955; }
+      .toast-level { border-color: #4FC3D9; box-shadow: 0 10px 32px -6px #4FC3D988; }
 
       button { font-family: var(--font-body); cursor: pointer; }
       input, select { font-family: var(--font-body); }

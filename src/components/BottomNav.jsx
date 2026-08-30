@@ -18,15 +18,22 @@ const TABS = [
   { key: "character", label: "Karakter", icon: User },
 ];
 
-export default function BottomNav({ tab, setTab }) {
+// notifications: { [tabKey]: boolean } — kullanıcı isteği: "yeni eşya
+// düştüğü zaman, görev tamamlandığı zaman, verilmeyen statü puanı
+// bulunduğu zaman, yeni bir mesaj geldiği zaman menüde bildirim belli
+// olsun." Hub.jsx bu haritayı player state'inden türetip buraya geçiyor —
+// hangi sekmelerin bildirim taşıyabileceğini bilmesi gereken tek yer burası.
+export default function BottomNav({ tab, setTab, notifications = {} }) {
   return (
     <div style={styles.bottomNav}>
       {TABS.map((it) => {
         const Icon = it.icon;
         const active = tab === it.key;
+        const hasNotice = !!notifications[it.key];
         return (
           <button key={it.key} onClick={() => setTab(it.key)} style={styles.navBtn}>
             <Icon size={17} strokeWidth={active ? 2.25 : 1.6} color={active ? "var(--text-primary)" : "var(--text-faint)"} />
+            {hasNotice && <span style={styles.navNotifDot} />}
             <span style={{ fontSize: 9, marginTop: 3, color: active ? "var(--text-primary)" : "var(--text-faint)", letterSpacing: 0, whiteSpace: "nowrap" }}>
               {it.label}
             </span>

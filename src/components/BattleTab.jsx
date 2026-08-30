@@ -210,6 +210,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         if (item) {
           const addResult = addItemToInventory(np, item);
           np = addResult.player;
+          if (addResult.added) np.hasNewItemNotice = true;
           const kindLabel = item.kind === "weapon" ? "Silah" : item.kind === "accessory" ? "Aksesuar" : "Zırh";
           drops.push(addResult.added ? `${kindLabel} düştü: ${item.name}` : `${item.name} düştü ama ${addResult.reason}`);
         }

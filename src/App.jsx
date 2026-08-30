@@ -25,10 +25,14 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
+  // Kullanıcı: loot bildirimini "yakalamakta zorlanıyorum" — 2.6s özellikle
+  // öldürme bildirimi gibi çok parçalı (altın+XP+drop+görev) mesajlar için
+  // yetersizdi, 3.6s'ye çıkarıldı (bkz. GlobalStyle.jsx'teki görsel
+  // güçlendirmeyle birlikte).
   const pushToast = useCallback((msg, tone = "default") => {
     setToast({ msg, tone, id: uid() });
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
+    toastTimer.current = setTimeout(() => setToast(null), 3600);
   }, []);
 
   const initialUsername = loadLastUsername();

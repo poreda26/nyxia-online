@@ -1,21 +1,22 @@
 import { useState, useRef, useEffect } from "react";
-import { Ban } from "lucide-react";
+import { Ban, Check } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { BAG_SLOTS, bagWeightCapacity, bagWeightUsed, reconcileBagLayout } from "../utils/inventory";
 import { styles } from "../styles";
 import BarTrack from "./shared/BarTrack";
 import ItemIcon from "./ItemIcon";
 
-// Shared between InventoryTab (tap = select for the detail panel) and
-// UpgradeTab (tap = stage into the forge) — onItemTap(item, index) lets
-// each caller decide what a tap means. Reordering (pointer-based drag,
-// works for mouse and touch) always lives here since it's pure UI state
-// (player.bagLayout, see reconcileBagLayout) and has no gameplay effect
-// either way. Moves are a straight position swap — dragging an item onto an
-// empty box moves it there and leaves its old box empty, dragging it onto
-// another item swaps the two — so a player can freely arrange items into
-// whichever specific boxes they want, gaps included.
-export default function BagGrid({ player, setPlayer, onItemTap, selectedId }) {
+// Shared between InventoryTab (tap = select for the detail panel, or toggle
+// membership in bulkSelectedIds when in toplu-seçim mode) and UpgradeTab
+// (tap = stage into the forge) — onItemTap(item, index) lets each caller
+// decide what a tap means. Reordering (pointer-based drag, works for mouse
+// and touch) always lives here since it's pure UI state (player.bagLayout,
+// see reconcileBagLayout) and has no gameplay effect either way. Moves are a
+// straight position swap — dragging an item onto an empty box moves it
+// there and leaves its old box empty, dragging it onto another item swaps
+// the two — so a player can freely arrange items into whichever specific
+// boxes they want, gaps included.
+export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulkSelectedIds }) {
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const dragMovedRef = useRef(false);
@@ -57,7 +58,8 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId }) {
 
       <div style={styles.bagGrid}>
         {slots.map((item, i) => {
-          const isSelected = !!item && item.id === selectedId;
+          const isBulkSelected = !!item && !!bulkSelectedIds && bulkSelectedIds.has(item.id);
+          const isSelected = isBulkSelected || (!!item && item.id === selectedId);
           const locked = !!item && item.kind === "armor" && item.class !== player.class;
           const isDragSource = dragIndex === i;
           const isDragTarget = dragOverIndex === i && dragIndex !== null && dragIndex !== i;
@@ -101,6 +103,11 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId }) {
                 <span style={styles.bagSlotBadge}>+{item.upgradeLevel}</span>
               )}
               {locked && <Ban size={10} color="#E8A5AF" style={{ position: "absolute", top: 3, left: 3 }} />}
+              {isBulkSelected && (
+                <span style={{ position: "absolute", top: 3, right: 3, width: 14, height: 14, borderRadius: 7, background: "#5FA8A0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Check size={9} color="#0B0C10" strokeWidth={3} />
+                </span>
+              )}
             </button>
           );
         })}

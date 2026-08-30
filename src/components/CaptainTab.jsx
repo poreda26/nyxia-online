@@ -47,6 +47,20 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
   const lockedQuests = MONSTER_QUESTS.filter((q) => player.level < q.requiredLevel);
   const nextUnlockLevel = lockedQuests.length > 0 ? Math.min(...lockedQuests.map((q) => q.requiredLevel)) : null;
 
+  // Kullanıcı isteği: "tamamlanan görev en üstte gözüksün... canavarı
+  // kestikçe görev tamamlamasını görebilelim." — sıralama her render'da
+  // player.monsterKills'ten canlı yeniden hesaplanıyor (questProgress zaten
+  // buna bağlı), o yüzden bir görev tam bu öldürmede biterse anında en üste
+  // sıçrıyor. Öncelik: ödülü alınmayı bekleyen (done && !claimed) > devam
+  // eden > zaten alınmış (en altta, zaten soluk gösteriliyor).
+  const questRank = (q) => {
+    const { done } = questProgress(player, q);
+    const claimed = isQuestClaimed(player, q.id);
+    if (claimed) return 2;
+    return done ? 0 : 1;
+  };
+  const sortedQuests = [...unlockedQuests].sort((a, b) => questRank(a) - questRank(b));
+
   return (
     <div style={styles.panelScroll}>
       <SectionLabel>Kaptan</SectionLabel>
@@ -107,7 +121,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
 
       <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>Görevler</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {unlockedQuests.map((q) => {
+        {sortedQuests.map((q) => {
           const { current, target, done } = questProgress(player, q);
           const claimed = isQuestClaimed(player, q.id);
           const color = itemTierColor(q.tier);
