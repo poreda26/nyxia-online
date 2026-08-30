@@ -52,9 +52,14 @@ function buildArmorFromTemplate(a, tierId, dropClass, slot) {
 }
 
 export function rollArmor(tierId, forceClass) {
-  // Armor drops for a RANDOM class, not necessarily the player's own —
-  // this is what creates cross-class loot that needs to be traded away.
-  // forceClass lets the Trade Post hand back a same-class replacement.
+  // Kullanıcı isteği: "Sınıfa göre drop diye bir şey yok. Tüm eşyalar
+  // şansa bağlı olarak düşecek." — rollLoot artık forceClass'ı hep
+  // OYUNCUNUN KENDİ sınıfıyla çağırıyor (aşağıda), yani gerçek canavar
+  // dropları asla kilitli/başka-sınıf zırh vermiyor; her düşen zırh
+  // giyilebilir, sadece tier/slot şansa bağlı. forceClass yine de burada
+  // parametre olarak duruyor çünkü GM'in /zırh komutu (bkz. gmCommands.js)
+  // bilerek İSTEDİĞİ sınıfı ya da tamamen rastgele test edebilmeli — o,
+  // canavar drop'undan ayrı bir test aracı.
   const dropClass = forceClass || pick(Object.keys(CLASSES));
   const slot = pick(SLOTS).key;
   const options = ARMOR_SETS.filter((a) => a.cls === dropClass && a.slot === slot && a.tier === tierId);
@@ -214,12 +219,14 @@ export function buildStartingWeapon(cls) {
 }
 
 // Single entry point used by both monster drops and chest openings so the
-// loot table only lives in one place: ~38% weapon (own class, always
-// usable), ~34% armor (random class — the trade bait), ~28% accessory.
+// loot table only lives in one place: ~38% weapon, ~34% armor, ~28%
+// accessory — hepsi oyuncunun KENDİ sınıfına göre (kullanıcı isteği: "sınıfa
+// göre drop diye bir şey yok, tüm eşyalar şansa bağlı olarak düşecek"),
+// yani hangi kalem düşerse düşsün giyilebilir; tek değişken tier/slot şansı.
 export function rollLoot(tierId, playerClass) {
   const r = Math.random();
   if (r < 0.38) return rollWeapon(tierId, playerClass);
-  if (r < 0.72) return rollArmor(tierId);
+  if (r < 0.72) return rollArmor(tierId, playerClass);
   return rollAccessory(tierId);
 }
 
