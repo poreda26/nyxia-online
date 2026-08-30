@@ -52,14 +52,14 @@ function buildArmorFromTemplate(a, tierId, dropClass, slot) {
 }
 
 export function rollArmor(tierId, forceClass) {
-  // Kullanıcı isteği: "Sınıfa göre drop diye bir şey yok. Tüm eşyalar
-  // şansa bağlı olarak düşecek." — rollLoot artık forceClass'ı hep
-  // OYUNCUNUN KENDİ sınıfıyla çağırıyor (aşağıda), yani gerçek canavar
-  // dropları asla kilitli/başka-sınıf zırh vermiyor; her düşen zırh
-  // giyilebilir, sadece tier/slot şansa bağlı. forceClass yine de burada
-  // parametre olarak duruyor çünkü GM'in /zırh komutu (bkz. gmCommands.js)
-  // bilerek İSTEDİĞİ sınıfı ya da tamamen rastgele test edebilmeli — o,
-  // canavar drop'undan ayrı bir test aracı.
+  // Kullanıcı isteği (netleştirildi): "Sınıfa göre drop diye bir şey yok,
+  // tüm eşyalar şansa bağlı düşecek" — yani "ben warrior'ım diye priest
+  // zırhı düşmesin" DEĞİL, tam tersi: hangi sınıfa ait olduğu da tamamen
+  // şansa bağlı, oyuncunun kendi sınıfıyla sınırlanmıyor. Bu, Pazar'ı canlı
+  // tutan asıl mekanizma — kendi sınıfına uymayan bir zırh düşünce onu
+  // satıp/takas edip ihtiyacın olanı almak zorunda kalıyorsun. forceClass
+  // sadece GM'in /zırh komutu (bkz. gmCommands.js) belirli bir sınıfı test
+  // etmek istediğinde kullanılıyor.
   const dropClass = forceClass || pick(Object.keys(CLASSES));
   const slot = pick(SLOTS).key;
   const options = ARMOR_SETS.filter((a) => a.cls === dropClass && a.slot === slot && a.tier === tierId);
@@ -219,14 +219,15 @@ export function buildStartingWeapon(cls) {
 }
 
 // Single entry point used by both monster drops and chest openings so the
-// loot table only lives in one place: ~38% weapon, ~34% armor, ~28%
-// accessory — hepsi oyuncunun KENDİ sınıfına göre (kullanıcı isteği: "sınıfa
-// göre drop diye bir şey yok, tüm eşyalar şansa bağlı olarak düşecek"),
-// yani hangi kalem düşerse düşsün giyilebilir; tek değişken tier/slot şansı.
+// loot table only lives in one place: ~38% weapon (own class, always
+// usable), ~34% armor (tamamen şansa bağlı bir sınıfa ait — kullanıcı
+// isteği: "sınıfa göre drop diye bir şey yok, tüm eşyalar şansa bağlı
+// düşecek", kendi sınıfına uymayan zırh Pazar'ı canlı tutan takas malı),
+// ~28% accessory (zaten evrensel, hiçbir sınıfa kilitli değil).
 export function rollLoot(tierId, playerClass) {
   const r = Math.random();
   if (r < 0.38) return rollWeapon(tierId, playerClass);
-  if (r < 0.72) return rollArmor(tierId, playerClass);
+  if (r < 0.72) return rollArmor(tierId);
   return rollAccessory(tierId);
 }
 
