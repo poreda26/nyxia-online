@@ -45,6 +45,19 @@ function staffLevel(atk, hp, elementDmg, defAbility, reqMag, durability) {
 }
 
 export const CASTER_WEAPONS = [
+  // Wooden Staff — Tier 1 giriş asası. Kullanıcı testinde ortaya çıktı:
+  // bu tabloda T6 Unique'lerden ÖNCE hiçbir alt tier yoktu, yani Mage'in T1
+  // canavarlardan HİÇ silah düşmüyordu (rollFromWeaponTable boş dönüyordu).
+  // Elimizde gerçek KO'nun decrypted T1 staff verisi yok (altta ki
+  // uniqueler ekran görüntüsünden birebir alındı) — bu basit giriş eşyası
+  // onun yerine komşu tier1 silahların (Weight Hammer/Bow) güç bandına
+  // kalibre edildi, sabit tek satır (levels dizisi yok, forge'un ×1.18
+  // tahminiyle yükseliyor, bkz. utils/upgrade.js#bumpedStats).
+  {
+    tier: 1, levelMin: 1, levelMax: 15, name: "Wooden Staff", weaponType: "staff", weaponSlot: "twoHand",
+    weight: 3, atk: 10, mp: 5,
+    reqStats: [{ key: "mag", value: 50 }, { key: "int", value: 50 }],
+  },
   // Scorching Staff (Unique) — Flame. Görseli: kıvrık siyah-kızıl bir asa,
   // ucunda alevli bir kristal/kafatası motifi.
   {

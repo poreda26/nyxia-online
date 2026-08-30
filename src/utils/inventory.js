@@ -41,9 +41,13 @@ export function reconcileBagLayout(player) {
 // player.js'i import etmesi bir döngü yaratır — bu yüzden ALL_EQUIP_KEYS
 // burada yerel olarak tekrar tanımlanmıyor, doğrudan player.equipped'ın
 // kendi key'leri üzerinden dönülüyor.
-const CLASS_BASE_WEIGHT = { warrior: 90, rogue: 70, mage: 50, priest: 60 };
-const STR_WEIGHT_FACTOR = 0.8; // her STR puanı +0.8 kapasite
-const LEVEL_WEIGHT_PER_LEVEL = 1.5;
+// Kullanıcı isteği: "Çantamızın weighti çok düşük kalıyor. En az 2 katına
+// çıkar." — üç sabit de (taban/STR/seviye) ayrı ayrı ×2, böylece herhangi
+// bir karakter durumunda sonuç TAM OLARAK eskisinin iki katı oluyor (doğrusal
+// bir formül olduğu için tek tek ikiye katlamak toplamı da ikiye katlıyor).
+const CLASS_BASE_WEIGHT = { warrior: 180, rogue: 140, mage: 100, priest: 120 };
+const STR_WEIGHT_FACTOR = 1.6; // her STR puanı +1.6 kapasite
+const LEVEL_WEIGHT_PER_LEVEL = 3.0;
 
 export function bagWeightCapacity(player) {
   const equippedStr = Object.values(player.equipped).reduce((s, it) => s + (it?.statBonus?.str || 0), 0);

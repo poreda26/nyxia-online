@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Crown } from "lucide-react";
+import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy } from "lucide-react";
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
 import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
@@ -106,7 +106,12 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // closes.
   const attackLockRef = useRef(false);
 
-  const startBattle = (m) => {
+  // Bir canavarı ELLE seçmek her zaman Otomatik Saldırı'yı kapalı başlatır
+  // (ilk savaşa elle başlanmalı, kullanıcı isteği). Ama "Tekrar Savaş?"
+  // sorusuna Evet dendiğinde (preserveAutoBattle: true) önceki açık durum
+  // korunur — Hayır dendiğinde ya da savaştan çıkıldığında zaten ayrıca
+  // kapatılıyor (bkz. victoryMonster modalı ve endBattle).
+  const startBattle = (m, { preserveAutoBattle = false } = {}) => {
     attackLockRef.current = false;
     setMonster(m);
     setBattle({
@@ -116,13 +121,19 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       log: [`${m.name} karşına çıktı.`],
       ...EMPTY_BATTLE_EFFECTS,
     });
-    // Kullanıcı isteği: Otomatik Saldırı her yeni savaş başında (Tekrar
-    // Savaş'taki "Evet" dahil) kapalı başlasın — önceki savaştan kalma bir
-    // "açık" durumu asla bir sonrakine sızmasın, her seferinde elle açılsın.
-    setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
+    if (!preserveAutoBattle) {
+      setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
+    }
   };
 
-  const endBattle = () => { attackLockRef.current = false; setMonster(null); setBattle(null); };
+  // Savaştan çıkmak (Geri Çekil, ölüm, ya da Tekrar Savaş'a Hayır) Otomatik
+  // Saldırı'yı her zaman kapatır — bir sonraki savaşa asla "açık" sızmaz.
+  const endBattle = () => {
+    attackLockRef.current = false;
+    setMonster(null);
+    setBattle(null);
+    setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
+  };
 
   const pushLog = (log, line) => [...log.slice(-24), line];
 
@@ -184,7 +195,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         drops.push("Görev tamamlandı! Kaptan'ın yanına uğra.");
       }
 
-      if (Math.random() < 0.15 * dropMult) {
+      if (Math.random() < 0.10 * dropMult) {
         const item = rollLoot(map.tier, np.class);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
@@ -261,9 +272,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         setMonster(null);
         setBattle(null);
         // Ana ekrana otomatik dönmek yerine "Tekrar Savaş?" onayı çıkıyor
-        // (kullanıcı isteği) — Otomatik Saldırı açık olsa bile bu adım
-        // otomatikleşmiyor, yeni bir savaş HER ZAMAN buradan "Evet" ile
-        // manuel başlıyor (bkz. render'daki victoryMonster modalı).
+        // (kullanıcı isteği) — sonraki savaş hâlâ buradan "Evet"/"Hayır" ile
+        // elle karara bağlanıyor, sadece Otomatik Saldırı'nın açık durumu
+        // Evet dendiğinde korunuyor (bkz. render'daki victoryMonster modalı,
+        // startBattle'ın preserveAutoBattle parametresi).
         setVictoryMonster(wonMonster);
       }, 700);
       return;
@@ -571,7 +583,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                 ))}
               </div>
               <div style={styles.dropInfoRow}>
-                <span>Drop şansı: Ekipman (Zırh/Silah) %15 · Sandık %5</span>
+                <span>Drop şansı: Ekipman (Zırh/Silah) %10 · Sandık %5</span>
               </div>
             </>
           )}
@@ -580,78 +592,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       {monster && battle && (
         <div style={styles.battleArena}>
-          {/* Savaşın en üstünde, gözden kaçmayacak kadar belirgin bir
-              açık/kapalı anahtarı — önceki küçük ikon (canavar adının
-              yanındaki) fark edilmiyordu (kullanıcı geri bildirimi).
-              Savaş sürerken de her an dokunup kapatılabiliyor/açılabiliyor.
-              Apex/Mythic Premium olmayanlar için kilitli görünür — tıklayınca
-              döngüyü açmaz, sadece uyarı toast'ı gösterir. */}
-          <button
-            onClick={toggleAutoBattle}
-            style={{
-              ...styles.toggleRow, width: "100%", background: autoBattleOn ? "#5FA8A014" : "var(--bg-panel)",
-              border: "1px solid", borderColor: autoBattleOn ? "#5FA8A066" : "var(--border)",
-              borderRadius: 10, padding: "8px 12px", cursor: "pointer",
-              opacity: autoBattleAccess ? 1 : 0.7,
-            }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: autoBattleOn ? "#5FA8A0" : "var(--text-muted)" }}>
-              {autoBattleAccess ? <Bot size={15} strokeWidth={1.8} /> : <Lock size={13} strokeWidth={1.8} />}
-              Otomatik Saldırı — {autoBattleAccess ? (autoBattleOn ? "Açık" : "Kapalı") : "Premium Gerekli"}
-            </span>
-            {autoBattleAccess ? (
-              <span style={{ ...styles.toggleSwitch, background: autoBattleOn ? "#5FA8A0" : "var(--bg-panel-alt)", justifyContent: autoBattleOn ? "flex-end" : "flex-start" }}>
-                <span style={styles.toggleKnob} />
-              </span>
-            ) : (
-              <Crown size={14} color="#8B6FC9" strokeWidth={1.8} />
-            )}
-          </button>
-
-          {autoBattleAccess && (
-            <div style={styles.autoBattleCard}>
-              <div style={styles.sliderRow}>
-                <div style={styles.sliderLabelRow}>
-                  <span>HP Pot Eşiği</span>
-                  <span style={{ fontFamily: "var(--font-mono)", color: "#C9425A" }}>%{player.autoBattle?.hpThreshold ?? 35}</span>
-                </div>
-                <input
-                  type="range" min={0} max={90} step={5}
-                  value={player.autoBattle?.hpThreshold ?? 35}
-                  onChange={(e) => setHpThreshold(parseInt(e.target.value, 10))}
-                  style={styles.sliderInput}
-                />
-              </div>
-              <div style={styles.sliderRow}>
-                <div style={styles.sliderLabelRow}>
-                  <span>MP Pot Eşiği</span>
-                  <span style={{ fontFamily: "var(--font-mono)", color: "#4FC3D9" }}>%{player.autoBattle?.mpThreshold ?? 35}</span>
-                </div>
-                <input
-                  type="range" min={0} max={90} step={5}
-                  value={player.autoBattle?.mpThreshold ?? 35}
-                  onChange={(e) => setMpThreshold(parseInt(e.target.value, 10))}
-                  style={styles.sliderInput}
-                />
-              </div>
-              <button
-                onClick={toggleAutoSkill}
-                style={{
-                  ...styles.toggleRow, width: "100%", marginTop: 8, background: player.autoBattle?.autoSkill ? "#8B6FC914" : "var(--bg-panel-alt)",
-                  border: "1px solid", borderColor: player.autoBattle?.autoSkill ? "#8B6FC966" : "var(--border)",
-                  borderRadius: 10, padding: "8px 12px", cursor: "pointer",
-                }}
-              >
-                <span style={{ fontSize: 11, color: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--text-muted)" }}>
-                  Otomatik Beceri Kullan — {player.autoBattle?.autoSkill ? "Açık" : "Kapalı"}
-                </span>
-                <span style={{ ...styles.toggleSwitch, background: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--bg-panel-alt)", justifyContent: player.autoBattle?.autoSkill ? "flex-end" : "flex-start" }}>
-                  <span style={styles.toggleKnob} />
-                </span>
-              </button>
-            </div>
-          )}
-
           <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{monster.name}</span>
@@ -730,9 +670,76 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               <Zap size={14} color="#4FC3D9" /> {battle.potionCooldowns.mp > 0 ? battle.potionCooldowns.mp : (mpPotion?.count || 0)}
             </button>
           </div>
-          <button style={styles.ghostBtn} onClick={endBattle}>
-            <ArrowLeft size={13} /> Geri Çekil
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+            <button style={{ ...styles.ghostBtn, flex: 1 }} onClick={endBattle}>
+              <ArrowLeft size={13} /> Geri Çekil
+            </button>
+            {/* Savaş ekranının ALTINDA, küçük bir ikon (kullanıcı isteği —
+                önceden ekranın en üstünde, tam genişlikte bir anahtardı).
+                Apex/Mythic Premium olmayanlar için kilitli görünür — tıklayınca
+                döngüyü açmaz, sadece uyarı toast'ı gösterir. */}
+            <button
+              onClick={toggleAutoBattle}
+              title={autoBattleAccess ? `Otomatik Saldırı — ${autoBattleOn ? "Açık" : "Kapalı"}` : "Otomatik Saldırı bir Apex/Mythic Premium özelliğidir"}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                width: 40, borderRadius: 10, border: "1px solid",
+                background: autoBattleOn ? "#5FA8A0" : "var(--bg-panel-alt)",
+                borderColor: autoBattleOn ? "#5FA8A0" : "var(--border)",
+                opacity: autoBattleAccess ? 1 : 0.6, cursor: "pointer",
+              }}
+            >
+              {autoBattleAccess ? (
+                <Bot size={17} color={autoBattleOn ? "#0B0C10" : "var(--text-muted)"} strokeWidth={1.8} />
+              ) : (
+                <Lock size={15} color="var(--text-faint)" strokeWidth={1.8} />
+              )}
+            </button>
+          </div>
+
+          {autoBattleAccess && (
+            <div style={styles.autoBattleCard}>
+              <div style={styles.sliderRow}>
+                <div style={styles.sliderLabelRow}>
+                  <span>HP Pot Eşiği</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "#C9425A" }}>%{player.autoBattle?.hpThreshold ?? 35}</span>
+                </div>
+                <input
+                  type="range" min={0} max={90} step={5}
+                  value={player.autoBattle?.hpThreshold ?? 35}
+                  onChange={(e) => setHpThreshold(parseInt(e.target.value, 10))}
+                  style={styles.sliderInput}
+                />
+              </div>
+              <div style={styles.sliderRow}>
+                <div style={styles.sliderLabelRow}>
+                  <span>MP Pot Eşiği</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "#4FC3D9" }}>%{player.autoBattle?.mpThreshold ?? 35}</span>
+                </div>
+                <input
+                  type="range" min={0} max={90} step={5}
+                  value={player.autoBattle?.mpThreshold ?? 35}
+                  onChange={(e) => setMpThreshold(parseInt(e.target.value, 10))}
+                  style={styles.sliderInput}
+                />
+              </div>
+              <button
+                onClick={toggleAutoSkill}
+                style={{
+                  ...styles.toggleRow, width: "100%", marginTop: 8, background: player.autoBattle?.autoSkill ? "#8B6FC914" : "var(--bg-panel-alt)",
+                  border: "1px solid", borderColor: player.autoBattle?.autoSkill ? "#8B6FC966" : "var(--border)",
+                  borderRadius: 10, padding: "8px 12px", cursor: "pointer",
+                }}
+              >
+                <span style={{ fontSize: 11, color: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--text-muted)" }}>
+                  Otomatik Beceri Kullan — {player.autoBattle?.autoSkill ? "Açık" : "Kapalı"}
+                </span>
+                <span style={{ ...styles.toggleSwitch, background: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--bg-panel-alt)", justifyContent: player.autoBattle?.autoSkill ? "flex-end" : "flex-start" }}>
+                  <span style={styles.toggleKnob} />
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -747,10 +754,18 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               {victoryMonster.name}'i yendin. Tekrar savaşmak ister misin?
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setVictoryMonster(null)}>Hayır</button>
+              <button
+                style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }}
+                onClick={() => {
+                  setVictoryMonster(null);
+                  setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
+                }}
+              >
+                Hayır
+              </button>
               <button
                 style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#0B0C10" }}
-                onClick={() => { const m = victoryMonster; setVictoryMonster(null); startBattle(m); }}
+                onClick={() => { const m = victoryMonster; setVictoryMonster(null); startBattle(m, { preserveAutoBattle: true }); }}
               >
                 Evet
               </button>
