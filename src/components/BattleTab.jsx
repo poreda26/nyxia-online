@@ -111,6 +111,12 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // sorusuna Evet dendiğinde (preserveAutoBattle: true) önceki açık durum
   // korunur — Hayır dendiğinde ya da savaştan çıkıldığında zaten ayrıca
   // kapatılıyor (bkz. victoryMonster modalı ve endBattle).
+  //
+  // HP/MP her yeni savaşın başında tam doluyor — önceden sadece bir
+  // öldürmenin ARDINDAN doluyordu (bkz. applyLoot), Geri Çekil ile canı az
+  // kaçıp yeni bir savaşa girmek o düşük canı taşıyordu (kullanıcının
+  // bildirdiği bug). Artık nereden geliniyorsa gelinsin (fresh seçim ya da
+  // Tekrar Savaş) her yeni savaş dolu can/manayla başlıyor.
   const startBattle = (m, { preserveAutoBattle = false } = {}) => {
     attackLockRef.current = false;
     setMonster(m);
@@ -121,9 +127,11 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       log: [`${m.name} karşına çıktı.`],
       ...EMPTY_BATTLE_EFFECTS,
     });
-    if (!preserveAutoBattle) {
-      setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
-    }
+    setPlayer((p) => {
+      const healed = { ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) };
+      if (preserveAutoBattle) return healed;
+      return healed.autoBattle?.enabled ? { ...healed, autoBattle: { ...healed.autoBattle, enabled: false } } : healed;
+    });
   };
 
   // Savaştan çıkmak (Geri Çekil, ölüm, ya da Tekrar Savaş'a Hayır) Otomatik
