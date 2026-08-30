@@ -18,4 +18,11 @@ export const PRIEST_WEAPONS = [
     weight: 10, atk: 40, hp: 8,
     reqStats: [{ key: "str", value: 55 }, { key: "int", value: 40 }],
   },
+  // Blunt Mace — Wooden Mace'le aynı sebepten (tek tier1 seçenek = her
+  // seferinde aynı silah) ikinci bir tier1 alternatif olarak eklendi.
+  {
+    tier: 1, levelMin: 1, levelMax: 15, name: "Blunt Mace", weaponType: "mace", weaponSlot: "twoHand",
+    weight: 11, atk: 36, hp: 12,
+    reqStats: [{ key: "str", value: 62 }, { key: "int", value: 34 }],
+  },
 ];

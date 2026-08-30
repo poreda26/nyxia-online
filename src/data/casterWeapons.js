@@ -58,6 +58,13 @@ export const CASTER_WEAPONS = [
     weight: 3, atk: 10, mp: 5,
     reqStats: [{ key: "mag", value: 50 }, { key: "int", value: 50 }],
   },
+  // Apprentice Staff — Wooden Staff'la aynı sebepten (tek tier1 seçenek =
+  // her seferinde aynı silah) ikinci bir tier1 alternatif olarak eklendi.
+  {
+    tier: 1, levelMin: 1, levelMax: 15, name: "Apprentice Staff", weaponType: "staff", weaponSlot: "twoHand",
+    weight: 3, atk: 13, mp: 3,
+    reqStats: [{ key: "mag", value: 58 }, { key: "int", value: 46 }],
+  },
   // Scorching Staff (Unique) — Flame. Görseli: kıvrık siyah-kızıl bir asa,
   // ucunda alevli bir kristal/kafatası motifi.
   {
