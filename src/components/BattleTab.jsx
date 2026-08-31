@@ -29,6 +29,17 @@ function buffMultiplier(buffs, stat) {
   return buffs.filter((b) => b.stat === stat).reduce((mult, b) => mult * b.mult, 1);
 }
 
+// Kullanıcı isteği: "haritalar kendi dropunu ve bir önceki haritasını
+// atsın" — bir haritanın tier-bağlı dropu (eşya/sandık/parşömen) artık
+// %50 kendi tier'ında, %50 bir önceki tier'da (varsa) düşüyor. Toplam düşme
+// ŞANSI değişmiyor (kullanıcı: "item düşme şansı %10 ise budur") — sadece
+// düşen şeyin hangi tier'dan geldiği artık iki bant arasında dağılıyor.
+// Tier1'de "önceki" yok, o zaman hep kendi tier'ında kalır.
+function pickDropTier(mapTier) {
+  const prevTier = Math.max(1, mapTier - 1);
+  return Math.random() < 0.5 ? mapTier : prevTier;
+}
+
 // Otomatik Saldırı için beceri seçimi — düz saldırıdan önce denenir (bkz.
 // aşağıdaki auto-battle effect'i). Öncelik sırası: bitirici (canavar eşiğin
 // altındaysa) > henüz aktif olmayan bir güçlendirme > en güçlü hasar/DoT
@@ -213,7 +224,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       }
 
       if (Math.random() < 0.10 * dropMult) {
-        const item = rollLoot(map.tier, np.class);
+        const dropTier = pickDropTier(map.tier);
+        const item = rollLoot(dropTier, np.class);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
         if (item) {
@@ -225,15 +237,17 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         }
       }
       if (Math.random() < 0.05 * dropMult) {
-        const chest = { id: uid(), tier: map.tier };
+        const chestTier = pickDropTier(map.tier);
+        const chest = { id: uid(), tier: chestTier };
         np.chests.push(chest);
-        drops.push(`Sandık düştü! (T${map.tier})`);
+        drops.push(`Sandık düştü! (T${chestTier})`);
       }
       if (Math.random() < 0.06 * dropMult) {
-        const scroll = makeScrollStack(map.tier, 1);
+        const scrollTier = pickDropTier(map.tier);
+        const scroll = makeScrollStack(scrollTier, 1);
         const scrollResult = addItemToInventory(np, scroll);
         np = scrollResult.player;
-        drops.push(scrollResult.added ? `T${map.tier} Yükseltme Parşömeni düştü!` : `T${map.tier} Parşömeni düştü ama ${scrollResult.reason}`);
+        drops.push(scrollResult.added ? `T${scrollTier} Yükseltme Parşömeni düştü!` : `T${scrollTier} Parşömeni düştü ama ${scrollResult.reason}`);
       }
       // Tier 6 "Eşsiz" (Unique) gear never drops from monsters — only from
       // Özel Etkinlik Sandığı (special event chests, see

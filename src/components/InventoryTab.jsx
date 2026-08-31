@@ -18,12 +18,14 @@ import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
 import ItemTooltip from "./ItemTooltip";
 import ChestModal from "./ChestModal";
+import BulkChestModal from "./BulkChestModal";
 import Paperdoll from "./Paperdoll";
 import BagGrid from "./BagGrid";
 import BankGrid from "./BankGrid";
 
 export default function InventoryTab({ player, setPlayer, bank, setBank, pushToast, onChangeRace }) {
   const [openingChest, setOpeningChest] = useState(null); // {chest, phase, result}
+  const [bulkChestResult, setBulkChestResult] = useState(null); // {items, failed} | null
   const [subtab, setSubtab] = useState("armor");
   const [selectedId, setSelectedId] = useState(null);
   const [bankPage, setBankPage] = useState(0);
@@ -186,6 +188,28 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
 
   const closeChestModal = () => setOpeningChest(null);
 
+  // Toplu kutu açma — kullanıcı isteği: "elimizde fazla kutu olduğu zaman
+  // açmak problem olabiliyor." Tek tek açmanın shake/reveal animasyonunu
+  // (bkz. openChest) onlarca kutu için tekrarlamak pratik değil, o yüzden
+  // hepsi anında (animasyonsuz) çözülüp tek bir özet listesi gösteriliyor.
+  const openAllChests = () => {
+    if (player.chests.length === 0) return;
+    let p = player;
+    const gained = [];
+    let failed = 0;
+    for (const chest of p.chests) {
+      const item = chest.special ? rollSpecialChestLoot(p.class) : rollLoot(chest.tier, p.class);
+      if (!item) continue;
+      const addResult = addItemToInventory(p, item);
+      p = addResult.player;
+      if (addResult.added) gained.push(item); else failed++;
+    }
+    p = { ...p, chests: [] };
+    if (gained.length > 0) p.hasNewItemNotice = true;
+    setPlayer(p);
+    setBulkChestResult({ items: gained, failed });
+  };
+
   const selectedItem = subtab === "bank"
     ? bank[bankPage].find((i) => i.id === selectedId) || null
     : player.inventory.find((i) => i.id === selectedId) || null;
@@ -317,21 +341,31 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
         player.chests.length === 0 ? (
           <EmptyState icon={Gift} title="Sandık yok" subtitle="Canavarlardan %5 ihtimalle sandık düşer." />
         ) : (
-          <div style={styles.chestGrid}>
-            {player.chests.map((chest) => {
-              const color = chest.special ? "#D4AF6A" : itemTierColor(chest.tier);
-              const Icon = chest.special ? Sparkles : Gift;
-              return (
-                <button key={chest.id} onClick={() => openChest(chest)} style={{ ...styles.chestCard, borderColor: `${color}55` }}>
-                  <Icon size={22} color={color} strokeWidth={1.6} />
-                  <div style={{ fontSize: 11, marginTop: 6, fontFamily: "var(--font-mono)", color, textAlign: "center" }}>
-                    {chest.special ? "Özel Etkinlik Sandığı" : `T${chest.tier} Sandık`}
-                  </div>
-                  <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>Kırmak için dokun</div>
-                </button>
-              );
-            })}
-          </div>
+          <>
+            {player.chests.length > 1 && (
+              <button
+                style={{ ...styles.tinyBtn, width: "100%", marginBottom: 10, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                onClick={openAllChests}
+              >
+                <Gift size={12} /> Tümünü Aç ({player.chests.length})
+              </button>
+            )}
+            <div style={styles.chestGrid}>
+              {player.chests.map((chest) => {
+                const color = chest.special ? "#D4AF6A" : itemTierColor(chest.tier);
+                const Icon = chest.special ? Sparkles : Gift;
+                return (
+                  <button key={chest.id} onClick={() => openChest(chest)} style={{ ...styles.chestCard, borderColor: `${color}55` }}>
+                    <Icon size={22} color={color} strokeWidth={1.6} />
+                    <div style={{ fontSize: 11, marginTop: 6, fontFamily: "var(--font-mono)", color, textAlign: "center" }}>
+                      {chest.special ? "Özel Etkinlik Sandığı" : `T${chest.tier} Sandık`}
+                    </div>
+                    <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>Kırmak için dokun</div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )
       )}
 
@@ -442,6 +476,10 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
 
       {openingChest && (
         <ChestModal state={openingChest} onClose={closeChestModal} playerClass={player.class} />
+      )}
+
+      {bulkChestResult && (
+        <BulkChestModal result={bulkChestResult} onClose={() => setBulkChestResult(null)} />
       )}
     </div>
   );
