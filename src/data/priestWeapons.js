@@ -25,4 +25,31 @@ export const PRIEST_WEAPONS = [
     weight: 11, atk: 36, hp: 12,
     reqStats: [{ key: "str", value: 62 }, { key: "int", value: 34 }],
   },
+  // T2-T5 giriş silahları — kullanıcının bildirdiği "bazı sandıklarda siyah
+  // bir kutucuk kalıyor" bug'ının kök nedeniydi: bu tablo T1'in HEMEN
+  // ÜSTÜNDE (T2-T5) TAMAMEN boştu. Priest bir T2-T5 sandık/canavar
+  // dropunda silah dalını çekince rollWeapon null dönüyordu, ChestModal da
+  // null bir sonucu boş bir kutu olarak render ediyordu (bkz. ChestModal.jsx
+  // #düzeltme). Elimizde gerçek veri yok — reqStats Priest zırhının aynı
+  // tier'daki str/int gereksinimiyle (bkz. data/armorSets.js) hizalandı.
+  {
+    tier: 2, levelMin: 15, levelMax: 25, name: "Silver Mace", weaponType: "mace", weaponSlot: "twoHand",
+    weight: 12, atk: 75, hp: 15,
+    reqStats: [{ key: "str", value: 70 }, { key: "int", value: 100 }],
+  },
+  {
+    tier: 3, levelMin: 25, levelMax: 40, name: "Consecrated Mace", weaponType: "mace", weaponSlot: "twoHand",
+    weight: 13, atk: 90, hp: 20,
+    reqStats: [{ key: "str", value: 82 }, { key: "int", value: 124 }],
+  },
+  {
+    tier: 4, levelMin: 40, levelMax: 60, name: "Chitin-Bound Mace", weaponType: "mace", weaponSlot: "twoHand",
+    weight: 14, atk: 105, hp: 26,
+    reqStats: [{ key: "str", value: 90 }, { key: "int", value: 160 }],
+  },
+  {
+    tier: 5, levelMin: 60, levelMax: 65, name: "Sanctified Mace", weaponType: "mace", weaponSlot: "twoHand",
+    weight: 14, atk: 118, hp: 32,
+    reqStats: [{ key: "str", value: 94 }, { key: "int", value: 176 }],
+  },
 ];

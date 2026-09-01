@@ -54,6 +54,26 @@ export default function ChestModal({ state, onClose, playerClass }) {
             </button>
           </div>
         )}
+        {/* Kullanıcının bildirdiği "bazı sandıklarda siyah bir kutucuk
+            kalıyor" bug'ının asıl nedeni: openChest bir katalog boşluğu
+            yüzünden null eşya döndürünce (bkz. data/casterWeapons.js,
+            priestWeapons.js, accessories.js — üçü de T2-T5'te tamamen
+            boştu, şimdi dolduruldu) bu koşul hiç eşleşmiyordu, kart içi
+            tamamen boş kalıyor ve kapatacak hiçbir düğme görünmüyordu
+            (overlay'e tıklayınca kapanırdı ama kullanıcı bunu bilemezdi).
+            Kök nedeni düzelttik ama bu dal, ileride benzer bir boşluk
+            olursa yine sessizce boş bir kutu bırakmasın diye kalıyor. */}
+        {phase === "reveal" && !result && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <Gift size={40} color="var(--text-faint)" strokeWidth={1.3} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", color: "var(--text-muted)" }}>
+              Sandık boş çıktı.
+            </div>
+            <button style={{ ...styles.primaryBtn, marginTop: 18, background: "var(--bg-panel-alt)", color: "var(--text-primary)" }} onClick={onClose}>
+              Tamam
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

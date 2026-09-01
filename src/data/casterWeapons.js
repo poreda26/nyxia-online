@@ -65,6 +65,35 @@ export const CASTER_WEAPONS = [
     weight: 3, atk: 13, mp: 3,
     reqStats: [{ key: "mag", value: 58 }, { key: "int", value: 46 }],
   },
+  // T2-T5 giriş asaları — kullanıcının bildirdiği "bazı sandıklarda siyah
+  // bir kutucuk kalıyor" bug'ının kök nedeniydi: bu tablo T1'in HEMEN
+  // ÜSTÜNDE (T2-T5) TAMAMEN boştu, T6 uniqueler dışında hiçbir şey yoktu.
+  // Mage bir T2-T5 sandık/canavar dropunda silah dalını çekince rollWeapon
+  // null dönüyordu, ChestModal da null bir sonucu boş bir kutu olarak
+  // render ediyordu (bkz. ChestModal.jsx'teki düzeltme). Elimizde gerçek
+  // veri yok — reqStats mage zırhının aynı tier'daki int gereksinimiyle
+  // (bkz. data/armorSets.js) hizalandı, atk Rogue'un T2-T5 eğrisine yakın
+  // bir bantta kalibre edildi.
+  {
+    tier: 2, levelMin: 15, levelMax: 25, name: "Iron-Tipped Staff", weaponType: "staff", weaponSlot: "twoHand",
+    weight: 3, atk: 65, mp: 8,
+    reqStats: [{ key: "mag", value: 105 }, { key: "int", value: 100 }],
+  },
+  {
+    tier: 3, levelMin: 25, levelMax: 40, name: "Silk-Bound Staff", weaponType: "staff", weaponSlot: "twoHand",
+    weight: 3, atk: 85, mp: 14,
+    reqStats: [{ key: "mag", value: 130 }, { key: "int", value: 124 }],
+  },
+  {
+    tier: 4, levelMin: 40, levelMax: 60, name: "Crimson-Runed Staff", weaponType: "staff", weaponSlot: "twoHand",
+    weight: 4, atk: 105, mp: 20,
+    reqStats: [{ key: "mag", value: 168 }, { key: "int", value: 160 }],
+  },
+  {
+    tier: 5, levelMin: 60, levelMax: 65, name: "Chitin-Woven Staff", weaponType: "staff", weaponSlot: "twoHand",
+    weight: 4, atk: 120, mp: 26,
+    reqStats: [{ key: "mag", value: 168 }, { key: "int", value: 160 }],
+  },
   // Scorching Staff (Unique) — Flame. Görseli: kıvrık siyah-kızıl bir asa,
   // ucunda alevli bir kristal/kafatası motifi.
   {
