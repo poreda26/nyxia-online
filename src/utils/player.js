@@ -127,6 +127,15 @@ export function initialPlayer(cls, race, nickname) {
     // görevlerinden AYRI, her gün sıfırlanan bir "bugün X canavar öldür"
     // merdiveni (day değişince otomatik sıfırlanır).
     dailyQuests: { day: null, killsToday: 0, claimed: [false, false, false] },
+    // Başarım sistemi (bkz. data/achievements.js, utils/achievements.js) —
+    // kills/level/awakened gibi ZATEN var olan alanlardan türeyen başarımlar
+    // burada tekrar tutulmuyor; milestones sadece BAŞKA hiçbir yerde
+    // izlenmeyen sayaç/bayrakları taşıyor (bkz. UpgradeTab#press,
+    // utils/clan.js#foundClan, WarzoneTab#duel kazanma, InventoryTab#openChest).
+    milestones: { maxUpgradeReached: false, hasFoundedClan: false, duelsWon: 0, chestsOpened: 0 },
+    // Karakter sekmesinden seçilen, TopBar'da isminin yanında görünen aktif
+    // unvan — bir başarımın id'si ya da hiçbiri seçilmemişse null.
+    activeTitle: null,
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -208,6 +217,11 @@ export function migratePlayer(player) {
     hasNewItemNotice: player.hasNewItemNotice ?? false,
     dailyLogin: player.dailyLogin || { streak: 0, lastClaimDay: null },
     dailyQuests: player.dailyQuests || { day: null, killsToday: 0, claimed: [false, false, false] },
+    milestones: {
+      maxUpgradeReached: false, hasFoundedClan: !!player.clan?.founded, duelsWon: 0, chestsOpened: 0,
+      ...player.milestones,
+    },
+    activeTitle: player.activeTitle ?? null,
   };
 }
 

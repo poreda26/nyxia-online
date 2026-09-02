@@ -3,6 +3,7 @@ import { Plus, ScrollText, Star, X } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { MAX_UPGRADE_LEVEL, upgradeSuccessChance, bumpedStats, applyLevelData } from "../utils/upgrade";
 import { makeScrollStack, makeBonusScrollStack } from "../utils/inventory";
+import { newlyUnlocked } from "../utils/achievements";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import ItemIcon from "./ItemIcon";
@@ -161,7 +162,16 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
       // Commit right away — the reveal modal is a presentational layer on
       // top of state that has already safely landed, so a tab switch or
       // navigation mid-animation can never lose the upgraded item.
-      setPlayer((p) => ({ ...p, inventory: [...p.inventory, bumped] }));
+      let unlocked = [];
+      setPlayer((p) => {
+        const np = {
+          ...p, inventory: [...p.inventory, bumped],
+          milestones: bumped.upgradeLevel >= MAX_UPGRADE_LEVEL ? { ...p.milestones, maxUpgradeReached: true } : p.milestones,
+        };
+        unlocked = newlyUnlocked(p, np);
+        return np;
+      });
+      unlocked.forEach((a) => pushToast(`Başarım açıldı: ${a.name} — "${a.title}" unvanı kazanıldı!`, "level"));
       setPendingReveal({ item: entry, success: true, bumpedItem: bumped });
     } else {
       setPendingReveal({ item: entry, success: false, bumpedItem: null });

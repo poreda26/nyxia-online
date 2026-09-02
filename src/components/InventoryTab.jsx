@@ -9,6 +9,7 @@ import {
   totalEquippedRepairCost, repairAllEquipped,
 } from "../utils/player";
 import { isConsumable } from "../utils/itemDisplay";
+import { newlyUnlocked } from "../utils/achievements";
 import { BAG_SLOTS, addItemToInventory, depositToBank, withdrawFromBank } from "../utils/inventory";
 import { usePotion } from "../utils/potions";
 import { learnFreeSkills } from "../utils/skills";
@@ -177,19 +178,27 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
     setOpeningChest({ chest, phase: "shaking", result: null });
     setTimeout(() => {
       const item = chest.special ? rollSpecialChestLoot(player.class) : rollLoot(chest.tier, player.class);
-      const afterChestRemoved = { ...player, chests: player.chests.filter((c) => c.id !== chest.id) };
+      const afterChestRemoved = {
+        ...player,
+        chests: player.chests.filter((c) => c.id !== chest.id),
+        milestones: { ...player.milestones, chestsOpened: (player.milestones?.chestsOpened || 0) + 1 },
+      };
+      const reportUnlocks = (finalPlayer) => newlyUnlocked(player, finalPlayer).forEach((a) => pushToast(`Başarım açıldı: ${a.name} — "${a.title}" unvanı kazanıldı!`, "level"));
       // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
       // hiçbir eşya yoksa item null gelir, sandığı yine de boşalt ama
       // hiçbir şey eklemeye çalışma.
       if (!item) {
         setPlayer(afterChestRemoved);
         setOpeningChest({ chest, phase: "reveal", result: null });
+        reportUnlocks(afterChestRemoved);
         return;
       }
       const addResult = addItemToInventory(afterChestRemoved, item);
-      setPlayer(addResult.added ? { ...addResult.player, hasNewItemNotice: true } : addResult.player);
+      const finalPlayer = addResult.added ? { ...addResult.player, hasNewItemNotice: true } : addResult.player;
+      setPlayer(finalPlayer);
       setOpeningChest({ chest, phase: "reveal", result: item });
       if (!addResult.added) pushToast(`${item.name} kazanıldı ama ${addResult.reason}`, "warn");
+      reportUnlocks(finalPlayer);
     }, 950);
   };
 
@@ -201,6 +210,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
   // hepsi anında (animasyonsuz) çözülüp tek bir özet listesi gösteriliyor.
   const openAllChests = () => {
     if (player.chests.length === 0) return;
+    const openedCount = player.chests.length;
     let p = player;
     const gained = [];
     let failed = 0;
@@ -211,10 +221,11 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
       p = addResult.player;
       if (addResult.added) gained.push(item); else failed++;
     }
-    p = { ...p, chests: [] };
+    p = { ...p, chests: [], milestones: { ...p.milestones, chestsOpened: (p.milestones?.chestsOpened || 0) + openedCount } };
     if (gained.length > 0) p.hasNewItemNotice = true;
     setPlayer(p);
     setBulkChestResult({ items: gained, failed });
+    newlyUnlocked(player, p).forEach((a) => pushToast(`Başarım açıldı: ${a.name} — "${a.title}" unvanı kazanıldı!`, "level"));
   };
 
   const selectedItem = subtab === "bank"

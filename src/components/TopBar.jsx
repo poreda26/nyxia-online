@@ -1,6 +1,7 @@
 import { Coins, Crown, Gift } from "lucide-react";
 import { xpToNext, MAX_LEVEL } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
+import { activeTitleInfo } from "../utils/achievements";
 import { styles } from "../styles";
 
 export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin }) {
@@ -9,6 +10,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
   const pct = atCap ? 100 : Math.min(100, (player.xp / need) * 100);
   const Icon = cls.icon;
   const premiumTier = activePremiumTier(player);
+  const title = activeTitleInfo(player);
   return (
     <div style={styles.topBar}>
       <div style={styles.topBarRow}>
@@ -22,6 +24,11 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
               {/* Kullanıcı isteği: sınıf ikonu (solda) zaten sınıfı belli
                   ediyor, sınıf adını burada tekrar yazmak kalabalık
                   yapıyordu — kaldırıldı. */}
+              {title && (
+                <span style={{ fontSize: 9, color: title.color, border: `1px solid ${title.color}66`, borderRadius: 4, padding: "1px 4px", flexShrink: 0 }}>
+                  {title.text}
+                </span>
+              )}
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {player.nickname ? `${player.nickname} · ` : ""}Lv.{player.level}
               </span>

@@ -113,7 +113,10 @@ export function foundClan(player, name) {
     myNpDonated: 0,
     boss: null,
   };
-  return { player: { ...player, diamonds: player.diamonds - CLAN_FOUND_COST_DIAMONDS, clan }, founded: true };
+  return {
+    player: { ...player, diamonds: player.diamonds - CLAN_FOUND_COST_DIAMONDS, clan, milestones: { ...player.milestones, hasFoundedClan: true } },
+    founded: true,
+  };
 }
 
 // Bir ırk için "var olan" 5 klanın isimleri — deterministik (seed: ırk),

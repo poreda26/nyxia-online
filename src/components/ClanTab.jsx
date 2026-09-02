@@ -14,6 +14,7 @@ import {
   unlockedBossStages, openClanBoss, bossTimeLeftMs, bossCurrentHp, bossMaxHp,
   simulatedAttackerCount, canPlayerAttackBoss, attackClanBoss, isClanBossActive,
 } from "../utils/clanBoss";
+import { newlyUnlocked } from "../utils/achievements";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import BarTrack from "./shared/BarTrack";
@@ -53,6 +54,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     if (!result.founded) { pushToast(result.reason, "warn"); return; }
     setPlayer(result.player);
     pushToast(`${result.player.clan.name} kuruldu!`, "loot");
+    newlyUnlocked(player, result.player).forEach((a) => pushToast(`Başarım açıldı: ${a.name} — "${a.title}" unvanı kazanıldı!`, "level"));
     setFounding(false);
     setNameInput("");
   };

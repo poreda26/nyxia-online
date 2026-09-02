@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw } from "lucide-react";
+import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award } from "lucide-react";
 import { STAT_KEYS, STAT_FULL_LABELS, STAT_COLORS, STAT_CAP } from "../data/stats";
 import { RACES } from "../data/races";
 import { allocateStat, displayClassName, respecCost, canRespecStats, respecStats } from "../utils/player";
 import { activePremiumTier, premiumDaysLeft } from "../utils/premium";
 import { classSkills, isKnown, canUnlockSkill, unlockSkill, setLoadoutSlot, describeEffect } from "../utils/skills";
 import { MAX_LOADOUT_SLOTS } from "../data/skills";
+import { ACHIEVEMENTS } from "../data/achievements";
+import { isAchievementUnlocked, setActiveTitle } from "../utils/achievements";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import StatBlock from "./shared/StatBlock";
@@ -60,6 +62,13 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
     const emptySlot = loadout.indexOf(null);
     if (emptySlot === -1) { pushToast("5 beceri kutucuğu dolu — önce birini kaldır.", "warn"); return; }
     setPlayer((p) => setLoadoutSlot(p, emptySlot, skillId));
+  };
+
+  const unlockedCount = ACHIEVEMENTS.filter((a) => isAchievementUnlocked(player, a)).length;
+
+  const pickTitle = (achievementId) => {
+    setPlayer((p) => setActiveTitle(p, achievementId));
+    pushToast(achievementId ? "Unvan takıldı." : "Unvan kaldırıldı.", "default");
   };
 
   return (
@@ -118,6 +127,9 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         </button>
         <button onClick={() => setSubtab("skills")} style={{ ...styles.subtabBtn, ...(subtab === "skills" ? styles.subtabBtnActive : {}) }}>
           Beceriler ({player.skills.known.length})
+        </button>
+        <button onClick={() => setSubtab("achievements")} style={{ ...styles.subtabBtn, ...(subtab === "achievements" ? styles.subtabBtnActive : {}) }}>
+          Başarımlar ({unlockedCount}/{ACHIEVEMENTS.length})
         </button>
       </div>
 
@@ -226,6 +238,49 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
             })}
           </div>
         </>
+      )}
+
+      {subtab === "achievements" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {player.activeTitle && (
+            <button
+              style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+              onClick={() => pickTitle(null)}
+            >
+              <X size={11} /> Unvanı Kaldır
+            </button>
+          )}
+          {ACHIEVEMENTS.map((a) => {
+            const unlocked = isAchievementUnlocked(player, a);
+            const active = player.activeTitle === a.id;
+            const AIcon = a.icon;
+            return (
+              <div key={a.id} style={{ ...styles.itemDetailCard, opacity: unlocked ? 1 : 0.55, ...(active ? { borderColor: `${a.color}88` } : {}) }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: unlocked ? `${a.color}22` : "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {unlocked ? <AIcon size={17} color={a.color} strokeWidth={1.6} /> : <Lock size={15} color="var(--text-faint)" />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: unlocked ? "var(--text-primary)" : "var(--text-faint)" }}>{a.name}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{a.desc}</div>
+                    {unlocked && (
+                      <div style={{ fontSize: 9, color: a.color, fontFamily: "var(--font-mono)", marginTop: 3 }}>Unvan: "{a.title}"</div>
+                    )}
+                  </div>
+                  {unlocked && (
+                    <button
+                      style={{ ...styles.tinyBtn, flexShrink: 0, ...(active ? { background: a.color, color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-muted)" }) }}
+                      disabled={active}
+                      onClick={() => pickTitle(a.id)}
+                    >
+                      {active ? <><Award size={11} /> Kullanılıyor</> : "Unvanı Kullan"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {confirmingRespec && (

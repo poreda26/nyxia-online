@@ -17,6 +17,7 @@ import { premiumNpLossReduction } from "../utils/premium";
 import { mitigate, MONSTER_DEF_K, rollHit } from "../utils/combat";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { rand, uid } from "../utils/random";
+import { newlyUnlocked } from "../utils/achievements";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -530,9 +531,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
 
     if (wonDuel) {
       const result = awardNationalPoint(player);
-      setPlayer(() => result.player);
+      const nextPlayer = { ...result.player, milestones: { ...result.player.milestones, duelsWon: (result.player.milestones?.duelsWon || 0) + 1 } };
+      setPlayer(() => nextPlayer);
       setWz((prev) => ({ ...prev, duel: { ...prev.duel, ghostHp: 0, log: log.slice(-24), finished: true } }));
       pushToast(`${duel.ghost.name}'i yendin! +${result.gain} National Point`, "loot");
+      newlyUnlocked(player, nextPlayer).forEach((a) => pushToast(`Başarım açıldı: ${a.name} — "${a.title}" unvanı kazanıldı!`, "level"));
       setTimeout(() => { endDuel(duel.ghost.id, true); lockRef.current = false; }, 700);
       return;
     }
