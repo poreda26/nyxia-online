@@ -29,6 +29,11 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
   const [subtab, setSubtab] = useState("armor");
   const [selectedId, setSelectedId] = useState(null);
   const [bankPage, setBankPage] = useState(0);
+  // Kuşanılmış bir slota dokununca artık direkt çıkarmıyor — kullanıcı
+  // isteği: önce eşyanın özelliklerini göster, çıkarmak istersek oradan
+  // ayrı bir düğmeyle çıkaralım. Bag/bank seçimiyle aynı anda açık kalmasın
+  // diye ikisi birbirini kapatıyor (aşağıdaki handleBagTap/bank onItemTap'te).
+  const [selectedEquipSlot, setSelectedEquipSlot] = useState(null);
   // Toplu seçim — sadece çantayı depoya taşımak ya da toplu satmak için
   // (kullanıcı isteği), bank sekmesine sızmıyor. Açılınca tekli seçim
   // (selectedId, dolayısıyla alttaki detay sayfası) devre dışı kalır.
@@ -51,6 +56,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
 
   const handleBagTap = (item) => {
     if (bulkMode) { toggleBulkItem(item); return; }
+    setSelectedEquipSlot(null);
     setSelectedId((cur) => (cur === item.id ? null : item.id));
   };
 
@@ -100,6 +106,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
       const next = { ...p, equipped: { ...p.equipped, [slotKey]: null }, inventory: [...p.inventory, item] };
       return clampPlayerHp(next);
     });
+    setSelectedEquipSlot(null);
   };
 
   const sellItem = (item) => {
@@ -229,11 +236,43 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
   };
 
   const cls = CLASSES[player.class];
+  const equippedSelectedItem = selectedEquipSlot ? player.equipped[selectedEquipSlot] : null;
 
   return (
     <div style={styles.panelScroll}>
       <SectionLabel>Kuşanılmış</SectionLabel>
-      <Paperdoll player={player} cls={cls} onSlotClick={(slotKey, item) => item && unequip(slotKey)} />
+      <Paperdoll
+        player={player}
+        cls={cls}
+        onSlotClick={(slotKey, item) => {
+          if (!item) return;
+          setSelectedId(null);
+          setSelectedEquipSlot((cur) => (cur === slotKey ? null : slotKey));
+        }}
+      />
+
+      {equippedSelectedItem && (
+        <div style={styles.itemSheetOverlay} onClick={() => setSelectedEquipSlot(null)}>
+          <div style={styles.itemSheet} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.itemSheetHandle} />
+            <ItemTooltip item={equippedSelectedItem} player={player} />
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button
+                style={{ ...styles.tinyBtn, background: "#C9425A", display: "flex", alignItems: "center", gap: 4 }}
+                onClick={() => unequip(selectedEquipSlot)}
+              >
+                <ArrowUpFromLine size={11} style={{ transform: "rotate(180deg)" }} /> Çıkar
+              </button>
+              <button
+                style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)", marginLeft: "auto" }}
+                onClick={() => setSelectedEquipSlot(null)}
+              >
+                <X size={11} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Kullanıcı isteği: "Eşyaları çıkarmadan rot tamir yapılamıyor" —
           repairItem zaten kuşanılı eşyayı yerinde yamıyordu, eksik olan
@@ -328,7 +367,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
           <BankGrid
             items={bank[bankPage]}
             selectedId={selectedId}
-            onItemTap={(item) => setSelectedId((cur) => (cur === item.id ? null : item.id))}
+            onItemTap={(item) => { setSelectedEquipSlot(null); setSelectedId((cur) => (cur === item.id ? null : item.id)); }}
           />
 
           {bank[bankPage].length === 0 && (
