@@ -3,6 +3,9 @@ import { CLASSES } from "../data/classes";
 import { totalStats, playerDef, playerMaxHp } from "../utils/player";
 import { MONSTER_QUESTS } from "../data/quests";
 import { questProgress, isQuestClaimed } from "../utils/quests";
+import { dailyQuestProgress } from "../utils/dailyQuests";
+import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
+import { canClaimDailyLogin } from "../utils/dailyLogin";
 import * as chatService from "../services/chatService";
 import { styles } from "../styles";
 import TopBar from "./TopBar";
@@ -17,6 +20,7 @@ import CaptainTab from "./CaptainTab";
 import WarzoneTab from "./WarzoneTab";
 import ClanTab from "./ClanTab";
 import TutorialModal from "./TutorialModal";
+import DailyLoginModal from "./DailyLoginModal";
 
 export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pushToast, onChangeCharacter, onChangeRace }) {
   const cls = CLASSES[player.class];
@@ -39,6 +43,15 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
   };
   const reopenTutorial = () => setTutorialOpen(true);
 
+  // Günlük giriş ödülü — Hub her açıldığında (uygulama yeniden yüklendiğinde
+  // dahil) bugün henüz alınmadıysa otomatik açılır; kullanıcı kapatırsa
+  // (X ya da dışarı tıklama) TopBar'daki hediye ikonundan istediği an tekrar
+  // açabilir (bkz. utils/dailyLogin.js). Tutorial açıkken bastırılıyor ki
+  // yepyeni bir karakter iki modalı üst üste görmesin — tutorial kapanınca
+  // (dailyLoginOpen zaten true kaldığı için) hemen ardından kendiliğinden çıkar.
+  const [dailyLoginOpen, setDailyLoginOpen] = useState(canClaimDailyLogin(player));
+  const dailyLoginAvailable = canClaimDailyLogin(player);
+
   // Alt menü bildirim noktaları (kullanıcı isteği: "yeni bir mesaj geldiği
   // zaman... yeni eşya düştüğü zaman... görev tamamlandığı zaman... verilmeyen
   // statü puanı bulunduğu zaman... menüde bildirim belli olsun"). Kaptan ve
@@ -48,7 +61,8 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
   // #openChest), o yüzden player.hasNewItemNotice adında kalıcı bir bayrak.
   const captainNotice = MONSTER_QUESTS
     .filter((q) => player.level >= q.requiredLevel)
-    .some((q) => questProgress(player, q).done && !isQuestClaimed(player, q.id));
+    .some((q) => questProgress(player, q).done && !isQuestClaimed(player, q.id))
+    || DAILY_QUEST_SLOTS.some((_, i) => { const p = dailyQuestProgress(player, i); return p.done && !p.claimed; });
   const characterNotice = player.statPoints > 0;
   const inventoryNotice = !!player.hasNewItemNotice;
 
@@ -90,7 +104,11 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
 
   return (
     <div style={styles.hubRoot}>
-      <TopBar player={player} cls={cls} maxHp={maxHp} def={def} atk={atk} />
+      <TopBar
+        player={player} cls={cls} maxHp={maxHp} def={def} atk={atk}
+        dailyLoginAvailable={dailyLoginAvailable}
+        onOpenDailyLogin={() => setDailyLoginOpen(true)}
+      />
 
       <div style={styles.tabContent}>
         {tab === "battle" && (
@@ -125,6 +143,10 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
       <BottomNav tab={tab} setTab={setTab} notifications={notifications} />
 
       {tutorialOpen && <TutorialModal onFinish={closeTutorial} />}
+
+      {dailyLoginOpen && !tutorialOpen && (
+        <DailyLoginModal player={player} setPlayer={setPlayer} pushToast={pushToast} onClose={() => setDailyLoginOpen(false)} />
+      )}
     </div>
   );
 }

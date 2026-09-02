@@ -119,6 +119,14 @@ export function initialPlayer(cls, race, nickname) {
     // #applyLoot, InventoryTab.jsx#openChest), Envanter sekmesi açılınca
     // Hub.jsx tarafından false'a çekilir.
     hasNewItemNotice: false,
+    // Günlük giriş ödülü — bkz. utils/dailyLogin.js. streak: kaç gündür
+    // ard arda giriş yapıldığı (bir gün atlanırsa 1'e döner), lastClaimDay:
+    // en son ödül alınan gün (aynı gün ikinci kez alınamaz).
+    dailyLogin: { streak: 0, lastClaimDay: null },
+    // Günlük görevler — bkz. utils/dailyQuests.js. Kaptan'ın kalıcı
+    // görevlerinden AYRI, her gün sıfırlanan bir "bugün X canavar öldür"
+    // merdiveni (day değişince otomatik sıfırlanır).
+    dailyQuests: { day: null, killsToday: 0, claimed: [false, false, false] },
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -190,6 +198,8 @@ export function migratePlayer(player) {
     // olarak "görüldü" sayılırlar (Karakter sekmesinden yine de açabilirler).
     tutorialSeen: player.tutorialSeen ?? true,
     hasNewItemNotice: player.hasNewItemNotice ?? false,
+    dailyLogin: player.dailyLogin || { streak: 0, lastClaimDay: null },
+    dailyQuests: player.dailyQuests || { day: null, killsToday: 0, claimed: [false, false, false] },
   };
 }
 

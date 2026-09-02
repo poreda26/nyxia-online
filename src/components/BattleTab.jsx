@@ -12,6 +12,8 @@ import { clanExpMultiplier } from "../utils/clan";
 import { eventExpMultiplier } from "../utils/events";
 import { classSkills, learnFreeSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
 import { MONSTER_QUESTS } from "../data/quests";
+import { registerDailyKill, ensureDailyQuestsFresh } from "../utils/dailyQuests";
+import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -222,6 +224,22 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           drops.push(`Görev: ${current}/${relatedQuest.target}`);
         }
       }
+
+      // Günlük görevler — Kaptan'ın kalıcı görevlerinden ayrı, her gün
+      // sıfırlanan "bugün X canavar öldür" merdiveni (bkz. utils/dailyQuests.js).
+      // Hangi canavar/harita olduğu önemli değil, sadece bugünkü toplam sayılıyor.
+      // ensureDailyQuestsFresh önce çağrılıyor ki gün değiştiyse "önceki"
+      // sayı da doğru (sıfırlanmış) taban üzerinden okunsun.
+      const freshNp = ensureDailyQuestsFresh(np);
+      const dailyKillsBefore = freshNp.dailyQuests.killsToday;
+      np = registerDailyKill(freshNp);
+      DAILY_QUEST_SLOTS.forEach((slot) => {
+        const wasDone = dailyKillsBefore >= slot.target;
+        const isDone = np.dailyQuests.killsToday >= slot.target;
+        if (isDone && !wasDone) {
+          drops.push(`Günlük görev tamamlandı! (${slot.target} öldürme)`);
+        }
+      });
 
       if (Math.random() < 0.10 * dropMult) {
         const dropTier = pickDropTier(map.tier);

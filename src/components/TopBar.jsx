@@ -1,9 +1,9 @@
-import { Coins, Crown } from "lucide-react";
+import { Coins, Crown, Gift } from "lucide-react";
 import { xpToNext, MAX_LEVEL, displayClassName } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { styles } from "../styles";
 
-export default function TopBar({ player, cls, maxHp, def, atk }) {
+export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin }) {
   const atCap = player.level >= MAX_LEVEL;
   const need = xpToNext(player.level);
   const pct = atCap ? 100 : Math.min(100, (player.xp / need) * 100);
@@ -35,6 +35,16 @@ export default function TopBar({ player, cls, maxHp, def, atk }) {
           <Coins size={13} color="#D4AF6A" />
           <span style={{ fontFamily: "var(--font-mono)" }}>{player.gold}</span>
         </div>
+        {onOpenDailyLogin && (
+          <button
+            onClick={onOpenDailyLogin}
+            title="Günlük Giriş Ödülü"
+            style={{ position: "relative", background: "none", border: "none", color: dailyLoginAvailable ? "#D4AF6A" : "var(--text-faint)", cursor: "pointer", padding: 4, flexShrink: 0 }}
+          >
+            <Gift size={16} strokeWidth={1.8} />
+            {dailyLoginAvailable && <span style={{ ...styles.navNotifDot, top: 0, left: "auto", right: -1, marginLeft: 0 }} />}
+          </button>
+        )}
       </div>
       <div style={styles.topBarSub}>
         <span>ATK {atk}</span>

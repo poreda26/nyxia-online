@@ -208,9 +208,10 @@ export function demoteMember(player, memberId) {
   return { ...player, clan: { ...player.clan, members } };
 }
 
-export function todayKey() {
-  return new Date().toDateString();
-}
+// Artık utils/day.js'te yaşıyor (günlük giriş ödülü/günlük görevler de aynı
+// tanıma ihtiyaç duydu) — burada yeniden export ediliyor ki clanBoss.js'in
+// mevcut "./clan"'dan import'u bozulmasın.
+export { todayKey } from "./day";
 
 // NP/gold/elmas bağışı — üçü de klan hazinesini besler (bkz. data/clanBoss.js
 // için boss açma şartları ve bina yükseltme maliyeti). NP ayrıca kendi payını
