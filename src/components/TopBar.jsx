@@ -1,5 +1,5 @@
 import { Coins, Crown, Gift } from "lucide-react";
-import { xpToNext, MAX_LEVEL, displayClassName } from "../utils/player";
+import { xpToNext, MAX_LEVEL } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { styles } from "../styles";
 
@@ -19,8 +19,11 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
             <span style={{ fontFamily: "var(--font-display)", fontSize: 14, letterSpacing: 0.3, display: "flex", alignItems: "center", gap: 5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {premiumTier && <Crown size={13} color={premiumTier.color} strokeWidth={2} fill={premiumTier.color} style={{ flexShrink: 0 }} />}
+              {/* Kullanıcı isteği: sınıf ikonu (solda) zaten sınıfı belli
+                  ediyor, sınıf adını burada tekrar yazmak kalabalık
+                  yapıyordu — kaldırıldı. */}
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {player.nickname ? `${player.nickname} · ` : ""}{displayClassName(player)} · Lv.{player.level}
+                {player.nickname ? `${player.nickname} · ` : ""}Lv.{player.level}
               </span>
             </span>
             <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", flexShrink: 0, whiteSpace: "nowrap" }}>

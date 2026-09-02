@@ -1,4 +1,5 @@
 import { rand, pick, uid } from "./random";
+import { todayKey } from "./day";
 import { CLASSES } from "../data/classes";
 import { ghostNamesForRace } from "../data/warzoneNames";
 import { seededRng, seededShuffle } from "./seededRng";
@@ -209,9 +210,14 @@ export function demoteMember(player, memberId) {
 }
 
 // Artık utils/day.js'te yaşıyor (günlük giriş ödülü/günlük görevler de aynı
-// tanıma ihtiyaç duydu) — burada yeniden export ediliyor ki clanBoss.js'in
-// mevcut "./clan"'dan import'u bozulmasın.
-export { todayKey } from "./day";
+// tanıma ihtiyaç duydu, bkz. üstteki import) — burada da yeniden export
+// ediliyor ki clanBoss.js'in mevcut "./clan"'dan import'u bozulmasın.
+// NOT: sadece "export ... from" yazıp import etmeyi atlamak bu dosyanın
+// KENDİ İÇİNDEKİ todayKey() çağrılarını (aşağıda, canStartDungeon/
+// startDungeon) tanımsız bırakıp Klan sekmesini ReferenceError ile
+// çökertmişti (kullanıcının bildirdiği "Klana tıklayınca oyun gidiyor" bug'ı)
+// — import + re-export ayrı ayrı yapılması gerekiyordu.
+export { todayKey };
 
 // NP/gold/elmas bağışı — üçü de klan hazinesini besler (bkz. data/clanBoss.js
 // için boss açma şartları ve bina yükseltme maliyeti). NP ayrıca kendi payını
