@@ -30,6 +30,25 @@ export function xpLevelPenaltyMultiplier(playerLevel, mapLevelMax) {
 // endgame band (60-65) rather than capping right at the last tier unlock.
 export const MAX_LEVEL = 65;
 
+// Ham XP ekleyip gerekiyorsa seviye atlama döngüsünü işletir — savaştaki
+// öldürme XP'si hâlâ kendi döngüsünü BattleTab.jsx#applyLoot içinde ayrı
+// tutuyor (premium/klan/etkinlik çarpanları vb. orada zaten hesaplanmış
+// geliyor), ama savaş DIŞI XP kaynakları (bkz. utils/scheduledEvents.js'in
+// zamanlı etkinlik ödülü) aynı döngüyü burada paylaşıyor.
+export function gainXp(player, amount) {
+  if (player.level >= MAX_LEVEL || amount <= 0) return { player, levelsGained: 0 };
+  let np = { ...player, xp: player.xp + amount };
+  let levelsGained = 0;
+  while (np.level < MAX_LEVEL && np.xp >= xpToNext(np.level)) {
+    np.xp -= xpToNext(np.level);
+    np.level += 1;
+    np.statPoints += 3;
+    levelsGained += 1;
+  }
+  if (np.level >= MAX_LEVEL) np.xp = 0;
+  return { player: np, levelsGained };
+}
+
 // Every class starts from its own baseStats (see data/classes.js) plus 10
 // free points the player distributes themselves — the "Ana Statü" hint in
 // CharacterTab nudges them toward what that class scales best with.
@@ -140,6 +159,11 @@ export function initialPlayer(cls, race, nickname) {
     // bugünden farklıysa entriesUsed sıfırmış gibi davranılır (gün değişince
     // otomatik yenilenir, dailyQuests'teki aynı desen).
     soloDungeon: { day: null, entriesUsed: 0 },
+    // Belirli saatlerde açılan dünya etkinlikleri (bkz. data/scheduledEvents.js,
+    // utils/scheduledEvents.js) — event id'sine göre { day, joined,
+    // ticksCredited }. day bugünden farklıysa taze sayılır (gün değişince
+    // otomatik yenilenir).
+    scheduledEvents: {},
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -227,6 +251,7 @@ export function migratePlayer(player) {
     },
     activeTitle: player.activeTitle ?? null,
     soloDungeon: player.soloDungeon || { day: null, entriesUsed: 0 },
+    scheduledEvents: player.scheduledEvents || {},
   };
 }
 

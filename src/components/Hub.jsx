@@ -21,6 +21,7 @@ import WarzoneTab from "./WarzoneTab";
 import ClanTab from "./ClanTab";
 import TutorialModal from "./TutorialModal";
 import DailyLoginModal from "./DailyLoginModal";
+import ScheduledEventBanner from "./ScheduledEventBanner";
 
 export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pushToast, onChangeCharacter, onChangeRace }) {
   const cls = CLASSES[player.class];
@@ -109,6 +110,8 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
         dailyLoginAvailable={dailyLoginAvailable}
         onOpenDailyLogin={() => setDailyLoginOpen(true)}
       />
+
+      <ScheduledEventBanner player={player} setPlayer={setPlayer} pushToast={pushToast} />
 
       <div style={styles.tabContent}>
         {tab === "battle" && (
