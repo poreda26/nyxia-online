@@ -136,6 +136,10 @@ export function initialPlayer(cls, race, nickname) {
     // Karakter sekmesinden seçilen, TopBar'da isminin yanında görünen aktif
     // unvan — bir başarımın id'si ya da hiçbiri seçilmemişse null.
     activeTitle: null,
+    // Günlük Solo Zindan giriş hakkı — bkz. utils/soloDungeon.js. day
+    // bugünden farklıysa entriesUsed sıfırmış gibi davranılır (gün değişince
+    // otomatik yenilenir, dailyQuests'teki aynı desen).
+    soloDungeon: { day: null, entriesUsed: 0 },
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -222,6 +226,7 @@ export function migratePlayer(player) {
       ...player.milestones,
     },
     activeTitle: player.activeTitle ?? null,
+    soloDungeon: player.soloDungeon || { day: null, entriesUsed: 0 },
   };
 }
 

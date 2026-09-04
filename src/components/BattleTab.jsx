@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy } from "lucide-react";
+import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle } from "lucide-react";
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
+import { buildSoloDungeonStages, SOLO_DUNGEON_DAILY_LIMIT } from "../data/soloDungeon";
 import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
 import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
@@ -14,6 +15,7 @@ import { classSkills, learnFreeSkills, computeSkillDamage, computeSkillHeal } fr
 import { MONSTER_QUESTS } from "../data/quests";
 import { registerDailyKill, ensureDailyQuestsFresh } from "../utils/dailyQuests";
 import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
+import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry } from "../utils/soloDungeon";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -76,6 +78,12 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const [pendingMap, setPendingMap] = useState(null); // map awaiting teleport confirmation
   const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal
   const [victoryMonster, setVictoryMonster] = useState(null); // just-defeated monster template — drives the "Tekrar Savaş?" prompt
+  // Günlük Solo Zindan — bkz. data/soloDungeon.js, utils/soloDungeon.js.
+  // dungeonRun: { stages, index } | null — aktif bir zindan koşusu sürerken
+  // aşama aşama ilerliyor (bkz. resolveMonsterTurn'daki dallanma), null ise
+  // normal (haritadaki tekli canavar) savaş akışı işliyor.
+  const [dungeonRun, setDungeonRun] = useState(null);
+  const [dungeonComplete, setDungeonComplete] = useState(null); // { mapName, bonusGold, chestTier } | null
   const logRef = useRef(null);
 
   // Oyuncunun en son ışınlandığı harita kalıcı — güvenlik amaçlı, artık
@@ -104,6 +112,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     setPlayer((p) => ({ ...p, gold: p.gold - GATE_TELEPORT_COST, currentMapId: targetMap.id }));
     pushToast(`Kapı'dan ${targetMap.name}'e ışınlandın. (-${GATE_TELEPORT_COST} altın)`, "default");
     setPendingMap(null);
+  };
+
+  // Günlük Solo Zindan'a giriş — mevcut haritaya göre ölçeklenen 5 aşama +
+  // boss üretir (bkz. data/soloDungeon.js#buildSoloDungeonStages), günlük
+  // giriş hakkını hemen düşer (koşu yarıda bırakılsa/kaybedilse bile hak
+  // geri gelmez, "günde 3 kez girilebilir" kullanıcı isteğinin doğal
+  // sonucu) ve ilk aşamayla normal startBattle akışını başlatır.
+  const enterSoloDungeon = () => {
+    if (locked) return;
+    const check = canEnterSoloDungeon(player);
+    if (!check.ok) { pushToast(check.reason, "warn"); return; }
+    const stages = buildSoloDungeonStages(map);
+    setPlayer((p) => consumeDungeonEntry(p));
+    setDungeonRun({ stages, index: 0 });
+    startBattle(stages[0]);
   };
 
   useEffect(() => {
@@ -300,6 +323,24 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     if (toastInfo) pushToast(toastInfo.msg, toastInfo.tone);
   };
 
+  // Solo Zindan'ın boss aşaması yenildiğinde applyLoot'un normal
+  // altın/XP/drop'una EK olarak verilen tamamlama ödülü — bonus altın boss'un
+  // kendi (zaten tier'a göre ölçeklenmiş) altın aralığına göre, garanti bir
+  // sandık da haritanın loot tier'ında. Kesin zindan-özel loot tablosu henüz
+  // tasarlanmadı (bkz. data/soloDungeon.js'in üstündeki not) — bu, o
+  // tasarım gelene kadar makul bir varsayılan.
+  const grantDungeonCompletionReward = (boss) => {
+    const bonusGold = rand(boss.goldMin, boss.goldMax) * 2;
+    let toastMsg = "";
+    setPlayer((p) => {
+      const chest = { id: uid(), tier: map.tier };
+      toastMsg = `Zindan tamamlandı! ${boss.name} yenildi. +${bonusGold} altın, T${map.tier} Sandık kazandın.`;
+      return { ...p, gold: p.gold + bonusGold, chests: [...p.chests, chest] };
+    });
+    pushToast(toastMsg, "level");
+    setDungeonComplete({ mapName: map.name, bonusGold, chestTier: map.tier });
+  };
+
   // Shared tail-end for both attack() and useSkill(): the monster's counter
   // swing (if it's still alive) plus win/loss resolution. `extra` folds in
   // whatever the caller's own action already changed (buffs/dot/cooldowns/
@@ -319,6 +360,28 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       setTimeout(() => {
         applyLoot(wonMonster);
         attackLockRef.current = false;
+
+        // Solo Zindan koşusu sürüyorsa "Tekrar Savaş?" akışına hiç girmez —
+        // bir sonraki aşamaya (ya da boss'sa tamamlama ödülüne) otomatik
+        // geçer (kullanıcı isteği: "aşamalı olarak gitgide güçleşen ...
+        // etkinlik"). dungeonRun burada render zamanındaki değeriyle
+        // kapanıyor — attackLockRef zaten bu pencere boyunca yeni bir
+        // aksiyonu engellediği için state ile senkron kalır.
+        if (dungeonRun) {
+          if (wonMonster.isBoss) {
+            grantDungeonCompletionReward(wonMonster);
+            setDungeonRun(null);
+            setMonster(null);
+            setBattle(null);
+          } else {
+            const nextStage = dungeonRun.stages[dungeonRun.index + 1];
+            setDungeonRun({ ...dungeonRun, index: dungeonRun.index + 1 });
+            pushToast(`Aşama ${dungeonRun.index + 2}/${dungeonRun.stages.length} başlıyor!`, "default");
+            startBattle(nextStage, { preserveAutoBattle: true });
+          }
+          return;
+        }
+
         setMonster(null);
         setBattle(null);
         // Ana ekrana otomatik dönmek yerine "Tekrar Savaş?" onayı çıkıyor
@@ -370,6 +433,9 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         });
         setDeathInfo({ xpLost });
         endBattle();
+        // Zindanda ölmek koşuyu bitirir — kalan aşamalar/boss ödülü kaybedilir,
+        // giriş hakkı zaten enterSoloDungeon'da harcanmıştı (geri gelmiyor).
+        if (dungeonRun) setDungeonRun(null);
       }, 500);
     } else {
       // normal exchange resolved — release the lock after a short cooldown
@@ -575,6 +641,36 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       {!monster && (
         <>
+          <SectionLabel>Günlük Solo Zindan</SectionLabel>
+          <div style={{ ...styles.itemDetailCard, borderColor: "#A34FD966", background: "#A34FD90d", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Castle size={20} color="#A34FD9" strokeWidth={1.6} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13 }}>{map.name} Zindanı</div>
+                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
+                  5 gitgide güçleşen aşama + boss. Günde {SOLO_DUNGEON_DAILY_LIMIT} kez girilebilir.
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                Bugün {dungeonEntriesLeft(player)}/{SOLO_DUNGEON_DAILY_LIMIT} giriş hakkın var.
+              </span>
+              <button
+                style={{
+                  ...styles.tinyBtn,
+                  ...(dungeonEntriesLeft(player) > 0 && !locked
+                    ? { background: "#A34FD9" }
+                    : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }),
+                }}
+                disabled={dungeonEntriesLeft(player) <= 0 || locked}
+                onClick={enterSoloDungeon}
+              >
+                Zindana Gir
+              </button>
+            </div>
+          </div>
+
           <SectionLabel>Kapı · Bölge seç</SectionLabel>
           <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: -6, marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
             <DoorOpen size={12} /> Başka bir haritaya ışınlanmak {GATE_TELEPORT_COST} altın tutar.
@@ -642,6 +738,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       {monster && battle && (
         <div style={styles.battleArena}>
+          {dungeonRun && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "#A34FD914", border: "1px solid #A34FD944" }}>
+              <span style={{ fontSize: 11, color: "#A34FD9", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 5 }}>
+                <Castle size={12} /> Zindan · Aşama {dungeonRun.index + 1}/{dungeonRun.stages.length}
+              </span>
+              {monster.isBoss && <span style={{ fontSize: 10, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>BOSS</span>}
+            </div>
+          )}
           <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{monster.name}</span>
@@ -721,7 +825,16 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             </button>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
-            <button style={{ ...styles.ghostBtn, flex: 1 }} onClick={endBattle}>
+            <button
+              style={{ ...styles.ghostBtn, flex: 1 }}
+              onClick={() => {
+                endBattle();
+                // Zindan koşusu sürerken elle geri çekilmek koşuyu yarıda
+                // bırakır — kalan aşamalar/boss ödülü kaybedilir, giriş hakkı
+                // (zaten enterSoloDungeon'da harcandı) geri gelmiyor.
+                if (dungeonRun) { setDungeonRun(null); pushToast("Zindan koşusu yarıda bırakıldı.", "warn"); }
+              }}
+            >
               <ArrowLeft size={13} /> Geri Çekil
             </button>
             {/* Savaş ekranının ALTINDA, küçük bir ikon (kullanıcı isteği —
@@ -820,6 +933,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                 Evet
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {dungeonComplete && (
+        <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setDungeonComplete(null)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <Castle size={32} color="#A34FD9" strokeWidth={1.3} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>Zindan Tamamlandı!</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 240 }}>
+              {dungeonComplete.mapName} Zindan Efendisi'ni yendin — +{dungeonComplete.bonusGold} altın ve T{dungeonComplete.chestTier} Sandık kazandın.
+            </div>
+            <button style={{ ...styles.tinyBtn, background: "#A34FD9", marginTop: 20 }} onClick={() => setDungeonComplete(null)}>
+              Harika!
+            </button>
           </div>
         </div>
       )}
