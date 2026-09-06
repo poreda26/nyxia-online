@@ -1,14 +1,35 @@
-import { todayKey } from "./day";
 import { xpToNext, MAX_LEVEL, gainXp } from "./player";
 
-// Bir olayın BUGÜNKÜ oluşumunun başlama zamanı (epoch ms) — cihazın yerel
-// saatine göre. Sunucu olmadığı için bu senkron değil (bkz. data/
-// scheduledEvents.js'in üstündeki not) ama tek cihazlı/tek oyunculu bir
-// oturum için yeterli: her cihaz kendi saatine göre aynı olayı açar.
+// Kullanıcı isteği: "Telefonun saatine göre değil oyunun saatine göre
+// açılacak bu eventler. Oyunun saati İstanbul saatine göre ayarlı olacak."
+// — cihazın kendi saat dilimi ne olursa olsun (yurt dışından oynayan bir
+// oyuncu dahil), bu olaylar hep İstanbul saatine göre açılır. Türkiye 2016'dan
+// beri yaz saati uygulamıyor — yıl boyu sabit UTC+3 (TRT) — bu yüzden
+// Intl/timeZone API'sine gerek kalmadan sabit bir ofsetle hesaplanabiliyor.
+const ISTANBUL_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+// `now`'ı (gerçek UTC epoch) 3 saat ileri kaydırılmış bir Date olarak
+// döner — bu Date'in UTC getter'ları (getUTCHours/getUTCDate/...) artık
+// cihazın kendi saat dilimi hesaba katılmadan doğrudan İSTANBUL'un o anki
+// duvar saatini verir.
+function istanbulNow(now = Date.now()) {
+  return new Date(now + ISTANBUL_UTC_OFFSET_MS);
+}
+
+// İstanbul takvimine göre "bugün" — gün değişimini (bkz. freshState/stateFor
+// aşağıda) cihazın kendi gece yarısına değil İstanbul'un gece yarısına göre
+// tetiklemek için (utils/day.js#todayKey bunun yerine cihaz saatini kullanır,
+// bu olay sistemi için kasıtlı olarak kullanılmıyor).
+function istanbulDateKey(now = Date.now()) {
+  return istanbulNow(now).toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
+// Bir olayın BUGÜNKÜ (İstanbul takvimine göre) oluşumunun başlama zamanı,
+// gerçek epoch ms olarak.
 function scheduledStart(event, now = Date.now()) {
-  const d = new Date(now);
-  d.setHours(event.hour, event.minute, 0, 0);
-  return d.getTime();
+  const ist = istanbulNow(now);
+  const istanbulLocalAsUtc = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate(), event.hour, event.minute, 0, 0);
+  return istanbulLocalAsUtc - ISTANBUL_UTC_OFFSET_MS;
 }
 
 export function eventTotalTicks(event) {
@@ -44,26 +65,27 @@ export function ticksElapsed(event, now = Date.now()) {
   return Math.min(total, Math.floor((now - start) / (event.tickIntervalMinutes * 60000)));
 }
 
-function freshState() {
-  return { day: todayKey(), joined: false, ticksCredited: 0 };
+function freshState(now) {
+  return { day: istanbulDateKey(now), joined: false, ticksCredited: 0 };
 }
 
-// player.scheduledEvents[event.id] gün değiştiyse (ya da hiç yoksa) taze
-// sayılır — utils/dailyQuests.js'teki "day değişince sıfırla" deseniyle aynı.
-function stateFor(player, event) {
+// player.scheduledEvents[event.id] İSTANBUL takvim günü değiştiyse (ya da
+// hiç yoksa) taze sayılır — utils/dailyQuests.js'teki "day değişince
+// sıfırla" deseniyle aynı, ama kasıtlı olarak cihaz günü değil İstanbul günü.
+function stateFor(player, event, now = Date.now()) {
   const s = player.scheduledEvents?.[event.id];
-  return s && s.day === todayKey() ? s : freshState();
+  return s && s.day === istanbulDateKey(now) ? s : freshState(now);
 }
 
-export function scheduledEventProgress(player, event) {
-  const s = stateFor(player, event);
+export function scheduledEventProgress(player, event, now = Date.now()) {
+  const s = stateFor(player, event, now);
   return { joined: s.joined, ticksCredited: s.ticksCredited, totalTicks: eventTotalTicks(event) };
 }
 
 export function canJoinScheduledEvent(player, event, now = Date.now()) {
   const { phase } = eventPhase(event, now);
   if (phase !== "preopen" && phase !== "active") return { ok: false, reason: "Etkinlik şu an açık değil." };
-  if (stateFor(player, event).joined) return { ok: false, reason: "Zaten katıldın." };
+  if (stateFor(player, event, now).joined) return { ok: false, reason: "Zaten katıldın." };
   return { ok: true };
 }
 
@@ -73,7 +95,7 @@ export function canJoinScheduledEvent(player, event, now = Date.now()) {
 export function joinScheduledEvent(player, event, now = Date.now()) {
   const check = canJoinScheduledEvent(player, event, now);
   if (!check.ok) return { player, joined: false, reason: check.reason };
-  const next = { day: todayKey(), joined: true, ticksCredited: ticksElapsed(event, now) };
+  const next = { day: istanbulDateKey(now), joined: true, ticksCredited: ticksElapsed(event, now) };
   return { player: { ...player, scheduledEvents: { ...player.scheduledEvents, [event.id]: next } }, joined: true };
 }
 
@@ -81,7 +103,7 @@ export function joinScheduledEvent(player, event, now = Date.now()) {
 // bir olay için son kontrolden bu yana geçen yeni tick'leri XP'ye çevirir.
 // Yeni tick yoksa null döner (çağıran gereksiz bir setPlayer/toast atmasın).
 export function creditScheduledEventTicks(player, event, now = Date.now()) {
-  const s = stateFor(player, event);
+  const s = stateFor(player, event, now);
   if (!s.joined) return null;
   // "active" VE "ended" ikisinde de kredilendirir — son tick tam olay
   // bitiş anında düşüyor (10dk süre = son tick zamanı), o an gelene kadar
@@ -99,6 +121,6 @@ export function creditScheduledEventTicks(player, event, now = Date.now()) {
   const pct = (event.tickPercent * newTicks) / 100;
   const xpAmount = player.level < MAX_LEVEL ? Math.round(xpToNext(player.level) * pct) : 0;
   const { player: gained, levelsGained } = gainXp(player, xpAmount);
-  const next = { ...gained, scheduledEvents: { ...gained.scheduledEvents, [event.id]: { day: todayKey(), joined: true, ticksCredited: elapsed } } };
+  const next = { ...gained, scheduledEvents: { ...gained.scheduledEvents, [event.id]: { day: istanbulDateKey(now), joined: true, ticksCredited: elapsed } } };
   return { player: next, xpGain: xpAmount, newTicks, levelsGained };
 }
