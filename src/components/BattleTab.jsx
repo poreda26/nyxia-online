@@ -28,15 +28,6 @@ function buffMultiplier(buffs, stat) {
   return buffs.filter((b) => b.stat === stat).reduce((mult, b) => mult * b.mult, 1);
 }
 
-// map.dropChance/chestChance artık haritaya göre değişiyor (bkz.
-// data/maps.js) — bazıları tam sayı değil (%7.5, %2.5, %1.5), bu yüzden
-// "Drop şansı" satırı artık sabit bir string değil, bu formatlayıcıyla
-// hesaplanıyor. toFixed(1) + gereksiz ".0"ı kırpma, %10/%5/%1 gibi tam
-// sayılarda çirkin bir "10.0" görünmesin diye.
-function fmtPct(fraction) {
-  return (fraction * 100).toFixed(1).replace(/\.0$/, "");
-}
-
 export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
   const [monster, setMonster] = useState(null); // active monster template
   const [battle, setBattle] = useState(null); // {monsterHp, monsterMaxHp, log, playerHp}
@@ -524,9 +515,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                     </button>
                   </div>
                 ))}
-              </div>
-              <div style={styles.dropInfoRow}>
-                <span>Drop şansı: Ekipman (Zırh/Silah) %{fmtPct(map.dropChance)} · Sandık %{fmtPct(map.chestChance)}</span>
               </div>
             </>
           )}
