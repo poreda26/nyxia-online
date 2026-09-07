@@ -78,6 +78,12 @@ export function statsAtLevel(item, level) {
 // eşyanın mevcut (kök seviyeden gelen) değeri korunur; ikisinde de eşya
 // her zaman tam dayanıklılıkla kurulur (currentDurability = durability).
 export function applyLevelData(item, level) {
+  // statsAtLevel level'i en az 1'e sabitler (levels dizisi 1-index'li) — bu
+  // yüzden level<=0 için hiç çağrılmamalı, yoksa +1'in gerçek verisi "+0"
+  // etiketiyle döner (silah/zırhta hiç fark edilmemiş bir bug, çünkü onlar
+  // zaten hiç +0 doğmuyor — ama takılar artık gerçekten +0'da düşebiliyor,
+  // bkz. data/accessories.js, o yüzden burada düzeltildi).
+  if (level <= 0) return { ...item, upgradeLevel: 0 };
   const data = statsAtLevel(item, level);
   if (!data) return item;
   const durability = data.durability ?? item.durability;
@@ -96,7 +102,16 @@ export function applyLevelData(item, level) {
     elements: data.elements ?? item.elements ?? null,
     statBonus: data.statBonus ?? item.statBonus ?? null,
     reqStats: data.reqStats ?? item.reqStats,
-    resistances: data.resistances ?? null,
+    resistances: data.resistances ?? item.resistances ?? null,
+    // `defenseAbility`/`attackPowerPct` — String of Skulls gibi takılarda
+    // seviyeye göre gerçekten değişiyor (bkz. data/accessories.js), önceden
+    // burada hiç taşınmıyordu (Eagle's Eye/Prismatic Triad Staff'ın kendi
+    // defenseAbility'si de aynı sebepten yükseltmede hiç güncellenmiyordu —
+    // ama o zamana kadar hiçbir yerde tüketilmediği için hiç fark
+    // edilmemişti). `resistances` da aynı sebepten artık item'ın önceki
+    // değerine düşüyor (level verisi boşsa sıfırlamak yerine).
+    defenseAbility: data.defenseAbility ?? item.defenseAbility ?? null,
+    attackPowerPct: data.attackPowerPct ?? item.attackPowerPct ?? 0,
     itemGrade: data.itemGrade ?? null,
     durability, currentDurability: durability,
     upgradeLevel: level,

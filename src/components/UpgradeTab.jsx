@@ -10,6 +10,7 @@ import ItemIcon from "./ItemIcon";
 import BagGrid from "./BagGrid";
 import ScrollShop from "./ScrollShop";
 import ForgePressModal from "./ForgePressModal";
+import AccessoryUpgradeTab from "./AccessoryUpgradeTab";
 
 const SCROLL_BOX_COUNT = 9;
 
@@ -19,6 +20,7 @@ const SCROLL_BOX_COUNT = 9;
 // staging model simple (every staged item always came from — and always
 // returns to — player.inventory, never player.equipped).
 export default function UpgradeTab({ player, setPlayer, pushToast }) {
+  const [subtab, setSubtab] = useState("forge"); // "forge" | "accessory"
   const [stagedItem, setStagedItem] = useState(null); // item | null
   const [scrollBoxes, setScrollBoxes] = useState(() => Array(SCROLL_BOX_COUNT).fill(null)); // { tier } | null
   const [bonusScrollActive, setBonusScrollActive] = useState(false);
@@ -189,7 +191,21 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
   return (
     <div style={styles.panelScroll}>
       <SectionLabel>Yükselt</SectionLabel>
-      <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: -4, marginBottom: 12 }}>
+
+      <div style={styles.subtabRow}>
+        <button onClick={() => setSubtab("forge")} style={{ ...styles.subtabBtn, ...(subtab === "forge" ? styles.subtabBtnActive : {}) }}>
+          Silah / Zırh
+        </button>
+        <button onClick={() => setSubtab("accessory")} style={{ ...styles.subtabBtn, ...(subtab === "accessory" ? styles.subtabBtnActive : {}) }}>
+          Takı Yükseltme
+        </button>
+      </div>
+
+      {subtab === "accessory" ? (
+        <AccessoryUpgradeTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
+      ) : (
+        <>
+      <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: 12, marginBottom: 12 }}>
         Aşağıdaki çantandan eşyana ve aynı tier'dan tam <b>1</b> parşömene dokunarak kutulara
         yerleştir, sonra bas. Basmak ücretsizdir ama <b>başarısız olursa eşya ve parşömen kaybolur</b>.
         Kuşanılı bir eşyayı yükseltmek için önce Envanter'den çıkar, çantana düşsün. Maksimum seviye +{MAX_UPGRADE_LEVEL}.
@@ -329,6 +345,8 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
           bumpedItem={pendingReveal.bumpedItem}
           onClose={closeReveal}
         />
+      )}
+        </>
       )}
     </div>
   );

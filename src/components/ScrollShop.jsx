@@ -2,9 +2,14 @@ import { ScrollText } from "lucide-react";
 import { GEAR_TIERS } from "../data/tiers";
 import { itemTierColor } from "../data/itemRarity";
 import { scrollPrice } from "../utils/upgrade";
-import { addItemToInventory, makeScrollStack } from "../utils/inventory";
+import { addItemToInventory, makeScrollStack, makeAccessoryScrollStack } from "../utils/inventory";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
+
+// Kullanıcı isteği: "Takı basmak için Accessory Yükseltme kağıdı ekle.
+// Tanesi 50.000 Gold olacak." — tier'a bağlı değil, tek sabit fiyat
+// (bkz. utils/accessoryUpgrade.js).
+const ACCESSORY_SCROLL_PRICE = 50000;
 
 export default function ScrollShop({ player, setPlayer, pushToast }) {
   const buyScroll = (tierId) => {
@@ -14,6 +19,14 @@ export default function ScrollShop({ player, setPlayer, pushToast }) {
     if (!result.added) { pushToast(`Satın alınamadı — ${result.reason}`, "warn"); return; }
     setPlayer(result.player);
     pushToast(`T${tierId} Yükseltme Parşömeni satın alındı.`, "loot");
+  };
+
+  const buyAccessoryScroll = () => {
+    if (player.gold < ACCESSORY_SCROLL_PRICE) { pushToast("Yeterli altının yok.", "warn"); return; }
+    const result = addItemToInventory({ ...player, gold: player.gold - ACCESSORY_SCROLL_PRICE }, makeAccessoryScrollStack(1));
+    if (!result.added) { pushToast(`Satın alınamadı — ${result.reason}`, "warn"); return; }
+    setPlayer(result.player);
+    pushToast("Aksesuar Yükseltme Kağıdı satın alındı.", "loot");
   };
 
   return (
@@ -33,6 +46,13 @@ export default function ScrollShop({ player, setPlayer, pushToast }) {
             </button>
           </div>
         ))}
+        <div style={{ ...styles.scrollBuyCard, borderColor: "#5FA8A055" }}>
+          <ScrollText size={14} color="#5FA8A0" strokeWidth={1.6} />
+          <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "#5FA8A0", marginTop: 3 }}>Takı</div>
+          <button style={{ ...styles.tinyBtn, ...styles.scrollBuyBtn, background: "#5FA8A0", color: "#15171E" }} onClick={buyAccessoryScroll}>
+            {ACCESSORY_SCROLL_PRICE}g
+          </button>
+        </div>
       </div>
     </>
   );

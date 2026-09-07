@@ -143,6 +143,24 @@ export function makeBonusScrollStack() {
   };
 }
 
+// Takı yükseltme sistemi silah/zırhın parşömen+forge'undan tamamen ayrı:
+// aynı isim+seviyeden 3 takı + 1 bu kağıt %100 oranda bir sonraki seviyeye
+// birleşiyor (bkz. utils/accessoryUpgrade.js). Tier'a bağlı değil (herhangi
+// bir takıda kullanılabilir), bu yüzden T# etiketi taşımıyor — makeScrollStack
+// gibi tier bazlı değil, tek bir evrensel yığın.
+export const ACCESSORY_SCROLL_ID = "accessory-upgrade-scroll";
+export function makeAccessoryScrollStack(count = 1) {
+  return {
+    id: ACCESSORY_SCROLL_ID,
+    kind: "accessoryScroll",
+    name: "Aksesuar Yükseltme Kağıdı",
+    count,
+    weight: 0.5,
+    stackable: true,
+    stackKey: ACCESSORY_SCROLL_ID,
+  };
+}
+
 function stackKeyOf(item) {
   return item.stackable ? (item.stackKey || `${item.kind}:${item.name}`) : null;
 }

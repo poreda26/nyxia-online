@@ -173,27 +173,34 @@ function rollWeaponBase(tierId, cls) {
 
 // Tek bir aksesuar şablonundan (ACCESSORY_SETS[slot] satırı) gerçek eşya
 // objesi kurar — hem rastgele rollAccessory hem GM'in tam seçim yaptığı
-// gmBuildAccessory bunu paylaşır.
-function buildAccessoryFromTemplate(a, tierId, slotType) {
+// gmBuildAccessory bunu paylaşır. `level` varsayılan 0: silah/zırhın aksine
+// takılar +0'da GERÇEK bir taban durum (kullanıcının 3'lü birleştirme
+// sistemi için gerekli — bkz. data/accessories.js'in üstündeki not),
+// applyLevelData sadece level>0 istenince çağrılıyor (statsAtLevel zaten
+// level'i en az 1'e sabitliyor, yani level=0 için hiç çağrılmamalı).
+function buildAccessoryFromTemplate(a, tierId, slotType, level = 0) {
   const weight = a.weight ?? tierId;
   const durability = a.durability ?? weaponDurability(tierId);
   const base = {
     id: uid(), kind: "accessory", slot: slotType, tier: tierId, name: a.name, atk: 0, def: a.def || 0, hp: a.hp || 0, mp: a.mp || 0,
     statBonus: a.statBonus, weight, reqStats: a.reqStats || null,
+    defenseAbility: a.defenseAbility || null, resistances: a.resistances || null, attackPowerPct: a.attackPowerPct || 0,
     durability, currentDurability: durability, upgradeLevel: 0, stackable: false, levels: a.levels || null,
   };
-  return base.levels ? applyLevelData(base, 1) : base;
+  return level > 0 && base.levels ? applyLevelData(base, level) : base;
 }
 
 // Accessories are universal — any class can wear a ring, earring, necklace
-// or belt, so they never need a class lock or trade detour.
+// or belt, so they never need a class lock or trade detour. Kullanıcı
+// isteğiyle artık +0'da düşüyorlar (applyStartingPlusOne SARMASI
+// kaldırıldı) — silah/zırhın "hiç +0 doğmaz" kuralı takılara uygulanmıyor.
 export function rollAccessory(tierId) {
   const slotType = pick(["necklace", "belt", "ring", "earring"]);
   const a = ACCESSORY_SETS[slotType].find((it) => it.tier === tierId);
   // Katalog eşya-eşya yeniden dolduruluyor — o slot/tier boşken çökmek
   // yerine sessizce null dön (bkz. rollArmor'daki aynı güvenlik notu).
   if (!a) return null;
-  return applyStartingPlusOne(buildAccessoryFromTemplate(a, tierId, slotType));
+  return buildAccessoryFromTemplate(a, tierId, slotType);
 }
 
 // Karakter oluşturulunca kuşandırılan sınıfa özel +1 başlangıç silahı —

@@ -108,6 +108,19 @@ import rogueT5Chest from "../assets/items/rogue-t5-chest.png";
 import rogueT5Legs from "../assets/items/rogue-t5-legs.png";
 import rogueT5Gauntlets from "../assets/items/rogue-t5-gauntlets.png";
 import rogueT5Boots from "../assets/items/rogue-t5-boots.png";
+import warriorT3Gauntlets from "../assets/items/warrior-t3-gauntlets.png";
+import warriorT3Boots from "../assets/items/warrior-t3-boots.png";
+import warriorT4Head from "../assets/items/warrior-t4-head.png";
+import warriorT4Chest from "../assets/items/warrior-t4-chest.png";
+import warriorT4Legs from "../assets/items/warrior-t4-legs.png";
+import warriorT4Gauntlets from "../assets/items/warrior-t4-gauntlets.png";
+import warriorT4Boots from "../assets/items/warrior-t4-boots.png";
+import warriorT5Head from "../assets/items/warrior-t5-head.png";
+import warriorT5Chest from "../assets/items/warrior-t5-chest.png";
+import warriorT5Legs from "../assets/items/warrior-t5-legs.png";
+import warriorT5Gauntlets from "../assets/items/warrior-t5-gauntlets.png";
+import warriorT5Boots from "../assets/items/warrior-t5-boots.png";
+import stringOfSkulls from "../assets/items/string-of-skulls.png";
 import hpPotion1 from "../assets/items/hp-potion-1.png";
 import hpPotion2 from "../assets/items/hp-potion-2.png";
 import hpPotion3 from "../assets/items/hp-potion-3.png";
@@ -125,6 +138,24 @@ export const ITEM_IMAGE_BY_NAME = {
   "Totamic Club": totamicClub,
   "Prismatic Triad Staff": prismaticTriadStaff,
   "Ron's Staff": ronsStaff,
+  // Warrior'ın zırh seti — T1/T2 henüz yüklenmedi (Görseller/Warrior
+  // Zırh/T1,T2 klasörleri var ama boş), T3'te de sadece Gauntlet/Boots
+  // yüklendi (Helmet/Pads/Pauldron bekleniyor). T4/T5 tam.
+  "Plate Armor Gauntlet": warriorT3Gauntlets,
+  "Plate Armor Boots": warriorT3Boots,
+  "Chitin Armor Helmet": warriorT4Head,
+  "Chitin Armor Pauldron": warriorT4Chest,
+  "Chitin Armor Pads": warriorT4Legs,
+  "Chitin Armor Gauntlet": warriorT4Gauntlets,
+  "Chitin Armor Boots": warriorT4Boots,
+  "Chitin Shell Helmet": warriorT5Head,
+  "Chitin Shell Pauldron": warriorT5Chest,
+  "Chitin Shell Pads": warriorT5Legs,
+  "Chitin Shell Gauntlet": warriorT5Gauntlets,
+  "Chitin Shell Boots": warriorT5Boots,
+  // İlk takımız — bkz. data/accessories.js. Silah/zırhın aksine tek görsel
+  // her +seviyede aynı kalıyor (forge'a göre değişen art yok).
+  "String of Skulls": stringOfSkulls,
   // Rogue'un T1-T5 zırh seti (data/armorSets.js) — silahların aksine
   // zırhın forge seviyesine göre ayrı bir görseli yok (tek görsel, her
   // +seviyede aynı kalıyor), bu yüzden LEVEL_IMAGE_VARIANTS'a değil

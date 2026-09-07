@@ -2,6 +2,7 @@ import { CLASSES } from "../data/classes";
 import { itemTierColor, ITEM_TIER_LABEL } from "../data/itemRarity";
 import { STAT_LABELS } from "../data/stats";
 import { ELEMENT_LABELS, ELEMENT_COLORS } from "../data/elements";
+import { WEAPON_TYPE_LABEL } from "../data/warriorWeapons";
 import { itemSubLabel, isConsumable } from "../utils/itemDisplay";
 import { displayItemName, armorLevelBonus, ARMOR_CLASS_BONUS_STAT } from "../utils/player";
 import { styles } from "../styles";
@@ -108,6 +109,24 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
             label={STAT_LABELS[ARMOR_CLASS_BONUS_STAT[item.class]]}
             value={`+${armorLevelBonus(item.upgradeLevel)}`}
             color="#D4AF6A"
+          />
+        )}
+        {/* String of Skulls gibi takıların dormant alanları — henüz hiçbir
+            savaş formülü bunları OKUMUYOR (Defense Ability = elinde
+            Dagger/Club/Spear olana karşı azaltılmış hasar, Attack Power =
+            yüzdesel saldırı bonusu, ikisi de "bunun ayarlarını yapacağız"
+            diye kullanıcı isteğiyle şimdilik sadece VERİ olarak duruyor) —
+            ama oyuncu eşyanın üstünde görebilsin diye tooltip'te gösteriliyor. */}
+        {item.attackPowerPct > 0 && (
+          <StatLine label="Saldırı Gücü Bonusu" value={`+%${Math.round(item.attackPowerPct * 100)}`} color="#D4AF6A" />
+        )}
+        {item.resistances && Object.entries(item.resistances).filter(([, v]) => v).map(([key, value]) => (
+          <StatLine key={key} label={`${ELEMENT_LABELS[key] || key} Direnci`} value={`+${value}`} color={ELEMENT_COLORS[key]} />
+        ))}
+        {item.defenseAbility && (
+          <StatLine
+            label={`Savunma Becerisi (${WEAPON_TYPE_LABEL[item.defenseAbility.vs] || item.defenseAbility.vs})`}
+            value={`+${item.defenseAbility.value}`}
           />
         )}
       </div>

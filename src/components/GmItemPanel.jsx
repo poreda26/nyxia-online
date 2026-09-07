@@ -29,6 +29,13 @@ export default function GmItemPanel({ player, setPlayer, pushToast }) {
   const accOptions = useMemo(() => (kind === "accessory" ? gmAccessoryTemplates(accSlot) : []), [kind, accSlot]);
 
   const effectiveWeaponId = weaponId || weaponOptions[0]?.id || "";
+  // armorTier/accTier de aynı "eski seçim yeni listede yok" sorununu
+  // yaşıyordu (ör. Kemer'e geçince katalogda sadece T3 var ama state hâlâ
+  // varsayılan 1'de kalıyordu) — weaponId'deki gibi listede gerçekten var
+  // olan bir tier'a düşüyoruz, yoksa gmBuildArmor/gmBuildAccessory sessizce
+  // null dönüp "Bu kombinasyon için eşya bulunamadı" hatası veriyordu.
+  const effectiveArmorTier = armorOptions.some((a) => a.tier === armorTier) ? armorTier : (armorOptions[0]?.tier ?? armorTier);
+  const effectiveAccTier = accOptions.some((a) => a.tier === accTier) ? accTier : (accOptions[0]?.tier ?? accTier);
 
   // Gerçek KO ekran görüntüsünden birebir +1..+10 girilmiş eşyalar (bkz.
   // utils/loot.js#gmWeaponTemplates'in maxLevel alanı) MAX_UPGRADE_LEVEL'ı
@@ -37,8 +44,8 @@ export default function GmItemPanel({ player, setPlayer, pushToast }) {
   const selectedMaxLevel = kind === "weapon"
     ? (weaponOptions.find((w) => w.id === effectiveWeaponId)?.maxLevel ?? MAX_UPGRADE_LEVEL)
     : kind === "armor"
-    ? (armorOptions.find((a) => a.tier === armorTier)?.levels?.length ?? MAX_UPGRADE_LEVEL)
-    : (accOptions.find((a) => a.tier === accTier)?.levels?.length ?? MAX_UPGRADE_LEVEL);
+    ? (armorOptions.find((a) => a.tier === effectiveArmorTier)?.levels?.length ?? MAX_UPGRADE_LEVEL)
+    : (accOptions.find((a) => a.tier === effectiveAccTier)?.levels?.length ?? MAX_UPGRADE_LEVEL);
   const upgradeLevels = useMemo(() => Array.from({ length: selectedMaxLevel + 1 }, (_, i) => i), [selectedMaxLevel]);
   const effectiveLevel = Math.min(level, selectedMaxLevel);
 
@@ -48,9 +55,9 @@ export default function GmItemPanel({ player, setPlayer, pushToast }) {
       if (!effectiveWeaponId) return;
       item = gmBuildWeaponById(cls, effectiveWeaponId, effectiveLevel);
     } else if (kind === "armor") {
-      item = gmBuildArmor(cls, slot, armorTier, effectiveLevel);
+      item = gmBuildArmor(cls, slot, effectiveArmorTier, effectiveLevel);
     } else {
-      item = gmBuildAccessory(accSlot, accTier, effectiveLevel);
+      item = gmBuildAccessory(accSlot, effectiveAccTier, effectiveLevel);
     }
     if (!item) { pushToast("Bu kombinasyon için eşya bulunamadı.", "warn"); return; }
     const result = addItemToInventory(player, item);
@@ -113,7 +120,7 @@ export default function GmItemPanel({ player, setPlayer, pushToast }) {
       )}
 
       {kind === "armor" && (
-        <select value={armorTier} onChange={(e) => setArmorTier(parseInt(e.target.value, 10))} style={styles.selectInput}>
+        <select value={effectiveArmorTier} onChange={(e) => setArmorTier(parseInt(e.target.value, 10))} style={styles.selectInput}>
           {armorOptions.map((a) => (
             <option key={a.tier} value={a.tier}>T{a.tier} · {a.name} (DEF {a.def})</option>
           ))}
@@ -121,7 +128,7 @@ export default function GmItemPanel({ player, setPlayer, pushToast }) {
       )}
 
       {kind === "accessory" && (
-        <select value={accTier} onChange={(e) => setAccTier(parseInt(e.target.value, 10))} style={styles.selectInput}>
+        <select value={effectiveAccTier} onChange={(e) => setAccTier(parseInt(e.target.value, 10))} style={styles.selectInput}>
           {accOptions.map((a) => (
             <option key={a.tier} value={a.tier}>
               T{a.tier} · {a.name} ({Object.entries(a.statBonus).map(([k, v]) => `${k.toUpperCase()} +${v}`).join(" · ")})
