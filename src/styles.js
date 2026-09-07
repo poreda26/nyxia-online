@@ -140,6 +140,7 @@ export const styles = {
   bagSlotDragOver: { borderStyle: "solid", borderColor: "#D4AF6A", background: "var(--bg-panel-alt)" },
 
   forgeRow: { display: "flex", gap: 10, alignItems: "flex-start", marginTop: 10 },
+  forgeCol: { display: "flex", flexDirection: "column", alignItems: "center", gap: 10 },
   forgeColLabel: { fontSize: 8, color: "var(--text-faint)", marginBottom: 5, textAlign: "center", letterSpacing: 0.5, textTransform: "uppercase" },
   forgeItemSlot: {
     position: "relative", width: 58, height: 58, borderRadius: 10, background: "var(--bg-panel)",
@@ -149,7 +150,7 @@ export const styles = {
     position: "relative", width: 50, height: 50, borderRadius: 10, background: "var(--bg-panel)",
     borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
   },
-  forgeScrollGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, width: 142 },
+  forgeScrollGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, width: "100%", maxWidth: 190 },
   forgeScrollSlot: {
     position: "relative", width: "100%", aspectRatio: "1 / 1", borderRadius: 8, background: "var(--bg-panel)",
     borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)", display: "flex", flexDirection: "column",
@@ -295,6 +296,18 @@ export const styles = {
     alignItems: "center", padding: "6px 0", position: "relative",
   },
   navActiveDot: { width: 3, height: 3, borderRadius: 2, background: "var(--text-primary)", marginTop: 3 },
+  qtyBtn: {
+    width: 22, height: 22, borderRadius: 6, background: "var(--bg-panel-alt)", border: "1px solid var(--border)",
+    color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0,
+  },
+  qtyInput: {
+    width: 34, textAlign: "center", background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 6,
+    color: "var(--text-primary)", fontFamily: "var(--font-mono)", fontSize: 12, padding: "3px 2px", flexShrink: 0,
+  },
+  navNotifDot: {
+    position: "absolute", top: 4, left: "50%", marginLeft: 7, width: 7, height: 7, borderRadius: 4,
+    background: "#C9425A", border: "1.5px solid var(--bg-void)",
+  },
 
   // Bag/depo'da bir eşyaya dokununca çıkan detay widget'ı — önceden eşya
   // detayı ızgaranın altına, sayfa akışının içine ekleniyordu (kullanıcı

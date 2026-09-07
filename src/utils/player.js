@@ -1,5 +1,5 @@
 import { CLASSES } from "../data/classes";
-import { STAT_LABELS, STAT_KEYS, STAT_CAP } from "../data/stats";
+import { STAT_LABELS, STAT_KEYS, STAT_CAP, POINTS_PER_LEVEL } from "../data/stats";
 import { makePotionStack } from "./inventory";
 import { MAPS } from "../data/maps";
 import { currentWeekId } from "./week";
@@ -29,6 +29,25 @@ export function xpLevelPenaltyMultiplier(playerLevel, mapLevelMax) {
 // Hard level cap — T5 (Kaos Tapınağı) unlocks at 60, so this leaves a real
 // endgame band (60-65) rather than capping right at the last tier unlock.
 export const MAX_LEVEL = 65;
+
+// Ham XP ekleyip gerekiyorsa seviye atlama döngüsünü işletir — savaştaki
+// öldürme XP'si hâlâ kendi döngüsünü BattleTab.jsx#applyLoot içinde ayrı
+// tutuyor (premium/klan/etkinlik çarpanları vb. orada zaten hesaplanmış
+// geliyor), ama savaş DIŞI XP kaynakları (bkz. utils/scheduledEvents.js'in
+// zamanlı etkinlik ödülü) aynı döngüyü burada paylaşıyor.
+export function gainXp(player, amount) {
+  if (player.level >= MAX_LEVEL || amount <= 0) return { player, levelsGained: 0 };
+  let np = { ...player, xp: player.xp + amount };
+  let levelsGained = 0;
+  while (np.level < MAX_LEVEL && np.xp >= xpToNext(np.level)) {
+    np.xp -= xpToNext(np.level);
+    np.level += 1;
+    np.statPoints += 3;
+    levelsGained += 1;
+  }
+  if (np.level >= MAX_LEVEL) np.xp = 0;
+  return { player: np, levelsGained };
+}
 
 // Every class starts from its own baseStats (see data/classes.js) plus 10
 // free points the player distributes themselves — the "Ana Statü" hint in
@@ -107,7 +126,44 @@ export function initialPlayer(cls, race, nickname) {
     // ekranındaki ikon aynı `enabled` alanını değiştirir) ve
     // components/CharacterTab.jsx'in "Otomatik Saldırı" alt sekmesi. Eşikler
     // yüzde (0-100), can/mana o yüzdenin ALTINA düşünce ilgili pot içiliyor.
-    autoBattle: { enabled: false, hpThreshold: 35, mpThreshold: 35 },
+    // autoSkill: açıkken döngü her turda düz saldırı yerine kullanılabilir
+    // en iyi becerisini seçer (bkz. BattleTab.jsx#pickAutoSkill).
+    autoBattle: { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false },
+    // Yeni karakterler Hub'a ilk girişte tutorial'ı görür (bkz.
+    // components/Hub.jsx, components/TutorialModal.jsx) — "Atla" ile her an
+    // geçilebilir, Karakter sekmesinden istenirse tekrar açılabilir.
+    tutorialSeen: false,
+    // Alt menüdeki "Envanter" sekmesine bir bildirim noktası koymak için —
+    // bir canavar/sandıktan yeni eşya düşünce true olur (bkz. BattleTab.jsx
+    // #applyLoot, InventoryTab.jsx#openChest), Envanter sekmesi açılınca
+    // Hub.jsx tarafından false'a çekilir.
+    hasNewItemNotice: false,
+    // Günlük giriş ödülü — bkz. utils/dailyLogin.js. streak: kaç gündür
+    // ard arda giriş yapıldığı (bir gün atlanırsa 1'e döner), lastClaimDay:
+    // en son ödül alınan gün (aynı gün ikinci kez alınamaz).
+    dailyLogin: { streak: 0, lastClaimDay: null },
+    // Günlük görevler — bkz. utils/dailyQuests.js. Kaptan'ın kalıcı
+    // görevlerinden AYRI, her gün sıfırlanan bir "bugün X canavar öldür"
+    // merdiveni (day değişince otomatik sıfırlanır).
+    dailyQuests: { day: null, killsToday: 0, claimed: [false, false, false] },
+    // Başarım sistemi (bkz. data/achievements.js, utils/achievements.js) —
+    // kills/level/awakened gibi ZATEN var olan alanlardan türeyen başarımlar
+    // burada tekrar tutulmuyor; milestones sadece BAŞKA hiçbir yerde
+    // izlenmeyen sayaç/bayrakları taşıyor (bkz. UpgradeTab#press,
+    // utils/clan.js#foundClan, WarzoneTab#duel kazanma, InventoryTab#openChest).
+    milestones: { maxUpgradeReached: false, hasFoundedClan: false, duelsWon: 0, chestsOpened: 0 },
+    // Karakter sekmesinden seçilen, TopBar'da isminin yanında görünen aktif
+    // unvan — bir başarımın id'si ya da hiçbiri seçilmemişse null.
+    activeTitle: null,
+    // Günlük Solo Zindan giriş hakkı — bkz. utils/soloDungeon.js. day
+    // bugünden farklıysa entriesUsed sıfırmış gibi davranılır (gün değişince
+    // otomatik yenilenir, dailyQuests'teki aynı desen).
+    soloDungeon: { day: null, entriesUsed: 0 },
+    // Belirli saatlerde açılan dünya etkinlikleri (bkz. data/scheduledEvents.js,
+    // utils/scheduledEvents.js) — event id'sine göre { day, joined,
+    // ticksCredited }. day bugünden farklıysa taze sayılır (gün değişince
+    // otomatik yenilenir).
+    scheduledEvents: {},
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -175,8 +231,38 @@ export function migratePlayer(player) {
     nationalPoint: player.nationalPoint ?? STARTING_NATIONAL_POINT,
     weeklyPoint: player.weeklyPoint ?? 0,
     weekId: player.weekId || currentWeekId(),
-    clan: player.clan ?? null,
-    autoBattle: player.autoBattle || { enabled: false, hpThreshold: 35, mpThreshold: 35 },
+    // Bu alanlar (treasury/buildingLevel/myNpDonated/boss) klan bağış/boss
+    // sisteminden ÖNCE oluşturulmuş bir klanda eksik olabilir — spread sırası
+    // sayesinde player.clan'daki mevcut değerler bu varsayılanların üzerine
+    // yazıyor, sadece GERÇEKTEN eksik olanlar dolduruluyor.
+    // "dungeon" eksikti burada — Klan Zindanı özelliği bazı oyuncular zaten
+    // bir klana üyeyken eklenmişti, o eski kayıtlarda player.clan.dungeon
+    // hiç yoktu. canStartDungeon(player) (bkz. utils/clan.js) koşulsuz
+    // player.clan.dungeon.lastStartedDay okuyor — bu alan eksik kalınca
+    // ClanTab'ı her render'da TypeError ile çökertiyordu (kullanıcının
+    // ısrarla bildirdiği "Klan'a tıklayınca ekran gidiyor" bug'ının asıl
+    // nedeni — bir önceki oturumdaki todayKey düzeltmesi FARKLI bir bug'dı,
+    // ikisi aynı anda vardı).
+    clan: player.clan
+      ? { treasury: { np: 0, gold: 0, diamonds: 0 }, buildingLevel: 1, myNpDonated: 0, boss: null, dungeon: { lastStartedDay: null, startedBy: null }, ...player.clan }
+      : null,
+    autoBattle: player.autoBattle
+      ? { autoSkill: false, ...player.autoBattle }
+      : { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false },
+    // Bu alan eklenmeden önce oluşturulmuş karakterler zaten oyunu
+    // biliyordur — tutorial'ın onlara aniden çıkmaması için varsayılan
+    // olarak "görüldü" sayılırlar (Karakter sekmesinden yine de açabilirler).
+    tutorialSeen: player.tutorialSeen ?? true,
+    hasNewItemNotice: player.hasNewItemNotice ?? false,
+    dailyLogin: player.dailyLogin || { streak: 0, lastClaimDay: null },
+    dailyQuests: player.dailyQuests || { day: null, killsToday: 0, claimed: [false, false, false] },
+    milestones: {
+      maxUpgradeReached: false, hasFoundedClan: !!player.clan?.founded, duelsWon: 0, chestsOpened: 0,
+      ...player.milestones,
+    },
+    activeTitle: player.activeTitle ?? null,
+    soloDungeon: player.soloDungeon || { day: null, entriesUsed: 0 },
+    scheduledEvents: player.scheduledEvents || {},
   };
 }
 
@@ -309,6 +395,35 @@ export function allocateStat(player, statKey) {
     ...player,
     statPoints: player.statPoints - 1,
     stats: { ...player.stats, [statKey]: player.stats[statKey] + 1 },
+  };
+}
+
+// Statü sıfırlama (respec) maliyeti seviyeyle orantılı büyüyor (kullanıcı
+// isteği) — düşük seviyede ucuz bir deneme-yanılma imkanı, yüksek seviyede
+// gerçek bir altın harcaması. Sabit (RESPEC_GOLD_PER_LEVEL) ilk kalibrasyon,
+// ekonomi oturdukça ayarlanabilir.
+const RESPEC_GOLD_PER_LEVEL = 200;
+export function respecCost(player) {
+  return player.level * RESPEC_GOLD_PER_LEVEL;
+}
+
+export function canRespecStats(player) {
+  const cost = respecCost(player);
+  if (player.gold < cost) return { ok: false, reason: `Yeterli altının yok (gerekiyor: ${cost}g).`, cost };
+  return { ok: true, cost };
+}
+
+// Dağıtılmış TÜM statü puanlarını (başlangıç + seviye başına kazanılanlar)
+// geri toplayıp player.stats'ı sınıfın çıplak baseStats'ına döndürür —
+// böylece statPoints tekrar tam olarak yeniden dağıtılabilir hale gelir.
+export function respecStats(player) {
+  const check = canRespecStats(player);
+  if (!check.ok) return { player, reset: false, reason: check.reason };
+  const totalPoints = STARTING_STAT_POINTS + POINTS_PER_LEVEL * (player.level - 1);
+  return {
+    player: { ...player, gold: player.gold - check.cost, stats: { ...CLASSES[player.class].baseStats }, statPoints: totalPoints },
+    reset: true,
+    cost: check.cost,
   };
 }
 
@@ -476,6 +591,27 @@ export function repairItem(player, item, discount = 0, bank = null) {
   const nextBank = bank ? bank.map((page) => page.map(patch)) : bank;
 
   return { player: { ...player, gold: player.gold - cost, equipped, inventory }, bank: nextBank, repaired: true, cost };
+}
+
+// Kullanıcı isteği: "Eşyaları çıkarmadan rot tamir yapılamıyor. Envanter'de
+// tamir butonu olsun." — repairItem zaten kuşanılı eşyaları da yerinde
+// yamıyordu (equipped bloğu, yukarıda), eksik olan tek şey UI'da o eşyaya
+// çıkarmadan ulaşacak bir yoldu. Bu ikili, üstündeki HER şeyi (silah+zırh)
+// TEK seferde, tek bir toplam ücret üzerinden tamir ediyor.
+export function totalEquippedRepairCost(player, discount = 0) {
+  return ALL_EQUIP_KEYS.reduce((sum, k) => sum + discountedRepairCost(player.equipped[k], discount), 0);
+}
+
+export function repairAllEquipped(player, discount = 0) {
+  const cost = totalEquippedRepairCost(player, discount);
+  if (cost <= 0) return { player, repaired: false, cost: 0 };
+  if (player.gold < cost) return { player, repaired: false, cost, reason: "Yeterli altının yok." };
+  const equipped = { ...player.equipped };
+  ALL_EQUIP_KEYS.forEach((k) => {
+    const it = equipped[k];
+    if (it && it.durability) equipped[k] = { ...it, currentDurability: it.durability };
+  });
+  return { player: { ...player, gold: player.gold - cost, equipped }, repaired: true, cost };
 }
 
 export function sellPrice(item) {

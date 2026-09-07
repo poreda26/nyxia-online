@@ -464,6 +464,24 @@ export const WARRIOR_WEAPONS = [
       simpleWeaponLevel(146, 100, 132, 19000), // +10
     ],
   },
+  // Rusty Sword / Iron Axe — Weight Hammer Tier 1'in TEK tier1 seçenek
+  // olması, oyun test edilirken "her seferinde aynı silah düşüyor" olarak
+  // fark edildi (bkz. utils/loot.js#rollWeapon — bir tier'da tek satır
+  // varsa pick() hep onu döner, RNG'de bir bug yoktu, havuz gerçekten
+  // tek kişilikti). Elimizde bu ikisi için gerçek KO'nun decrypted verisi
+  // yok, bu yüzden Weight Hammer'la aynı güç bandına kalibre edilmiş basit
+  // (levels dizisiz, forge'un ×1.18 tahminiyle yükselen) giriş silahları —
+  // amaç sadece havuzu 1'den 3'e çıkarıp çeşitlilik katmak.
+  {
+    tier: 1, levelMin: 1, levelMax: 15, name: "Rusty Sword", weaponType: "sword", weaponSlot: "twoHand",
+    weight: 10, atk: 44, hp: 8,
+    reqStats: [{ key: "str", value: 108 }],
+  },
+  {
+    tier: 1, levelMin: 1, levelMax: 15, name: "Iron Axe", weaponType: "axe", weaponSlot: "twoHand",
+    weight: 13, atk: 52, hp: 12,
+    reqStats: [{ key: "str", value: 120 }],
+  },
 ];
 
 // Shields — real KO's Kind 60, off-hand only, pure defense. Eski hazır

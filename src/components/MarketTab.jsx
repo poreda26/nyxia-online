@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { FlaskConical, Store, Tag, Plus, X, Gem, ScrollText, Crown, Check, Star, Shuffle } from "lucide-react";
+import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { displayItemName } from "../utils/player";
 import { itemStatLabel } from "../utils/itemDisplay";
@@ -17,12 +17,30 @@ const RACE_SCROLL_PRICE = 500;
 const JOB_SCROLL_PRICE = 1500;
 const BONUS_SCROLL_PRICE = 800;
 
+// Pot satın alma adedi — kullanıcı isteği: tek tek almak yerine +/-
+// ikonlarıyla arttırıp azaltabilmek, ayrıca çok almak isteyen için sayıyı
+// elle de yazabilmek. `value` her zaman 1-999 arasında (bkz. MarketTab'ın
+// setQty clamp'i) — bu bileşen sadece görüntüleme/etkileşim katmanı.
+function PotionQtyStepper({ qty, onChange }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <button style={styles.qtyBtn} onClick={() => onChange(qty - 1)}><Minus size={11} /></button>
+      <input
+        type="number" min="1" max="999" value={qty}
+        onChange={(e) => onChange(parseInt(e.target.value, 10) || 1)}
+        style={styles.qtyInput}
+      />
+      <button style={styles.qtyBtn} onClick={() => onChange(qty + 1)}><Plus size={11} /></button>
+    </div>
+  );
+}
 
 export default function MarketTab({ player, setPlayer, bank, setBank, pushToast }) {
   const [subtab, setSubtab] = useState("market");
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState("item"); // "item" | "chest" — hangi havuzdan (çanta ya da sandıklar) seçildiğini belirler
   const [pickedItem, setPickedItem] = useState(null);
   const [priceInput, setPriceInput] = useState("");
   // 0 = no dialog, 1 = "yükseltmek ister misiniz?", 2 = "Mythic alınsın mı?" —
@@ -30,6 +48,12 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
   // handlePremiumClick). Every other combination is either a direct
   // purchase or an outright block, no confirmation needed.
   const [upgradeConfirmStep, setUpgradeConfirmStep] = useState(0);
+  // Pot alım adedi — kullanıcı isteği: "+/- ikonları olsun sayıyı arttırıp
+  // kaç tane almak istersek ayarlayabilelim... sayıyı elle yazabilsin."
+  // Anahtar `${potionType}:${tier}`, her satırın kendi adedi.
+  const [potionQty, setPotionQty] = useState({});
+  const qtyFor = (key) => potionQty[key] ?? 1;
+  const setQty = (key, value) => setPotionQty((q) => ({ ...q, [key]: Math.max(1, Math.min(999, value)) }));
 
   // fetchListings/resolveMyListings are async (Promise-returning) even
   // though the "server" is local for now — see services/marketService.js.
@@ -101,22 +125,30 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
     pushToast("Job Değiştirme Kağıdı satın alındı.", "loot");
   };
 
-  const buyPotion = (potionType, tier) => {
-    const price = potionPrice(potionType, tier);
+  const buyPotion = (potionType, tier, qty) => {
+    const amount = Math.max(1, qty || 1);
+    const price = potionPrice(potionType, tier) * amount;
     if (player.gold < price) { pushToast("Yeterli altının yok.", "warn"); return; }
-    const result = addItemToInventory({ ...player, gold: player.gold - price }, makePotionStack(potionType, tier, 1));
+    const result = addItemToInventory({ ...player, gold: player.gold - price }, makePotionStack(potionType, tier, amount));
     if (!result.added) { pushToast(`Satın alınamadı — ${result.reason}`, "warn"); return; }
     setPlayer(result.player);
-    pushToast(`${potionName(potionType, tier)} satın alındı.`, "loot");
+    pushToast(`${potionName(potionType, tier)} x${amount} satın alındı (-${price}g).`, "loot");
   };
 
   const buyListing = async (listing) => {
     if (player.gold < listing.price) { pushToast("Yeterli altının yok.", "warn"); return; }
     const result = await marketService.buyListing(listing.id);
     if (!result.ok) { pushToast(result.reason || "Satın alınamadı.", "warn"); refreshListings(); return; }
-    const addResult = addItemToInventory({ ...player, gold: player.gold - listing.price }, result.listing.item);
-    if (!addResult.added) { pushToast(`Satın alındı ama çantana sığmadı — ${addResult.reason}`, "warn"); }
-    setPlayer(addResult.player);
+    // Sandık ilanları çantaya değil player.chests'e gider — inventory'deki
+    // gerçek eşyalardan yapısal olarak ayrı bir liste (bkz. sellableChests,
+    // confirmListing'in "chest" dalı).
+    if (result.listing.item.kind === "chest") {
+      setPlayer((p) => ({ ...p, gold: p.gold - listing.price, chests: [...p.chests, { id: result.listing.item.id, tier: result.listing.item.tier, special: result.listing.item.special }] }));
+    } else {
+      const addResult = addItemToInventory({ ...player, gold: player.gold - listing.price }, result.listing.item);
+      if (!addResult.added) { pushToast(`Satın alındı ama çantana sığmadı — ${addResult.reason}`, "warn"); }
+      setPlayer(addResult.player);
+    }
     setListings((ls) => ls.filter((l) => l.id !== listing.id));
     pushToast(`${result.listing.item.name} satın alındı.`, "loot");
   };
@@ -124,16 +156,29 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
   const cancelListing = async (listing) => {
     const cancelled = await marketService.cancelListing(listing.id);
     if (!cancelled) { pushToast("İlan zaten kaldırılmış.", "warn"); refreshListings(); return; }
-    const addResult = addItemToInventory(player, cancelled.item);
-    setPlayer(addResult.player);
-    if (!addResult.added) pushToast(`İlan iptal edildi ama ${addResult.reason}`, "warn");
-    else pushToast("İlan iptal edildi, eşya çantana döndü.", "default");
+    if (cancelled.item.kind === "chest") {
+      setPlayer((p) => ({ ...p, chests: [...p.chests, { id: cancelled.item.id, tier: cancelled.item.tier, special: cancelled.item.special }] }));
+      pushToast("İlan iptal edildi, sandık geri döndü.", "default");
+    } else {
+      const addResult = addItemToInventory(player, cancelled.item);
+      setPlayer(addResult.player);
+      if (!addResult.added) pushToast(`İlan iptal edildi ama ${addResult.reason}`, "warn");
+      else pushToast("İlan iptal edildi, eşya çantana döndü.", "default");
+    }
     setListings((ls) => ls.filter((l) => l.id !== listing.id));
   };
 
   const sellableItems = player.inventory.filter((i) => i.kind === "armor" || i.kind === "weapon" || i.kind === "accessory");
+  // Sandıklar player.chests'te yaşıyor, player.inventory'de değil (bkz.
+  // InventoryTab'ın ayrı "Sandıklar" alt sekmesi) — ilan için de ayrı bir
+  // havuz olarak sunuluyor, kullanıcı isteği: "Pazar bölümümüzde sandık
+  // satışımız yok."
+  const sellableChests = player.chests.map((c) => ({
+    id: c.id, kind: "chest", tier: c.tier, special: c.special,
+    name: c.special ? "Özel Etkinlik Sandığı" : `T${c.tier} Sandık`,
+  }));
 
-  const openPicker = () => { setPickerOpen(true); setPickedItem(null); setPriceInput(""); };
+  const openPicker = (mode) => { setPickerOpen(true); setPickerMode(mode); setPickedItem(null); setPriceInput(""); };
   const pickItem = (item) => { setPickedItem(item); setPriceInput(""); };
 
   const confirmListing = async () => {
@@ -142,7 +187,11 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
     if (!Number.isFinite(price) || price <= 0) { pushToast("Geçerli bir fiyat gir.", "warn"); return; }
     const fee = marketService.listingFeeFor(price);
     if (player.gold < fee) { pushToast(`İlan ücretini (${fee}g) karşılayacak altının yok.`, "warn"); return; }
-    setPlayer((p) => ({ ...p, gold: p.gold - fee, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
+    if (pickerMode === "chest") {
+      setPlayer((p) => ({ ...p, gold: p.gold - fee, chests: p.chests.filter((c) => c.id !== pickedItem.id) }));
+    } else {
+      setPlayer((p) => ({ ...p, gold: p.gold - fee, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
+    }
     const listing = await marketService.createListing(pickedItem, price);
     setListings((ls) => [listing, ...ls]);
     pushToast(`İlan yayınlandı: ${pickedItem.name} — ${price}g (-${fee}g ilan ücreti)`, "loot");
@@ -262,15 +311,18 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {HP_POTION_TIERS.map((amount, i) => {
               const tier = i + 1;
+              const key = `hp:${tier}`;
+              const qty = qtyFor(key);
               return (
-                <div key={tier} style={{ ...styles.itemRow, borderColor: "#C9425A44" }}>
+                <div key={tier} style={{ ...styles.itemRow, borderColor: "#C9425A44", flexWrap: "wrap" }}>
                   <FlaskConical size={18} color="#C9425A" />
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 90 }}>
                     <div style={{ fontSize: 13 }}>{potionName("hp", tier)}</div>
                     <div style={{ fontSize: 10, color: "var(--text-faint)" }}>+{amount} can yeniler</div>
                   </div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{potionPrice("hp", tier)}g</div>
-                  <button style={styles.tinyBtn} onClick={() => buyPotion("hp", tier)}>Al</button>
+                  <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{potionPrice("hp", tier) * qty}g</div>
+                  <button style={styles.tinyBtn} onClick={() => buyPotion("hp", tier, qty)}>Al</button>
                 </div>
               );
             })}
@@ -280,15 +332,18 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {MP_POTION_TIERS.map((amount, i) => {
               const tier = i + 1;
+              const key = `mp:${tier}`;
+              const qty = qtyFor(key);
               return (
-                <div key={tier} style={{ ...styles.itemRow, borderColor: "#4FC3D944" }}>
+                <div key={tier} style={{ ...styles.itemRow, borderColor: "#4FC3D944", flexWrap: "wrap" }}>
                   <FlaskConical size={18} color="#4FC3D9" />
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 90 }}>
                     <div style={{ fontSize: 13 }}>{potionName("mp", tier)}</div>
                     <div style={{ fontSize: 10, color: "var(--text-faint)" }}>+{amount} mana yeniler</div>
                   </div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{potionPrice("mp", tier)}g</div>
-                  <button style={styles.tinyBtn} onClick={() => buyPotion("mp", tier)}>Al</button>
+                  <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{potionPrice("mp", tier) * qty}g</div>
+                  <button style={styles.tinyBtn} onClick={() => buyPotion("mp", tier, qty)}>Al</button>
                 </div>
               );
             })}
@@ -307,23 +362,32 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast 
             Diğer oyuncuların ilanlarından da istediğini satın alabilirsin.
           </p>
 
-          <button style={{ ...styles.smallBtn, background: "#5FA8A0", width: "100%", marginBottom: 12 }} onClick={openPicker}>
-            <Plus size={14} /> İlan Ver
-          </button>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button style={{ ...styles.smallBtn, background: "#5FA8A0", flex: 1 }} onClick={() => openPicker("item")}>
+              <Plus size={14} /> Eşya İlanı Ver
+            </button>
+            <button style={{ ...styles.smallBtn, background: "#D4AF6A", flex: 1 }} onClick={() => openPicker("chest")}>
+              <Plus size={14} /> Sandık İlanı Ver
+            </button>
+          </div>
 
           {pickerOpen && (
             <div style={styles.pickerCard}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{pickedItem ? "Fiyat belirle" : "Satılacak eşyayı seç"}</span>
+                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>
+                  {pickedItem ? "Fiyat belirle" : pickerMode === "chest" ? "Satılacak sandığı seç" : "Satılacak eşyayı seç"}
+                </span>
                 <button onClick={() => setPickerOpen(false)} style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer" }}>
                   <X size={14} />
                 </button>
               </div>
               {!pickedItem ? (
-                sellableItems.length === 0 ? (
-                  <div style={{ fontSize: 11, color: "var(--text-faint)" }}>Çantanda satılabilecek eşya yok.</div>
+                (pickerMode === "chest" ? sellableChests : sellableItems).length === 0 ? (
+                  <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                    {pickerMode === "chest" ? "Satılabilecek sandığın yok." : "Çantanda satılabilecek eşya yok."}
+                  </div>
                 ) : (
-                  sellableItems.map((item) => (
+                  (pickerMode === "chest" ? sellableChests : sellableItems).map((item) => (
                     <button key={item.id} style={styles.pickerRow} onClick={() => pickItem(item)}>
                       <ItemIcon item={item} size={20} color={itemTierColor(item.tier)} strokeWidth={1.6} />
                       <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item)}</span>

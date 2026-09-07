@@ -1,4 +1,4 @@
-import { FlaskConical, ScrollText, Star } from "lucide-react";
+import { FlaskConical, ScrollText, Star, Gift, Sparkles } from "lucide-react";
 import WeaponIcon from "./icons/WeaponIcon";
 import ArmorIcon from "./icons/ArmorIcon";
 import AccessoryIcon from "./icons/AccessoryIcon";
@@ -38,6 +38,10 @@ export default function ItemIcon({ item, size = 16, color = "currentColor", stro
   }
   if (item.kind === "bonusScroll") {
     return <Star size={size} color="#D4AF6A" strokeWidth={strokeWidth} />;
+  }
+  if (item.kind === "chest") {
+    const ChestIcon = item.special ? Sparkles : Gift;
+    return <ChestIcon size={size} color={color} strokeWidth={strokeWidth} />;
   }
   return null;
 }

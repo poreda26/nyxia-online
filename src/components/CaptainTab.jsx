@@ -1,6 +1,8 @@
-import { ShieldCheck, Gift, Crown, Skull, Flag } from "lucide-react";
+import { ShieldCheck, Gift, Crown, Skull, Flag, CalendarCheck } from "lucide-react";
 import { MONSTER_QUESTS, AWAKENING_QUEST } from "../data/quests";
 import { questProgress, isQuestClaimed, claimQuest, awakeningProgress, claimAwakening } from "../utils/quests";
+import { dailyQuestProgress, claimDailyQuest } from "../utils/dailyQuests";
+import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
 import { displayClassName } from "../utils/player";
 import { findMonster } from "../data/maps";
 import { itemTierColor } from "../data/itemRarity";
@@ -19,7 +21,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
     const result = claimQuest(player, questId);
     if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
     setPlayer(result.player);
-    pushToast(`Ödül alındı: +${result.quest.goldReward} altın, +${result.quest.xpReward} XP`, "loot");
+    pushToast(`Ödül alındı: +${result.quest.goldReward} altın, +${result.quest.xpReward} XP, T${result.quest.tier} Sandık`, "loot");
   };
 
   const awaken = () => {
@@ -27,6 +29,14 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
     if (!result.claimed) { pushToast(result.reason || "Uyanamadın.", "warn"); return; }
     setPlayer(result.player);
     pushToast(`2. Uyanış tamamlandı! Artık ${displayClassName(result.player)}sın.`, "loot");
+  };
+
+  const claimDaily = (slotIndex) => {
+    const result = claimDailyQuest(player, slotIndex);
+    if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
+    setPlayer(result.player);
+    const extra = result.quest.chest ? ", Sandık" : "";
+    pushToast(`Günlük ödül alındı: +${result.quest.goldReward} altın, +${result.quest.xpReward} XP${extra}`, "loot");
   };
 
   const buyNp = () => {
@@ -47,6 +57,20 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
   const lockedQuests = MONSTER_QUESTS.filter((q) => player.level < q.requiredLevel);
   const nextUnlockLevel = lockedQuests.length > 0 ? Math.min(...lockedQuests.map((q) => q.requiredLevel)) : null;
 
+  // Kullanıcı isteği: "tamamlanan görev en üstte gözüksün... canavarı
+  // kestikçe görev tamamlamasını görebilelim." — sıralama her render'da
+  // player.monsterKills'ten canlı yeniden hesaplanıyor (questProgress zaten
+  // buna bağlı), o yüzden bir görev tam bu öldürmede biterse anında en üste
+  // sıçrıyor. Öncelik: ödülü alınmayı bekleyen (done && !claimed) > devam
+  // eden > zaten alınmış (en altta, zaten soluk gösteriliyor).
+  const questRank = (q) => {
+    const { done } = questProgress(player, q);
+    const claimed = isQuestClaimed(player, q.id);
+    if (claimed) return 2;
+    return done ? 0 : 1;
+  };
+  const sortedQuests = [...unlockedQuests].sort((a, b) => questRank(a) - questRank(b));
+
   return (
     <div style={styles.panelScroll}>
       <SectionLabel>Kaptan</SectionLabel>
@@ -57,6 +81,45 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
         <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
           "Bu topraklarda hayatta kalmak beceri ister, evlat. Canavarları temizle, sana onları öğreteyim."
         </p>
+      </div>
+
+      {/* Günlük görevler — kullanıcı isteği: her gün geri gelmek için somut
+          bir sebep. Kaptan'ın kalıcı canavar-görevlerinden AYRI (bkz.
+          utils/dailyQuests.js), en üstte, ilk göze çarpan şey. */}
+      <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#5FA8A066", background: "#5FA8A00d" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+          <CalendarCheck size={16} color="#5FA8A0" strokeWidth={1.6} />
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#5FA8A0" }}>Günlük Görevler</div>
+        </div>
+        <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>
+          Her gece sıfırlanır — hangi canavarı öldürdüğün önemli değil, sadece bugünkü toplam sayılıyor.
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {DAILY_QUEST_SLOTS.map((slot, i) => {
+            const { current, target, done, claimed } = dailyQuestProgress(player, i);
+            return (
+              <div key={i}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{target} canavar öldür</span>
+                  <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{current}/{target}</span>
+                </div>
+                <BarTrack pct={(current / target) * 100} color="#5FA8A0" thin />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                  <div style={{ fontSize: 10, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <Gift size={11} /> {slot.goldReward}g · {slot.xpReward} XP{slot.chest ? " · Sandık" : ""}
+                  </div>
+                  <button
+                    style={{ ...styles.tinyBtn, background: done && !claimed ? "#5FA8A0" : "var(--bg-panel-alt)", color: done && !claimed ? "#0B0C10" : "var(--text-faint)" }}
+                    disabled={!done || claimed}
+                    onClick={() => claimDaily(i)}
+                  >
+                    {claimed ? "Alındı" : done ? "Ödülü Al" : "Devam Ediyor"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ ...styles.itemDetailCard, marginBottom: 14 }}>
@@ -107,7 +170,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
 
       <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>Görevler</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {unlockedQuests.map((q) => {
+        {sortedQuests.map((q) => {
           const { current, target, done } = questProgress(player, q);
           const claimed = isQuestClaimed(player, q.id);
           const color = itemTierColor(q.tier);
@@ -124,7 +187,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
               <BarTrack pct={(current / target) * 100} color={color} thin />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <div style={{ fontSize: 10, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 4 }}>
-                  <Gift size={11} /> {q.goldReward}g · {q.xpReward} XP
+                  <Gift size={11} /> {q.goldReward}g · {q.xpReward} XP · T{q.tier} Sandık
                 </div>
                 <button
                   style={{ ...styles.tinyBtn, background: done && !claimed ? color : "var(--bg-panel-alt)", color: done && !claimed ? "#0B0C10" : "var(--text-faint)" }}

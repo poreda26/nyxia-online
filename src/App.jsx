@@ -2,7 +2,11 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { initialPlayer, migratePlayer, BANK_PAGES } from "./utils/player";
 import { applyWeeklyRollover } from "./utils/nationalPoint";
 import { uid } from "./utils/random";
-import { loadAccount, saveCharacterSlot, deleteCharacterSlot, saveAccountRace, changeAccountRace, saveAccountBank, saveLastUsername, loadLastUsername } from "./utils/storage";
+import {
+  loadAccount, saveCharacterSlot, deleteCharacterSlot, saveAccountRace, changeAccountRace,
+  saveAccountBank, saveAccountUnlockedSlots, saveLastUsername, loadLastUsername,
+  CHARACTER_SLOTS, DEFAULT_UNLOCKED_SLOTS, THIRD_SLOT_COST_DIAMONDS,
+} from "./utils/storage";
 import { styles } from "./styles";
 import GlobalStyle from "./components/GlobalStyle";
 import LoginScreen from "./components/LoginScreen";
@@ -14,17 +18,21 @@ import Hub from "./components/Hub";
 export default function App() {
   const [screen, setScreen] = useState("login");
   const [username, setUsername] = useState("");
-  const [account, setAccount] = useState({ race: null, characters: [null, null, null], bank: Array.from({ length: BANK_PAGES }, () => []) });
+  const [account, setAccount] = useState({ race: null, characters: [null, null, null], bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS });
   const [activeSlot, setActiveSlot] = useState(null);
   const [player, setPlayer] = useState(null);
   const [tab, setTab] = useState("battle");
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
+  // Kullanıcı: loot bildirimini "yakalamakta zorlanıyorum" — 2.6s özellikle
+  // öldürme bildirimi gibi çok parçalı (altın+XP+drop+görev) mesajlar için
+  // yetersizdi, 3.6s'ye çıkarıldı (bkz. GlobalStyle.jsx'teki görsel
+  // güçlendirmeyle birlikte).
   const pushToast = useCallback((msg, tone = "default") => {
     setToast({ msg, tone, id: uid() });
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
+    toastTimer.current = setTimeout(() => setToast(null), 3600);
   }, []);
 
   const initialUsername = loadLastUsername();
@@ -110,6 +118,23 @@ export default function App() {
     });
   };
 
+  // 3. karakter slotu — mevcut karakterlerden birinin ELMASIYLA açılıyor,
+  // hesap genelinde ayrı bir elmas havuzu olmadığı için (bkz. utils/storage.js
+  // #THIRD_SLOT_COST_DIAMONDS). payerSlotIndex CharacterSelectScreen'de
+  // seçilen, yeterli elması olan bir karakterin slotu.
+  const handleUnlockSlot = (payerSlotIndex) => {
+    const payer = account.characters[payerSlotIndex];
+    if (!payer || payer.diamonds < THIRD_SLOT_COST_DIAMONDS) return;
+    const paidPlayer = { ...payer, diamonds: payer.diamonds - THIRD_SLOT_COST_DIAMONDS };
+    saveCharacterSlot(username, payerSlotIndex, paidPlayer);
+    saveAccountUnlockedSlots(username, CHARACTER_SLOTS);
+    setAccount((a) => {
+      const characters = [...a.characters];
+      characters[payerSlotIndex] = paidPlayer;
+      return { ...a, characters, unlockedSlots: CHARACTER_SLOTS };
+    });
+  };
+
   const handleLogout = () => {
     setPlayer(null);
     setActiveSlot(null);
@@ -140,9 +165,11 @@ export default function App() {
         <CharacterSelectScreen
           username={username}
           characters={account.characters}
+          unlockedSlots={account.unlockedSlots}
           onPlay={handlePlay}
           onCreate={handleCreate}
           onDelete={handleDelete}
+          onUnlockSlot={handleUnlockSlot}
           onLogout={handleLogout}
         />
       )}

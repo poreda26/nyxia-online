@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Crown } from "lucide-react";
+import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle } from "lucide-react";
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
+import { buildSoloDungeonStages, SOLO_DUNGEON_DAILY_LIMIT } from "../data/soloDungeon";
 import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
 import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
@@ -11,6 +12,10 @@ import { premiumExpMultiplier, premiumDropMultiplier, hasAutoBattleAccess } from
 import { clanExpMultiplier } from "../utils/clan";
 import { eventExpMultiplier } from "../utils/events";
 import { classSkills, learnFreeSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
+import { MONSTER_QUESTS } from "../data/quests";
+import { registerDailyKill, ensureDailyQuestsFresh } from "../utils/dailyQuests";
+import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
+import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry } from "../utils/soloDungeon";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -28,6 +33,44 @@ function buffMultiplier(buffs, stat) {
   return buffs.filter((b) => b.stat === stat).reduce((mult, b) => mult * b.mult, 1);
 }
 
+// Kullanıcı isteği: "haritalar kendi dropunu ve bir önceki haritasını
+// atsın" — bir haritanın tier-bağlı dropu (eşya/sandık/parşömen) artık
+// %50 kendi tier'ında, %50 bir önceki tier'da (varsa) düşüyor. Toplam düşme
+// ŞANSI değişmiyor (kullanıcı: "item düşme şansı %10 ise budur") — sadece
+// düşen şeyin hangi tier'dan geldiği artık iki bant arasında dağılıyor.
+// Tier1'de "önceki" yok, o zaman hep kendi tier'ında kalır.
+function pickDropTier(mapTier) {
+  const prevTier = Math.max(1, mapTier - 1);
+  return Math.random() < 0.5 ? mapTier : prevTier;
+}
+
+// Otomatik Saldırı için beceri seçimi — düz saldırıdan önce denenir (bkz.
+// aşağıdaki auto-battle effect'i). Öncelik sırası: bitirici (canavar eşiğin
+// altındaysa) > henüz aktif olmayan bir güçlendirme > en güçlü hasar/DoT
+// becerisi. Sadece bekleme süresi dolmuş VE mana yeten becerileri dener;
+// hiçbiri uygun değilse null döner ve çağıran düz saldırıya düşer.
+function pickAutoSkill({ loadout, playerClass, skillCooldowns, mp, monsterHpPct, buffs }) {
+  const usable = loadout
+    .filter(Boolean)
+    .map((id) => classSkills(playerClass).find((s) => s.id === id))
+    .filter((s) => s && (skillCooldowns[s.id] || 0) === 0 && mp >= s.mpCost);
+  if (usable.length === 0) return null;
+
+  const execute = usable.find((s) => s.effect.type === "execute" && monsterHpPct <= s.effect.hpPctThreshold);
+  if (execute) return execute.id;
+
+  const activeBuffStats = new Set(buffs.map((b) => b.stat));
+  const buff = usable.find(
+    (s) => (s.effect.type === "buffAtk" && !activeBuffStats.has("atk")) || (s.effect.type === "buffDef" && !activeBuffStats.has("def"))
+  );
+  if (buff) return buff.id;
+
+  const damage = usable
+    .filter((s) => s.effect.type === "damage" || s.effect.type === "dot")
+    .sort((a, b) => (b.effect.mult || 1) - (a.effect.mult || 1))[0];
+  return damage ? damage.id : null;
+}
+
 export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
   const [monster, setMonster] = useState(null); // active monster template
   const [battle, setBattle] = useState(null); // {monsterHp, monsterMaxHp, log, playerHp}
@@ -35,6 +78,12 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const [pendingMap, setPendingMap] = useState(null); // map awaiting teleport confirmation
   const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal
   const [victoryMonster, setVictoryMonster] = useState(null); // just-defeated monster template — drives the "Tekrar Savaş?" prompt
+  // Günlük Solo Zindan — bkz. data/soloDungeon.js, utils/soloDungeon.js.
+  // dungeonRun: { stages, index } | null — aktif bir zindan koşusu sürerken
+  // aşama aşama ilerliyor (bkz. resolveMonsterTurn'daki dallanma), null ise
+  // normal (haritadaki tekli canavar) savaş akışı işliyor.
+  const [dungeonRun, setDungeonRun] = useState(null);
+  const [dungeonComplete, setDungeonComplete] = useState(null); // { mapName, bonusGold, chestTier } | null
   const logRef = useRef(null);
 
   // Oyuncunun en son ışınlandığı harita kalıcı — güvenlik amaçlı, artık
@@ -65,6 +114,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     setPendingMap(null);
   };
 
+  // Günlük Solo Zindan'a giriş — mevcut haritaya göre ölçeklenen 5 aşama +
+  // boss üretir (bkz. data/soloDungeon.js#buildSoloDungeonStages), günlük
+  // giriş hakkını hemen düşer (koşu yarıda bırakılsa/kaybedilse bile hak
+  // geri gelmez, "günde 3 kez girilebilir" kullanıcı isteğinin doğal
+  // sonucu) ve ilk aşamayla normal startBattle akışını başlatır.
+  const enterSoloDungeon = () => {
+    if (locked) return;
+    const check = canEnterSoloDungeon(player);
+    if (!check.ok) { pushToast(check.reason, "warn"); return; }
+    const stages = buildSoloDungeonStages(map);
+    setPlayer((p) => consumeDungeonEntry(p));
+    setDungeonRun({ stages, index: 0 });
+    startBattle(stages[0]);
+  };
+
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [battle?.log?.length]);
@@ -78,7 +142,18 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // closes.
   const attackLockRef = useRef(false);
 
-  const startBattle = (m) => {
+  // Bir canavarı ELLE seçmek her zaman Otomatik Saldırı'yı kapalı başlatır
+  // (ilk savaşa elle başlanmalı, kullanıcı isteği). Ama "Tekrar Savaş?"
+  // sorusuna Evet dendiğinde (preserveAutoBattle: true) önceki açık durum
+  // korunur — Hayır dendiğinde ya da savaştan çıkıldığında zaten ayrıca
+  // kapatılıyor (bkz. victoryMonster modalı ve endBattle).
+  //
+  // HP/MP her yeni savaşın başında tam doluyor — önceden sadece bir
+  // öldürmenin ARDINDAN doluyordu (bkz. applyLoot), Geri Çekil ile canı az
+  // kaçıp yeni bir savaşa girmek o düşük canı taşıyordu (kullanıcının
+  // bildirdiği bug). Artık nereden geliniyorsa gelinsin (fresh seçim ya da
+  // Tekrar Savaş) her yeni savaş dolu can/manayla başlıyor.
+  const startBattle = (m, { preserveAutoBattle = false } = {}) => {
     attackLockRef.current = false;
     setMonster(m);
     setBattle({
@@ -88,13 +163,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       log: [`${m.name} karşına çıktı.`],
       ...EMPTY_BATTLE_EFFECTS,
     });
-    // Kullanıcı isteği: Otomatik Saldırı her yeni savaş başında (Tekrar
-    // Savaş'taki "Evet" dahil) kapalı başlasın — önceki savaştan kalma bir
-    // "açık" durumu asla bir sonrakine sızmasın, her seferinde elle açılsın.
-    setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
+    setPlayer((p) => {
+      const healed = { ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) };
+      if (preserveAutoBattle) return healed;
+      return healed.autoBattle?.enabled ? { ...healed, autoBattle: { ...healed.autoBattle, enabled: false } } : healed;
+    });
   };
 
-  const endBattle = () => { attackLockRef.current = false; setMonster(null); setBattle(null); };
+  // Savaştan çıkmak (Geri Çekil, ölüm, ya da Tekrar Savaş'a Hayır) Otomatik
+  // Saldırı'yı her zaman kapatır — bir sonraki savaşa asla "açık" sızmaz.
+  const endBattle = () => {
+    attackLockRef.current = false;
+    setMonster(null);
+    setBattle(null);
+    setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
+  };
 
   const pushLog = (log, line) => [...log.slice(-24), line];
 
@@ -132,7 +215,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     let toastInfo = null;
     setPlayer((p) => {
       let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
-      np.monsterKills[m.id] = (np.monsterKills[m.id] || 0) + 1;
+      const killsBefore = np.monsterKills[m.id] || 0;
+      np.monsterKills[m.id] = killsBefore + 1;
       const goldGain = rand(m.goldMin, m.goldMax);
       // No XP past the level cap — nothing left to spend it on. Seviye
       // farkı çok açıldıysa (çok düşük seviyeli haritada avlanmak) XP
@@ -145,24 +229,65 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       let drops = [`+${goldGain} altın`];
       if (xpGain > 0) drops.push(`+${xpGain} XP`);
 
+      // Kullanıcı: "canavarı kestiğim zaman görev ilerlemesini göremiyorum"
+      // — önceden sadece hedefi TAM O ÖLDÜRMEDE tamamlayınca bir satır
+      // ekleniyordu, aradaki her öldürmede hiçbir ilerleme görünmüyordu.
+      // Artık ilgili görev bitene kadar HER öldürmede "Görev: X/Y" satırı
+      // ekleniyor; tamamlandığı öldürmede onun yerine yönlendirme satırı
+      // geliyor (tekrar tekrar "tamamlandı" spamlanmasın diye sadece o TEK
+      // öldürmede, sonrasında zaten Kaptan'a gidip alması gerekiyor).
+      const relatedQuest = MONSTER_QUESTS.find((q) => q.monsterId === m.id);
+      if (relatedQuest && !(p.claimedQuests || []).includes(relatedQuest.id)) {
+        const current = np.monsterKills[m.id];
+        if (current >= relatedQuest.target) {
+          if (killsBefore < relatedQuest.target) {
+            drops.push("Görev tamamlandı! Kaptan'ın yanına uğra.");
+          }
+        } else {
+          drops.push(`Görev: ${current}/${relatedQuest.target}`);
+        }
+      }
+
+      // Günlük görevler — Kaptan'ın kalıcı görevlerinden ayrı, her gün
+      // sıfırlanan "bugün X canavar öldür" merdiveni (bkz. utils/dailyQuests.js).
+      // Hangi canavar/harita olduğu önemli değil, sadece bugünkü toplam sayılıyor.
+      // ensureDailyQuestsFresh önce çağrılıyor ki gün değiştiyse "önceki"
+      // sayı da doğru (sıfırlanmış) taban üzerinden okunsun.
+      const freshNp = ensureDailyQuestsFresh(np);
+      const dailyKillsBefore = freshNp.dailyQuests.killsToday;
+      np = registerDailyKill(freshNp);
+      DAILY_QUEST_SLOTS.forEach((slot) => {
+        const wasDone = dailyKillsBefore >= slot.target;
+        const isDone = np.dailyQuests.killsToday >= slot.target;
+        if (isDone && !wasDone) {
+          drops.push(`Günlük görev tamamlandı! (${slot.target} öldürme)`);
+        }
+      });
+
       // Kullanıcı isteğiyle harita bazlı düşürüldü (üst haritalara gidildikçe
       // belirgin şekilde azalıyor, bkz. data/maps.js'teki dropChance/
-      // chestChance notu) — eskiden tüm haritalarda düz %15/%5'ti.
+      // chestChance notu) — eskiden tüm haritalarda düz %15/%5'ti. Düşen
+      // eşyanın/sandığın tier'ı da artık map.tier veya bir alt tier olabiliyor
+      // (bkz. pickDropTier) — "map loot kendi tier'ı + bir öncekini kapsasın"
+      // iyileştirmesi hâlâ geçerli, sadece düşme ŞANSI harita bazlı.
       if (Math.random() < map.dropChance * dropMult) {
-        const item = rollLoot(map.tier, np.class);
+        const dropTier = pickDropTier(map.tier);
+        const item = rollLoot(dropTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
         if (item) {
           const addResult = addItemToInventory(np, item);
           np = addResult.player;
+          if (addResult.added) np.hasNewItemNotice = true;
           const kindLabel = item.kind === "weapon" ? "Silah" : item.kind === "accessory" ? "Aksesuar" : "Zırh";
           drops.push(addResult.added ? `${kindLabel} düştü: ${item.name}` : `${item.name} düştü ama ${addResult.reason}`);
         }
       }
       if (Math.random() < map.chestChance * dropMult) {
-        const chest = { id: uid(), tier: map.tier };
+        const chestTier = pickDropTier(map.tier);
+        const chest = { id: uid(), tier: chestTier };
         np.chests.push(chest);
-        drops.push(`Sandık düştü! (T${map.tier})`);
+        drops.push(`Sandık düştü! (T${chestTier})`);
       }
       // Canavar öldürünce parşömen düşme rulet'i kullanıcı isteğiyle
       // tamamen kaldırıldı — parşömenler artık sadece Parşömen
@@ -200,6 +325,24 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     if (toastInfo) pushToast(toastInfo.msg, toastInfo.tone);
   };
 
+  // Solo Zindan'ın boss aşaması yenildiğinde applyLoot'un normal
+  // altın/XP/drop'una EK olarak verilen tamamlama ödülü — bonus altın boss'un
+  // kendi (zaten tier'a göre ölçeklenmiş) altın aralığına göre, garanti bir
+  // sandık da haritanın loot tier'ında. Kesin zindan-özel loot tablosu henüz
+  // tasarlanmadı (bkz. data/soloDungeon.js'in üstündeki not) — bu, o
+  // tasarım gelene kadar makul bir varsayılan.
+  const grantDungeonCompletionReward = (boss) => {
+    const bonusGold = rand(boss.goldMin, boss.goldMax) * 2;
+    let toastMsg = "";
+    setPlayer((p) => {
+      const chest = { id: uid(), tier: map.tier };
+      toastMsg = `Zindan tamamlandı! ${boss.name} yenildi. +${bonusGold} altın, T${map.tier} Sandık kazandın.`;
+      return { ...p, gold: p.gold + bonusGold, chests: [...p.chests, chest] };
+    });
+    pushToast(toastMsg, "level");
+    setDungeonComplete({ mapName: map.name, bonusGold, chestTier: map.tier });
+  };
+
   // Shared tail-end for both attack() and useSkill(): the monster's counter
   // swing (if it's still alive) plus win/loss resolution. `extra` folds in
   // whatever the caller's own action already changed (buffs/dot/cooldowns/
@@ -219,12 +362,35 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       setTimeout(() => {
         applyLoot(wonMonster);
         attackLockRef.current = false;
+
+        // Solo Zindan koşusu sürüyorsa "Tekrar Savaş?" akışına hiç girmez —
+        // bir sonraki aşamaya (ya da boss'sa tamamlama ödülüne) otomatik
+        // geçer (kullanıcı isteği: "aşamalı olarak gitgide güçleşen ...
+        // etkinlik"). dungeonRun burada render zamanındaki değeriyle
+        // kapanıyor — attackLockRef zaten bu pencere boyunca yeni bir
+        // aksiyonu engellediği için state ile senkron kalır.
+        if (dungeonRun) {
+          if (wonMonster.isBoss) {
+            grantDungeonCompletionReward(wonMonster);
+            setDungeonRun(null);
+            setMonster(null);
+            setBattle(null);
+          } else {
+            const nextStage = dungeonRun.stages[dungeonRun.index + 1];
+            setDungeonRun({ ...dungeonRun, index: dungeonRun.index + 1 });
+            pushToast(`Aşama ${dungeonRun.index + 2}/${dungeonRun.stages.length} başlıyor!`, "default");
+            startBattle(nextStage, { preserveAutoBattle: true });
+          }
+          return;
+        }
+
         setMonster(null);
         setBattle(null);
         // Ana ekrana otomatik dönmek yerine "Tekrar Savaş?" onayı çıkıyor
-        // (kullanıcı isteği) — Otomatik Saldırı açık olsa bile bu adım
-        // otomatikleşmiyor, yeni bir savaş HER ZAMAN buradan "Evet" ile
-        // manuel başlıyor (bkz. render'daki victoryMonster modalı).
+        // (kullanıcı isteği) — sonraki savaş hâlâ buradan "Evet"/"Hayır" ile
+        // elle karara bağlanıyor, sadece Otomatik Saldırı'nın açık durumu
+        // Evet dendiğinde korunuyor (bkz. render'daki victoryMonster modalı,
+        // startBattle'ın preserveAutoBattle parametresi).
         setVictoryMonster(wonMonster);
       }, 700);
       return;
@@ -269,6 +435,9 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         });
         setDeathInfo({ xpLost });
         endBattle();
+        // Zindanda ölmek koşuyu bitirir — kalan aşamalar/boss ödülü kaybedilir,
+        // giriş hakkı zaten enterSoloDungeon'da harcanmıştı (geri gelmiyor).
+        if (dungeonRun) setDungeonRun(null);
       }, 500);
     } else {
       // normal exchange resolved — release the lock after a short cooldown
@@ -405,12 +574,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // bile `autoBattleOn` false'a düşer ve döngü otomatik durur.
   const autoBattleAccess = hasAutoBattleAccess(player);
   const autoBattleOn = !!player.autoBattle?.enabled && autoBattleAccess;
+  const AUTO_BATTLE_DEFAULTS = { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false };
   const toggleAutoBattle = () => {
     if (!autoBattleAccess) { pushToast("Otomatik Saldırı bir Apex/Mythic Premium özelliğidir.", "warn"); return; }
-    setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { hpThreshold: 35, mpThreshold: 35 }), enabled: !p.autoBattle?.enabled } }));
+    setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, enabled: !p.autoBattle?.enabled } }));
   };
-  const setHpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { enabled: false, mpThreshold: 35 }), hpThreshold: v } }));
-  const setMpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...(p.autoBattle || { enabled: false, hpThreshold: 35 }), mpThreshold: v } }));
+  const setHpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, hpThreshold: v } }));
+  const setMpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, mpThreshold: v } }));
+  const toggleAutoSkill = () => setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, autoSkill: !p.autoBattle?.autoSkill } }));
 
   // Otomatik Saldırı: her aksiyondan sonra `battle`/`player.hp`/`player.mp`
   // değiştiği için bu effect yeniden tetiklenir ve bir sonraki aksiyonu
@@ -430,11 +601,24 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const mpCd = battle.potionCooldowns.mp || 0;
       if (hpPct < hpThreshold && hpCd === 0 && hpPotionTier) {
         handlePotion("hp");
-      } else if (mpPct < mpThreshold && mpCd === 0 && mpPotionTier) {
-        handlePotion("mp");
-      } else {
-        attack();
+        return;
       }
+      if (mpPct < mpThreshold && mpCd === 0 && mpPotionTier) {
+        handlePotion("mp");
+        return;
+      }
+      if (player.autoBattle?.autoSkill) {
+        const skillId = pickAutoSkill({
+          loadout: player.skills.loadout,
+          playerClass: player.class,
+          skillCooldowns: battle.skillCooldowns,
+          mp: player.mp,
+          monsterHpPct: battle.monsterHp / battle.monsterMaxHp,
+          buffs: battle.buffs,
+        });
+        if (skillId) { useSkill(skillId); return; }
+      }
+      attack();
     }, 700);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -459,6 +643,36 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       {!monster && (
         <>
+          <SectionLabel>Günlük Solo Zindan</SectionLabel>
+          <div style={{ ...styles.itemDetailCard, borderColor: "#A34FD966", background: "#A34FD90d", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Castle size={20} color="#A34FD9" strokeWidth={1.6} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13 }}>{map.name} Zindanı</div>
+                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
+                  5 gitgide güçleşen aşama + boss. Günde {SOLO_DUNGEON_DAILY_LIMIT} kez girilebilir.
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                Bugün {dungeonEntriesLeft(player)}/{SOLO_DUNGEON_DAILY_LIMIT} giriş hakkın var.
+              </span>
+              <button
+                style={{
+                  ...styles.tinyBtn,
+                  ...(dungeonEntriesLeft(player) > 0 && !locked
+                    ? { background: "#A34FD9" }
+                    : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }),
+                }}
+                disabled={dungeonEntriesLeft(player) <= 0 || locked}
+                onClick={enterSoloDungeon}
+              >
+                Zindana Gir
+              </button>
+            </div>
+          </div>
+
           <SectionLabel>Kapı · Bölge seç</SectionLabel>
           <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: -6, marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
             <DoorOpen size={12} /> Başka bir haritaya ışınlanmak {GATE_TELEPORT_COST} altın tutar.
@@ -523,63 +737,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       {monster && battle && (
         <div style={styles.battleArena}>
-          {/* Savaşın en üstünde, gözden kaçmayacak kadar belirgin bir
-              açık/kapalı anahtarı — önceki küçük ikon (canavar adının
-              yanındaki) fark edilmiyordu (kullanıcı geri bildirimi).
-              Savaş sürerken de her an dokunup kapatılabiliyor/açılabiliyor.
-              Apex/Mythic Premium olmayanlar için kilitli görünür — tıklayınca
-              döngüyü açmaz, sadece uyarı toast'ı gösterir. */}
-          <button
-            onClick={toggleAutoBattle}
-            style={{
-              ...styles.toggleRow, width: "100%", background: autoBattleOn ? "#5FA8A014" : "var(--bg-panel)",
-              border: "1px solid", borderColor: autoBattleOn ? "#5FA8A066" : "var(--border)",
-              borderRadius: 10, padding: "8px 12px", cursor: "pointer",
-              opacity: autoBattleAccess ? 1 : 0.7,
-            }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: autoBattleOn ? "#5FA8A0" : "var(--text-muted)" }}>
-              {autoBattleAccess ? <Bot size={15} strokeWidth={1.8} /> : <Lock size={13} strokeWidth={1.8} />}
-              Otomatik Saldırı — {autoBattleAccess ? (autoBattleOn ? "Açık" : "Kapalı") : "Premium Gerekli"}
-            </span>
-            {autoBattleAccess ? (
-              <span style={{ ...styles.toggleSwitch, background: autoBattleOn ? "#5FA8A0" : "var(--bg-panel-alt)", justifyContent: autoBattleOn ? "flex-end" : "flex-start" }}>
-                <span style={styles.toggleKnob} />
+          {dungeonRun && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "#A34FD914", border: "1px solid #A34FD944" }}>
+              <span style={{ fontSize: 11, color: "#A34FD9", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 5 }}>
+                <Castle size={12} /> Zindan · Aşama {dungeonRun.index + 1}/{dungeonRun.stages.length}
               </span>
-            ) : (
-              <Crown size={14} color="#8B6FC9" strokeWidth={1.8} />
-            )}
-          </button>
-
-          {autoBattleAccess && (
-            <div style={styles.autoBattleCard}>
-              <div style={styles.sliderRow}>
-                <div style={styles.sliderLabelRow}>
-                  <span>HP Pot Eşiği</span>
-                  <span style={{ fontFamily: "var(--font-mono)", color: "#C9425A" }}>%{player.autoBattle?.hpThreshold ?? 35}</span>
-                </div>
-                <input
-                  type="range" min={0} max={90} step={5}
-                  value={player.autoBattle?.hpThreshold ?? 35}
-                  onChange={(e) => setHpThreshold(parseInt(e.target.value, 10))}
-                  style={styles.sliderInput}
-                />
-              </div>
-              <div style={styles.sliderRow}>
-                <div style={styles.sliderLabelRow}>
-                  <span>MP Pot Eşiği</span>
-                  <span style={{ fontFamily: "var(--font-mono)", color: "#4FC3D9" }}>%{player.autoBattle?.mpThreshold ?? 35}</span>
-                </div>
-                <input
-                  type="range" min={0} max={90} step={5}
-                  value={player.autoBattle?.mpThreshold ?? 35}
-                  onChange={(e) => setMpThreshold(parseInt(e.target.value, 10))}
-                  style={styles.sliderInput}
-                />
-              </div>
+              {monster.isBoss && <span style={{ fontSize: 10, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>BOSS</span>}
             </div>
           )}
-
           <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{monster.name}</span>
@@ -658,9 +823,85 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               <Zap size={14} color="#4FC3D9" /> {battle.potionCooldowns.mp > 0 ? battle.potionCooldowns.mp : (mpPotion?.count || 0)}
             </button>
           </div>
-          <button style={styles.ghostBtn} onClick={endBattle}>
-            <ArrowLeft size={13} /> Geri Çekil
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+            <button
+              style={{ ...styles.ghostBtn, flex: 1 }}
+              onClick={() => {
+                endBattle();
+                // Zindan koşusu sürerken elle geri çekilmek koşuyu yarıda
+                // bırakır — kalan aşamalar/boss ödülü kaybedilir, giriş hakkı
+                // (zaten enterSoloDungeon'da harcandı) geri gelmiyor.
+                if (dungeonRun) { setDungeonRun(null); pushToast("Zindan koşusu yarıda bırakıldı.", "warn"); }
+              }}
+            >
+              <ArrowLeft size={13} /> Geri Çekil
+            </button>
+            {/* Savaş ekranının ALTINDA, küçük bir ikon (kullanıcı isteği —
+                önceden ekranın en üstünde, tam genişlikte bir anahtardı).
+                Apex/Mythic Premium olmayanlar için kilitli görünür — tıklayınca
+                döngüyü açmaz, sadece uyarı toast'ı gösterir. */}
+            <button
+              onClick={toggleAutoBattle}
+              title={autoBattleAccess ? `Otomatik Saldırı — ${autoBattleOn ? "Açık" : "Kapalı"}` : "Otomatik Saldırı bir Apex/Mythic Premium özelliğidir"}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                width: 40, borderRadius: 10, border: "1px solid",
+                background: autoBattleOn ? "#5FA8A0" : "var(--bg-panel-alt)",
+                borderColor: autoBattleOn ? "#5FA8A0" : "var(--border)",
+                opacity: autoBattleAccess ? 1 : 0.6, cursor: "pointer",
+              }}
+            >
+              {autoBattleAccess ? (
+                <Bot size={17} color={autoBattleOn ? "#0B0C10" : "var(--text-muted)"} strokeWidth={1.8} />
+              ) : (
+                <Lock size={15} color="var(--text-faint)" strokeWidth={1.8} />
+              )}
+            </button>
+          </div>
+
+          {autoBattleAccess && (
+            <div style={styles.autoBattleCard}>
+              <div style={styles.sliderRow}>
+                <div style={styles.sliderLabelRow}>
+                  <span>HP Pot Eşiği</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "#C9425A" }}>%{player.autoBattle?.hpThreshold ?? 35}</span>
+                </div>
+                <input
+                  type="range" min={0} max={90} step={5}
+                  value={player.autoBattle?.hpThreshold ?? 35}
+                  onChange={(e) => setHpThreshold(parseInt(e.target.value, 10))}
+                  style={styles.sliderInput}
+                />
+              </div>
+              <div style={styles.sliderRow}>
+                <div style={styles.sliderLabelRow}>
+                  <span>MP Pot Eşiği</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "#4FC3D9" }}>%{player.autoBattle?.mpThreshold ?? 35}</span>
+                </div>
+                <input
+                  type="range" min={0} max={90} step={5}
+                  value={player.autoBattle?.mpThreshold ?? 35}
+                  onChange={(e) => setMpThreshold(parseInt(e.target.value, 10))}
+                  style={styles.sliderInput}
+                />
+              </div>
+              <button
+                onClick={toggleAutoSkill}
+                style={{
+                  ...styles.toggleRow, width: "100%", marginTop: 8, background: player.autoBattle?.autoSkill ? "#8B6FC914" : "var(--bg-panel-alt)",
+                  border: "1px solid", borderColor: player.autoBattle?.autoSkill ? "#8B6FC966" : "var(--border)",
+                  borderRadius: 10, padding: "8px 12px", cursor: "pointer",
+                }}
+              >
+                <span style={{ fontSize: 11, color: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--text-muted)" }}>
+                  Otomatik Beceri Kullan — {player.autoBattle?.autoSkill ? "Açık" : "Kapalı"}
+                </span>
+                <span style={{ ...styles.toggleSwitch, background: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--bg-panel-alt)", justifyContent: player.autoBattle?.autoSkill ? "flex-end" : "flex-start" }}>
+                  <span style={styles.toggleKnob} />
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -675,14 +916,37 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               {victoryMonster.name}'i yendin. Tekrar savaşmak ister misin?
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setVictoryMonster(null)}>Hayır</button>
+              <button
+                style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }}
+                onClick={() => {
+                  setVictoryMonster(null);
+                  setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
+                }}
+              >
+                Hayır
+              </button>
               <button
                 style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#0B0C10" }}
-                onClick={() => { const m = victoryMonster; setVictoryMonster(null); startBattle(m); }}
+                onClick={() => { const m = victoryMonster; setVictoryMonster(null); startBattle(m, { preserveAutoBattle: true }); }}
               >
                 Evet
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {dungeonComplete && (
+        <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setDungeonComplete(null)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <Castle size={32} color="#A34FD9" strokeWidth={1.3} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>Zindan Tamamlandı!</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 240 }}>
+              {dungeonComplete.mapName} Zindan Efendisi'ni yendin — +{dungeonComplete.bonusGold} altın ve T{dungeonComplete.chestTier} Sandık kazandın.
+            </div>
+            <button style={{ ...styles.tinyBtn, background: "#A34FD9", marginTop: 20 }} onClick={() => setDungeonComplete(null)}>
+              Harika!
+            </button>
           </div>
         </div>
       )}

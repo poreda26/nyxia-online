@@ -1,21 +1,33 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Repeat, Crown, Lock, Check, X } from "lucide-react";
+import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award } from "lucide-react";
 import { STAT_KEYS, STAT_FULL_LABELS, STAT_COLORS, STAT_CAP } from "../data/stats";
 import { RACES } from "../data/races";
-import { allocateStat, displayClassName } from "../utils/player";
+import { allocateStat, displayClassName, respecCost, canRespecStats, respecStats } from "../utils/player";
 import { activePremiumTier, premiumDaysLeft } from "../utils/premium";
 import { classSkills, isKnown, canUnlockSkill, unlockSkill, setLoadoutSlot, describeEffect } from "../utils/skills";
 import { MAX_LOADOUT_SLOTS } from "../data/skills";
+import { ACHIEVEMENTS } from "../data/achievements";
+import { isAchievementUnlocked, setActiveTitle } from "../utils/achievements";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import StatBlock from "./shared/StatBlock";
 import SkillIcon from "./SkillIcon";
 
-export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter }) {
+export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter, onReplayTutorial }) {
   const [subtab, setSubtab] = useState("stats");
+  const [confirmingRespec, setConfirmingRespec] = useState(false);
   const addStat = (key) => setPlayer((p) => allocateStat(p, key));
   const race = RACES[player.race];
   const premiumTier = activePremiumTier(player);
+  const respecCheck = canRespecStats(player);
+
+  const handleRespec = () => {
+    const result = respecStats(player);
+    if (!result.reset) { pushToast(result.reason || "Sıfırlanamadı.", "warn"); return; }
+    setPlayer(result.player);
+    pushToast(`Statüler sıfırlandı — ${result.player.statPoints} puan tekrar dağıtılmayı bekliyor.`, "loot");
+    setConfirmingRespec(false);
+  };
 
   // "+" tuşuna basılı tutunca hızlı dağıtım — kısa bir gecikmenin ardından
   // tekrar tekrar addStat çağırır. allocateStat zaten statPoints/STAT_CAP
@@ -52,6 +64,13 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
     setPlayer((p) => setLoadoutSlot(p, emptySlot, skillId));
   };
 
+  const unlockedCount = ACHIEVEMENTS.filter((a) => isAchievementUnlocked(player, a)).length;
+
+  const pickTitle = (achievementId) => {
+    setPlayer((p) => setActiveTitle(p, achievementId));
+    pushToast(achievementId ? "Unvan takıldı." : "Unvan kaldırıldı.", "default");
+  };
+
   return (
     <div style={styles.panelScroll}>
       <SectionLabel>Karakter</SectionLabel>
@@ -74,6 +93,15 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
           </button>
         )}
       </div>
+
+      {onReplayTutorial && (
+        <button
+          style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginBottom: 12 }}
+          onClick={onReplayTutorial}
+        >
+          <BookOpen size={12} /> Tutorial'ı Tekrar Göster
+        </button>
+      )}
 
       {premiumTier && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", marginBottom: 12, borderRadius: 8, borderWidth: 1, borderStyle: "solid", borderColor: `${premiumTier.color}66`, background: `${premiumTier.color}14` }}>
@@ -99,6 +127,9 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         </button>
         <button onClick={() => setSubtab("skills")} style={{ ...styles.subtabBtn, ...(subtab === "skills" ? styles.subtabBtnActive : {}) }}>
           Beceriler ({player.skills.known.length})
+        </button>
+        <button onClick={() => setSubtab("achievements")} style={{ ...styles.subtabBtn, ...(subtab === "achievements" ? styles.subtabBtnActive : {}) }}>
+          Başarımlar ({unlockedCount}/{ACHIEVEMENTS.length})
         </button>
       </div>
 
@@ -138,6 +169,13 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
               );
             })}
           </div>
+
+          <button
+            style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginTop: 12 }}
+            onClick={() => setConfirmingRespec(true)}
+          >
+            <RotateCcw size={12} /> Statüleri Sıfırla ({respecCost(player)}g)
+          </button>
         </>
       )}
 
@@ -200,6 +238,73 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
             })}
           </div>
         </>
+      )}
+
+      {subtab === "achievements" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {player.activeTitle && (
+            <button
+              style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+              onClick={() => pickTitle(null)}
+            >
+              <X size={11} /> Unvanı Kaldır
+            </button>
+          )}
+          {ACHIEVEMENTS.map((a) => {
+            const unlocked = isAchievementUnlocked(player, a);
+            const active = player.activeTitle === a.id;
+            const AIcon = a.icon;
+            return (
+              <div key={a.id} style={{ ...styles.itemDetailCard, opacity: unlocked ? 1 : 0.55, ...(active ? { borderColor: `${a.color}88` } : {}) }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: unlocked ? `${a.color}22` : "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {unlocked ? <AIcon size={17} color={a.color} strokeWidth={1.6} /> : <Lock size={15} color="var(--text-faint)" />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: unlocked ? "var(--text-primary)" : "var(--text-faint)" }}>{a.name}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{a.desc}</div>
+                    {unlocked && (
+                      <div style={{ fontSize: 9, color: a.color, fontFamily: "var(--font-mono)", marginTop: 3 }}>Unvan: "{a.title}"</div>
+                    )}
+                  </div>
+                  {unlocked && (
+                    <button
+                      style={{ ...styles.tinyBtn, flexShrink: 0, ...(active ? { background: a.color, color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-muted)" }) }}
+                      disabled={active}
+                      onClick={() => pickTitle(a.id)}
+                    >
+                      {active ? <><Award size={11} /> Kullanılıyor</> : "Unvanı Kullan"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {confirmingRespec && (
+        <div style={styles.modalOverlay} onClick={() => setConfirmingRespec(false)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <RotateCcw size={28} color="#8B6FC9" strokeWidth={1.4} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
+              Tüm dağıtılmış statü puanların geri alınıp yeniden dağıtman için serbest bırakılacak. Bunun için <b>{respecCost(player)} altın</b> gerekiyor. Emin misin?
+            </div>
+            {!respecCheck.ok && (
+              <div style={{ marginTop: 8, fontSize: 11, color: "#E8A5AF", textAlign: "center" }}>{respecCheck.reason}</div>
+            )}
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingRespec(false)}>Vazgeç</button>
+              <button
+                style={{ ...styles.tinyBtn, background: "#8B6FC9", ...(!respecCheck.ok ? { opacity: 0.5 } : {}) }}
+                disabled={!respecCheck.ok}
+                onClick={handleRespec}
+              >
+                Evet, Sıfırla
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

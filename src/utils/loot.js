@@ -51,9 +51,14 @@ function buildArmorFromTemplate(a, tierId, dropClass, slot) {
 }
 
 export function rollArmor(tierId, forceClass) {
-  // Armor drops for a RANDOM class, not necessarily the player's own —
-  // this is what creates cross-class loot that needs to be traded away.
-  // forceClass lets the Trade Post hand back a same-class replacement.
+  // Kullanıcı isteği (netleştirildi): "Sınıfa göre drop diye bir şey yok,
+  // tüm eşyalar şansa bağlı düşecek" — yani "ben warrior'ım diye priest
+  // zırhı düşmesin" DEĞİL, tam tersi: hangi sınıfa ait olduğu da tamamen
+  // şansa bağlı, oyuncunun kendi sınıfıyla sınırlanmıyor. Bu, Pazar'ı canlı
+  // tutan asıl mekanizma — kendi sınıfına uymayan bir zırh düşünce onu
+  // satıp/takas edip ihtiyacın olanı almak zorunda kalıyorsun. forceClass
+  // sadece GM'in /zırh komutu (bkz. gmCommands.js) belirli bir sınıfı test
+  // etmek istediğinde kullanılıyor.
   const dropClass = forceClass || pick(Object.keys(CLASSES));
   const slot = pick(SLOTS).key;
   const options = ARMOR_SETS.filter((a) => a.cls === dropClass && a.slot === slot && a.tier === tierId);
@@ -209,11 +214,15 @@ export function buildStartingWeapon(cls) {
 }
 
 // Single entry point used by both monster drops and chest openings so the
-// loot table only lives in one place: ~38% weapon (own class, always
-// usable), ~34% armor (random class — the trade bait), ~28% accessory.
-export function rollLoot(tierId, playerClass) {
+// loot table only lives in one place: ~38% weapon, ~34% armor, ~28%
+// accessory. Kullanıcı isteği: "silahlar da zırh gibi karışık düşsün" —
+// hangi sınıfa ait silah/zırh düşeceği ikisinde de tamamen şansa bağlı
+// (bkz. rollArmor'ın üstündeki aynı karar), kendi sınıfına uymayan eşya
+// Pazar'ı canlı tutan takas malı. Aksesuar zaten evrensel, hiçbir sınıfa
+// kilitli değil.
+export function rollLoot(tierId) {
   const r = Math.random();
-  if (r < 0.38) return rollWeapon(tierId, playerClass);
+  if (r < 0.38) return rollWeapon(tierId, pick(Object.keys(CLASSES)));
   if (r < 0.72) return rollArmor(tierId);
   return rollAccessory(tierId);
 }
@@ -232,7 +241,7 @@ export function rollSpecialChestLoot(playerClass) {
     const unique = rollWeapon(6, playerClass);
     if (unique) return unique;
   }
-  return rollLoot(5, playerClass);
+  return rollLoot(5);
 }
 
 // ---- GM Eşya Üretici (components/GmItemPanel.jsx) ----
