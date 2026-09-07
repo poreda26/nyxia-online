@@ -154,8 +154,8 @@ export function rollWeapon(tierId, cls) {
 function rollWeaponBase(tierId, cls) {
   if (cls === "warrior") {
     // Shields are Warrior-only off-hand gear — a fifth of the roll goes to
-    // one instead of a hand weapon, same 15%-equipment-drop budget just
-    // split between the two.
+    // one instead of a hand weapon, same equipment-drop budget (bkz.
+    // data/maps.js'teki harita bazlı dropChance) just split between the two.
     if (Math.random() < 0.2) {
       const shield = rollWarriorShield(tierId);
       if (shield) return shield;

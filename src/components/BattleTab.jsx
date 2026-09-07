@@ -5,7 +5,7 @@ import { rand, uid } from "../utils/random";
 import { rollLoot } from "../utils/loot";
 import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
-import { addItemToInventory, makeScrollStack } from "../utils/inventory";
+import { addItemToInventory } from "../utils/inventory";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { premiumExpMultiplier, premiumDropMultiplier, hasAutoBattleAccess } from "../utils/premium";
 import { clanExpMultiplier } from "../utils/clan";
@@ -26,6 +26,15 @@ const POTION_COOLDOWN_TURNS = 2;
 
 function buffMultiplier(buffs, stat) {
   return buffs.filter((b) => b.stat === stat).reduce((mult, b) => mult * b.mult, 1);
+}
+
+// map.dropChance/chestChance artık haritaya göre değişiyor (bkz.
+// data/maps.js) — bazıları tam sayı değil (%7.5, %2.5, %1.5), bu yüzden
+// "Drop şansı" satırı artık sabit bir string değil, bu formatlayıcıyla
+// hesaplanıyor. toFixed(1) + gereksiz ".0"ı kırpma, %10/%5/%1 gibi tam
+// sayılarda çirkin bir "10.0" görünmesin diye.
+function fmtPct(fraction) {
+  return (fraction * 100).toFixed(1).replace(/\.0$/, "");
 }
 
 export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
@@ -145,7 +154,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       let drops = [`+${goldGain} altın`];
       if (xpGain > 0) drops.push(`+${xpGain} XP`);
 
-      if (Math.random() < 0.15 * dropMult) {
+      // Kullanıcı isteğiyle harita bazlı düşürüldü (üst haritalara gidildikçe
+      // belirgin şekilde azalıyor, bkz. data/maps.js'teki dropChance/
+      // chestChance notu) — eskiden tüm haritalarda düz %15/%5'ti.
+      if (Math.random() < map.dropChance * dropMult) {
         const item = rollLoot(map.tier, np.class);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
@@ -156,17 +168,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           drops.push(addResult.added ? `${kindLabel} düştü: ${item.name}` : `${item.name} düştü ama ${addResult.reason}`);
         }
       }
-      if (Math.random() < 0.05 * dropMult) {
+      if (Math.random() < map.chestChance * dropMult) {
         const chest = { id: uid(), tier: map.tier };
         np.chests.push(chest);
         drops.push(`Sandık düştü! (T${map.tier})`);
       }
-      if (Math.random() < 0.06 * dropMult) {
-        const scroll = makeScrollStack(map.tier, 1);
-        const scrollResult = addItemToInventory(np, scroll);
-        np = scrollResult.player;
-        drops.push(scrollResult.added ? `T${map.tier} Yükseltme Parşömeni düştü!` : `T${map.tier} Parşömeni düştü ama ${scrollResult.reason}`);
-      }
+      // Canavar öldürünce parşömen düşme rulet'i kullanıcı isteğiyle
+      // tamamen kaldırıldı — parşömenler artık sadece Parşömen
+      // Dükkanı'ndan (bkz. components/ScrollShop.jsx) satın alınabiliyor.
       // Tier 6 "Eşsiz" (Unique) gear never drops from monsters — only from
       // Özel Etkinlik Sandığı (special event chests, see
       // utils/loot.js#rollSpecialChestLoot), granted through events (not
@@ -517,7 +526,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                 ))}
               </div>
               <div style={styles.dropInfoRow}>
-                <span>Drop şansı: Ekipman (Zırh/Silah) %15 · Sandık %5</span>
+                <span>Drop şansı: Ekipman (Zırh/Silah) %{fmtPct(map.dropChance)} · Sandık %{fmtPct(map.chestChance)}</span>
               </div>
             </>
           )}

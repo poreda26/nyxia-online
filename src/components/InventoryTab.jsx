@@ -200,7 +200,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
 
       {subtab === "chests" && (
         player.chests.length === 0 ? (
-          <EmptyState icon={Gift} title="Sandık yok" subtitle="Canavarlardan %5 ihtimalle sandık düşer." />
+          <EmptyState icon={Gift} title="Sandık yok" subtitle="Canavarlardan haritaya göre değişen bir ihtimalle sandık düşer." />
         ) : (
           <div style={styles.chestGrid}>
             {player.chests.map((chest) => {

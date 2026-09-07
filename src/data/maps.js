@@ -33,10 +33,19 @@ function scaleMonster(m, tier) {
   };
 }
 
+// Ekipman/sandık düşme şansı artık harita bazlı — kullanıcı isteğiyle
+// üst haritalara gidildikçe belirgin şekilde düşürüldü (eskiden tüm
+// haritalarda düz %15 ekipman / %5 sandıktı). Abyssal Pit ve Crimson
+// Battlefront eşya tier'ı olarak ikisi de T5 paylaşsa da (bkz. yukarıdaki
+// not) kendi ayrı oranları var — Crimson Battlefront'un oranı Abyssal
+// Pit'ten YÜKSEK, savaş gücü olarak daha zor olmasının bir telafisi.
+// Parşömen düşme mekaniği (canavar/kutu) TAMAMEN kaldırıldı (bkz.
+// BattleTab.jsx#applyLoot) — kutular zaten hiç parşömen vermiyordu, sadece
+// canavar-öldürme parşömen rulet'i vardı, o da artık yok.
 const RAW_MAPS = [
   {
     id: "fallow_valley", name: "Fallow Valley", levelMin: 1, levelMax: 15, tier: 1,
-    color: "#8FA35E", glow: "rgba(143,163,94,0.45)",
+    color: "#8FA35E", glow: "rgba(143,163,94,0.45)", dropChance: 0.10, chestChance: 0.04,
     monsters: [
       { id: "sis_kurdu", name: "Sis Kurdu", hp: 113, atk: 9, def: 6, xp: 21, goldMin: 6, goldMax: 11 },
       { id: "kabuklu_golem", name: "Kabuklu Golem", hp: 143, atk: 10, def: 8, xp: 27, goldMin: 7, goldMax: 14 },
@@ -47,7 +56,7 @@ const RAW_MAPS = [
   },
   {
     id: "ashen_canyon", name: "Ashen Canyon", levelMin: 15, levelMax: 25, tier: 2,
-    color: "#C97A3D", glow: "rgba(201,122,61,0.45)",
+    color: "#C97A3D", glow: "rgba(201,122,61,0.45)", dropChance: 0.10, chestChance: 0.04,
     monsters: [
       { id: "kul_yaratigi", name: "Kül Yaratığı", hp: 361, atk: 21, def: 19, xp: 66, goldMin: 18, goldMax: 33 },
       { id: "volkan_suru", name: "Volkan Sürüngeni", hp: 409, atk: 22, def: 21, xp: 76, goldMin: 20, goldMax: 37 },
@@ -57,7 +66,7 @@ const RAW_MAPS = [
   },
   {
     id: "frostburn_summit", name: "Frostburn Summit", levelMin: 25, levelMax: 40, tier: 3,
-    color: "#6FD1E0", glow: "rgba(111,209,224,0.45)",
+    color: "#6FD1E0", glow: "rgba(111,209,224,0.45)", dropChance: 0.075, chestChance: 0.03,
     monsters: [
       { id: "buzul_kurdu", name: "Buzul Kurdu", hp: 600, atk: 30, def: 30, xp: 116, goldMin: 29, goldMax: 54 },
       { id: "alev_orumcegi", name: "Alev Örümceği", hp: 695, atk: 34, def: 34, xp: 136, goldMin: 33, goldMax: 62 },
@@ -68,7 +77,7 @@ const RAW_MAPS = [
   },
   {
     id: "ruined_sanctuary", name: "Ruined Sanctuary", levelMin: 40, levelMax: 50, tier: 4,
-    color: "#8B6FC9", glow: "rgba(139,111,201,0.45)",
+    color: "#8B6FC9", glow: "rgba(139,111,201,0.45)", dropChance: 0.05, chestChance: 0.02,
     monsters: [
       { id: "harabe_iskeleti", name: "Harabe İskeleti", hp: 1012, atk: 51, def: 46, xp: 228, goldMin: 51, goldMax: 96 },
       { id: "lanetli_rahip", name: "Lanetli Rahip", hp: 1095, atk: 56, def: 49, xp: 253, goldMin: 56, goldMax: 106 },
@@ -78,7 +87,7 @@ const RAW_MAPS = [
   },
   {
     id: "abyssal_pit", name: "Abyssal Pit", levelMin: 50, levelMax: 60, tier: 5,
-    color: "#A34FD9", glow: "rgba(163,79,217,0.45)",
+    color: "#A34FD9", glow: "rgba(163,79,217,0.45)", dropChance: 0.01, chestChance: 0.01,
     monsters: [
       { id: "ucurum_solucani", name: "Uçurum Solucanı", hp: 1523, atk: 70, def: 63, xp: 349, goldMin: 77, goldMax: 145 },
       { id: "karanlik_cagirici", name: "Karanlık Çağırıcı", hp: 1679, atk: 74, def: 67, xp: 381, goldMin: 84, goldMax: 158 },
@@ -89,7 +98,7 @@ const RAW_MAPS = [
   },
   {
     id: "crimson_battlefront", name: "Crimson Battlefront", levelMin: 60, levelMax: 65, tier: 5,
-    color: "#C9425A", glow: "rgba(201,66,90,0.5)",
+    color: "#C9425A", glow: "rgba(201,66,90,0.5)", dropChance: 0.025, chestChance: 0.015,
     monsters: [
       { id: "kizil_muhafiz", name: "Kızıl Muhafız", hp: 2431, atk: 94, def: 84, xp: 535, goldMin: 118, goldMax: 222 },
       { id: "alev_cellati", name: "Alev Celladı", hp: 2583, atk: 98, def: 87, xp: 565, goldMin: 125, goldMax: 235 },
