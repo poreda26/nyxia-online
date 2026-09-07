@@ -83,6 +83,31 @@ import elysium7 from "../assets/items/elysium-7.png";
 import elysium8 from "../assets/items/elysium-8.png";
 import prismaticTriadStaff from "../assets/items/prismatic-triad-staff.svg";
 import ronsStaff from "../assets/items/rons-staff.svg";
+import rogueT1Head from "../assets/items/rogue-t1-head.png";
+import rogueT1Chest from "../assets/items/rogue-t1-chest.png";
+import rogueT1Legs from "../assets/items/rogue-t1-legs.png";
+import rogueT1Gauntlets from "../assets/items/rogue-t1-gauntlets.png";
+import rogueT1Boots from "../assets/items/rogue-t1-boots.png";
+import rogueT2Head from "../assets/items/rogue-t2-head.png";
+import rogueT2Chest from "../assets/items/rogue-t2-chest.png";
+import rogueT2Legs from "../assets/items/rogue-t2-legs.png";
+import rogueT2Gauntlets from "../assets/items/rogue-t2-gauntlets.png";
+import rogueT2Boots from "../assets/items/rogue-t2-boots.png";
+import rogueT3Head from "../assets/items/rogue-t3-head.png";
+import rogueT3Chest from "../assets/items/rogue-t3-chest.png";
+import rogueT3Legs from "../assets/items/rogue-t3-legs.png";
+import rogueT3Gauntlets from "../assets/items/rogue-t3-gauntlets.png";
+import rogueT3Boots from "../assets/items/rogue-t3-boots.png";
+import rogueT4Head from "../assets/items/rogue-t4-head.png";
+import rogueT4Chest from "../assets/items/rogue-t4-chest.png";
+import rogueT4Legs from "../assets/items/rogue-t4-legs.png";
+import rogueT4Gauntlets from "../assets/items/rogue-t4-gauntlets.png";
+import rogueT4Boots from "../assets/items/rogue-t4-boots.png";
+import rogueT5Head from "../assets/items/rogue-t5-head.png";
+import rogueT5Chest from "../assets/items/rogue-t5-chest.png";
+import rogueT5Legs from "../assets/items/rogue-t5-legs.png";
+import rogueT5Gauntlets from "../assets/items/rogue-t5-gauntlets.png";
+import rogueT5Boots from "../assets/items/rogue-t5-boots.png";
 import hpPotion1 from "../assets/items/hp-potion-1.png";
 import hpPotion2 from "../assets/items/hp-potion-2.png";
 import hpPotion3 from "../assets/items/hp-potion-3.png";
@@ -100,6 +125,35 @@ export const ITEM_IMAGE_BY_NAME = {
   "Totamic Club": totamicClub,
   "Prismatic Triad Staff": prismaticTriadStaff,
   "Ron's Staff": ronsStaff,
+  // Rogue'un T1-T5 zırh seti (data/armorSets.js) — silahların aksine
+  // zırhın forge seviyesine göre ayrı bir görseli yok (tek görsel, her
+  // +seviyede aynı kalıyor), bu yüzden LEVEL_IMAGE_VARIANTS'a değil
+  // doğrudan düz isim eşlemesine giriyor.
+  "Rogue Cap": rogueT1Head,
+  "Rogue Shirt": rogueT1Chest,
+  "Rogue Pads": rogueT1Legs,
+  "Rogue Gloves": rogueT1Gauntlets,
+  "Rogue Shoes": rogueT1Boots,
+  "Rogue Helmet": rogueT2Head,
+  "Rogue Half Plate Pauldron": rogueT2Chest,
+  "Rogue Half Plate Pads": rogueT2Legs,
+  "Rogue Gauntlet": rogueT2Gauntlets,
+  "Rogue Boots": rogueT2Boots,
+  "Rogue Plate Helmet": rogueT3Head,
+  "Rogue Plate Armor Pauldron": rogueT3Chest,
+  "Rogue Plate Armor Pads": rogueT3Legs,
+  "Rogue Plate Gauntlet": rogueT3Gauntlets,
+  "Rogue Plate Boots": rogueT3Boots,
+  "Rogue Chitin Armor Helmet": rogueT4Head,
+  "Rogue Chitin Armor Pauldron": rogueT4Chest,
+  "Rogue Chitin Armor Pads": rogueT4Legs,
+  "Rogue Chitin Armor Gauntlet": rogueT4Gauntlets,
+  "Rogue Chitin Armor Boots": rogueT4Boots,
+  "Rogue Chitin Shell Helmet": rogueT5Head,
+  "Rogue Chitin Shell Pauldron": rogueT5Chest,
+  "Rogue Chitin Shell Pads": rogueT5Legs,
+  "Rogue Chitin Shell Gauntlet": rogueT5Gauntlets,
+  "Rogue Chitin Shell Boots": rogueT5Boots,
 };
 
 // Kullanıcının Gemini ile ürettiği yüksek kaliteli sanat — seviyeye göre
