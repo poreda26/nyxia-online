@@ -4,7 +4,6 @@ import { WEAPON_CATALOG } from "../data/weapons";
 import { WARRIOR_WEAPONS, WARRIOR_SHIELDS, WEAPON_TYPE_ICON, WEAPON_TYPE_SPEED, WEAPON_TYPE_RANGE, weaponDurability } from "../data/warriorWeapons";
 import { ROGUE_WEAPONS } from "../data/rogueWeapons";
 import { CASTER_WEAPONS } from "../data/casterWeapons";
-import { PRIEST_WEAPONS } from "../data/priestWeapons";
 import { ARMOR_SETS } from "../data/armorSets";
 import { ACCESSORY_SETS } from "../data/accessories";
 import { TIER_PREFIX } from "../data/itemRarity";
@@ -28,10 +27,10 @@ function applyStartingPlusOne(item) {
 }
 
 // Every class now has a hand-authored weapon table with its own Tier 6
-// unique (see data/warriorWeapons.js, rogueWeapons.js, casterWeapons.js,
-// priestWeapons.js — names/stats sourced from Knight Online's real item
-// tables, see ko-item-tbl-to-sql-main).
-export const MAX_WEAPON_TIER = { warrior: 6, rogue: 6, mage: 6, priest: 6 };
+// unique (see data/warriorWeapons.js, rogueWeapons.js, casterWeapons.js —
+// names/stats sourced from Knight Online's real item tables, see
+// ko-item-tbl-to-sql-main).
+export const MAX_WEAPON_TIER = { warrior: 6, rogue: 6, mage: 6 };
 export function maxWeaponTier(cls) { return MAX_WEAPON_TIER[cls] || 5; }
 
 // Tek bir zırh şablonundan (ARMOR_SETS satırı) gerçek eşya objesi kurar —
@@ -91,9 +90,9 @@ function buildWeaponFromTemplate(w, tierId, cls) {
   return base.levels ? applyLevelData(base, 1) : base;
 }
 
-// Shared roller for every hand-authored weapon table (Warrior/Rogue/Mage/
-// Priest) — each entry supplies its own weaponSlot (mainHand/offHand/
-// twoHand), defaulting to twoHand for older entries that predate that field.
+// Shared roller for every hand-authored weapon table (Warrior/Rogue/Mage) —
+// each entry supplies its own weaponSlot (mainHand/offHand/twoHand),
+// defaulting to twoHand for older entries that predate that field.
 function rollFromWeaponTable(table, tierId, cls) {
   const options = table.filter((w) => w.tier === tierId);
   if (options.length === 0) return null;
@@ -120,7 +119,7 @@ function rollWarriorShield(tierId) {
 }
 
 // Old procedural generator — kept only as a safety-net fallback for a class
-// that somehow isn't warrior/rogue/mage/priest. Every real class now routes
+// that somehow isn't warrior/rogue/mage. Every real class now routes
 // through a hand-authored table above, so this should be unreachable.
 function rollProceduralWeapon(tierId, cls) {
   const catalog = WEAPON_CATALOG[cls];
@@ -164,10 +163,6 @@ function rollWeaponBase(tierId, cls) {
   }
   if (cls === "rogue") return rollFromWeaponTable(ROGUE_WEAPONS, tierId, "rogue");
   if (cls === "mage") return rollFromWeaponTable(CASTER_WEAPONS, tierId, "mage");
-  // Priest is a melee "paper attacker" in real KO (Sword/Mace, same
-  // families Warrior uses at a lower ReqStr) — not a staff-caster like
-  // Mage. See data/priestWeapons.js.
-  if (cls === "priest") return rollFromWeaponTable(PRIEST_WEAPONS, tierId, "priest");
   return rollProceduralWeapon(tierId, cls);
 }
 
@@ -264,7 +259,6 @@ function applyUpgradeLevel(item, level) {
 function weaponTableFor(cls) {
   if (cls === "warrior") return WARRIOR_WEAPONS;
   if (cls === "rogue") return ROGUE_WEAPONS;
-  if (cls === "priest") return PRIEST_WEAPONS;
   return CASTER_WEAPONS; // mage
 }
 

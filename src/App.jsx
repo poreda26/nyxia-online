@@ -54,7 +54,12 @@ export default function App() {
     setUsername(name);
     saveLastUsername(name);
     const acc = loadAccount(name);
-    setAccount(acc);
+    // CharacterSelectScreen render's straight from account.characters (bkz.
+    // CLASSES[p.class] look-up'ı) — handlePlay'e kadar migratePlayer hiç
+    // çalışmadığından, kaldırılmış bir sınıfta (ör. Priest) kalmış eski bir
+    // karakter seçim ekranını hiç açılmadan çökertirdi. Bu yüzden tüm
+    // slotlar HEMEN burada, listeye girmeden önce migrate ediliyor.
+    setAccount({ ...acc, characters: acc.characters.map((p) => (p ? migratePlayer(p) : p)) });
     // Race is chosen once per account, before ever seeing character slots —
     // every character created afterward shares it (see RACES caveat).
     setScreen(acc.race ? "characterSelect" : "raceSelect");

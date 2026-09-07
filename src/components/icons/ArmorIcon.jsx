@@ -1,6 +1,6 @@
-// One distinct silhouette per class × slot (20 total) so a Warrior's plate
-// helm reads differently from a Priest's circlet or a Mage's pointed hat,
-// instead of every class sharing one generic "helmet" outline.
+// One distinct silhouette per class × slot (15 total) so a Warrior's plate
+// helm reads differently from a Mage's pointed hat, instead of every class
+// sharing one generic "helmet" outline.
 const PATHS = {
   // WARRIOR — plate armor: boxy, thick, riveted
   "warrior-head": (
@@ -99,39 +99,6 @@ const PATHS = {
   "mage-boots": (
     <>
       <path d="M9 3v10c0 2-3 3-3 6v2a1 1 0 0 0 1 1h5c3 0 5-1 5-3l-1-6h-3V3z" />
-    </>
-  ),
-
-  // PRIEST — holy: rounded circlet, cross accents
-  "priest-head": (
-    <>
-      <path d="M4.5 15a7.5 7.5 0 0 1 15 0V17H4.5z" />
-      <circle cx="12" cy="4.5" r="2" />
-      <path d="M8 17v3" /><path d="M16 17v3" />
-    </>
-  ),
-  "priest-chest": (
-    <>
-      <path d="M9 4 12 2l3 2v3l-3 1-3-1z" />
-      <path d="M6.5 9h11l-1 12h-9z" />
-      <path d="M12 12v5" /><path d="M9.5 14.5h5" />
-    </>
-  ),
-  "priest-legs": (
-    <>
-      <path d="M8 4h8l1.5 16H6.5z" />
-      <path d="M9.5 4l-1 16" /><path d="M14.5 4l1 16" />
-    </>
-  ),
-  "priest-gauntlets": (
-    <>
-      <path d="M8 21v-7a4 4 0 0 1 8 0v7z" />
-      <path d="M12 12v3" /><path d="M10.5 13.5h3" />
-    </>
-  ),
-  "priest-boots": (
-    <>
-      <path d="M9.5 3v11l-3 3v3a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1l-1-4-3.5-1.5V3z" />
     </>
   ),
 };

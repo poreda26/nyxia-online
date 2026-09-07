@@ -1,7 +1,6 @@
 // Mage-only staff catalog (Kind 110) — eski hazır liste kullanıcı isteğiyle
 // SİLİNDİ, yerine görsel görsel yeniden dolduruluyor (bkz.
-// utils/loot.js#rollWeapon, GmItemPanel). Priest bu tabloyu kullanmıyor
-// (bkz. data/priestWeapons.js). Eski katalog
+// utils/loot.js#rollWeapon, GmItemPanel). Eski katalog
 // C:\Users\akcel\Desktop\RPGMarket\_legacy_items_backup\casterWeapons.js'te
 // yedekli duruyor, gerekirse referans alınabilir.
 //

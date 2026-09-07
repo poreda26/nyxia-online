@@ -41,7 +41,7 @@ export function reconcileBagLayout(player) {
 // player.js'i import etmesi bir döngü yaratır — bu yüzden ALL_EQUIP_KEYS
 // burada yerel olarak tekrar tanımlanmıyor, doğrudan player.equipped'ın
 // kendi key'leri üzerinden dönülüyor.
-const CLASS_BASE_WEIGHT = { warrior: 90, rogue: 70, mage: 50, priest: 60 };
+const CLASS_BASE_WEIGHT = { warrior: 90, rogue: 70, mage: 50 };
 const STR_WEIGHT_FACTOR = 0.8; // her STR puanı +0.8 kapasite
 const LEVEL_WEIGHT_PER_LEVEL = 1.5;
 

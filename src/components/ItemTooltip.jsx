@@ -98,7 +98,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
           <StatLine key={key} label={STAT_LABELS[key]} value={`+${value}`} />
         ))}
         {/* Zırhın kendi +seviyesine göre sabit sınıf bonusu (Warrior→STR,
-            Rogue→DEX, Mage→MP, Priest→HP) — item.statBonus gibi eşyanın
+            Rogue→DEX, Mage→MP) — item.statBonus gibi eşyanın
             üzerinde SAKLANMIYOR, item.upgradeLevel'den her zaman TAZE
             hesaplanıyor (bkz. utils/player.js#armorLevelBonus), forge'un
             ×1.18 katlanmalı büyümesiyle karışmasın diye. Kullanıcı isteği:

@@ -20,10 +20,4 @@ export const WEAPON_CATALOG = {
     offHandWeapon: ["Büyü Kitabı", "Grimoire", "Kristal Küre"],
     offHandShield: [],
   },
-  priest: {
-    twoHand: [],
-    mainHand: ["Kutsal Çekiç", "Topuz", "Savaş Topuzu", "Asa Değnek"],
-    offHandWeapon: ["Kutsal Tılsım"],
-    offHandShield: ["Kalkan", "Kutsal Kalkan"],
-  },
 };

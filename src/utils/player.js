@@ -148,15 +148,26 @@ export function migratePlayer(player) {
     if (stats.mag == null) stats.mag = stats.cha;
     delete stats.cha;
   }
+  // Priest sınıfı kullanıcı isteğiyle oyundan tamamen kaldırıldı — eski bir
+  // kayıtta hâlâ "priest" olarak duran bir karakter varsa (bu build hiç
+  // yayınlanmadığı için pratikte olası değil ama savunma amaçlı) Warrior'a
+  // geçiriliyor. Beceriler de sıfırlanıyor: changeJob'daki aynı gerekçe —
+  // eski sınıfın beceri id'leri yeni sınıfın tablosunda yok, sıfırlanmazsa
+  // CharacterTab/BattleTab'in loadout render'ı çöker.
+  const cls = player.class === "priest" ? "warrior" : player.class;
+  const skills = player.class === "priest"
+    ? { known: [], loadout: [null, null, null, null, null] }
+    : player.skills || { known: [], loadout: [null, null, null, null, null] };
   return {
     ...player,
+    class: cls,
     equipped,
     inventory,
     stats,
     diamonds: player.diamonds ?? 0,
     premium: player.premium || { tier: null, expiresAt: null },
     nickname: player.nickname ?? null,
-    skills: player.skills || { known: [], loadout: [null, null, null, null, null] },
+    skills,
     monsterKills: player.monsterKills || {},
     claimedQuests: player.claimedQuests || [],
     awakened: player.awakened ?? false,
@@ -214,12 +225,12 @@ export function isBroken(item) {
 // statBonus alanlarına yazılsaydı her yükseltmede compound olurdu, oysa bu
 // sabit bir eşik tablosu, doğrudan item.upgradeLevel'den okunuyor.
 // Warrior→STR, Rogue→DEX (equippedStatBonus üzerinden ATK formülüne
-// karışıyor, weapon statBonus'la aynı yol), Mage→MP, Priest→HP (doğrudan
-// kaynak havuzuna — bkz. totalStats) — kullanıcı isteği: son iki sınıf
-// birincil statü yerine kaynak havuzu alıyor.
+// karışıyor, weapon statBonus'la aynı yol), Mage→MP (doğrudan kaynak
+// havuzuna — bkz. totalStats) — kullanıcı isteği: Mage birincil statü
+// yerine kaynak havuzu alıyor.
 const ARMOR_LEVEL_BONUS = { 0: 0, 1: 2, 2: 2, 3: 4, 4: 6, 5: 8, 6: 10, 7: 12, 8: 15 };
 export function armorLevelBonus(upgradeLevel) { return ARMOR_LEVEL_BONUS[upgradeLevel] ?? 0; }
-export const ARMOR_CLASS_BONUS_STAT = { warrior: "str", rogue: "dex", mage: "mp", priest: "hp" };
+export const ARMOR_CLASS_BONUS_STAT = { warrior: "str", rogue: "dex", mage: "mp" };
 
 // Some weapons (see data/warriorWeapons.js) grant a flat stat bonus while
 // equipped, on top of the player's own allocated points — kept separate
@@ -258,15 +269,14 @@ const ATK_SCALE_C1 = 0.006;
 const ATK_SCALE_OFFSET = 40;
 const ATK_SCALE_C2 = 0.00016;
 // Hangi statü hangi sınıfın "hasar statüsü" (silahını çarpan statü) —
-// Warrior/Priest STR (gerçek KO'da Priest de STR'li melee "paper attacker",
-// bkz. data/classes.js), Rogue DEX, Mage Magic Power (kullanıcı isteğiyle
-// Mage'in asıl hasar kaynağı — artık ayrı bir "magWeight" hilesine değil,
-// doğrudan bu formülün kendisine bağlı).
-export const CLASS_DAMAGE_STAT = { warrior: "str", rogue: "dex", mage: "mag", priest: "str" };
+// Warrior STR, Rogue DEX, Mage Magic Power (kullanıcı isteğiyle Mage'in
+// asıl hasar kaynağı — artık ayrı bir "magWeight" hilesine değil, doğrudan
+// bu formülün kendisine bağlı).
+export const CLASS_DAMAGE_STAT = { warrior: "str", rogue: "dex", mage: "mag" };
 
 // NOT: `hp` burada SADECE eşyalardan gelen düz can bonusunu taşıyor (silah/
-// zırhın kendi hp alanı, Priest'in zırh sınıf bonusu) — STA'nın kendisi
-// artık burada TOPLANMIYOR, playerMaxHp'nin kendi kuadratik formülünde
+// zırhın kendi hp alanı) — STA'nın kendisi artık burada TOPLANMIYOR,
+// playerMaxHp'nin kendi kuadratik formülünde
 // (gerçek KO'nun Seviye²*STA'sı) ayrıca hesaplanıyor, aksi halde STA iki
 // kez sayılırdı.
 export function totalStats(player) {
@@ -310,8 +320,8 @@ export function allocateStat(player, statKey) {
 // tavanımıza göre simülasyonla kalibre edildi: Lv1'de eski sisteme yakın,
 // Lv65'te belirgin şekilde daha büyük ve hızlı büyüyen bir eğri (bkz.
 // sohbetteki kalibrasyon notları). Sınıf oranları eski base.maxHp
-// oranlarını (130/95/75/90) yansıtıyor.
-const HP_COEFF = { warrior: 1.15, rogue: 0.85, mage: 0.55, priest: 0.95 };
+// oranlarını (130/95/75) yansıtıyor.
+const HP_COEFF = { warrior: 1.15, rogue: 0.85, mage: 0.55 };
 const HP_SCALE = 0.0022;
 // Gear HP bonus raises the ceiling but never auto-heals — equipping/
 // unequipping only clamps current HP down if it would otherwise exceed
@@ -361,11 +371,11 @@ export function armorSetDamageReduction(player, source) {
 
 // Gerçek KO formülü (Ebenezer/User.cpp#SetMaxMp): MaxMp = sınıfKatsayısı *
 // Seviye² * (INT+30) — HP'yle birebir aynı kuadratik desen, sadece INT
-// üzerinden ve KO'nun kodundaki sabit +30 düzeltmesiyle. Mage/Priest'in
+// üzerinden ve KO'nun kodundaki sabit +30 düzeltmesiyle. Mage'in
 // katsayısı Warrior/Rogue'dan belirgin yüksek — KO'da da "SP tabanlı"
-// (STA'dan mana üreten, INT'siz) sınıflar var ama bizim 4 sınıfımızın
+// (STA'dan mana üreten, INT'siz) sınıflar var ama bizim 3 sınıfımızın
 // hepsinde gerçek mana havuzu olduğu için hepsi INT yolunu kullanıyor.
-const MP_COEFF = { warrior: 0.35, rogue: 0.45, mage: 1.15, priest: 1.0 };
+const MP_COEFF = { warrior: 0.35, rogue: 0.45, mage: 1.15 };
 const MP_SCALE = 0.0022;
 export function playerMaxMp(player) {
   const base = CLASSES[player.class];
@@ -383,10 +393,10 @@ export function playerMaxMp(player) {
 // çarpanıyla ölçekleniyor. Önceki toplama modelimiz (base.def + seviye*0.5
 // + gearDef) buna yakın GÖRÜNÜYORDU ama gerçekte hâlâ toplamaydı — burada
 // gerçekten çarpmaya çevrildi. Katsayılar (DEF_COEFF) KO'nun tablo tabanlı
-// gerçek sayıları DEĞİL, eski base.def oranlarına (9/5/3/4) yakın kalacak
+// gerçek sayıları DEĞİL, eski base.def oranlarına (9/5/3) yakın kalacak
 // ama toplam eşya AC'siyle çarpıldığında patlamayacak şekilde kalibre
 // edildi.
-const DEF_COEFF = { warrior: 0.75, rogue: 0.45, mage: 0.25, priest: 0.35 };
+const DEF_COEFF = { warrior: 0.75, rogue: 0.45, mage: 0.25 };
 export function playerDef(player) {
   const { def: gearDef } = totalStats(player);
   return Math.round(DEF_COEFF[player.class] * (player.level + gearDef) + 2);
