@@ -27,7 +27,7 @@ export function listingFeeFor(price) {
 
 function spawnFakeListing() {
   const tierId = rand(1, 3); // simulated sellers mostly deal in lower-tier gear
-  const item = rollLoot(tierId, pick(["warrior", "rogue", "mage", "priest"]));
+  const item = rollLoot(tierId); // hangi sınıfa ait olacağı zaten rollLoot içinde şansa bağlı
   // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
   // hiçbir eşya yoksa rollLoot null döner, sahte ilanı hiç oluşturma.
   if (!item) return;

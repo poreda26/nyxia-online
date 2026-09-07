@@ -177,7 +177,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
   const openChest = (chest) => {
     setOpeningChest({ chest, phase: "shaking", result: null });
     setTimeout(() => {
-      const item = chest.special ? rollSpecialChestLoot(player.class) : rollLoot(chest.tier, player.class);
+      const item = chest.special ? rollSpecialChestLoot(player.class) : rollLoot(chest.tier);
       const afterChestRemoved = {
         ...player,
         chests: player.chests.filter((c) => c.id !== chest.id),
@@ -215,7 +215,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
     const gained = [];
     let failed = 0;
     for (const chest of p.chests) {
-      const item = chest.special ? rollSpecialChestLoot(p.class) : rollLoot(chest.tier, p.class);
+      const item = chest.special ? rollSpecialChestLoot(p.class) : rollLoot(chest.tier);
       if (!item) continue;
       const addResult = addItemToInventory(p, item);
       p = addResult.player;

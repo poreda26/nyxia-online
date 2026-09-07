@@ -219,14 +219,15 @@ export function buildStartingWeapon(cls) {
 }
 
 // Single entry point used by both monster drops and chest openings so the
-// loot table only lives in one place: ~38% weapon (own class, always
-// usable), ~34% armor (tamamen şansa bağlı bir sınıfa ait — kullanıcı
-// isteği: "sınıfa göre drop diye bir şey yok, tüm eşyalar şansa bağlı
-// düşecek", kendi sınıfına uymayan zırh Pazar'ı canlı tutan takas malı),
-// ~28% accessory (zaten evrensel, hiçbir sınıfa kilitli değil).
-export function rollLoot(tierId, playerClass) {
+// loot table only lives in one place: ~38% weapon, ~34% armor, ~28%
+// accessory. Kullanıcı isteği: "silahlar da zırh gibi karışık düşsün" —
+// hangi sınıfa ait silah/zırh düşeceği ikisinde de tamamen şansa bağlı
+// (bkz. rollArmor'ın üstündeki aynı karar), kendi sınıfına uymayan eşya
+// Pazar'ı canlı tutan takas malı. Aksesuar zaten evrensel, hiçbir sınıfa
+// kilitli değil.
+export function rollLoot(tierId) {
   const r = Math.random();
-  if (r < 0.38) return rollWeapon(tierId, playerClass);
+  if (r < 0.38) return rollWeapon(tierId, pick(Object.keys(CLASSES)));
   if (r < 0.72) return rollArmor(tierId);
   return rollAccessory(tierId);
 }
@@ -245,7 +246,7 @@ export function rollSpecialChestLoot(playerClass) {
     const unique = rollWeapon(6, playerClass);
     if (unique) return unique;
   }
-  return rollLoot(5, playerClass);
+  return rollLoot(5);
 }
 
 // ---- GM Eşya Üretici (components/GmItemPanel.jsx) ----

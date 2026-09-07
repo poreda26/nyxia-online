@@ -346,7 +346,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       np.gold += goldGain;
       drops = [`+${goldGain} altın`];
       if (Math.random() < WORLD_BOSS.equipDropChance) {
-        const item = rollLoot(WORLD_BOSS.lootTier, np.class);
+        const item = rollLoot(WORLD_BOSS.lootTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
         if (item) {

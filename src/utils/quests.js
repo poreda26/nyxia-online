@@ -21,8 +21,8 @@ export function claimQuest(player, questId) {
   const { done } = questProgress(player, quest);
   if (!done) return { player, claimed: false, reason: "Görev henüz tamamlanmadı." };
   // Her görev, kendi haritasının tier'ından bir Sandık da veriyor — Kırma
-  // panelinden açılır, aynı rollLoot(tier, playerClass) havuzunu kullanır
-  // (bkz. utils/loot.js, components/ChestModal.jsx).
+  // panelinden açılır, aynı rollLoot(tier) havuzunu kullanır (bkz.
+  // utils/loot.js, components/ChestModal.jsx).
   const chest = { id: uid(), tier: quest.tier };
   return {
     player: {

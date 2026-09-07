@@ -266,7 +266,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       if (Math.random() < 0.10 * dropMult) {
         const dropTier = pickDropTier(map.tier);
-        const item = rollLoot(dropTier, np.class);
+        const item = rollLoot(dropTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
         if (item) {
