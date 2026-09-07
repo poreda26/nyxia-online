@@ -34,17 +34,39 @@ import largeHacker7 from "../assets/items/large-hacker-7.png";
 import largeHacker8 from "../assets/items/large-hacker-8.png";
 import weightHammer7 from "../assets/items/weight-hammer-7.png";
 import weightHammer8 from "../assets/items/weight-hammer-8.png";
-import bow from "../assets/items/bow.svg";
-import bambooBow from "../assets/items/bamboo-bow.svg";
-import ironCrossbow from "../assets/items/iron-crossbow.svg";
-import scorpionBow from "../assets/items/scorpion-bow.svg";
-import ironBow from "../assets/items/iron-bow.svg";
-import chitinBow from "../assets/items/chitin-bow.svg";
-import enionBow from "../assets/items/enion-bow.svg";
-import eaglesEye from "../assets/items/eagles-eye.svg";
-import crossbow from "../assets/items/crossbow.svg";
-import hornCrossbow from "../assets/items/horn-crossbow.svg";
-import helenid from "../assets/items/helenid.svg";
+import bowBase from "../assets/items/bow-base.png";
+import bow7 from "../assets/items/bow-7.png";
+import bow8 from "../assets/items/bow-8.png";
+import bambooBowBase from "../assets/items/bamboo-bow-base.png";
+import bambooBow7 from "../assets/items/bamboo-bow-7.png";
+import bambooBow8 from "../assets/items/bamboo-bow-8.png";
+import ironCrossbowBase from "../assets/items/iron-crossbow-base.png";
+import ironCrossbow7 from "../assets/items/iron-crossbow-7.png";
+import ironCrossbow8 from "../assets/items/iron-crossbow-8.png";
+import scorpionBowBase from "../assets/items/scorpion-bow-base.png";
+import scorpionBow7 from "../assets/items/scorpion-bow-7.png";
+import scorpionBow8 from "../assets/items/scorpion-bow-8.png";
+import ironBowBase from "../assets/items/iron-bow-base.png";
+import ironBow7 from "../assets/items/iron-bow-7.png";
+import ironBow8 from "../assets/items/iron-bow-8.png";
+import chitinBowBase from "../assets/items/chitin-bow-base.png";
+import chitinBow7 from "../assets/items/chitin-bow-7.png";
+import chitinBow8 from "../assets/items/chitin-bow-8.png";
+import enionBowBase from "../assets/items/enion-bow-base.png";
+import enionBow7 from "../assets/items/enion-bow-7.png";
+import enionBow8 from "../assets/items/enion-bow-8.png";
+import eaglesEyeBase from "../assets/items/eagles-eye-base.png";
+import eaglesEye7 from "../assets/items/eagles-eye-7.png";
+import eaglesEye8 from "../assets/items/eagles-eye-8.png";
+import crossbowBase from "../assets/items/crossbow-base.png";
+import crossbow7 from "../assets/items/crossbow-7.png";
+import crossbow8 from "../assets/items/crossbow-8.png";
+import hornCrossbowBase from "../assets/items/horn-crossbow-base.png";
+import hornCrossbow7 from "../assets/items/horn-crossbow-7.png";
+import hornCrossbow8 from "../assets/items/horn-crossbow-8.png";
+import helenidBase from "../assets/items/helenid-base.png";
+import helenid7 from "../assets/items/helenid-7.png";
+import helenid8 from "../assets/items/helenid-8.png";
 import staffBase from "../assets/items/staff-base.png";
 import scorchingStaff7 from "../assets/items/scorching-staff-7.png";
 import scorchingStaff8 from "../assets/items/scorching-staff-8.png";
@@ -76,17 +98,6 @@ import mpPotion4 from "../assets/items/mp-potion-4.png";
 // ItemIcon. Add more entries here as more art comes in.
 export const ITEM_IMAGE_BY_NAME = {
   "Totamic Club": totamicClub,
-  "Bow": bow,
-  "Bamboo Bow": bambooBow,
-  "Iron Crossbow": ironCrossbow,
-  "Scorpion Bow": scorpionBow,
-  "Iron Bow": ironBow,
-  "Chitin Bow": chitinBow,
-  "Enion Bow": enionBow,
-  "Eagle's Eye": eaglesEye,
-  "Crossbow": crossbow,
-  "Horn Crossbow": hornCrossbow,
-  "Helenid": helenid,
   "Prismatic Triad Staff": prismaticTriadStaff,
   "Ron's Staff": ronsStaff,
 };
@@ -222,6 +233,69 @@ const LEVEL_IMAGE_VARIANTS = {
     { maxLevel: 6, src: hammerBase },
     { maxLevel: 7, src: weightHammer7 },
     { maxLevel: 10, src: weightHammer8 },
+  ],
+  // Rogue'un 11 bow/crossbow'u — kullanıcı Görseller/<Eşya>/+1,+7,+8'e
+  // hepsi için gerçek sanat yükledi (bkz. sohbet). Melee ailelerinin
+  // aksine (Raptor/Glave/Durandal — kalın, yüksek kontrastlı silüetler)
+  // bowların ince, koyu ahşap kolları koyu degrade zeminle rengen çok
+  // yakın olduğu için şeffaf kesim (flood-fill) kolları da siliyordu —
+  // bu yüzden +1'leri de +7/+8 gibi "kart" (zemin korunmuş, sadece dış
+  // çerçeve kırpılmış) muameleye alındı, aile paylaşımı da yok (11'i de
+  // kendine özel görsel).
+  "Bow": [
+    { maxLevel: 6, src: bowBase },
+    { maxLevel: 7, src: bow7 },
+    { maxLevel: 10, src: bow8 },
+  ],
+  "Bamboo Bow": [
+    { maxLevel: 6, src: bambooBowBase },
+    { maxLevel: 7, src: bambooBow7 },
+    { maxLevel: 10, src: bambooBow8 },
+  ],
+  "Crossbow": [
+    { maxLevel: 6, src: crossbowBase },
+    { maxLevel: 7, src: crossbow7 },
+    { maxLevel: 10, src: crossbow8 },
+  ],
+  "Horn Crossbow": [
+    { maxLevel: 6, src: hornCrossbowBase },
+    { maxLevel: 7, src: hornCrossbow7 },
+    { maxLevel: 10, src: hornCrossbow8 },
+  ],
+  "Iron Crossbow": [
+    { maxLevel: 6, src: ironCrossbowBase },
+    { maxLevel: 7, src: ironCrossbow7 },
+    { maxLevel: 10, src: ironCrossbow8 },
+  ],
+  "Iron Bow": [
+    { maxLevel: 6, src: ironBowBase },
+    { maxLevel: 7, src: ironBow7 },
+    { maxLevel: 10, src: ironBow8 },
+  ],
+  "Scorpion Bow": [
+    { maxLevel: 6, src: scorpionBowBase },
+    { maxLevel: 7, src: scorpionBow7 },
+    { maxLevel: 10, src: scorpionBow8 },
+  ],
+  "Chitin Bow": [
+    { maxLevel: 6, src: chitinBowBase },
+    { maxLevel: 7, src: chitinBow7 },
+    { maxLevel: 10, src: chitinBow8 },
+  ],
+  "Enion Bow": [
+    { maxLevel: 6, src: enionBowBase },
+    { maxLevel: 7, src: enionBow7 },
+    { maxLevel: 10, src: enionBow8 },
+  ],
+  "Eagle's Eye": [
+    { maxLevel: 6, src: eaglesEyeBase },
+    { maxLevel: 7, src: eaglesEye7 },
+    { maxLevel: 10, src: eaglesEye8 },
+  ],
+  "Helenid": [
+    { maxLevel: 6, src: helenidBase },
+    { maxLevel: 7, src: helenid7 },
+    { maxLevel: 10, src: helenid8 },
   ],
 };
 
