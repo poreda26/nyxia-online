@@ -34,7 +34,7 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
               title={item ? `${slot.label}: ${displayItemName(item)}` : slot.label}
             >
               {item ? (
-                <ItemIcon item={item} size={ARMOR_SLOTS.includes(slot.key) ? 36 : 30} color={color} strokeWidth={1.5} />
+                <ItemIcon item={item} size={ARMOR_SLOTS.includes(slot.key) ? 48 : 40} color={color} strokeWidth={1.5} />
               ) : (
                 // Koyu metal ikonlar (Silah/Kask/Göğüslük/Donluk/Kolluk/
                 // Ayaklık) düz opaklıkla koyu panel zemininde neredeyse
@@ -49,8 +49,8 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
                   src={slot.icon}
                   alt={slot.label}
                   style={{
-                    width: ARMOR_SLOTS.includes(slot.key) ? 34 : 26,
-                    height: ARMOR_SLOTS.includes(slot.key) ? 34 : 26,
+                    width: ARMOR_SLOTS.includes(slot.key) ? 44 : 34,
+                    height: ARMOR_SLOTS.includes(slot.key) ? 44 : 34,
                     objectFit: "contain", opacity: 0.95,
                     filter: "brightness(2.6) drop-shadow(0 0 2px rgba(255,255,255,0.85)) drop-shadow(0 0 2px rgba(255,255,255,0.85))",
                   }}

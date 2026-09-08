@@ -112,7 +112,7 @@ export const styles = {
 
   equipSlotCard: {
     background: "var(--bg-panel)", borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)", borderRadius: 10,
-    padding: 4, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    padding: 2, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     textAlign: "center", aspectRatio: "1 / 1",
   },
 
