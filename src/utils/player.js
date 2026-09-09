@@ -5,6 +5,7 @@ import { MAPS } from "../data/maps";
 import { currentWeekId } from "./week";
 import { STARTING_NATIONAL_POINT } from "./nationalPointConstants";
 import { buildStartingWeapon } from "./loot";
+import {rebalanceSavedWeapon} from '../data/balancedWeapons';
 
 // Deliberately backloaded: the exponent (not just the base) is what makes
 // early levels feel close to before while late levels get dramatically
@@ -198,7 +199,8 @@ export function migratePlayer(player) {
   const asArcherWeapon = (item) => player.class === "rogue" && item?.kind === "weapon" && item.weaponType === "dagger"
     ? { ...item, name: "Bow", weaponType: "bow" } : item;
   const equipped = Object.fromEntries(Object.entries(player.equipped).map(([key,item])=>[key,asArcherWeapon(item)]));
-  const inventory = player.inventory.map(asArcherWeapon);
+  const inventory = player.inventory.map(asArcherWeapon).map(rebalanceSavedWeapon);
+  for(const key of Object.keys(equipped)) equipped[key]=rebalanceSavedWeapon(equipped[key]);
   if (equipped.offHand) {
     inventory.push(equipped.offHand);
     delete equipped.offHand;
@@ -392,7 +394,7 @@ export function totalStats(player) {
   const s = player.stats;
   const bonus = equippedStatBonus(player);
   const damageStat = CLASS_DAMAGE_STAT[player.class];
-  const statVal = s[damageStat] + bonus[damageStat];
+  const statVal = s[damageStat] + bonus[damageStat] + (player.class==='mage'?Math.max(0,s.int-70):0);
   const scaling = ATK_SCALE_C1 * (statVal + ATK_SCALE_OFFSET) + ATK_SCALE_C2 * player.level * statVal;
   const atk = Math.round(weaponAtk * scaling);
   return { hp, def, atk, mp };
@@ -446,7 +448,7 @@ export function respecStats(player) {
 // Lv65'te belirgin şekilde daha büyük ve hızlı büyüyen bir eğri (bkz.
 // sohbetteki kalibrasyon notları). Sınıf oranları eski base.maxHp
 // oranlarını (130/95/75) yansıtıyor.
-const HP_COEFF = { warrior: 1.15, rogue: 0.85, mage: 0.55 };
+const HP_COEFF = { warrior: 1.05, rogue: 1, mage: 1.05 };
 const HP_SCALE = 0.0022;
 // Gear HP bonus raises the ceiling but never auto-heals — equipping/
 // unequipping only clamps current HP down if it would otherwise exceed
@@ -521,7 +523,7 @@ export function playerMaxMp(player) {
 // gerçek sayıları DEĞİL, eski base.def oranlarına (9/5/3) yakın kalacak
 // ama toplam eşya AC'siyle çarpıldığında patlamayacak şekilde kalibre
 // edildi.
-const DEF_COEFF = { warrior: 0.75, rogue: 0.45, mage: 0.25 };
+const DEF_COEFF = { warrior: 0.75, rogue: 0.95, mage: 1.1 };
 export function playerDef(player) {
   const { def: gearDef } = totalStats(player);
   return Math.round(DEF_COEFF[player.class] * (player.level + gearDef) + 2);

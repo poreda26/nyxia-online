@@ -385,6 +385,7 @@ const LEVEL_IMAGE_VARIANTS = {
 };
 
 export function itemImageFor(name, upgradeLevel = 0) {
+  name=name?.split(' · ')[0];
   const variants = LEVEL_IMAGE_VARIANTS[name];
   if (variants) {
     const match = variants.find((v) => upgradeLevel <= v.maxLevel);

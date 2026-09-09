@@ -5,7 +5,7 @@
 // ilk girdisiyle birebir aynı — gereksinimleri o sınıfın baseStats'ıyla
 // karşılanıyor.
 export const STARTING_WEAPONS = {
-  warrior: { name: "Short Blade", weaponType: "sword", weaponSlot: "mainHand", atk: 5, reqStats: [{ key: "str", value: 62 }] },
-  rogue: { name: "Bow", weaponType: "bow", weaponSlot: "mainHand", atk: 6, reqStats: [{ key: "dex", value: 66 }] },
-  mage: { name: "Wood Staff", weaponType: "staff", weaponSlot: "mainHand", atk: 14, reqStats: [{ key: "int", value: 46 }] },
+  warrior: { name: "Short Blade", weaponType: "sword", weaponSlot: "mainHand", atk: 16, reqStats: [{ key: "str", value: 62 }] },
+  rogue: { name: "Bow", weaponType: "bow", weaponSlot: "mainHand", atk: 16, reqStats: [{ key: "dex", value: 66 }] },
+  mage: { name: "Wood Staff", weaponType: "staff", weaponSlot: "mainHand", atk: 18, reqStats: [{ key: "int", value: 46 }] },
 };

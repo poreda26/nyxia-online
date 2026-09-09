@@ -27,7 +27,7 @@ const TIER_ATK_MULT = { 1: 0.85, 2: 1.0, 3: 1.2, 4: 1.8, 5: 2.4, 6: 3.0 };
 function scaleMonster(m, tier) {
   return {
     ...m,
-    hp: Math.round(m.hp * TIER_HP_MULT[tier]),
+    hp: Math.round(m.hp * TIER_HP_MULT[tier] * ({1:.8,2:.85,3:.9,4:1.1,5:1.15,6:1.25}[tier])),
     atk: Math.round(m.atk * TIER_ATK_MULT[tier]),
     def: Math.round(m.def * TIER_DEF_MULT[tier]),
   };

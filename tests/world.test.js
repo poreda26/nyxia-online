@@ -13,7 +13,31 @@ import { buildDungeonStageChoices } from '../src/data/soloDungeon';
 import { MAP_COLLECTIONS, collectionProgress, claimCollection } from '../src/utils/collection';
 import { WEEKLY_QUESTS } from '../src/data/weeklyQuests';
 import { weeklyQuestProgress } from '../src/utils/weeklyQuests';
+import {BALANCED_WEAPONS,rebalanceSavedWeapon} from '../src/data/balancedWeapons';
+import {gmWeaponTemplates,gmBuildWeaponById} from '../src/utils/loot';
+import {pvpSnapshot,rollPvpDamage,comparablePlayer} from '../src/utils/pvpBalance';
 const player=()=>learnFreeSkills(initialPlayer('warrior','karus','WorldTest'));
+test('every class and tier has three weapons and strictly increasing +1 to +8 power',()=>{
+ for(const [cls,table] of Object.entries(BALANCED_WEAPONS))for(let tier=1;tier<=6;tier++){
+  assert.ok(table.filter(w=>w.tier===tier).length>=3);
+  for(const w of table.filter(w=>w.tier===tier))for(let i=1;i<8;i++)assert.ok(w.levels[i].atk>w.levels[i-1].atk);
+ }
+});
+test('weapon migration preserves identity, plus, ownership and durability ratio',()=>{
+ const w=gmBuildWeaponById('warrior',gmWeaponTemplates('warrior').find(w=>w.tier===2).id,5);
+ const old={...w,balanceVersion:undefined,atk:9999,currentDurability:w.durability/2,custom:'preserve'};
+ const next=rebalanceSavedWeapon(old);
+ assert.equal(next.id,old.id);assert.equal(next.upgradeLevel,5);assert.equal(next.custom,'preserve');
+ assert.equal(next.atk,w.atk);assert.equal(next.currentDurability,next.durability/2);
+ assert.equal(rebalanceSavedWeapon(next),next);
+});
+test('PvP uses reproducible symmetric rules and matching fighters split wins',()=>{
+ const a=pvpSnapshot(player());let seed=231;
+ const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+ let wins=0;
+ for(let i=0;i<1000;i++){let x=a.hp,y=a.hp,turn=i%2;for(let t=0;t<300;t++){if(turn===0)y-=rollPvpDamage(a,a,random)||0;else x-=rollPvpDamage(a,a,random)||0;turn=1-turn;if(x<=0||y<=0){wins+=y<=0?1:0;break;}}}
+ assert.ok(wins>440&&wins<560, String(wins));
+});
 function settle(w,p,seconds=.45) {
   const events=[];
   for(let i=0;i<Math.ceil(seconds/.05);i++){const r=stepWorld(w,p,{x:0,y:0},.05,()=>.1);p=r.player;events.push(...r.events);}
@@ -165,7 +189,7 @@ test('armor layers follow each equipped slot, back view and unequip without chan
 });
 
 test('map boss is daily, uses normal rewards and grants one extra chest',()=>{
-  const p=player(),map=WORLD.map,boss=buildMapBoss(map),result=grantMonsterReward(p,boss,map);
+  const p=player(),map={...WORLD.map,dropChance:0,chestChance:0},boss=buildMapBoss(map),result=grantMonsterReward(p,boss,map);
   assert.equal(canFightMapBoss(result.player,map.id).ok,false);
   assert.equal(result.player.chests.length,p.chests.length+1);
   assert.equal(result.player.weeklyQuests.bosses,1);

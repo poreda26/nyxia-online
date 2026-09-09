@@ -3,6 +3,7 @@ import { CLASSES } from "../data/classes";
 import { totalStats, playerDef, playerMaxHp, armorSetDamageReduction } from "./player";
 import { ghostNamesForRace } from "../data/warzoneNames";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "./combat";
+import {comparablePlayer,pvpSnapshot,pvpDamage,rollPvpDamage} from './pvpBalance';
 
 export function opposingRace(race) { return race === "karus" ? "elmorad" : "karus"; }
 
@@ -20,9 +21,11 @@ export function spawnGhost(player) {
 
   const race = opposingRace(player.race);
   const cls = pick(Object.keys(CLASSES));
-  const maxHp = Math.max(20, Math.round(baseHp * variance()));
+  const fighter=pvpSnapshot(comparablePlayer(player,cls));
+  const maxHp = fighter.maxHp;
 
   return {
+    ...fighter,
     id: uid(),
     name: pick(ghostNamesForRace(race)),
     race,
@@ -30,8 +33,8 @@ export function spawnGhost(player) {
     color: CLASSES[cls].color,
     hp: maxHp,
     maxHp,
-    atk: Math.max(1, Math.round(basePower * variance())),
-    def: Math.max(0, Math.round(baseDef * variance())),
+    atk: fighter.atk,
+    def: fighter.def,
   };
 }
 
@@ -40,8 +43,8 @@ export function spawnGhost(player) {
 // Rate mantığı (bkz. utils/combat.js#hitChance) burada da geçerli — null
 // dönerse ıskalamış demektir, çağıran "ıskaladın" mesajı basar.
 export function ghostDamageFromPlayer(cls, atk, ghost, isCrit, player) {
-  if (!rollHit(player.stats.dex, ghost.atk, player.level)) return null;
-  return Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), ghost.def, MONSTER_DEF_K) + rand(-2, 3)));
+  if (!rollHit(pvpSnapshot(player).dex, ghost.dex, player.level)) return null;
+  return pvpDamage(pvpSnapshot(player),ghost,isCrit);
 }
 
 // Hayaletin oyuncuya vuruşu — BattleTab.jsx#resolveMonsterTurn'daki
@@ -50,9 +53,7 @@ export function ghostDamageFromPlayer(cls, atk, ghost, isCrit, player) {
 // "canavardan" azaltması PvP'ye uygulanmıyor (bkz. utils/player.js#
 // armorSetDamageReduction'ın source ayrımı). null dönerse ıskalamış demektir.
 export function playerDamageFromGhost(ghost, defenderDef, player) {
-  if (!rollHit(ghost.atk, player.stats.dex, player.level)) return null;
-  const setReduction = armorSetDamageReduction(player, "pvp");
-  return Math.max(1, Math.round(mitigate(ghost.atk, defenderDef, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)));
+  return rollPvpDamage(ghost,pvpSnapshot(player));
 }
 
 // Hayalet %30 altı candayken küçük ihtimalle kendini iyileştirir — Mana

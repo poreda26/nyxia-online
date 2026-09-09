@@ -10,12 +10,13 @@ import { MONSTER_QUESTS } from "../data/quests";
 import { registerDailyKill, ensureDailyQuestsFresh } from "./dailyQuests";
 import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
 import { registerWeeklyKill } from "./weeklyQuests";
-import { registerMapBossDefeat } from "./mapBoss";
+import { registerMapBossDefeat, canFightMapBoss } from "./mapBoss";
 
 // Called exactly once per defeated monster, outside React state updaters.
 // Shared by the original panel battles and the real-time world.
 function pickDropTier(tier) { return Math.random() < 0.5 ? tier : Math.max(1, tier - 1); }
 export function grantMonsterReward(p, m, map) {
+  if(m.mapBoss&&!canFightMapBoss(p,map.id).ok)return {player:p,msg:'Bu boss bugün yenildi.',tone:'warn'};
   const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p);
   const dropMult = premiumDropMultiplier(p);
   let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };

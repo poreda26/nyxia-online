@@ -158,6 +158,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // bildirdiği bug). Artık nereden geliniyorsa gelinsin (fresh seçim ya da
   // Tekrar Savaş) her yeni savaş dolu can/manayla başlıyor.
   const startBattle = (m, { preserveAutoBattle = false } = {}) => {
+    if(m.mapBoss&&!canFightMapBoss(latestPlayer.current,map.id).ok){pushToast('Bu boss bugün yenildi.', 'warn');return;}
     attackLockRef.current = false;
     setMonster(m);
     setVisual({id:0,type:'',label:''});
@@ -292,7 +293,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         // elle karara bağlanıyor, sadece Otomatik Saldırı'nın açık durumu
         // Evet dendiğinde korunuyor (bkz. render'daki victoryMonster modalı,
         // startBattle'ın preserveAutoBattle parametresi).
-        setVictoryMonster(wonMonster);
+        if(!wonMonster.mapBoss)setVictoryMonster(wonMonster);
       }, 700);
       return;
     }

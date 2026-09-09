@@ -29,8 +29,8 @@ export const PLAYER_DEF_K = 170;
 // BattleTab.jsx#attack/resolveMonsterTurn).
 export function hitChance(attackerDex, defenderDex, attackerLevel) {
   const diff = attackerDex - defenderDex;
-  const chance = 0.85 + diff * 0.0015 + attackerLevel * 0.0005;
-  return Math.min(0.97, Math.max(0.55, chance));
+  const chance = 0.9 + Math.max(-.04,Math.min(.04,diff*.0004));
+  return Math.min(0.95, Math.max(0.85, chance));
 }
 export function rollHit(attackerDex, defenderDex, attackerLevel) {
   return Math.random() < hitChance(attackerDex, defenderDex, attackerLevel);

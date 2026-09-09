@@ -5,8 +5,8 @@ export function buildMapBoss(map) {
   return {
     id: `map_boss_${map.id}`,
     name: `${map.name} Muhafızı`,
-    hp: Math.round(base.hp * 4.25),
-    atk: Math.round(base.atk * 1.45),
+    hp: Math.round(base.hp * 2.5),
+    atk: Math.round(base.atk * 1.15),
     def: Math.round(base.def * 1.3),
     xp: Math.round(base.xp * 3),
     goldMin: Math.round(base.goldMin * 3),

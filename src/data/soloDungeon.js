@@ -22,8 +22,8 @@ export const SOLO_DUNGEON_STAGE_COUNT = REGULAR_STAGE_MULT.length + 1; // + boss
 function scaleStage(base, mult) {
   return {
     hp: Math.round(base.hp * mult),
-    atk: Math.round(base.atk * mult),
-    def: Math.round(base.def * mult),
+    atk: Math.round(base.atk * (1+(mult-1)*.15)),
+    def: Math.round(base.def * (1+(mult-1)*.1)),
     xp: Math.round(base.xp * mult),
     goldMin: Math.round(base.goldMin * mult),
     goldMax: Math.round(base.goldMax * mult),

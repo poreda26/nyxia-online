@@ -7,6 +7,7 @@
 // same class of limitation) — this is a placeholder for that, not a
 // substitute.
 import { BANK_PAGES } from "./player";
+import {rebalanceSavedWeapon} from '../data/balancedWeapons';
 
 const ACCOUNTS_KEY = "rpgmarket:accounts";
 const LAST_USERNAME_KEY = "rpgmarket:lastUsername";
@@ -49,7 +50,7 @@ function writeAccounts(accounts) {
 export function loadAccount(username) {
   const accounts = readAccounts();
   const account = accounts[username] || emptyAccount();
-  const bank = account.bank || Array.from({ length: BANK_PAGES }, () => []);
+  const bank = (account.bank || Array.from({ length: BANK_PAGES }, () => [])).map(page=>page.map(rebalanceSavedWeapon));
   const unlockedSlots = account.unlockedSlots ?? (account.characters?.[2] ? CHARACTER_SLOTS : DEFAULT_UNLOCKED_SLOTS);
   return { ...account, bank, unlockedSlots };
 }

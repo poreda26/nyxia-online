@@ -1,9 +1,9 @@
 import { CLASSES } from "../data/classes";
 import { SLOTS } from "../data/armor";
 import { WEAPON_CATALOG } from "../data/weapons";
-import { WARRIOR_WEAPONS, WARRIOR_SHIELDS, WEAPON_TYPE_ICON, WEAPON_TYPE_SPEED, WEAPON_TYPE_RANGE, weaponDurability } from "../data/warriorWeapons";
-import { ROGUE_WEAPONS } from "../data/rogueWeapons";
-import { CASTER_WEAPONS } from "../data/casterWeapons";
+import { WARRIOR_SHIELDS, WEAPON_TYPE_ICON, WEAPON_TYPE_SPEED, WEAPON_TYPE_RANGE, weaponDurability } from "../data/warriorWeapons";
+import { BALANCED_WEAPONS } from '../data/balancedWeapons';
+const {warrior:WARRIOR_WEAPONS,rogue:ROGUE_WEAPONS,mage:CASTER_WEAPONS}=BALANCED_WEAPONS;
 import { ARMOR_SETS } from "../data/armorSets";
 import { ACCESSORY_SETS } from "../data/accessories";
 import { TIER_PREFIX } from "../data/itemRarity";
@@ -80,7 +80,7 @@ function buildWeaponFromTemplate(w, tierId, cls) {
   const durability = w.durability ?? weaponDurability(tierId);
   const base = {
     id: uid(), kind: "weapon", weaponSlot, isShield: false, cls, tier: tierId,
-    name: w.name, icon: WEAPON_TYPE_ICON[w.weaponType], weaponType: w.weaponType,
+    name: w.name, artName:w.artName, balanceVersion:w.balanceVersion, icon: WEAPON_TYPE_ICON[w.weaponType], weaponType: w.weaponType,
     attackSpeed: w.attackSpeed ?? WEAPON_TYPE_SPEED[w.weaponType], range: w.range ?? WEAPON_TYPE_RANGE[w.weaponType],
     atk: w.atk || 0, def: 0, hp: w.hp || 0, mp: w.mp || 0, statBonus: w.statBonus || null,
     element: w.element || null, elementBonus: w.elementBonus || null, elements: w.elements || null,
