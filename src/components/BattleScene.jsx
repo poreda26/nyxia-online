@@ -41,7 +41,6 @@ export default function BattleScene({player,monster,battle,map,visual}) {
       <div className="battle-unit battle-enemy"><div className="battle-motion"><Figure rect={rect} label={monster.name} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name">{monster.name}</span></div>
       {active&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} /><i className="battle-counter" /></>}
     </div>
-    <div className="battle-foreground" aria-hidden="true"><Figure rect={hero} label=""/></div>
     <div className="battle-scene-caption">{battle.monsterHp<=0?'Düşman yenildi':visual.label||'Savaşa hazır'}</div>
   </section>;
 }
