@@ -3,7 +3,9 @@ import { grantMonsterReward } from "../utils/monsterRewards";
 import { useState, useEffect, useRef } from "react";
 import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle } from "lucide-react";
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
-import { buildSoloDungeonStages, SOLO_DUNGEON_DAILY_LIMIT } from "../data/soloDungeon";
+import { buildSoloDungeonStages, buildDungeonStageChoices, SOLO_DUNGEON_DAILY_LIMIT } from "../data/soloDungeon";
+import { buildMapBoss } from "../data/mapBosses";
+import { canFightMapBoss } from "../utils/mapBoss";
 import { rand, uid } from "../utils/random";
 import { playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
@@ -74,6 +76,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // normal (haritadaki tekli canavar) savaş akışı işliyor.
   const [dungeonRun, setDungeonRun] = useState(null);
   const [dungeonComplete, setDungeonComplete] = useState(null); // { mapName, bonusGold, chestTier } | null
+  const [dungeonChoice, setDungeonChoice] = useState(null); // { nextIndex, choices }
   const logRef = useRef(null);
 
   // Oyuncunun en son ışınlandığı harita kalıcı — güvenlik amaçlı, artık
@@ -83,6 +86,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     ? findMap(player.currentMapId)
     : highestUnlockedMap(player.level);
   const locked = player.level < map.levelMin;
+  const mapBoss = buildMapBoss(map);
+  const mapBossCheck = canFightMapBoss(player, map.id);
 
   // Kapı: farklı bir haritaya geçmek GATE_TELEPORT_COST altın karşılığında —
   // aynı haritaya tekrar tıklamak ya da kilitli bir haritaya tıklamak
@@ -117,6 +122,15 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     setPlayer((p) => consumeDungeonEntry(p));
     setDungeonRun({ stages, index: 0 });
     startBattle(stages[0]);
+  };
+
+  const chooseDungeonPath = (nextStage) => {
+    if (!dungeonRun || !dungeonChoice) return;
+    const nextIndex = dungeonChoice.nextIndex;
+    setDungeonChoice(null);
+    setDungeonRun({ ...dungeonRun, index: nextIndex });
+    pushToast(nextStage.risk ? "Riskli yol seçildi: ödüller arttı." : "Güvenli yol seçildi.", "default");
+    startBattle(nextStage, { preserveAutoBattle: true });
   };
 
   useEffect(() => {
@@ -256,10 +270,17 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             setMonster(null);
             setBattle(null);
           } else {
-            const nextStage = dungeonRun.stages[dungeonRun.index + 1];
-            setDungeonRun({ ...dungeonRun, index: dungeonRun.index + 1 });
-            pushToast(`Aşama ${dungeonRun.index + 2}/${dungeonRun.stages.length} başlıyor!`, "default");
-            startBattle(nextStage, { preserveAutoBattle: true });
+            const nextIndex = dungeonRun.index + 1;
+            const nextStage = dungeonRun.stages[nextIndex];
+            setMonster(null);
+            setBattle(null);
+            if (nextStage.isBoss) {
+              setDungeonRun({ ...dungeonRun, index: nextIndex });
+              pushToast("Zindan Efendisi seni bekliyor!", "default");
+              startBattle(nextStage, { preserveAutoBattle: true });
+            } else {
+              setDungeonChoice({ nextIndex, choices: buildDungeonStageChoices(map, nextIndex) });
+            }
           }
           return;
         }
@@ -556,6 +577,24 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             </div>
           </div>
 
+          <SectionLabel>Harita Sonu Boss</SectionLabel>
+          <div style={{ ...styles.itemDetailCard, borderColor: `${map.color}77`, background: `${map.color}12`, marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Trophy size={20} color="#D4AF6A" strokeWidth={1.6} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13 }}>{mapBoss.name}</div>
+                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>Günde bir kez. Normal ödüllere ek garanti Muhafız Sandığı verir.</div>
+              </div>
+              <button
+                style={{ ...styles.tinyBtn, ...(mapBossCheck.ok && !locked ? { background: "#D4AF6A", color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }) }}
+                disabled={!mapBossCheck.ok || locked}
+                onClick={() => startBattle(mapBoss)}
+              >
+                {mapBossCheck.ok ? "Boss'a Git" : "Bugün Yenildi"}
+              </button>
+            </div>
+          </div>
+
           <SectionLabel>Kapı · Bölge seç</SectionLabel>
           <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: -6, marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
             <DoorOpen size={12} /> Başka bir haritaya ışınlanmak {GATE_TELEPORT_COST} altın tutar.
@@ -627,6 +666,11 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                 <Castle size={12} /> Zindan · Aşama {dungeonRun.index + 1}/{dungeonRun.stages.length}
               </span>
               {monster.isBoss && <span style={{ fontSize: 10, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>BOSS</span>}
+            </div>
+          )}
+          {monster.mapBoss && (
+            <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "#D4AF6A14", border: "1px solid #D4AF6A44", fontSize: 11, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>
+              <Trophy size={12} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Harita Sonu Boss · Muhafız Sandığı garanti
             </div>
           )}
           {!hasBattleScene(monster) && <>
@@ -833,6 +877,24 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <button style={{ ...styles.tinyBtn, background: "#A34FD9", marginTop: 20 }} onClick={() => setDungeonComplete(null)}>
               Harika!
             </button>
+          </div>
+        </div>
+      )}
+
+      {dungeonChoice && (
+        <div style={{ ...styles.modalOverlay, position: "fixed" }}>
+          <div style={styles.modalCard}>
+            <Castle size={30} color="#A34FD9" strokeWidth={1.3} />
+            <div style={{ marginTop: 12, fontFamily: "var(--font-display)", fontSize: 17 }}>Yolunu Seç</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center" }}>Bir sonraki aşamaya nasıl ilerleyeceksin?</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 18, width: "100%" }}>
+              {dungeonChoice.choices.map((choice) => (
+                <button key={choice.id} style={{ ...styles.tinyBtn, flex: 1, minHeight: 58, background: choice.risk ? "#C9425A" : "#5FA8A0" }} onClick={() => chooseDungeonPath(choice)}>
+                  <span>{choice.risk ? "Riskli Yol" : "Güvenli Yol"}</span>
+                  <small style={{ display: "block", opacity: 0.82, marginTop: 3 }}>{choice.risk ? "+%45 XP/altın · daha zor" : "Normal ödül · dengeli"}</small>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

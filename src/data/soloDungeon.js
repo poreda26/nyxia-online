@@ -48,3 +48,19 @@ export function buildSoloDungeonStages(map) {
   };
   return [...regular, boss];
 }
+
+// Her normal aşama sonunda oyuncu güvenli veya riskli yolu seçer. Riskli yol
+// daha dayanıklı düşman ve daha yüksek XP/altın verir; boss aşaması seçimsizdir.
+export function buildDungeonStageChoices(map, stageIndex) {
+  const safe = buildSoloDungeonStages(map)[stageIndex];
+  if (!safe || safe.isBoss) return [];
+  const risk = {
+    ...safe,
+    id: `${safe.id}_risk`,
+    name: `${safe.name} · Riskli Yol`,
+    hp: Math.round(safe.hp * 1.35), atk: Math.round(safe.atk * 1.18), def: Math.round(safe.def * 1.12),
+    xp: Math.round(safe.xp * 1.45), goldMin: Math.round(safe.goldMin * 1.45), goldMax: Math.round(safe.goldMax * 1.45),
+    risk: true,
+  };
+  return [{ ...safe, name: `${safe.name} · Güvenli Yol` }, risk];
+}

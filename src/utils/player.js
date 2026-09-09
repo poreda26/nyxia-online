@@ -159,6 +159,11 @@ export function initialPlayer(cls, race, nickname) {
     // bugünden farklıysa entriesUsed sıfırmış gibi davranılır (gün değişince
     // otomatik yenilenir, dailyQuests'teki aynı desen).
     soloDungeon: { day: null, entriesUsed: 0 },
+    // Bölge boss'ları günlük birer kez yenilir; Canavar Kitabı ise mevcut
+    // monsterKills sayacından türediği için yalnız alınan sayfaları saklar.
+    mapBoss: { day: null, defeatedMapIds: [] },
+    claimedCollections: [],
+    weeklyQuests: { weekId: currentWeekId(), kills: 0, bosses: 0, claimed: [] },
     // Belirli saatlerde açılan dünya etkinlikleri (bkz. data/scheduledEvents.js,
     // utils/scheduledEvents.js) — event id'sine göre { day, joined,
     // ticksCredited }. day bugünden farklıysa taze sayılır (gün değişince
@@ -264,6 +269,9 @@ export function migratePlayer(player) {
     },
     activeTitle: player.activeTitle ?? null,
     soloDungeon: player.soloDungeon || { day: null, entriesUsed: 0 },
+    mapBoss: player.mapBoss || { day: null, defeatedMapIds: [] },
+    claimedCollections: player.claimedCollections || [],
+    weeklyQuests: player.weeklyQuests || { weekId: currentWeekId(), kills: 0, bosses: 0, claimed: [] },
     scheduledEvents: player.scheduledEvents || {},
   };
 }

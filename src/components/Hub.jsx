@@ -5,6 +5,9 @@ import { MONSTER_QUESTS } from "../data/quests";
 import { questProgress, isQuestClaimed } from "../utils/quests";
 import { dailyQuestProgress } from "../utils/dailyQuests";
 import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
+import { WEEKLY_QUESTS } from "../data/weeklyQuests";
+import { weeklyQuestProgress } from "../utils/weeklyQuests";
+import { MAP_COLLECTIONS, collectionProgress } from "../utils/collection";
 import { canClaimDailyLogin } from "../utils/dailyLogin";
 import * as chatService from "../services/chatService";
 import { styles } from "../styles";
@@ -63,7 +66,9 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
   const captainNotice = MONSTER_QUESTS
     .filter((q) => player.level >= q.requiredLevel)
     .some((q) => questProgress(player, q).done && !isQuestClaimed(player, q.id))
-    || DAILY_QUEST_SLOTS.some((_, i) => { const p = dailyQuestProgress(player, i); return p.done && !p.claimed; });
+    || DAILY_QUEST_SLOTS.some((_, i) => { const p = dailyQuestProgress(player, i); return p.done && !p.claimed; })
+    || WEEKLY_QUESTS.some((q) => { const p = weeklyQuestProgress(player, q); return p.done && !p.claimed; })
+    || MAP_COLLECTIONS.some((c) => { const p = collectionProgress(player, c); return p.done && !p.claimed; });
   const characterNotice = player.statPoints > 0;
   const inventoryNotice = !!player.hasNewItemNotice;
 

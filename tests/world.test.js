@@ -7,6 +7,12 @@ import { initialPlayer, playerMaxHp, xpToNext, migratePlayer, equipItem } from '
 import { grantMonsterReward } from '../src/utils/monsterRewards';
 import { saveCharacterSlot, loadAccount } from '../src/utils/storage';
 import { learnFreeSkills } from '../src/utils/skills';
+import { buildMapBoss } from '../src/data/mapBosses';
+import { canFightMapBoss } from '../src/utils/mapBoss';
+import { buildDungeonStageChoices } from '../src/data/soloDungeon';
+import { MAP_COLLECTIONS, collectionProgress, claimCollection } from '../src/utils/collection';
+import { WEEKLY_QUESTS } from '../src/data/weeklyQuests';
+import { weeklyQuestProgress } from '../src/utils/weeklyQuests';
 const player=()=>learnFreeSkills(initialPlayer('warrior','karus','WorldTest'));
 function settle(w,p,seconds=.45) {
   const events=[];
@@ -156,4 +162,26 @@ test('armor layers follow each equipped slot, back view and unequip without chan
   assert.deepEqual(draws.slice(1).map(d=>d[1]),[100,700]);
   draws.length=0;p.equipped.head=null;drawWarrior(ctx,w,p,art);assert.equal(draws.length,2);
   assert.equal(armorVariant({name:'Leather Cap'}),null);
+});
+
+test('map boss is daily, uses normal rewards and grants one extra chest',()=>{
+  const p=player(),map=WORLD.map,boss=buildMapBoss(map),result=grantMonsterReward(p,boss,map);
+  assert.equal(canFightMapBoss(result.player,map.id).ok,false);
+  assert.equal(result.player.chests.length,p.chests.length+1);
+  assert.equal(result.player.weeklyQuests.bosses,1);
+});
+
+test('solo dungeon risk path increases challenge and reward',()=>{
+  const [safe,risk]=buildDungeonStageChoices(WORLD.map,1);
+  assert.equal(safe.risk,undefined);assert.equal(risk.risk,true);
+  assert.ok(risk.hp>safe.hp&&risk.xp>safe.xp&&risk.goldMin>safe.goldMin);
+});
+
+test('collection and weekly quest progress survive in player state',()=>{
+  const collection=MAP_COLLECTIONS[0];let p=player();
+  p={...p,monsterKills:Object.fromEntries(collection.monsterIds.map(id=>[id,1]))};
+  assert.equal(collectionProgress(p,collection).done,true);
+  const claimed=claimCollection(p,collection.id);assert.equal(claimed.claimed,true);
+  p={...claimed.player,weeklyQuests:{...claimed.player.weeklyQuests,kills:WEEKLY_QUESTS[0].target}};
+  assert.equal(weeklyQuestProgress(p,WEEKLY_QUESTS[0]).done,true);
 });

@@ -9,6 +9,8 @@ import { learnFreeSkills } from "./skills";
 import { MONSTER_QUESTS } from "../data/quests";
 import { registerDailyKill, ensureDailyQuestsFresh } from "./dailyQuests";
 import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
+import { registerWeeklyKill } from "./weeklyQuests";
+import { registerMapBossDefeat } from "./mapBoss";
 
 // Called exactly once per defeated monster, outside React state updaters.
 // Shared by the original panel battles and the real-time world.
@@ -43,6 +45,7 @@ export function grantMonsterReward(p, m, map) {
   const freshNp = ensureDailyQuestsFresh(np);
   const dailyKillsBefore = freshNp.dailyQuests.killsToday;
   np = registerDailyKill(freshNp);
+  np = registerWeeklyKill(np, m);
   DAILY_QUEST_SLOTS.forEach((slot) => {
     const wasDone = dailyKillsBefore >= slot.target;
     const isDone = np.dailyQuests.killsToday >= slot.target;
@@ -67,6 +70,11 @@ export function grantMonsterReward(p, m, map) {
     const chest = { id: uid(), tier: chestTier };
     np.chests.push(chest);
     drops.push(`Sandık düştü! (T${chestTier})`);
+  }
+  if (m.mapBoss) {
+    np = registerMapBossDefeat(np, map.id);
+    np.chests.push({ id: uid(), tier: map.tier });
+    drops.push(`Muhafız Sandığı kazandın! (T${map.tier})`);
   }
 
   let leveled = false;

@@ -1,10 +1,13 @@
-import { ShieldCheck, Gift, Crown, Skull, Flag, CalendarCheck } from "lucide-react";
+import { ShieldCheck, Gift, Crown, Skull, Flag, CalendarCheck, BookOpen, Trophy } from "lucide-react";
 import { MONSTER_QUESTS, AWAKENING_QUEST } from "../data/quests";
 import { questProgress, isQuestClaimed, claimQuest, awakeningProgress, claimAwakening } from "../utils/quests";
 import { dailyQuestProgress, claimDailyQuest } from "../utils/dailyQuests";
 import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
+import { WEEKLY_QUESTS } from "../data/weeklyQuests";
+import { weeklyQuestProgress, claimWeeklyQuest } from "../utils/weeklyQuests";
+import { MAP_COLLECTIONS, collectionProgress, claimCollection } from "../utils/collection";
 import { displayClassName } from "../utils/player";
-import { findMonster } from "../data/maps";
+import { findMonster, MAPS } from "../data/maps";
 import { itemTierColor } from "../data/itemRarity";
 import { buyNationalPoint, canBuyNationalPoint } from "../utils/nationalPoint";
 import { NP_RECOVERY_GOLD_COST, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
@@ -37,6 +40,19 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
     setPlayer(result.player);
     const extra = result.quest.chest ? ", Sandık" : "";
     pushToast(`Günlük ödül alındı: +${result.quest.goldReward} altın, +${result.quest.xpReward} XP${extra}`, "loot");
+  };
+
+  const claimWeekly = (id) => {
+    const result = claimWeeklyQuest(player, id);
+    if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
+    setPlayer(result.player);
+    pushToast(`Haftalık ödül alındı: +${result.quest.goldReward} altın, +${result.quest.xpReward} XP${result.quest.chest ? ", Sandık" : ""}`, "loot");
+  };
+  const claimBook = (id) => {
+    const result = claimCollection(player, id);
+    if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
+    setPlayer(result.player);
+    pushToast(`Canavar Kitabı tamamlandı: +${result.collection.goldReward} altın ve T${result.collection.chestTier} Sandık`, "loot");
   };
 
   const buyNp = () => {
@@ -118,6 +134,49 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
                 </div>
               </div>
             );
+          })}
+        </div>
+      </div>
+
+      <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#D4AF6A66", background: "#D4AF6A0d" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+          <Trophy size={16} color="#D4AF6A" strokeWidth={1.6} />
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#D4AF6A" }}>Haftalık Görev Zinciri</div>
+        </div>
+        <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>Her pazartesi yenilenir. Farm yaparak ilerler, boss'larla tamamlanır.</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+          {WEEKLY_QUESTS.map((quest) => {
+            const progress = weeklyQuestProgress(player, quest);
+            return <div key={quest.id}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{quest.name}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
+              <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>{quest.desc}</div>
+              <BarTrack pct={(progress.current / progress.target) * 100} color="#D4AF6A" thin />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
+                <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {quest.goldReward}g · {quest.xpReward} XP{quest.chest ? " · Sandık" : ""}</span>
+                <button style={{ ...styles.tinyBtn, background: progress.done && !progress.claimed ? "#D4AF6A" : "var(--bg-panel-alt)", color: progress.done && !progress.claimed ? "#0B0C10" : "var(--text-faint)" }} disabled={!progress.done || progress.claimed} onClick={() => claimWeekly(quest.id)}>{progress.claimed ? "Alındı" : progress.done ? "Ödülü Al" : "Devam Ediyor"}</button>
+              </div>
+            </div>;
+          })}
+        </div>
+      </div>
+
+      <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#6FD1E066", background: "#6FD1E00d" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+          <BookOpen size={16} color="#6FD1E0" strokeWidth={1.6} />
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#6FD1E0" }}>Canavar Kitabı</div>
+        </div>
+        <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>Her canavarı en az bir kez yen; harita sayfasını tamamlayıp ödülü al.</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {MAP_COLLECTIONS.filter((c) => player.level >= MAPS.find((m) => m.id === c.mapId).levelMin).map((collection) => {
+            const progress = collectionProgress(player, collection);
+            return <div key={collection.id} style={{ opacity: progress.claimed ? 0.55 : 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{collection.name}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
+              <BarTrack pct={(progress.current / progress.target) * 100} color="#6FD1E0" thin />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
+                <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {collection.goldReward}g · T{collection.chestTier} Sandık</span>
+                <button style={{ ...styles.tinyBtn, background: progress.done && !progress.claimed ? "#6FD1E0" : "var(--bg-panel-alt)", color: progress.done && !progress.claimed ? "#0B0C10" : "var(--text-faint)" }} disabled={!progress.done || progress.claimed} onClick={() => claimBook(collection.id)}>{progress.claimed ? "Alındı" : progress.done ? "Ödülü Al" : "Keşfet"}</button>
+              </div>
+            </div>;
           })}
         </div>
       </div>
