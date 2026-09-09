@@ -1,3 +1,4 @@
+import {ORIGINAL_WEAPON_IMAGES} from './originalWeaponImages';
 import halberdBase from "../assets/items/halberd-base.png";
 import halberd7 from "../assets/items/halberd-7.png";
 import halberd8 from "../assets/items/halberd-8.png";
@@ -385,7 +386,7 @@ const LEVEL_IMAGE_VARIANTS = {
 };
 
 export function itemImageFor(name, upgradeLevel = 0) {
-  name=name?.split(' · ')[0];
+  if(ORIGINAL_WEAPON_IMAGES[name])return ORIGINAL_WEAPON_IMAGES[name];
   const variants = LEVEL_IMAGE_VARIANTS[name];
   if (variants) {
     const match = variants.find((v) => upgradeLevel <= v.maxLevel);

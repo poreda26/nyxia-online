@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nyxia — Özgün silahlar</title>
+<style>
+body{margin:0;padding:24px;background:#101519;color:#eee2c9;font:15px system-ui}main{max-width:1100px;margin:auto}h1{margin-bottom:6px}p{color:#adb6b8}label{display:block;margin:20px 0}select{padding:8px;background:#222d31;color:inherit;border:1px solid #68716a;border-radius:6px}section{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}article{background:#1b2428;border:1px solid #455044;border-radius:12px;padding:16px}img{width:100%;height:170px;object-fit:contain}h2{font-size:18px;color:#efc980}small{color:#a9bba9}.stats{line-height:1.8;color:#e2e6e4}
+</style>
+<main><h1>Özgün silahlar</h1><p>Kopyaların yerine eklenen 20 silah. Bu önizleme oyuncu kaydını değiştirmez.</p><label>Upgrade <select id="plus"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label><section id="weapons"></section></main>
+<script type="module">
+import {ORIGINAL_WEAPONS} from './src/data/originalWeapons.js';
+import {BALANCED_WEAPONS} from './src/data/balancedWeapons.js';
+import {itemImageFor} from './src/data/itemImages.js';
+const plus=document.querySelector('#plus'),grid=document.querySelector('#weapons');
+function render(){grid.replaceChildren();for(const original of ORIGINAL_WEAPONS){const w=BALANCED_WEAPONS[original.cls].find(x=>x.name===original.name),s=w.levels[Number(plus.value)-1],card=document.createElement('article'),img=document.createElement('img'),title=document.createElement('h2'),tier=document.createElement('small'),stats=document.createElement('div');img.src=itemImageFor(w.name,Number(plus.value));img.alt=w.name;title.textContent=w.name+' +'+plus.value;tier.textContent=w.cls+' · T'+w.tier;stats.className='stats';stats.textContent='ATK '+s.atk+' · HP '+s.hp+' · MP '+s.mp+' | '+s.reqStats.map(r=>r.key.toUpperCase()+' '+r.value).join(' / ');card.append(img,title,tier,stats);grid.append(card);}}
+plus.addEventListener('change',render);render();
+</script>
+</html>

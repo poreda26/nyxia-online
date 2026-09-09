@@ -14,9 +14,34 @@ import { MAP_COLLECTIONS, collectionProgress, claimCollection } from '../src/uti
 import { WEEKLY_QUESTS } from '../src/data/weeklyQuests';
 import { weeklyQuestProgress } from '../src/utils/weeklyQuests';
 import {BALANCED_WEAPONS,rebalanceSavedWeapon} from '../src/data/balancedWeapons';
+import {ORIGINAL_WEAPONS} from '../src/data/originalWeapons';
+import {itemImageFor} from '../src/data/itemImages';
 import {gmWeaponTemplates,gmBuildWeaponById} from '../src/utils/loot';
 import {pvpSnapshot,rollPvpDamage,comparablePlayer} from '../src/utils/pvpBalance';
 const player=()=>learnFreeSkills(initialPlayer('warrior','karus','WorldTest'));
+test('original replacements have unique names, art, requirements and attributes',()=>{
+ const names=Object.values(BALANCED_WEAPONS).flat().map(w=>w.name);
+ assert.equal(new Set(names).size,names.length);
+ assert.ok(names.every(n=>!n.includes(' · Muhafız')&&!n.includes(' · Avcı')));
+ const images=ORIGINAL_WEAPONS.map(w=>itemImageFor(w.name,1));
+ assert.ok(images.every(Boolean));assert.equal(new Set(images).size,20);
+ for(const c of ['warrior','rogue','mage'])for(let tier=1;tier<=6;tier++){
+  const news=BALANCED_WEAPONS[c].filter(w=>w.tier===tier);
+  assert.equal(new Set(news.map(w=>JSON.stringify(w.levels[0]))).size,news.length);
+  assert.equal(new Set(news.map(w=>JSON.stringify(w.reqStats))).size,news.length);
+ }
+});
+test('all retired clones migrate exactly once without losing upgrade or ownership',()=>{
+ for(const w of ORIGINAL_WEAPONS){
+  const old={id:'owned-'+w.id,kind:'weapon',cls:w.cls,name:w.legacyName,tier:w.tier,upgradeLevel:7,durability:100,currentDurability:25,balanceVersion:1,owner:'kept'};
+  const next=rebalanceSavedWeapon(old);
+  const fresh=gmBuildWeaponById(w.cls,gmWeaponTemplates(w.cls).find(x=>x.name===w.name).id,7);
+  for(const key of ['atk','hp','mp','weaponType','attackSpeed','range','icon','weaponSlot'])assert.equal(next[key],fresh[key],w.name+' '+key);
+  assert.equal(next.name,w.name);assert.equal(next.id,old.id);assert.equal(next.owner,'kept');assert.equal(next.upgradeLevel,7);
+  assert.ok(Math.abs(next.currentDurability/next.durability-.25)<.001);
+  assert.equal(rebalanceSavedWeapon(next),next);
+ }
+});
 test('every class and tier has three weapons and strictly increasing +1 to +8 power',()=>{
  for(const [cls,table] of Object.entries(BALANCED_WEAPONS))for(let tier=1;tier<=6;tier++){
   assert.ok(table.filter(w=>w.tier===tier).length>=3);

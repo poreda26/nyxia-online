@@ -1,5 +1,7 @@
 # Nyxia denge V1
 
+> Tarihsel V1 kaydıdır. Aynı görseli kullanan Muhafız/Avcı varyantları V2'de kaldırıldı; güncel silah tasarımları ve kayıt dönüşümü için [Özgün silahlar V2](ORIGINAL_WEAPONS_V2.md) dosyasına bakın. Aşağıdaki denge ölçümleri V1'e aittir.
+
 Mevcut görseller ve silah adları korunur; yeni varyantlar aynı görseli kullanır. Her sınıfın T1–T6 havuzunda en az üç seçenek vardır. İsimler hâlâ geçicidir. Kaynak referans tabloları saklanır, etkin sayılar `balancedWeapons.js` içinde belirlenir.
 
 Silah +1 tabanları 20/48/76/104/132/154; sınıf katsayıları Warrior 1, Rogue 0.94, Mage 1.12. +1–+8 çarpanları 1/1.07/1.14/1.22/1.31/1.42/1.57/1.78. Varyantlar dengeli, can bonuslu ve %4 yüksek saldırılıdır. Referans oyundan gelen ikincil stat sıçramaları yerine bu güç bütçesi kullanılır. Upgrade başarı oranları, kırılma ve maliyetler değişmez. Zırh set bonusları değişmez.
