@@ -1,4 +1,4 @@
-import { Sword, Wand2, Sparkles } from "lucide-react";
+import { Sword, Crosshair, Sparkles } from "lucide-react";
 
 // baseStats: fixed starting values for the 5 allocatable stats — STR/STA/
 // DEX/INT/Magic Power — granted automatically at character creation,
@@ -22,9 +22,9 @@ export const CLASSES = {
     desc: "Kalın zırh, sağlam yumruk. Ön safta durur.",
   },
   rogue: {
-    name: "Rogue", icon: Wand2, color: "#8B6FC9", atk: 15, def: 5, maxHp: 95, maxMp: 30, crit: 0.28, mainStat: "dex",
+    name: "Rogue", icon: Crosshair, color: "#8B6FC9", atk: 15, def: 5, maxHp: 95, maxMp: 30, crit: 0.28, mainStat: "dex",
     baseStats: { str: 60, sta: 60, dex: 70, int: 50, mag: 50 },
-    desc: "Hızlı, ölümcül kritikler. Kırılgan ama acımasız.",
+    desc: "Yay kullanan menzilli okçu. Hızlı atışlar ve güçlü kritikler.",
   },
   mage: {
     name: "Mage", icon: Sparkles, color: "#4FC3D9", atk: 19, def: 3, maxHp: 75, maxMp: 65, crit: 0.10, mainStat: "mag",

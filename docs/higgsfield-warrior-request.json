@@ -1,0 +1,13 @@
+{
+  "model": "nano_banana_pro",
+  "aspect_ratio": "1:1",
+  "resolution": "2k",
+  "count": 1,
+  "medias": [
+    {
+      "role": "image",
+      "value": "5ceb7fee-1868-4b03-97ea-b4062bdbeec8"
+    }
+  ],
+  "prompt": "Create a production 2D GAME SPRITE ATLAS for Nyxia Online, not a poster. Isometric 45-degree three-quarter top-down game view. Nostalgic early 2000s PC MMORPG like Knight Online remastered for modern mobile, dark fantasy, hand-painted rich metal texture, restrained blue steel and aged gold from supplied existing equipment references, sharp clean silhouette, stylized low-poly volumes. EXACT uniform 4 COLUMNS by 4 ROWS grid of 16 separate FULL BODY warrior poses on a FLAT SOLID PURE MAGENTA #ff00ff background for chroma-key extraction. No shadows on background, no text, no grid lines, no props, no ground, no magic particles. Each cell 512x512. Every whole body fits with 60px blank margin, head around y=80 feet y=430 in each cell, equal character height and scale across all cells. All warriors EMPTY HANDED, closed right fist at right hip where engine will attach existing sword, no weapon or shield baked into image. Modular base body wears simple dark fitted leather/chain underarmor, plain steel small shoulder guards and boots; NO large helmet, NO elaborate chest plate, since actual equipment can be layered later. Two distinct races: ROW 1 human male warrior front three-quarter facing southeast, 4 WALK cycle phases: left foot contact, passing idle ready pose, right foot contact, passing. ROW 2 same human BACK three-quarter facing northeast, same four walk phases. ROW 3 muscular green-grey orc warrior with small tusks front three-quarter facing southeast same four phases. ROW 4 same orc BACK three-quarter facing northeast same four phases. Athletic heroic anatomy, sturdy planted soles, slight bent knees in idle combat-ready posture. Maintain consistent face/race/outfit across respective rows. No sword anywhere; reference sword sets the material language only. Four columns and four rows exactly. Uniform empty magenta gutters between all 16 figures. Do not copy equipment reference as background or inventory panels."
+}

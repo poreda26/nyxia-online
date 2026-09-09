@@ -190,8 +190,10 @@ export function migratePlayer(player) {
   // "Yrd. El" slotu kaldırıldı (kullanıcı isteğiyle tek silah slotu) — o
   // slotta bir şey kuşanılı kalmış eski kayıtlarda, kaybolmasın diye
   // çantaya geri koyuyoruz.
-  const equipped = { ...player.equipped };
-  const inventory = [...player.inventory];
+  const asArcherWeapon = (item) => player.class === "rogue" && item?.kind === "weapon" && item.weaponType === "dagger"
+    ? { ...item, name: "Bow", weaponType: "bow" } : item;
+  const equipped = Object.fromEntries(Object.entries(player.equipped).map(([key,item])=>[key,asArcherWeapon(item)]));
+  const inventory = player.inventory.map(asArcherWeapon);
   if (equipped.offHand) {
     inventory.push(equipped.offHand);
     delete equipped.offHand;
@@ -634,6 +636,9 @@ export function displayItemName(item) {
 // armor. Returns { player, blocked } — blocked carries a reason string
 // when the equip was refused so the caller can toast it.
 export function equipItem(player, item) {
+  if (player.class === "rogue" && item.kind === "weapon" && !["bow", "crossbow"].includes(item.weaponType)) {
+    return { player, blocked: "Rogue yalnızca yay veya arbalet kuşanabilir." };
+  }
   if (item.kind === "armor" && item.class !== player.class) {
     return { player, blocked: `Bu eşya ${CLASSES[item.class].name} sınıfına özel — kuşanamazsın.` };
   }

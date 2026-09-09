@@ -21,7 +21,7 @@ export default function App() {
   const [account, setAccount] = useState({ race: null, characters: [null, null, null], bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS });
   const [activeSlot, setActiveSlot] = useState(null);
   const [player, setPlayer] = useState(null);
-  const [tab, setTab] = useState("battle");
+  const [tab, setTab] = useState("world");
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
@@ -84,7 +84,7 @@ export default function App() {
     const { player: rolled, diamondsAwarded, rank } = applyWeeklyRollover(migrated);
     setPlayer(rolled);
     setActiveSlot(slotIndex);
-    setTab("battle");
+    setTab("world");
     setScreen("hub");
     if (diamondsAwarded > 0) {
       pushToast(`Geçen haftaki Savaş Alanı sıralamasında ${rank}. oldun! +${diamondsAwarded} Elmas`, "loot");
@@ -105,7 +105,7 @@ export default function App() {
       return { ...a, characters };
     });
     setPlayer(p);
-    setTab("battle");
+    setTab("world");
     setScreen("hub");
   };
 

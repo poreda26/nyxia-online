@@ -16,8 +16,8 @@ const STEPS = [
   },
   {
     icon: Sword, color: "#C9425A",
-    title: "Savaş",
-    text: "Kapı'dan bir bölge seç, canavarlarla savaş. Her öldürmede altın ve XP kazanırsın; ekipman, sandık ve yükseltme parşömeni de düşebilir.",
+    title: "Dünyayı Keşfet",
+    text: "Dünya sekmesinde joystick ile hareket et. Yaratığa dokunarak hedef seç, yaklaş ve Saldır düğmesine bas. Altın, XP ve şansına göre ekipman veya sandık kazanırsın. Diğer bölgelere Savaş menüsünden ulaşabilirsin.",
   },
   {
     icon: Package, color: "#5FA8A0",

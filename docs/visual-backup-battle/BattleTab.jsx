@@ -1,4 +1,3 @@
-import BattleScene, {hasBattleScene} from './BattleScene';
 import { grantMonsterReward } from "../utils/monsterRewards";
 import { useState, useEffect, useRef } from "react";
 import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle } from "lucide-react";
@@ -62,8 +61,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   latestPlayer.current = player;
   const [monster, setMonster] = useState(null); // active monster template
   const [battle, setBattle] = useState(null); // {monsterHp, monsterMaxHp, log, playerHp}
-  const [visual, setVisual] = useState({id:0,type:'',label:''});
-  const showAction = (type,label) => setVisual(v => ({id:v.id+1,type,label}));
   const [shake, setShake] = useState(null); // 'player' | 'monster' | null
   const [pendingMap, setPendingMap] = useState(null); // map awaiting teleport confirmation
   const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal
@@ -146,7 +143,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const startBattle = (m, { preserveAutoBattle = false } = {}) => {
     attackLockRef.current = false;
     setMonster(m);
-    setVisual({id:0,type:'',label:''});
     setBattle({
       monsterHp: m.hp,
       monsterMaxHp: m.hp,
@@ -330,7 +326,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     if (attackLockRef.current) return;
     if (!battle || battle.finished || player.hp <= 0) return;
     attackLockRef.current = true;
-    showAction('attack','Saldırı');
 
     const ticked = tickBattleEffects(battle);
     if (ticked.monsterHp <= 0) { resolveMonsterTurn(ticked.monsterHp, ticked.log, ticked); return; }
@@ -374,7 +369,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     const skillCooldowns = { ...ticked.skillCooldowns, [skillId]: skill.cooldown };
     const maxHp = playerMaxHp(player);
     const e = skill.effect;
-    showAction(e.type,skill.name);
 
     if (ticked.monsterHp <= 0) {
       setPlayer((p) => ({ ...p, mp: p.mp - skill.mpCost }));
@@ -428,7 +422,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     const result = usePotion(player, kind, tier);
     if (result.reason) { pushToast(result.reason, "warn"); return; }
     attackLockRef.current = true;
-    showAction('potion',kind === 'hp' ? 'Can iksiri' : 'Mana iksiri');
 
     const ticked = tickBattleEffects(battle);
     const potionCooldowns = { ...ticked.potionCooldowns, [kind]: POTION_COOLDOWN_TURNS };
@@ -619,8 +612,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       )}
 
       {monster && battle && (
-        <div className={hasBattleScene(monster) ? "battle-mobile" : ""} style={styles.battleArena}>
-          <BattleScene player={player} monster={monster} battle={battle} map={map} visual={visual} />
+        <div style={styles.battleArena}>
           {dungeonRun && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "#A34FD914", border: "1px solid #A34FD944" }}>
               <span style={{ fontSize: 11, color: "#A34FD9", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 5 }}>
@@ -629,7 +621,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               {monster.isBoss && <span style={{ fontSize: 10, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>BOSS</span>}
             </div>
           )}
-          {!hasBattleScene(monster) && <>
           <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{monster.name}</span>
@@ -655,17 +646,16 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <BarTrack pct={(player.mp / maxMp) * 100} color="#4FC3D9" thin />
           </div>
 
-          </>}
-          <details className="battle-history"><summary>Savaş kaydı · {battle.log.at(-1)}</summary><div ref={logRef} style={styles.combatLog}>
+          <div ref={logRef} style={styles.combatLog}>
             {battle.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}
-          </div></details>
+          </div>
 
-          <div className="battle-skill-dock" aria-label="Beceriler" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, marginBottom: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, marginBottom: 8 }}>
             {player.skills.loadout.map((skillId, i) => {
               if (!skillId) {
                 return (
                   <div key={i} style={{ ...styles.equipSlotCard, opacity: 0.4 }}>
-                    <Plus size={12} color="var(--text-faint)" /><span className="battle-slot-label">Boş</span>
+                    <Plus size={12} color="var(--text-faint)" />
                   </div>
                 );
               }
@@ -681,7 +671,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                   disabled={disabled}
                   title={`${skill.name} — MP ${skill.mpCost}`}
                 >
-                  <SkillIcon effectType={skill.effect.type} size={22} color={cls.color} /><span className="battle-slot-label">{skill.name}</span>
+                  <SkillIcon effectType={skill.effect.type} size={15} color={cls.color} />
                   <div style={{ fontSize: 7, marginTop: 2, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
                     {cdLeft > 0 ? cdLeft : `${skill.mpCost}mp`}
                   </div>
@@ -690,7 +680,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             })}
           </div>
 
-          <div className="battle-action-dock" style={styles.battleControls}>
+          <div style={styles.battleControls}>
             <button style={{ ...styles.primaryBtn, flex: 1, background: cls.color, opacity: (playerDead || battle.finished) ? 0.5 : 1 }} onClick={attack} disabled={playerDead || battle.finished}>
               <Sword size={15} /> Saldır
             </button>

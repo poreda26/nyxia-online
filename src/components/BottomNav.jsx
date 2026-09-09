@@ -1,4 +1,4 @@
-import { Sword, Package, Store, ArrowUpCircle, MessageCircle, User, ShieldCheck, Flag, Shield } from "lucide-react";
+import { Compass, Sword, Package, Store, ArrowUpCircle, MessageCircle, User, ShieldCheck, Flag, Shield } from "lucide-react";
 import { styles } from "../styles";
 
 // Kullanıcı isteğiyle "Daha Fazla" sayfası kaldırıldı — 9 sekmenin hepsi
@@ -7,6 +7,7 @@ import { styles } from "../styles";
 // genişliği aşıp kaydırılabilsin — aksi halde flex:1 hepsini sığdırmaya
 // çalışıp asla taşmazdı.
 const TABS = [
+  { key: "world", label: "Dünya", icon: Compass },
   { key: "battle", label: "Savaş", icon: Sword },
   { key: "inventory", label: "Envanter", icon: Package },
   { key: "market", label: "Pazar", icon: Store },

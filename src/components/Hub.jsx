@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import WorldTab from "./WorldTab";
+import { useState, useEffect, useRef } from "react";
 import { CLASSES } from "../data/classes";
 import { totalStats, playerDef, playerMaxHp } from "../utils/player";
 import { MONSTER_QUESTS } from "../data/quests";
@@ -24,6 +25,7 @@ import DailyLoginModal from "./DailyLoginModal";
 import ScheduledEventBanner from "./ScheduledEventBanner";
 
 export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pushToast, onChangeCharacter, onChangeRace }) {
+  const worldSession = useRef(null);
   const cls = CLASSES[player.class];
   const { atk } = totalStats(player);
   const def = playerDef(player);
@@ -105,6 +107,7 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
 
   return (
     <div style={styles.hubRoot}>
+      {tab === "world" && <WorldTab player={player} setPlayer={setPlayer} setTab={setTab} sessionRef={worldSession} suspended={tutorialOpen || dailyLoginOpen} />}
       <TopBar
         player={player} cls={cls} maxHp={maxHp} def={def} atk={atk}
         dailyLoginAvailable={dailyLoginAvailable}
