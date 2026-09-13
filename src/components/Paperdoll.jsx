@@ -19,7 +19,7 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
         style={{ ...styles.paperdollPortrait, borderColor: cls ? `${cls.color}55` : "var(--border)", background: cls ? `linear-gradient(180deg, ${cls.color}22, var(--bg-panel))` : "var(--bg-panel)" }}
         title="Kuşanılan silahla karakter önizlemesi"
       >
-        <div className="paperdoll-character"><CharacterFigure player={player}/></div>
+        <div className="paperdoll-character"><CharacterFigure player={player} align="xMidYMid meet"/></div>
       </div>
 
       <div style={styles.paperdollGrid}>
@@ -63,3 +63,4 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
     </div>
   );
 }
+
