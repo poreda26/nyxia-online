@@ -13,5 +13,5 @@ test('upgrade threshold and ice alias follow equipped item without mutation',()=
 test('all real elemental bonuses are retained, unknown and zero bonuses excluded',()=>{
  const item={upgradeLevel:8,element:'flame',elements:[{key:'flame',bonus:12},{key:'glacier',bonus:8},{key:'lightning',bonus:5},{key:'poison',bonus:0},{key:'unknown',bonus:9}]};
  assert.deepEqual(weaponEffects(item).map(e=>e.key),['flame','ice','lightning']);
- assert.equal(weaponEffects({upgradeLevel:7,element:'poison'})[0].color,'#70ff38');
+ assert.equal(weaponEffects({upgradeLevel:7,element:'poison'})[0].color,'#dc65ff');
 });

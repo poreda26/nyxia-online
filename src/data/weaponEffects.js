@@ -1,4 +1,4 @@
-export const ELEMENT_COLORS = Object.freeze({poison:'#70ff38',flame:'#ff731c',lightning:'#b49aff',ice:'#6ce7ff'});
+export const ELEMENT_COLORS = Object.freeze({poison:'#dc65ff',flame:'#ff731c',lightning:'#b49aff',ice:'#6ce7ff'});
 const normalize = key => key === 'glacier' ? 'ice' : key;
 export function weaponEffects(weapon) {
  if (!weapon || Number(weapon.upgradeLevel) < 7) return [];

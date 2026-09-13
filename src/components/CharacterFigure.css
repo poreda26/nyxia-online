@@ -7,6 +7,9 @@
 .weapon-effect-flame{animation-name:weapon-flame;animation-duration:.8s}
 .weapon-effect-lightning{animation-name:weapon-lightning;animation-duration:1.3s}
 .weapon-effect-ice{animation-duration:3s}
+.weapon-effect-poison{animation:poison-aura 2.6s ease-in-out infinite}
+.weapon-effect-poison.weapon-effect-strong{animation-duration:2s}
+@keyframes poison-aura{0%,100%{opacity:.55}50%{opacity:.95}}
 @keyframes weapon-pulse{0%,100%{opacity:.20}50%{opacity:.55}}
 @keyframes weapon-flame{0%,100%{opacity:.25}25%{opacity:.6}55%{opacity:.32}80%{opacity:.5}}
 @keyframes weapon-lightning{0%,43%,49%,78%,100%{opacity:.2}45%,80%{opacity:.75}47%,82%{opacity:.4}}

@@ -22,6 +22,8 @@ Built-in image_gen kullanıldı. Her atlas 3 silah × 2 ırk içerir. İlk atlas
 
 ## Nefes ve elemental parıltı
 
-Kuşanılmış portresinde ayak bölgesine bağlı hafif nefes döngüsü vardır. +7/+8 elemental efektleri yalnızca silahın açıkta kalan uç/baş bölgesine uygulanır; tüm gövde parlatılmaz. Poison yeşil, flame turuncu, lightning mor-beyaz, glacier/ice buz mavisi; +8 daha yoğun ışıklıdır. Çok elementli silahların bonusları korunur. Azaltılmış hareket tercihinde döngüler durur. Gerçek 360 derece için mevcut tek açılı PNG'ler yeterli değildir; 3B model veya çok açılı varlık üretimi ayrı çalışma gerektirir ve kullanıcı kararı beklenir. Silindir gibi döndürülen düz resim 360 derece karakter olarak sunulmaz.
+Kuşanılmış portresinde ayak bölgesine bağlı hafif nefes döngüsü vardır. +7/+8 elemental efektleri yalnızca silahın açıkta kalan uç/baş bölgesine uygulanır; tüm gövde parlatılmaz. Poison mor-pembe, flame turuncu, lightning mor-beyaz, glacier/ice buz mavisi; +8 daha yoğun ışıklıdır. Çok elementli silahların bonusları korunur. Azaltılmış hareket tercihinde döngüler durur. Gerçek 360 derece için mevcut tek açılı PNG'ler yeterli değildir; 3B model veya çok açılı varlık üretimi ayrı çalışma gerektirir ve kullanıcı kararı beklenir. Silindir gibi döndürülen düz resim 360 derece karakter olarak sunulmaz.
 
 Doğrulama: iki elemental veri testi; tarayıcıda dört element için +6/+7/+8, silah çıkarma ve hareket eden portre kontrolü geçti.
+
+Poison referans düzeltmesi: mor-pembe dış aura ve açık mor kenar ışığı, silahın mevcut efekt sınırından türetilir. Silah dokusu düz renkle kapatılmaz. +8 daha geniş aura üretir. 128 ekipman geçişi ve elemental tarayıcı kontrolleri geçti.
