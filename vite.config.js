@@ -5,4 +5,5 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: '/nyxia-online/',
   plugins: [react()],
+  build: {rollupOptions: {input: ['index.html', 'character-check.html']}},
 })

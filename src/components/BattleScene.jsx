@@ -11,9 +11,9 @@ import crimson from '../assets/battle/crimson-v1.png';
 import {battleVisualFor} from '../data/battleVisuals';
 const enemyAtlases={fallow:actors,ashen,frost,sanctuary,abyss,crimson};
 import './BattleScene.css';
+import CharacterFigure from './CharacterFigure';
 
 // Read-only presentation: no timers, rewards, combat decisions or storage writes.
-const heroes = {warrior: [[8,8,349,386],[373,8,356,386]], rogue: [[729,0,357,393],[1090,0,358,393]], mage: [[2,398,359,363],[382,398,342,363]]};
 export const hasBattleScene = monster => !!battleVisualFor(monster);
 function Figure({rect,label,source=actors,size=[1448,1086]}) {
   const clip=useId();
@@ -26,7 +26,6 @@ export default function BattleScene({player,monster,battle,map,visual}) {
   const art=battleVisualFor(monster);
   if(!art) return null;
   const rect=art.rect;
-  const hero=(heroes[player.class]||heroes.warrior)[player.race==='karus'?1:0];
   const support=visual.type==='heal'||visual.type==='buffAtk'||visual.type==='buffDef'||visual.type==='potion';
   const ranged=player.class!=='warrior';
   const active=visual.id>0;
@@ -37,7 +36,7 @@ export default function BattleScene({player,monster,battle,map,visual}) {
       <div><strong>{monster.name}</strong><meter aria-label="Düşman canı" min="0" max={battle.monsterMaxHp} value={battle.monsterHp}/><small>{battle.monsterHp} / {battle.monsterMaxHp}</small><small>{monster.isBoss?'BOSS':'DÜŞMAN'}</small></div>
     </div>
     <div key={visual.id} className={`battle-cast ${active?'is-active':''} ${support?'is-support':''} ${ranged?'is-ranged':''} ${battle.monsterHp<=0?'is-victory':''}`}>
-      <div className="battle-unit battle-hero"><div className="battle-motion"><Figure rect={hero} label={player.class==='rogue'?'Okçu':player.class==='mage'?'Büyücü':'Savaşçı'}/></div><span className="battle-unit-name">{player.nickname || 'Sen'}</span></div>
+      <div className="battle-unit battle-hero"><div className="battle-motion"><CharacterFigure player={player}/></div><span className="battle-unit-name">{player.nickname || 'Sen'}</span></div>
       <div className="battle-unit battle-enemy"><div className="battle-motion"><Figure rect={rect} label={monster.name} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name">{monster.name}</span></div>
       {active&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} /><i className="battle-counter" /></>}
     </div>

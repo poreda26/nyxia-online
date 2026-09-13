@@ -1,4 +1,4 @@
-import { User } from "lucide-react";
+import CharacterFigure from './CharacterFigure';
 import { itemTierColor } from "../data/itemRarity";
 import { PAPERDOLL_LAYOUT } from "../data/paperdoll";
 import { displayItemName, ARMOR_SLOTS } from "../utils/player";
@@ -17,9 +17,9 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
     <div style={styles.paperdollRoot}>
       <div
         style={{ ...styles.paperdollPortrait, borderColor: cls ? `${cls.color}55` : "var(--border)", background: cls ? `linear-gradient(180deg, ${cls.color}22, var(--bg-panel))` : "var(--bg-panel)" }}
-        title="Karakter portresi — yakında"
+        title="Kuşanılan silahla karakter önizlemesi"
       >
-        {cls ? <cls.icon size={40} color={cls.color} strokeWidth={1.2} /> : <User size={40} color="var(--text-faint)" strokeWidth={1.2} />}
+        <div className="paperdoll-character"><CharacterFigure player={player}/></div>
       </div>
 
       <div style={styles.paperdollGrid}>

@@ -16,9 +16,38 @@ import { weeklyQuestProgress } from '../src/utils/weeklyQuests';
 import {BALANCED_WEAPONS,rebalanceSavedWeapon} from '../src/data/balancedWeapons';
 import {ORIGINAL_WEAPONS} from '../src/data/originalWeapons';
 import {itemImageFor} from '../src/data/itemImages';
+import {characterAppearance,CHARACTER_IDENTITIES} from '../src/data/characterAppearance';
 import {gmWeaponTemplates,gmBuildWeaponById} from '../src/utils/loot';
 import {pvpSnapshot,rollPvpDamage,comparablePlayer} from '../src/utils/pvpBalance';
 const player=()=>learnFreeSkills(initialPlayer('warrior','karus','WorldTest'));
+
+test('every weapon has a distinct held pose for both races, driven by real equip state',()=>{
+ assert.equal(new Set(CHARACTER_IDENTITIES).size,6);
+ for(const [cls,weapons] of Object.entries(BALANCED_WEAPONS))for(const race of ['human','karus']){
+  let p={...initialPlayer(cls,race,'VisualTest'),level:65,stats:{str:300,dex:300,int:300,mag:300,sta:300}};
+  const keys=new Set();
+  for(const w of weapons){
+   const t=gmWeaponTemplates(cls).find(t=>t.name===w.name),item=gmBuildWeaponById(cls,t.id,1);
+   const next=equipItem({...p,inventory:[item]},item);assert.equal(next.blocked,null);
+   p=next.player;const a=characterAppearance(p);
+   assert.equal(a.weaponName,w.name);assert.equal(a.identity,race+'-'+cls);assert.equal(a.supported,true);
+   assert.ok(a.frame?.mask,w.name+' missing held art');assert.equal(a.size.length,2);
+   assert.ok(!keys.has(a.key),w.name+' reuses held pose');keys.add(a.key);
+   const saved=migratePlayer(JSON.parse(JSON.stringify(p)));assert.equal(characterAppearance(saved).key,a.key);
+  }
+  const empty=characterAppearance({...p,equipped:{...p.equipped,mainHand:null}});
+  assert.equal(empty.weaponName,null);assert.ok(empty.frame?.mask);
+ }
+});
+
+test('inventory inspection does not change the equipped appearance, upgrade keeps grip pose',()=>{
+ const p=initialPlayer('warrior','human','Preview'),a=characterAppearance(p);
+ assert.ok(a.frame?.mask);assert.equal(characterAppearance({...p,selectedItem:{name:'Raptor'}}).key,a.key);
+ const upgraded=characterAppearance({...p,equipped:{...p.equipped,mainHand:{...p.equipped.mainHand,upgradeLevel:8}}});
+ assert.equal(upgraded.frameIndex,a.frameIndex);assert.equal(upgraded.atlasKey,a.atlasKey);assert.equal(upgraded.upgrade,8);
+ const unknown=characterAppearance({...p,equipped:{mainHand:{name:'unknown legacy'}}});
+ assert.equal(unknown.supported,false);assert.ok(unknown.frame);
+});
 test('original replacements have unique names, art, requirements and attributes',()=>{
  const names=Object.values(BALANCED_WEAPONS).flat().map(w=>w.name);
  assert.equal(new Set(names).size,names.length);

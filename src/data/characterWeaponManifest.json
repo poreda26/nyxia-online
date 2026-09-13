@@ -1,0 +1,420 @@
+[
+  {
+    "cls": "warrior",
+    "index": 0,
+    "items": [
+      [
+        "Giantic Axe",
+        "huge blue twin crescent steel poleaxe with ivory wrapped shaft"
+      ],
+      [
+        "Glave",
+        "long silver glaive spear with broad curved blade"
+      ],
+      [
+        "Halberd",
+        "bronze halberd with narrow axe blade and spear tip"
+      ]
+    ],
+    "key": "warrior-0"
+  },
+  {
+    "cls": "warrior",
+    "index": 1,
+    "items": [
+      [
+        "Raptor",
+        "long black steel spear with silver forked dragon-tooth tip and crimson wrapping"
+      ],
+      [
+        "Blade Axe",
+        "broad asymmetrical single-blade iron axe with a red circular inset"
+      ],
+      [
+        "Avedon",
+        "heavy symmetrical gold-edged double axe with an amber central jewel"
+      ]
+    ],
+    "key": "warrior-1"
+  },
+  {
+    "cls": "warrior",
+    "index": 2,
+    "items": [
+      [
+        "Durandal",
+        "straight slender silver longsword with blue crossguard"
+      ],
+      [
+        "Mirage",
+        "wide gently curved dark steel sword with purple angular guard"
+      ],
+      [
+        "Stormweaver",
+        "long jagged silver lightning sword with cyan crystalline spine"
+      ]
+    ],
+    "key": "warrior-2"
+  },
+  {
+    "cls": "warrior",
+    "index": 3,
+    "items": [
+      [
+        "Hell Breaker",
+        "large demonic red-black hammer with horned skull head"
+      ],
+      [
+        "Iron Impact",
+        "large rectangular iron maul with gold corners"
+      ],
+      [
+        "Totamic Club",
+        "carved dark wooden totem mace with green carved faces"
+      ]
+    ],
+    "key": "warrior-3"
+  },
+  {
+    "cls": "warrior",
+    "index": 4,
+    "items": [
+      [
+        "Large Hacker",
+        "long iron hammer with an angular pointed striking head"
+      ],
+      [
+        "Weight Hammer",
+        "short heavy rounded bronze hammer"
+      ],
+      [
+        "Rusty Sword",
+        "plain worn rusty brown straight sword"
+      ]
+    ],
+    "key": "warrior-4"
+  },
+  {
+    "cls": "warrior",
+    "index": 5,
+    "items": [
+      [
+        "Iron Axe",
+        "small plain single-bladed iron battleaxe"
+      ],
+      [
+        "Közdiş",
+        "hooked black falchion with glowing ember-red cracks and leather grip"
+      ],
+      [
+        "Gökyarık",
+        "elegant blue open crescent poleaxe with long ivory wrapped shaft"
+      ]
+    ],
+    "key": "warrior-5"
+  },
+  {
+    "cls": "warrior",
+    "index": 6,
+    "items": [
+      [
+        "Mezarkıran",
+        "massive dark basalt stone war maul with green runes"
+      ],
+      [
+        "__unarmed__",
+        "NO WEAPON, relaxed empty hands"
+      ],
+      [
+        "__unused__",
+        "NO WEAPON, relaxed empty hands"
+      ]
+    ],
+    "key": "warrior-6"
+  },
+  {
+    "cls": "rogue",
+    "index": 0,
+    "items": [
+      [
+        "Bow",
+        "simple dark brown recurved short bow"
+      ],
+      [
+        "Bamboo Bow",
+        "slender pale green bamboo longbow with visible joints"
+      ],
+      [
+        "Iron Crossbow",
+        "compact dark iron crossbow with straight steel limbs and short stock"
+      ]
+    ],
+    "key": "rogue-0"
+  },
+  {
+    "cls": "rogue",
+    "index": 1,
+    "items": [
+      [
+        "Scorpion Bow",
+        "black-and-red recurve bow with scorpion tail hooks"
+      ],
+      [
+        "Iron Bow",
+        "tall polished steel bow with broad flared limbs"
+      ],
+      [
+        "Chitin Bow",
+        "brown layered insect-chitin bow with serrated tips"
+      ]
+    ],
+    "key": "rogue-1"
+  },
+  {
+    "cls": "rogue",
+    "index": 2,
+    "items": [
+      [
+        "Enion Bow",
+        "long golden wing-shaped bow with blue jewel at center"
+      ],
+      [
+        "Eagle's Eye",
+        "slender silver and violet eagle-wing bow"
+      ],
+      [
+        "Crossbow",
+        "plain wood crossbow with curved brown limbs"
+      ]
+    ],
+    "key": "rogue-2"
+  },
+  {
+    "cls": "rogue",
+    "index": 3,
+    "items": [
+      [
+        "Horn Crossbow",
+        "white horn crossbow with leather bindings and pointed tips"
+      ],
+      [
+        "Helenid",
+        "wide ornate ivory bow with green and gold vine limbs"
+      ],
+      [
+        "Çalıpençe",
+        "short pale thornwood bow with hooked tips and green string"
+      ]
+    ],
+    "key": "rogue-3"
+  },
+  {
+    "cls": "rogue",
+    "index": 4,
+    "items": [
+      [
+        "Şafak Teli",
+        "slender golden elm longbow with bronze sunburst grip"
+      ],
+      [
+        "Akrep İğnesi",
+        "compact black steel scorpion-stock crossbow with red gemstone"
+      ],
+      [
+        "Yelkanat",
+        "white feather-limbed reflex bow with turquoise grip jewel"
+      ]
+    ],
+    "key": "rogue-4"
+  },
+  {
+    "cls": "rogue",
+    "index": 5,
+    "items": [
+      [
+        "Gece Kirişi",
+        "angular black bat-wing longbow with purple string"
+      ],
+      [
+        "Gökzıpkın",
+        "heavy silver siege crossbow with circular crank and blue bolt"
+      ],
+      [
+        "Kızıl Hilal",
+        "large crimson crescent bow with dragon scale limbs"
+      ]
+    ],
+    "key": "rogue-5"
+  },
+  {
+    "cls": "rogue",
+    "index": 6,
+    "items": [
+      [
+        "Fırtına Gözü",
+        "brass mechanical crossbow with round sights and blue electric core"
+      ],
+      [
+        "__unarmed__",
+        "NO WEAPON, relaxed empty hands"
+      ],
+      [
+        "__unused__",
+        "NO WEAPON, relaxed empty hands"
+      ]
+    ],
+    "key": "rogue-6"
+  },
+  {
+    "cls": "mage",
+    "index": 0,
+    "items": [
+      [
+        "Wooden Staff",
+        "plain crooked brown oak staff with knotted top"
+      ],
+      [
+        "Apprentice Staff",
+        "thin maple staff with small blue pebble tied at top"
+      ],
+      [
+        "Iron-Tipped Staff",
+        "straight dark staff with conical iron cap"
+      ]
+    ],
+    "key": "mage-0"
+  },
+  {
+    "cls": "mage",
+    "index": 1,
+    "items": [
+      [
+        "Silk-Bound Staff",
+        "white birch staff with purple silk ribbons and small silver ring"
+      ],
+      [
+        "Crimson-Runed Staff",
+        "dark staff with large red triangular runestone"
+      ],
+      [
+        "Chitin-Woven Staff",
+        "brown insect carapace staff with green forked claw head"
+      ]
+    ],
+    "key": "mage-1"
+  },
+  {
+    "cls": "mage",
+    "index": 2,
+    "items": [
+      [
+        "Scorching Staff",
+        "golden staff topped with orange flame-shaped crystal"
+      ],
+      [
+        "Oasis Staff",
+        "pale silver staff with curved ice-blue teardrop"
+      ],
+      [
+        "Chaotic Staff",
+        "black staff topped with irregular violet jagged star"
+      ]
+    ],
+    "key": "mage-2"
+  },
+  {
+    "cls": "mage",
+    "index": 3,
+    "items": [
+      [
+        "Hell Blood",
+        "red-black hooked scythe staff with crimson skull"
+      ],
+      [
+        "Elysium",
+        "white-gold curved winged staff with a blue celestial orb"
+      ],
+      [
+        "Garp",
+        "dark forked staff with three sharp ice crystals"
+      ]
+    ],
+    "key": "mage-3"
+  },
+  {
+    "cls": "mage",
+    "index": 4,
+    "items": [
+      [
+        "Prismatic Triad Staff",
+        "silver staff with three small floating red blue green crystals"
+      ],
+      [
+        "Ron's Staff",
+        "long bronze staff topped by a narrow gold halo and violet oval"
+      ],
+      [
+        "Çiydalı",
+        "crooked willow staff topped by translucent dew teardrop and leaves"
+      ]
+    ],
+    "key": "mage-4"
+  },
+  {
+    "cls": "mage",
+    "index": 5,
+    "items": [
+      [
+        "Kor Feneri",
+        "copper staff with hanging hexagonal amber lantern"
+      ],
+      [
+        "Ay Sarmalı",
+        "silver spiral crescent staff enclosing a floating pearl"
+      ],
+      [
+        "Buz Çanı",
+        "white ice staff topped with blue crystalline bell"
+      ]
+    ],
+    "key": "mage-5"
+  },
+  {
+    "cls": "mage",
+    "index": 6,
+    "items": [
+      [
+        "Kum Saati",
+        "aged bronze staff with glowing golden hourglass head"
+      ],
+      [
+        "Ruh Feneri",
+        "black staff with skeletal fingers enclosing green spirit flame"
+      ],
+      [
+        "Gök Mührü",
+        "azure staff topped by three silver triangles and cyan star"
+      ]
+    ],
+    "key": "mage-6"
+  },
+  {
+    "cls": "mage",
+    "index": 7,
+    "items": [
+      [
+        "Hiçlik Tacı",
+        "ebony scepter crowned with floating fractured amethyst shards"
+      ],
+      [
+        "Güneş Çekirdeği",
+        "white gold staff with radial sun disk and orange orb"
+      ],
+      [
+        "__unarmed__",
+        "NO WEAPON, relaxed empty hands"
+      ]
+    ],
+    "key": "mage-7"
+  }
+]

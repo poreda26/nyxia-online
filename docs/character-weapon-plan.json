@@ -1,0 +1,368 @@
+[
+  {
+    "cls": "warrior",
+    "name": "Giantic Axe",
+    "type": "axe",
+    "path": "src/assets/items/axe-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Glave",
+    "type": "longspear",
+    "path": "src/assets/items/glave.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Halberd",
+    "type": "longspear",
+    "path": "src/assets/items/halberd-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Raptor",
+    "type": "longspear",
+    "path": "src/assets/items/raptor.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Blade Axe",
+    "type": "axe",
+    "path": "src/assets/items/blade-axe-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Avedon",
+    "type": "axe",
+    "path": "src/assets/items/axe-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Durandal",
+    "type": "sword",
+    "path": "src/assets/items/durandal-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Mirage",
+    "type": "sword",
+    "path": "src/assets/items/sword-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Stormweaver",
+    "type": "sword",
+    "path": "src/assets/items/sword-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Hell Breaker",
+    "type": "mace",
+    "path": "src/assets/items/club-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Iron Impact",
+    "type": "mace",
+    "path": "src/assets/items/club-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Totamic Club",
+    "type": "mace",
+    "path": "src/assets/items/totamic-club.svg"
+  },
+  {
+    "cls": "warrior",
+    "name": "Large Hacker",
+    "type": "mace",
+    "path": "src/assets/items/hammer-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Weight Hammer",
+    "type": "mace",
+    "path": "src/assets/items/hammer-base.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Rusty Sword",
+    "type": "sword",
+    "path": null
+  },
+  {
+    "cls": "warrior",
+    "name": "Iron Axe",
+    "type": "axe",
+    "path": null
+  },
+  {
+    "cls": "warrior",
+    "name": "Közdiş",
+    "type": "sword",
+    "path": "src/assets/items/nyxia_emberfang.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Gökyarık",
+    "type": "axe",
+    "path": "src/assets/items/nyxia_skyrend.png"
+  },
+  {
+    "cls": "warrior",
+    "name": "Mezarkıran",
+    "type": "mace",
+    "path": "src/assets/items/nyxia_gravebreaker.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Bow",
+    "type": "bow",
+    "path": "src/assets/items/bow-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Bamboo Bow",
+    "type": "bow",
+    "path": "src/assets/items/bamboo-bow-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Iron Crossbow",
+    "type": "bow",
+    "path": "src/assets/items/iron-crossbow-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Scorpion Bow",
+    "type": "bow",
+    "path": "src/assets/items/scorpion-bow-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Iron Bow",
+    "type": "bow",
+    "path": "src/assets/items/iron-bow-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Chitin Bow",
+    "type": "bow",
+    "path": "src/assets/items/chitin-bow-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Enion Bow",
+    "type": "bow",
+    "path": "src/assets/items/enion-bow-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Eagle's Eye",
+    "type": "bow",
+    "path": "src/assets/items/eagles-eye-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Crossbow",
+    "type": "bow",
+    "path": "src/assets/items/crossbow-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Horn Crossbow",
+    "type": "bow",
+    "path": "src/assets/items/horn-crossbow-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Helenid",
+    "type": "bow",
+    "path": "src/assets/items/helenid-base.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Çalıpençe",
+    "type": "bow",
+    "path": "src/assets/items/nyxia_briarclaw.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Şafak Teli",
+    "type": "bow",
+    "path": "src/assets/items/nyxia_dawnstring.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Akrep İğnesi",
+    "type": "bow",
+    "path": "src/assets/items/nyxia_scorpionsting.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Yelkanat",
+    "type": "bow",
+    "path": "src/assets/items/nyxia_windwing.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Gece Kirişi",
+    "type": "bow",
+    "path": "src/assets/items/nyxia_nightstring.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Gökzıpkın",
+    "type": "bow",
+    "path": "src/assets/items/nyxia_skyharpoon.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Kızıl Hilal",
+    "type": "bow",
+    "path": "src/assets/items/nyxia_crimsoncrescent.png"
+  },
+  {
+    "cls": "rogue",
+    "name": "Fırtına Gözü",
+    "type": "bow",
+    "path": "src/assets/items/nyxia_stormeye.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Wooden Staff",
+    "type": "staff",
+    "path": null
+  },
+  {
+    "cls": "mage",
+    "name": "Apprentice Staff",
+    "type": "staff",
+    "path": null
+  },
+  {
+    "cls": "mage",
+    "name": "Iron-Tipped Staff",
+    "type": "staff",
+    "path": null
+  },
+  {
+    "cls": "mage",
+    "name": "Silk-Bound Staff",
+    "type": "staff",
+    "path": null
+  },
+  {
+    "cls": "mage",
+    "name": "Crimson-Runed Staff",
+    "type": "staff",
+    "path": null
+  },
+  {
+    "cls": "mage",
+    "name": "Chitin-Woven Staff",
+    "type": "staff",
+    "path": null
+  },
+  {
+    "cls": "mage",
+    "name": "Scorching Staff",
+    "type": "staff",
+    "path": "src/assets/items/staff-base.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Oasis Staff",
+    "type": "staff",
+    "path": "src/assets/items/staff-base.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Chaotic Staff",
+    "type": "staff",
+    "path": "src/assets/items/staff-base.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Hell Blood",
+    "type": "staff",
+    "path": "src/assets/items/scythe-base.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Elysium",
+    "type": "staff",
+    "path": "src/assets/items/scythe-base.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Garp",
+    "type": "staff",
+    "path": "src/assets/items/scythe-base.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Prismatic Triad Staff",
+    "type": "staff",
+    "path": "src/assets/items/prismatic-triad-staff.svg"
+  },
+  {
+    "cls": "mage",
+    "name": "Ron's Staff",
+    "type": "staff",
+    "path": "src/assets/items/rons-staff.svg"
+  },
+  {
+    "cls": "mage",
+    "name": "Çiydalı",
+    "type": "staff",
+    "path": "src/assets/items/nyxia_dewbranch.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Kor Feneri",
+    "type": "staff",
+    "path": "src/assets/items/nyxia_emberlantern.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Ay Sarmalı",
+    "type": "staff",
+    "path": "src/assets/items/nyxia_mooncoil.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Buz Çanı",
+    "type": "staff",
+    "path": "src/assets/items/nyxia_frostbell.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Kum Saati",
+    "type": "staff",
+    "path": "src/assets/items/nyxia_hourglass.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Ruh Feneri",
+    "type": "staff",
+    "path": "src/assets/items/nyxia_soullight.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Gök Mührü",
+    "type": "staff",
+    "path": "src/assets/items/nyxia_skyseal.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Hiçlik Tacı",
+    "type": "staff",
+    "path": "src/assets/items/nyxia_voidcrown.png"
+  },
+  {
+    "cls": "mage",
+    "name": "Güneş Çekirdeği",
+    "type": "staff",
+    "path": "src/assets/items/nyxia_suncore.png"
+  }
+]
