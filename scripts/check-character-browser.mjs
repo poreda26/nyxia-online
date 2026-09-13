@@ -15,6 +15,22 @@ try{
  await page.waitForFunction(()=>[...document.querySelectorAll('svg image')].every(i=>i.getAttribute('href')));
  await page.evaluate(()=>Promise.all([...document.querySelectorAll('svg image')].map(i=>new Promise((resolve,reject)=>{const img=new Image();img.onload=resolve;img.onerror=reject;img.src=i.getAttribute('href')}))));
  await mkdir('output',{recursive:true});await page.screenshot({path:'output/character-preview.png',fullPage:true});
+ if(process.argv.includes('--effects')){
+  await page.getByLabel('Sınıf',{exact:true}).selectOption('warrior');
+  for(const [name,element] of [['Raptor','poison'],['Hell Breaker','flame'],['Iron Impact','lightning'],['Blade Axe','ice']]){
+   await page.getByLabel('Silah',{exact:true}).selectOption(name);
+   for(const plus of [6,7,8]){
+    await page.getByLabel('Upgrade',{exact:true}).selectOption(String(plus));
+    await page.waitForFunction(({plus,element})=>{const effects=[...document.querySelectorAll('.weapon-effect')];return plus===6?effects.length===0:effects.length===2&&effects.every(e=>e.dataset.element===element&&e.dataset.upgrade===String(plus))},{plus,element});
+   }
+  }
+  const figure=page.locator('.paperdoll-character .character-figure');
+  const transform=await figure.evaluate(e=>getComputedStyle(e).transform);
+  await page.waitForFunction(previous=>getComputedStyle(document.querySelector('.paperdoll-character .character-figure')).transform!==previous,transform);
+  await page.getByLabel('Silah',{exact:true}).selectOption('');
+  await page.waitForFunction(()=>!document.querySelector('.weapon-effect'));
+  console.log('Four elements at +6/+7/+8, unequip and portrait breathing verified.');
+ }
  if(process.argv.includes('--all')){
   let count=0;
   for(const cls of ['warrior','rogue','mage'])for(const race of ['human','karus']){

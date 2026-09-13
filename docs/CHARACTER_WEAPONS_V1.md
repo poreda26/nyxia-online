@@ -19,3 +19,9 @@ Built-in image_gen kullanıldı. Her atlas 3 silah × 2 ırk içerir. İlk atlas
 ## Doğrulama — 14 Eylül 2026
 
 30 dünya/ekipman testi ve 4 savaş görseli testi geçti. Edge mobil ekran boyutunda 61 silah × 2 ırk ve 6 silahsız görünüm olmak üzere 128 geçişte iki önizleme eşleşti, görseller yüklendi, tarayıcı hatası oluşmadı. Üretim derlemesi geçti. Fiziksel telefonda test yapılmadı. Üretim pozlarında küçük kıyafet/ışık farklılıkları olabilir; zırh varyantları henüz hazırlanmadı.
+
+## Nefes ve elemental parıltı
+
+Kuşanılmış portresinde ayak bölgesine bağlı hafif nefes döngüsü vardır. +7/+8 elemental efektleri yalnızca silahın açıkta kalan uç/baş bölgesine uygulanır; tüm gövde parlatılmaz. Poison yeşil, flame turuncu, lightning mor-beyaz, glacier/ice buz mavisi; +8 daha yoğun ışıklıdır. Çok elementli silahların bonusları korunur. Azaltılmış hareket tercihinde döngüler durur. Gerçek 360 derece için mevcut tek açılı PNG'ler yeterli değildir; 3B model veya çok açılı varlık üretimi ayrı çalışma gerektirir ve kullanıcı kararı beklenir. Silindir gibi döndürülen düz resim 360 derece karakter olarak sunulmaz.
+
+Doğrulama: iki elemental veri testi; tarayıcıda dört element için +6/+7/+8, silah çıkarma ve hareket eden portre kontrolü geçti.
