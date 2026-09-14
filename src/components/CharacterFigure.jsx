@@ -12,7 +12,10 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
  const clip=useId();
  const appearance=characterAppearance(player);
  if(!appearance?.frame)return <div className="character-loading" role="status">Görünüm hazırlanıyor</div>;
- const {frame,size,atlasKey,weaponName,upgrade}=appearance;
+ const {frame:originalFrame,size,atlasKey,weaponName,upgrade}=appearance;
+ const clothBase=armorPreview&&atlasKey==='warrior-4';
+ const baseAtlasKey=clothBase?'warrior-4-cloth-base':atlasKey;
+ const frame=clothBase?atlasFrames[baseAtlasKey]?.frames[appearance.frameIndex]||originalFrame:originalFrame;
  const effects=appearance.supported?weaponEffects(player?.equipped?.mainHand):[];
  const geometry=weaponGeometry(appearance);
  const armorParts=armorPreview?armorSampleParts(player,appearance):[];
@@ -20,9 +23,9 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
  // Stable ownership at overlapping joints: an absent glove cannot be supplied by the chest.
  const armorRegions=inverse=>['chest','legs','boots','gauntlets','head'].map(slot=><path key={slot} d={CHITIN_SAMPLE_REGIONS[slot]} fill={armorParts.some(p=>p.slot===slot)!==inverse?'white':'black'}/>);
  const handHoles=geometry.hands.map(([cx,cy,rx,ry],i)=><ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} fill="black"/>);
- const source=atlases[`../assets/characters/weapons/${atlasKey}.png`];
+ const source=atlases[`../assets/characters/weapons/${baseAtlasKey}.png`];
  const label=`${appearance.identity} · ${weaponName||'Silahsız'}${weaponName?` +${upgrade}`:''}`;
- return <svg key={appearance.key} className={`character-figure ${className}`} viewBox={frame.rect.join(' ')} preserveAspectRatio={align} role="img" aria-label={label} data-character={appearance.identity} data-weapon={weaponName||''} data-look={armorParts.length?'chitin-sample':appearance.armorLook} data-armor-slots={armorParts.map(p=>p.slot).join(',')}>
+ return <svg key={appearance.key} className={`character-figure ${className}`} viewBox={frame.rect.join(' ')} preserveAspectRatio={align} role="img" aria-label={label} data-character={appearance.identity} data-weapon={weaponName||''} data-look={armorParts.length?'chitin-sample':clothBase?'cloth-base':appearance.armorLook} data-armor-slots={armorParts.map(p=>p.slot).join(',')}>
   <defs><clipPath id={clip}><path d={frame.mask}/></clipPath>
    {armorParts.length>0&&<>
     <clipPath id={`${clip}-armor-shape`}><path d={armorFrame?.mask}/></clipPath>

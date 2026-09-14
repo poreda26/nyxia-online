@@ -15,7 +15,7 @@ try{
     assert.equal(await view.getAttribute('data-armor-slots'),slot);assert.equal(await view.getAttribute('data-weapon'),weapon);
     assert.equal(await view.locator('image').first().getAttribute('href'),source);
    }
-   await button.click();assert.equal(await p.locator('.character-figure').first().getAttribute('data-look'),'base');
+   await button.click();assert.equal(await p.locator('.character-figure').first().getAttribute('data-look'),'cloth-base');
   }
  }
  for(const suffix of ['Helmet','Pauldron','Pads','Gauntlet','Boots'])await p.getByRole('button',{name:'Chitin Armor '+suffix,exact:true}).click();
