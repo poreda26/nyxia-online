@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {weaponEffects} from '../src/data/weaponEffects.js';
+import {weaponEffects,weaponEffectPolygon} from '../src/data/weaponEffects.js';
+function includesPoint(polygon,x,y){const points=polygon.split(' ').map(p=>p.split(',').map(Number));let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const [a,b]=points[i],[c,d]=points[j];if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)inside=!inside;}return inside;}
+test('Avedon both axe tips and Raptor curved blade remain inside effects for both races',()=>{
+ for(const row of [0,1]){
+  const axe=weaponEffectPolygon({atlasKey:'warrior-1',frameIndex:2+row*3,size:[1254,1254]});
+  for(const [x,y] of [[.58,.08],[.98,.30]])assert.ok(includesPoint(axe,(2+x)*418,(row+y)*627));
+  assert.equal(includesPoint(axe,2.4*418,(row+.5)*627),false);
+  const scythe=weaponEffectPolygon({atlasKey:'warrior-raptor-v2',frameIndex:row*3,size:[1254,1254]});
+  assert.ok(includesPoint(scythe,1.10*418,(row+.40)*627));
+ }
+});
 test('upgrade threshold and ice alias follow equipped item without mutation',()=>{
  const item={upgradeLevel:6,element:'glacier'},before=JSON.stringify(item);
  assert.deepEqual(weaponEffects(item),[]);

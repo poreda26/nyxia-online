@@ -1,4 +1,5 @@
 import {useId} from 'react';
+import WeaponEffectFilter from './WeaponEffectFilter';
 import {characterAppearance} from '../data/characterAppearance';
 import {weaponEffects,weaponEffectPolygon} from '../data/weaponEffects';
 import './CharacterFigure.css';
@@ -16,21 +17,7 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
   <defs><clipPath id={clip}><path d={frame.mask}/></clipPath>
    <clipPath id={`${clip}-weapon`}><polygon points={weaponEffectPolygon(appearance)}/></clipPath>
    {effects.map(effect=><filter key={effect.key} id={`${clip}-${effect.key}`} x="-35%" y="-35%" width="170%" height="170%" colorInterpolationFilters="sRGB">
-    {effect.key==='poison'?<>
-     <feMorphology in="SourceAlpha" operator="dilate" radius={effect.strong?17:10} result="expanded"/>
-     <feComposite in="expanded" in2="SourceAlpha" operator="out" result="edge"/>
-     <feTurbulence type="fractalNoise" baseFrequency=".065" numOctaves="2" seed="12" result="noise"/>
-     <feDisplacementMap in="edge" in2="noise" scale={effect.strong?13:8} xChannelSelector="R" yChannelSelector="G" result="energy"/>
-     <feGaussianBlur in="energy" stdDeviation={effect.strong?5:3} result="softEdge"/>
-     <feFlood floodColor={effect.color}/><feComposite in2="softEdge" operator="in" result="aura"/>
-     <feGaussianBlur in="aura" stdDeviation={effect.strong?12:7} result="bloom"/>
-     <feMorphology in="SourceAlpha" operator="dilate" radius="2" result="rim"/>
-     <feComposite in="rim" in2="SourceAlpha" operator="out" result="rimEdge"/>
-     <feFlood floodColor="#f5c5ff"/><feComposite in2="rimEdge" operator="in" result="lightRim"/>
-     <feMerge><feMergeNode in="bloom"/><feMergeNode in="aura"/><feMergeNode in="lightRim"/></feMerge>
-    </>:<><feFlood floodColor={effect.color} floodOpacity={effect.strong?1:.65}/><feComposite in2="SourceAlpha" operator="in" result="tint"/>
-    <feGaussianBlur in="tint" stdDeviation={effect.strong?7:4} result="halo"/>
-    <feMerge><feMergeNode in="halo"/><feMergeNode in="tint"/></feMerge></>}
+    <WeaponEffectFilter effect={effect}/>
    </filter>)}
   </defs>
   <image key={source} href={source} width={size[0]} height={size[1]} clipPath={`url(#${clip})`}/>
@@ -39,4 +26,5 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
   </g>)}
  </svg>;
 }
+
 

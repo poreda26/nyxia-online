@@ -1,4 +1,4 @@
-param([string]$AssetDirectory='src/assets/characters/weapons',[string]$Output='src/data/characterAtlasFrames.json')
+param([string]$AssetDirectory='src/assets/characters/weapons',[string]$Output='src/data/characterAtlasFrames.json',[string]$Filter='*.png')
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Drawing
 Add-Type -ReferencedAssemblies System.Drawing.Common,System.Drawing.Primitives,System.Private.Windows.GdiPlus,System.Private.Windows.Core,System.Collections -TypeDefinition @'
@@ -42,6 +42,7 @@ public static class SpriteAtlasIndex {
      for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++) {
       int nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;int next=ny*w+nx;
       if(path.EndsWith("mage-7.png") && y/(h/2)!=ny/(h/2))continue;
+      if(path.EndsWith("warrior-raptor-v2.png") && (x<w*0.383)!=(nx<w*0.383))continue;
       if(labels[next]==0){labels[next]=label;queue[tail++]=next;}
      }
     }
@@ -57,7 +58,8 @@ public static class SpriteAtlasIndex {
 }
 '@
 $atlasResult=[ordered]@{}
-foreach($atlasFile in Get-ChildItem -LiteralPath $AssetDirectory -Filter '*.png') {
+if($Filter -ne '*.png' -and (Test-Path -LiteralPath $Output)){$existing=Get-Content -Raw -LiteralPath $Output | ConvertFrom-Json -AsHashtable;foreach($key in $existing.Keys){$atlasResult[$key]=$existing[$key]}}
+foreach($atlasFile in Get-ChildItem -LiteralPath $AssetDirectory -Filter $Filter) {
  $regions=@([SpriteAtlasIndex]::Read($atlasFile.FullName) | Sort-Object CenterY)
  $bitmap=[System.Drawing.Bitmap]::new($atlasFile.FullName);$w=$bitmap.Width;$h=$bitmap.Height;$bitmap.Dispose()
  $frames=@()
@@ -75,4 +77,5 @@ foreach($atlasFile in Get-ChildItem -LiteralPath $AssetDirectory -Filter '*.png'
  Write-Output ($atlasFile.BaseName+': six figures indexed')
 }
 $atlasResult | ConvertTo-Json -Depth 8 -Compress | Set-Content -LiteralPath $Output -Encoding utf8
+
 

@@ -1,4 +1,4 @@
-export const ELEMENT_COLORS = Object.freeze({poison:'#dc65ff',flame:'#ff731c',lightning:'#b49aff',ice:'#6ce7ff'});
+export const ELEMENT_COLORS = Object.freeze({poison:'#dc65ff',flame:'#ff731c',lightning:'#65deff',ice:'#6ce7ff'});
 const normalize = key => key === 'glacier' ? 'ice' : key;
 export function weaponEffects(weapon) {
  if (!weapon || Number(weapon.upgradeLevel) < 7) return [];
@@ -12,6 +12,9 @@ export function weaponEffectPolygon(appearance) {
  const {atlasKey,frameIndex,size}=appearance, col=frameIndex%3,row=Math.floor(frameIndex/3);
  const w=size[0]/3,h=size[1]/2;
  let points=[[.64,0],[1.25,0],[1.25,.36],[.74,.36],[.69,.30],[.64,.24]];
+ // Avedon's left crescent extends behind the generic polearm boundary.
+ if(atlasKey==='warrior-1'&&col===2)points=[[.53,0],[1.25,0],[1.25,.40],[.74,.40],[.67,.29],[.53,.17]];
+ if(atlasKey==='warrior-raptor-v2')points=[[.65,0],[1.25,0],[1.25,.46],[.81,.46],[.70,.31],[.65,.25]];
  if(atlasKey.startsWith('mage')) points=[[.62,0],[1.2,0],[1.2,.30],[.75,.30],[.68,.23],[.62,.16]];
  if(atlasKey.startsWith('rogue')) {
   const crossbow=(atlasKey==='rogue-0'&&col===2)||(atlasKey==='rogue-2'&&col===2)||(atlasKey==='rogue-3'&&col===0);
