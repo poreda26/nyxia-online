@@ -3,5 +3,7 @@ const normalize = key => key === 'glacier' ? 'ice' : key;
 export function weaponEffects(weapon) {
  if (!weapon || !(Number(weapon.upgradeLevel) >= 7)) return [];
  const keys = [weapon.element,...(weapon.elements || []).filter(e=>e.bonus>0).map(e=>e.key)].map(normalize);
- return [...new Set(keys)].filter(key=>ELEMENT_COLORS[key]).map(key=>({key,color:ELEMENT_COLORS[key],strong:Number(weapon.upgradeLevel)>=8}));
+ const elements=[...new Set(keys)].filter(key=>ELEMENT_COLORS[key]);
+ // A visual upgrade sheen is not an elemental damage bonus.
+ return (elements.length?elements:['temper']).map(key=>({key,color:ELEMENT_COLORS[key]||'#d7e4ec',strong:Number(weapon.upgradeLevel)>=8}));
 }

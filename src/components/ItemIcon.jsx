@@ -3,10 +3,14 @@ import WeaponIcon from "./icons/WeaponIcon";
 import ArmorIcon from "./icons/ArmorIcon";
 import AccessoryIcon from "./icons/AccessoryIcon";
 import { itemImageFor, potionImageFor } from "../data/itemImages";
+import StarterWeaponIcon from './StarterWeaponIcon';
+import {weaponIconArt} from '../data/starterWeaponArt';
 
 export default function ItemIcon({ item, size = 16, color = "currentColor", strokeWidth = 1.6 }) {
+  if(item.kind==='weapon' && weaponIconArt(item.name))return <StarterWeaponIcon item={item} size={size}/>;
   const customImage = item.kind === "potion" ? potionImageFor(item.potionType, item.tier) : itemImageFor(item.name, item.upgradeLevel);
   if (customImage) {
+    if(item.kind==='weapon')return <StarterWeaponIcon item={item} size={size} source={customImage}/>;
     // Elle çizilmiş 16x16 SVG'lerin aksine (bkz. src/assets/items/*.svg),
     // Gemini ile üretilen yüksek çözünürlüklü sanat (bkz. Raptor) küçük
     // ikon boyutuna PÜRÜZSÜZ ölçeklenmeli — "pixelated" burada bloklu/

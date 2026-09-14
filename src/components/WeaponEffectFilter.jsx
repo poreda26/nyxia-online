@@ -1,6 +1,14 @@
 // Effects follow the clipped weapon silhouette; body pixels never seed the light.
 export default function WeaponEffectFilter({effect,spread=1}){
  const {key,color,strong}=effect;
+ if(key==='temper')return <>
+  <feMorphology in="SourceAlpha" operator="dilate" radius={(strong?3:1.8)*spread} result="rim"/>
+  <feComposite in="rim" in2="SourceAlpha" operator="out" result="edge"/>
+  <feGaussianBlur in="edge" stdDeviation={(strong?3:1.5)*spread} result="soft"/>
+  <feFlood floodColor={color} floodOpacity={strong?.8:.5}/><feComposite in2="soft" operator="in" result="glow"/>
+  <feFlood floodColor="#f3f6fa" floodOpacity={strong?.6:.35}/><feComposite in2="edge" operator="in" result="shine"/>
+  <feMerge><feMergeNode in="glow"/><feMergeNode in="shine"/></feMerge>
+ </>;
  const lightning=key==='lightning',flame=key==='flame',ice=key==='ice';
  const radius=(strong?(lightning?22:18):(lightning?14:11))*spread;
  const core=flame?'#fff395':ice?'#ffffff':lightning?'#eaffff':'#f5c5ff';

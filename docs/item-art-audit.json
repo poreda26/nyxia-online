@@ -1,0 +1,22 @@
+{
+  "weaponCount": 61,
+  "missingWeaponArt": [],
+  "armorCount": 75,
+  "armorArt": {
+    "warrior": {
+      "custom": 12,
+      "total": 25
+    },
+    "rogue": {
+      "custom": 25,
+      "total": 25
+    },
+    "mage": {
+      "custom": 0,
+      "total": 25
+    }
+  },
+  "accessories": 1,
+  "potions": 8,
+  "icons": 148
+}
