@@ -1,27 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {weaponEffects,weaponEffectPolygon} from '../src/data/weaponEffects.js';
-function includesPoint(polygon,x,y){const points=polygon.split(' ').map(p=>p.split(',').map(Number));let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const [a,b]=points[i],[c,d]=points[j];if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)inside=!inside;}return inside;}
-test('Avedon both axe tips and Raptor curved blade remain inside effects for both races',()=>{
- for(const row of [0,1]){
-  const axe=weaponEffectPolygon({atlasKey:'warrior-1',frameIndex:2+row*3,size:[1254,1254]});
-  for(const [x,y] of [[.58,.08],[.98,.30]])assert.ok(includesPoint(axe,(2+x)*418,(row+y)*627));
-  assert.equal(includesPoint(axe,2.4*418,(row+.5)*627),false);
-  const scythe=weaponEffectPolygon({atlasKey:'warrior-raptor-v2',frameIndex:row*3,size:[1254,1254]});
-  assert.ok(includesPoint(scythe,1.10*418,(row+.40)*627));
- }
-});
-test('upgrade threshold and ice alias follow equipped item without mutation',()=>{
- const item={upgradeLevel:6,element:'glacier'},before=JSON.stringify(item);
- assert.deepEqual(weaponEffects(item),[]);
- assert.equal(JSON.stringify(item),before);
- assert.deepEqual(weaponEffects({...item,upgradeLevel:7}),[{key:'ice',color:'#6ce7ff',strong:false}]);
- assert.equal(weaponEffects({...item,upgradeLevel:8})[0].strong,true);
- assert.deepEqual(weaponEffects(null),[]);
- assert.deepEqual(weaponEffects({upgradeLevel:8}),[]);
-});
-test('all real elemental bonuses are retained, unknown and zero bonuses excluded',()=>{
- const item={upgradeLevel:8,element:'flame',elements:[{key:'flame',bonus:12},{key:'glacier',bonus:8},{key:'lightning',bonus:5},{key:'poison',bonus:0},{key:'unknown',bonus:9}]};
- assert.deepEqual(weaponEffects(item).map(e=>e.key),['flame','ice','lightning']);
- assert.equal(weaponEffects({upgradeLevel:7,element:'poison'})[0].color,'#dc65ff');
-});
+import {weaponEffects} from '../src/data/weaponEffects.js';
+import {weaponGeometry} from '../src/data/weaponGeometry.js';
+import {readFileSync} from 'node:fs';
+function inPath(path,x,y){return path.split('M').filter(Boolean).some(part=>{const points=part.replace('Z','').split('L').map(p=>p.split(',').map(Number));let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const [a,b]=points[i],[c,d]=points[j];if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)inside=!inside;}return inside;});}
+function lit(g,x,y){return inPath(g.head,x,y)&&!g.hands.some(([cx,cy,rx,ry])=>((x-cx)/rx)**2+((y-cy)/ry)**2<=1);}
+const geometry=(atlasKey,frameIndex)=>weaponGeometry({atlasKey,frameIndex,size:[1254,1254],weaponName:'Equipped'});
+test('Eagle limbs glow but grip, string and knee do not',()=>{for(const row of [0,1]){const g=geometry('rogue-2',1+3*row),dy=row?-10:0;assert.ok(lit(g,389,112+dy));assert.ok(lit(g,367,338+dy));assert.equal(lit(g,397,226+dy),false);assert.equal(lit(g,285,456),false);assert.equal(lit(g,260,110),false);}});
+test('Fırtına Gözü follows crossbow barrel without lighting hands or legs',()=>{for(const row of [0,1]){const g=geometry('rogue-6',3*row),dy=row?-33:0;assert.ok(lit(g,315,265+dy));assert.equal(lit(g,304,294+dy),false);assert.equal(lit(g,360,430),false);assert.equal(lit(g,355,100),false);}});
+test('Avedon both tips and Raptor curved head are included',()=>{for(const row of [0,1]){const axe=geometry('warrior-1',2+3*row),scythe=geometry('warrior-raptor-v3',3*row);assert.ok(lit(axe,242,50));assert.ok(lit(axe,410,188));assert.ok(lit(scythe,464,246));assert.equal(lit(scythe,267,row?241:246),false);}});
+test('all 61 weapons have measured regions in both races, unarmed has none',()=>{const manifest=JSON.parse(readFileSync(new URL('../src/data/characterWeaponManifest.json',import.meta.url),'utf8'));let count=0;for(const batch of manifest)batch.items.forEach(([name],col)=>{if(name.startsWith('__'))return;for(const row of [0,1]){const g=geometry(name==='Raptor'?'warrior-raptor-v3':batch.key,col+row*3);assert.ok(g.head,name);assert.ok(!g.head.includes('NaN'),name);assert.ok(g.spread>0&&g.spread<1);count++;}});assert.equal(count,122);assert.equal(weaponGeometry({atlasKey:'rogue-6',frameIndex:1,size:[1254,1254],weaponName:null}).head,'');});
+test('upgrade threshold and glacier alias preserve item data',()=>{const item={upgradeLevel:6,element:'glacier'},before=JSON.stringify(item);assert.deepEqual(weaponEffects(item),[]);assert.equal(JSON.stringify(item),before);assert.deepEqual(weaponEffects({...item,upgradeLevel:7}),[{key:'ice',color:'#6ce7ff',strong:false}]);assert.equal(weaponEffects({...item,upgradeLevel:8})[0].strong,true);assert.deepEqual(weaponEffects(null),[]);assert.deepEqual(weaponEffects({upgradeLevel:8}),[]);});
+test('multiple elemental bonuses stay distinct, zero and unknown excluded',()=>{const item={upgradeLevel:8,element:'flame',elements:[{key:'flame',bonus:12},{key:'glacier',bonus:8},{key:'lightning',bonus:5},{key:'poison',bonus:0},{key:'unknown',bonus:9}]};assert.deepEqual(weaponEffects(item).map(e=>e.key),['flame','ice','lightning']);assert.equal(weaponEffects({upgradeLevel:7,element:'poison'})[0].color,'#dc65ff');});

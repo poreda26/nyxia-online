@@ -42,7 +42,7 @@ public static class SpriteAtlasIndex {
      for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++) {
       int nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=w||ny>=h)continue;int next=ny*w+nx;
       if(path.EndsWith("mage-7.png") && y/(h/2)!=ny/(h/2))continue;
-      if(path.EndsWith("warrior-raptor-v2.png") && (x<w*0.383)!=(nx<w*0.383))continue;
+      if((path.EndsWith("warrior-raptor-v2.png")||path.EndsWith("warrior-raptor-v3.png")) && (x<w*0.383)!=(nx<w*0.383))continue;
       if(labels[next]==0){labels[next]=label;queue[tail++]=next;}
      }
     }
@@ -77,5 +77,3 @@ foreach($atlasFile in Get-ChildItem -LiteralPath $AssetDirectory -Filter $Filter
  Write-Output ($atlasFile.BaseName+': six figures indexed')
 }
 $atlasResult | ConvertTo-Json -Depth 8 -Compress | Set-Content -LiteralPath $Output -Encoding utf8
-
-
