@@ -5,7 +5,7 @@ import { WARRIOR_SHIELDS, WEAPON_TYPE_ICON, WEAPON_TYPE_SPEED, WEAPON_TYPE_RANGE
 import { BALANCED_WEAPONS } from '../data/balancedWeapons';
 const {warrior:WARRIOR_WEAPONS,rogue:ROGUE_WEAPONS,mage:CASTER_WEAPONS}=BALANCED_WEAPONS;
 import { ARMOR_SETS } from "../data/armorSets";
-import { ACCESSORY_SETS } from "../data/accessories";
+import { ACCESSORY_SETS, MAP_ACCESSORIES } from "../data/accessories";
 import { TIER_PREFIX } from "../data/itemRarity";
 import { weaponIconKey } from "../data/weaponIcons";
 import { rand, pick, uid } from "./random";
@@ -183,7 +183,7 @@ function buildAccessoryFromTemplate(a, tierId, slotType, level = 0) {
   const durability = a.durability ?? weaponDurability(tierId);
   const base = {
     id: uid(), kind: "accessory", slot: slotType, tier: tierId, name: a.name, atk: 0, def: a.def || 0, hp: a.hp || 0, mp: a.mp || 0,
-    statBonus: a.statBonus, weight, reqStats: a.reqStats || null,
+    statBonus: a.statBonus, family: a.family || null, upgradeLocked: !!a.upgradeLocked, weight, reqStats: a.reqStats || null,
     defenseAbility: a.defenseAbility || null, resistances: a.resistances || null, attackPowerPct: a.attackPowerPct || 0,
     durability, currentDurability: durability, upgradeLevel: 0, stackable: false, levels: a.levels || null,
   };
@@ -195,12 +195,19 @@ function buildAccessoryFromTemplate(a, tierId, slotType, level = 0) {
 // isteğiyle artık +0'da düşüyorlar (applyStartingPlusOne SARMASI
 // kaldırıldı) — silah/zırhın "hiç +0 doğmaz" kuralı takılara uygulanmıyor.
 export function rollAccessory(tierId) {
-  const slotType = pick(["necklace", "belt", "ring", "earring"]);
-  const a = ACCESSORY_SETS[slotType].find((it) => it.tier === tierId);
-  // Katalog eşya-eşya yeniden dolduruluyor — o slot/tier boşken çökmek
-  // yerine sessizce null dön (bkz. rollArmor'daki aynı güvenlik notu).
-  if (!a) return null;
-  return buildAccessoryFromTemplate(a, tierId, slotType);
+  const options = Object.entries(ACCESSORY_SETS).flatMap(([slot, items]) =>
+    items.filter((it) => it.tier === tierId).map((it) => ({ slot, item: it }))
+  );
+  if (!options.length) return null;
+  const chosen = pick(options);
+  return buildAccessoryFromTemplate(chosen.item, tierId, chosen.slot);
+}
+
+function rollMapAccessory(mapTier) {
+  const options = MAP_ACCESSORIES.filter((it) => it.mapTier === mapTier);
+  if (!options.length) return null;
+  const chosen = pick(options);
+  return buildAccessoryFromTemplate(chosen, chosen.tier, chosen.slot);
 }
 
 // Karakter oluşturulunca kuşandırılan sınıfa özel +1 başlangıç silahı —
@@ -229,9 +236,16 @@ export function buildStartingWeapon(cls) {
 // kilitli değil.
 export function rollLoot(tierId) {
   const r = Math.random();
-  if (r < 0.38) return rollWeapon(tierId, pick(Object.keys(CLASSES)));
-  if (r < 0.72) return rollArmor(tierId);
+  if (r < 0.46) return rollWeapon(tierId, pick(Object.keys(CLASSES)));
+  if (r < 0.92) return rollArmor(tierId);
   return rollAccessory(tierId);
+}
+
+// Accessories are deliberately rare. T1/T2 also have a very small chance to
+// yield their locked early STR rings; chests use rollLoot and never bypass it.
+export function rollMapLoot(tierId) {
+  if (tierId <= 2 && Math.random() < 0.06) return rollMapAccessory(tierId);
+  return rollLoot(tierId);
 }
 
 // Special Etkinlik Sandığı — granted only through events (GM-only for now;
@@ -317,11 +331,11 @@ export function gmBuildArmor(cls, slot, tier, level) {
 }
 
 export function gmAccessoryTemplates(slot) {
-  return ACCESSORY_SETS[slot] || [];
+  return [...(ACCESSORY_SETS[slot] || []), ...MAP_ACCESSORIES.filter((item) => item.slot === slot)];
 }
 
-export function gmBuildAccessory(slot, tier, level) {
-  const a = ACCESSORY_SETS[slot]?.find((x) => x.tier === tier);
+export function gmBuildAccessory(slot, tier, level, name = null) {
+  const a = gmAccessoryTemplates(slot).find((x) => x.tier === tier && (!name || x.name === name));
   if (!a) return null;
-  return applyUpgradeLevel(buildAccessoryFromTemplate(a, tier, slot), level);
+  return a.upgradeLocked ? buildAccessoryFromTemplate(a, tier, slot) : applyUpgradeLevel(buildAccessoryFromTemplate(a, tier, slot), level);
 }

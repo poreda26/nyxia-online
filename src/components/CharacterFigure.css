@@ -1,7 +1,9 @@
 .character-figure{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}.character-loading{color:#a9afa6;font:10px system-ui;text-align:center}.paperdoll-character{width:100%;height:100%;min-height:140px;overflow:hidden}.paperdoll-character .character-figure{min-height:140px}
 .battle-motion .character-figure{animation:battle-breathe 3s ease-in-out infinite;transform-origin:50% 100%}
 .paperdoll-character .character-figure{animation:portrait-breathe 3.6s ease-in-out infinite;transform-origin:50% 72%}
+.paperdoll-character-equipped .character-figure{animation:portrait-breathe-equipped 3.6s ease-in-out infinite;transform-origin:50% 78%}
 @keyframes portrait-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.012,1.025)}}
+@keyframes portrait-breathe-equipped{0%,100%{transform:translateY(2px) scale(1.17)}50%{transform:translateY(-1px) scale(1.185)}}
 .weapon-effect{pointer-events:none;opacity:.34;animation:weapon-pulse 2.4s ease-in-out infinite}
 .weapon-effect-strong{opacity:.55;animation-duration:1.7s}
 .weapon-effect-flame{animation-name:weapon-flame;animation-duration:.8s}

@@ -6,7 +6,7 @@ export const ACCESSORY_SLOT_LABEL = { necklace: "Kolye", belt: "Kemer", ring: "Y
 
 export function itemSubLabel(item) {
   if (item.kind === "armor") return SLOTS.find((s) => s.key === item.slot)?.label;
-  if (item.kind === "accessory") return ACCESSORY_SLOT_LABEL[item.slot];
+  if (item.kind === "accessory") return `${ACCESSORY_SLOT_LABEL[item.slot]}${item.upgradeLocked ? " · Yükseltme kapalı" : ""}`;
   if (item.kind === "potion") return `${item.potionType === "hp" ? "Can" : "Mana"} · T${item.tier}`;
   if (item.kind === "scroll") return `T${item.tier} Parşömen`;
   if (item.kind === "raceScroll") return "Irk Değiştirme";

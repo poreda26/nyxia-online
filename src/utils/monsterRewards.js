@@ -1,5 +1,5 @@
 import { rand, uid } from "./random";
-import { rollLoot } from "./loot";
+import { rollMapLoot } from "./loot";
 import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp } from "./player";
 import { addItemToInventory } from "./inventory";
 import { premiumExpMultiplier, premiumDropMultiplier } from "./premium";
@@ -57,7 +57,7 @@ export function grantMonsterReward(p, m, map) {
 
   if (Math.random() < map.dropChance * dropMult) {
     const dropTier = pickDropTier(map.tier);
-    const item = rollLoot(dropTier);
+    const item = rollMapLoot(dropTier);
     if (item) {
       const addResult = addItemToInventory(np, item);
       np = addResult.player;

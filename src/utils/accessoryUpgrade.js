@@ -17,7 +17,7 @@ export const ACCESSORY_UPGRADE_MAX_LEVEL = 3;
 export function upgradableAccessoryGroups(player) {
   const groups = new Map();
   for (const it of player.inventory) {
-    if (it.kind !== "accessory") continue;
+    if (it.kind !== "accessory" || it.upgradeLocked) continue;
     const key = `${it.name}:::${it.upgradeLevel || 0}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(it);
@@ -28,6 +28,7 @@ export function upgradableAccessoryGroups(player) {
 }
 
 export function canUpgradeAccessory(player, sample) {
+  if (sample.upgradeLocked) return { ok: false, reason: "Bu basit takının yükseltmesi kapalı." };
   const level = sample.upgradeLevel || 0;
   if (level >= ACCESSORY_UPGRADE_MAX_LEVEL) {
     return { ok: false, reason: `+${ACCESSORY_UPGRADE_MAX_LEVEL}'ten sonrası henüz açılmadı.` };

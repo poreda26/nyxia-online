@@ -129,6 +129,9 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
             value={`+${item.defenseAbility.value}`}
           />
         )}
+        {item.kind === "accessory" && item.upgradeLocked && (
+          <StatLine label="Yükseltme" value="Kapalı" color="#E8A5AF" />
+        )}
       </div>
 
       {classLock && (

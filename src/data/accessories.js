@@ -1,47 +1,44 @@
-// Accessory catalog — eski hazır liste kullanıcı isteğiyle SİLİNDİ, yerine
-// görsel görsel yeniden dolduruluyor (bkz. utils/loot.js#rollAccessory,
-// GmItemPanel). Eski katalog
-// C:\Users\akcel\Desktop\RPGMarket\_legacy_items_backup\accessories.js'te
-// yedekli duruyor, gerekirse referans alınabilir. Tablet branch'inin
-// eklediği jenerik "Basit/Gümüş/Oyma/Kristal/Kutsanmış" placeholder seti de
-// kullanıcı isteğiyle kaldırıldı.
-//
-// Takılar artık silah/zırhtan FARKLI bir yükseltme mantığı kullanıyor:
-// forge/parşömen yerine, aynı isim+seviyeden 3 takı + 1 Aksesuar Yükseltme
-// Kağıdı %100 oranda bir sonraki seviyeye birleşiyor (bkz.
-// utils/accessoryUpgrade.js). Bu yüzden +0'da DÜŞEBİLİYORLAR (silah/zırhın
-// aksine, bkz. utils/loot.js#rollAccessory'nin applyStartingPlusOne
-// SARMAYAN hali) — +0 tablodaki gerçek bir taban durum, "henüz
-// yükseltilmemiş" değil "hiç yükseltilmemiş ama tam bir eşya".
-// `levels[0]` = +1, ..., `levels[4]` = +5 (silah/zırhla aynı 1-index
-// kuralı, bkz. utils/upgrade.js#statsAtLevel). +4/+5 şu an oyunda
-// KİLİTLİ (bkz. utils/accessoryUpgrade.js#ACCESSORY_UPGRADE_MAX_LEVEL) —
-// kullanıcı: "ama +4 ve +5 yükseltmeler daha sonrasında açılacak."
-//
-// `defenseAbility`/`attackPowerPct` henüz hiçbir yerde tüketilmeyen DORMANT
-// alanlar (Eagle's Eye/Prismatic Triad Staff'taki defenseAbility ile aynı
-// desen) — kullanıcı: "Bunun ayarlarını yapacağız tabiki ama sen gördüğün
-// her şeyi ekle hazır olsun." Defense Ability, elinde Dagger/Club/Spear
-// olan birinden daha az hasar yeme mekaniği olacak (henüz kurulmadı).
-export const ACCESSORY_SETS = {
-  earring: [],
-  necklace: [],
-  ring: [],
-  belt: [
-    {
-      // Gerçek görünür tier'ı henüz belirtilmedi (kullanıcı: "ayarlarını
-      // yapacağız") — T3 geçici bir yer tutucu, ileride birlikte kesinleşecek.
-      tier: 3, name: "String of Skulls", def: 10, hp: 5, statBonus: { str: 5 },
-      defenseAbility: { vs: "dagger", value: 5 },
-      resistances: { lightning: 30 },
-      attackPowerPct: 0,
-      levels: [
-        { def: 12, hp: 9, statBonus: { str: 9 }, defenseAbility: { vs: "dagger", value: 6 }, resistances: { lightning: 33 }, attackPowerPct: 0.5 }, // +1
-        { def: 14, hp: 13, statBonus: { str: 13 }, defenseAbility: { vs: "dagger", value: 8 }, resistances: { lightning: 36 }, attackPowerPct: 0.5 }, // +2
-        { def: 16, hp: 17, statBonus: { str: 17 }, defenseAbility: { vs: "dagger", value: 10 }, resistances: { lightning: 39 }, attackPowerPct: 0.5 }, // +3
-        { def: 18, hp: 21, statBonus: { str: 21 }, defenseAbility: { vs: "dagger", value: 13 }, resistances: { lightning: 45 }, attackPowerPct: 0.5 }, // +4
-        { def: 20, hp: 25, statBonus: { str: 25 }, defenseAbility: { vs: "dagger", value: 17 }, resistances: { lightning: 60 }, attackPowerPct: 0.5 }, // +5
-      ],
-    },
-  ],
-};
+// Universal accessory catalog. Every class can equip every entry. Three
+// identical accessories at the same + level merge into the next level.
+const SLOT_LABEL = { earring: "Küpe", necklace: "Kolye", ring: "Yüzük", belt: "Kemer" };
+
+const FAMILIES = [
+  { key: "guardian", names: ["Yol Muhafızı", "Kaya Muhafızı", "Kale Muhafızı", "Ejder Muhafızı", "Titan Muhafızı"], statBonus: (n) => ({ str: n }) },
+  { key: "ranger", names: ["İz Sürücü", "Kül Avcısı", "Gece Avcısı", "Fırtına Avcısı", "Yıldız Avcısı"], statBonus: (n) => ({ dex: n }) },
+  { key: "arcane", names: ["Çırak Arkanı", "Sır Arkanı", "Rün Arkanı", "Kristal Arkanı", "Astral Arkanı"], statBonus: (n) => ({ int: n, mag: n }) },
+];
+
+const SLOT_SCALE = { earring: 0.85, necklace: 1.2, ring: 1, belt: 1.1 };
+const round = (n) => Math.max(1, Math.round(n));
+const scaleStats = (stats, factor) => Object.fromEntries(Object.entries(stats).map(([key, value]) => [key, round(value * factor)]));
+
+function statLine(tier, family, slot, level = 0) {
+  const scale = SLOT_SCALE[slot];
+  const statBase = tier + level * 0.55;
+  return {
+    def: round((tier * 2 + level * 1.4) * scale), hp: round((tier * 6 + level * 4) * scale),
+    mp: family.key === "arcane" ? round((tier * 5 + level * 3) * scale) : 0,
+    statBonus: scaleStats(family.statBonus(statBase), scale),
+  };
+}
+
+function makeAccessory(family, slot, tier) {
+  return {
+    ...statLine(tier, family, slot), tier, slot, family: family.key,
+    name: `${family.names[tier - 1]} ${SLOT_LABEL[slot]}`,
+    levels: [1, 2, 3, 4, 5].map((level) => statLine(tier, family, slot, level)),
+  };
+}
+
+function catalogFor(slot) {
+  return FAMILIES.flatMap((family) => [1, 2, 3, 4, 5].map((tier) => makeAccessory(family, slot, tier)));
+}
+
+export const ACCESSORY_SETS = { earring: catalogFor("earring"), necklace: catalogFor("necklace"), ring: catalogFor("ring"), belt: catalogFor("belt") };
+
+// T1/T2 map drops: intentionally modest, STR-only and permanently locked.
+export const MAP_ACCESSORIES = [
+  { tier: 1, mapTier: 1, slot: "ring", family: "starter", name: "Yıpranmış Güç Yüzüğü", def: 1, hp: 3, mp: 0, statBonus: { str: 6 }, upgradeLocked: true },
+  { tier: 2, mapTier: 2, slot: "ring", family: "starter", name: "Kül Güç Yüzüğü", def: 2, hp: 5, mp: 0, statBonus: { str: 7 }, upgradeLocked: true },
+  { tier: 2, mapTier: 2, slot: "ring", family: "starter", name: "Volkan Güç Yüzüğü", def: 2, hp: 6, mp: 0, statBonus: { str: 8 }, upgradeLocked: true },
+];

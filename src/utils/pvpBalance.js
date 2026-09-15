@@ -8,16 +8,20 @@ import {mitigate,hitChance} from './combat';
 export function pvpSnapshot(p) {
  const base=CLASSES[p.class];
  const items=Object.values(p.equipped).filter(i=>i&&!isBroken(i));
- const weapon=items.filter(i=>i.kind==='weapon').reduce((n,i)=>n+(i.atk||0),0)/({warrior:1,rogue:.94,mage:1.12}[p.class]);
+ // Warrior has the larger HP pool. Rogue compensates through its bow damage
+ // and critical rate; this coefficient is calibrated against equal T4 gear.
+ const weapon=items.filter(i=>i.kind==='weapon').reduce((n,i)=>n+(i.atk||0),0)/({warrior:1,rogue:.75,mage:1.12}[p.class]);
  const armor=items.filter(i=>i.kind==='armor');
- const investment=p.stats[base.mainStat]-base.baseStats[base.mainStat]+(p.class==='mage'?Math.max(0,p.stats.int-70):0);
+ const accessories=items.filter(i=>i.kind==='accessory');
+ const bonusStats=items.reduce((all,i)=>Object.entries(i.statBonus||{}).reduce((next,[key,value])=>({...next,[key]:(next[key]||0)+value}),all),{});
+ const investment=p.stats[base.mainStat]-base.baseStats[base.mainStat]+(bonusStats[base.mainStat]||0)+(p.class==='mage'?Math.max(0,p.stats.int+(bonusStats.int||0)-70):0);
  const gearBonus=items.reduce((n,i)=>n+(i.statBonus?.[base.mainStat]||0),0)+armor.reduce((n,i)=>n+armorLevelBonus(i.upgradeLevel),0);
  const power=(18+weapon*(.8+.006*(investment+gearBonus)+.005*p.level))/(1+.8*base.crit);
- const defense=armor.reduce((n,i)=>n+(i.def||0),0)*({warrior:1,rogue:1.44,mage:1.67}[p.class]);
+ const defense=(armor.reduce((n,i)=>n+(i.def||0),0)+accessories.reduce((n,i)=>n+(i.def||0),0))*({warrior:1,rogue:1.44,mage:1.67}[p.class]);
  // Keep world HP in UI and storage. Convert normalized duel damage back
  // to the defender's HP scale, preserving healing and potion behavior.
  const duelHp=200+p.level*12+Math.max(0,p.stats.sta-base.baseStats.sta)*4+items.reduce((n,i)=>n+(i.hp||0),0);
- return {cls:p.class,level:p.level,dex:80,hp:playerMaxHp(p),maxHp:playerMaxHp(p),duelHp,
+ return {cls:p.class,level:p.level,dex:p.stats.dex+(bonusStats.dex||0),hp:playerMaxHp(p),maxHp:playerMaxHp(p),duelHp,
   atk:power,def:defense*.65+p.level,crit:base.crit,
   reduction:armorSetDamageReduction(p,'pvp')};
 }
