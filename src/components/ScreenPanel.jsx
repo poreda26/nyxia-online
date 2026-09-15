@@ -3,7 +3,7 @@ import {styles} from '../styles';
 
 // Long menus advance by screen-sized pages while the top bar and nav stay put.
 export default function ScreenPanel({children,screen}) {
- const scrollable=screen==='battle';
+ const scrollable=screen==='battle'||screen==='inventory';
  const viewport=useRef(null),content=useRef(null);
  const [page,setPage]=useState(0),[pages,setPages]=useState(1);
  useLayoutEffect(()=>{
