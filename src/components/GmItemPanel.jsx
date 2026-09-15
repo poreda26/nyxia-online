@@ -1,12 +1,19 @@
 import { useState, useMemo } from "react";
-import { Wand2 } from "lucide-react";
+import { Wand2, Gift } from "lucide-react";
 import { CLASSES } from "../data/classes";
 import { SLOTS } from "../data/armor";
 import { ACCESSORY_SLOT_LABEL } from "../utils/itemDisplay";
 import { gmWeaponTemplates, gmBuildWeaponById, gmArmorTemplates, gmBuildArmor, gmAccessoryTemplates, gmBuildAccessory } from "../utils/loot";
 import { MAX_UPGRADE_LEVEL } from "../utils/upgrade";
 import { addItemToInventory } from "../utils/inventory";
+import { uid } from "../utils/random";
 import { styles } from "../styles";
+
+// Kullanıcı isteği: "GM Mode için test edebilmem açısından Tüm chestleri
+// alabileceğim bir düzende ekler misin. Buradan istediğim kadar chest
+// kırıp test edebilirim." — her tier'dan (T1-T6) + bir özel sandık, aynı
+// mantık /sandıklar sohbet komutuyla paylaşılıyor (bkz. utils/gmCommands.js).
+const CHESTS_PER_TIER = 5;
 
 const ACCESSORY_SLOTS = ["necklace", "belt", "ring", "earring"];
 
@@ -71,6 +78,16 @@ export default function GmItemPanel({ player, setPlayer, pushToast }) {
   const clearInventory = () => {
     setPlayer({ ...player, inventory: [] });
     pushToast("Çanta temizlendi.", "loot");
+  };
+
+  const giveAllChests = () => {
+    const newChests = [];
+    for (let tier = 1; tier <= 6; tier++) {
+      for (let i = 0; i < CHESTS_PER_TIER; i++) newChests.push({ id: uid(), tier });
+    }
+    newChests.push({ id: uid(), tier: 5, special: true });
+    setPlayer({ ...player, chests: [...player.chests, ...newChests] });
+    pushToast(`Her tier'dan (T1-T6) ${CHESTS_PER_TIER} sandık + 1 özel sandık verildi.`, "loot");
   };
 
   return (
@@ -156,6 +173,12 @@ export default function GmItemPanel({ player, setPlayer, pushToast }) {
           Envanteri Temizle
         </button>
       </div>
+      <button
+        style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+        onClick={giveAllChests}
+      >
+        <Gift size={12} /> Tüm Sandıkları Ver (T1-T6 + Özel)
+      </button>
     </div>
   );
 }

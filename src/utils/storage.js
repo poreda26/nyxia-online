@@ -62,8 +62,7 @@ export function loadAccount(username) {
   const unlockedSlots = account.unlockedSlots ?? (account.characters?.[2] ? CHARACTER_SLOTS : DEFAULT_UNLOCKED_SLOTS);
   const diamonds = account.diamonds ?? (account.characters || []).reduce((sum, c) => sum + (c?.diamonds || 0), 0);
   const bankGold = account.bankGold ?? 0;
-  const market = account.market || [];
-  return { ...account, bank, unlockedSlots, diamonds, bankGold, market };
+  return { ...account, bank, unlockedSlots, diamonds, bankGold };
 }
 
 // Race is chosen once per ACCOUNT, not per character — every character on
@@ -145,20 +144,29 @@ export function saveAccountBankGold(username, bankGold) {
   writeAccounts(accounts);
 }
 
-// Oyuncu Pazarı'ndaki kendi ilanlarım — artık sayfa yenilenince sıfırlanan
-// bellek içi bir dizi değil, hesaba kalıcı kaydediliyor (bkz.
-// services/marketService.js). NPC'lerin sahte ilanları hâlâ kalıcı değil,
-// sadece gerçek (oyuncunun kendi) ilanları.
-export function loadMarketListings(username) {
+// Oyuncu Pazarı — kullanıcı isteği: "Pazarımız bir depo gibi açılacak.
+// Maksimum 10 adet eşya konulabilen bir satış yeri." Artık tek tek eşya
+// ilanları değil, hesap başına TEK bir "tezgah" (stall): bir isim (satan
+// karakterin adı), süre, açılış ücreti ve içinde en çok 10 eşya. Sayfa
+// yenilenince sıfırlanan bellek içi bir yapı değil, hesaba kalıcı
+// kaydediliyor (bkz. services/marketService.js). NPC'lerin sahte ilanları
+// hâlâ kalıcı değil, sadece oyuncunun kendi tezgahı.
+//
+// Eski (bir önceki turdaki) format düz bir dizi ilandı — o şekil artık
+// geçersiz, Array.isArray ile tespit edip null'a düşürüyoruz (eski
+// ilanların fiyat/süre bağlamı yeni tezgah şekline temiz taşınamaz, zaten
+// bu özellik geçen tur ilk kez eklenmişti, kaybedilecek gerçek bir veri yok).
+export function loadMarketStall(username) {
   const accounts = readAccounts();
   const account = accounts[username] || emptyAccount();
-  return account.market || [];
+  const stall = account.market;
+  return stall && !Array.isArray(stall) ? stall : null;
 }
 
-export function saveMarketListings(username, listings) {
+export function saveMarketStall(username, stall) {
   const accounts = readAccounts();
   const account = accounts[username] || emptyAccount();
-  accounts[username] = { ...account, market: listings };
+  accounts[username] = { ...account, market: stall };
   writeAccounts(accounts);
 }
 

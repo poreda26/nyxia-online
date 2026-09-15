@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, ShoppingBag } from "lucide-react";
+import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, ShoppingBag, AlertTriangle, ChevronDown, ChevronUp, Package2 } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { displayItemName } from "../utils/player";
 import { itemStatLabel } from "../utils/itemDisplay";
@@ -12,6 +12,7 @@ import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
 import ItemIcon from "./ItemIcon";
 import ItemTooltip from "./ItemTooltip";
+import { possessiveName } from "../utils/turkish";
 import * as marketService from "../services/marketService";
 
 const DURATION_LABEL = { 1: "1 saat", 3: "3 saat", 6: "6 saat", 12: "12 saat", 24: "24 saat" };
@@ -40,14 +41,25 @@ function PotionQtyStepper({ qty, onChange }) {
 
 export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, pushToast }) {
   const [subtab, setSubtab] = useState("market");
-  const [listings, setListings] = useState([]);
+  // Kullanıcı isteği: "Pazarımız bir depo gibi açılacak. Maksimum 10 adet
+  // eşya konulabilen bir satış yeri." — myStall tek bir tezgah objesi (ya da
+  // hiç açık değilse null), npcStalls sahte satıcıların isim bazlı
+  // gruplanmış eşya listesi (bkz. marketService.fetchMarket).
+  const [myStall, setMyStall] = useState(null);
+  const [npcListings, setNpcListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedSeller, setExpandedSeller] = useState(null);
+  // Tezgahı açarken seçilen süre — kullanıcı isteği: "1 Saatlik 25 gold dan
+  // başlayacak şekilde... 24 saatlik 250 gold olacak şekilde aşamalı fiyatı
+  // yükselecek."
+  const [openDuration, setOpenDuration] = useState(marketService.MARKET_DURATIONS_HOURS[2]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerMode, setPickerMode] = useState("item"); // "item" | "chest" — hangi havuzdan (çanta ya da sandıklar) seçildiğini belirler
   const [pickedItem, setPickedItem] = useState(null);
   const [priceInput, setPriceInput] = useState("");
-  // Kullanıcı isteği: "1-3-6-12-24 saatlik pazarlar kurulsun."
-  const [durationHours, setDurationHours] = useState(marketService.MARKET_DURATIONS_HOURS[2]);
+  // Kullanıcı isteği: "Pazarı kurduktan sonra pazarı bozarsa kullanıcı
+  // uyarı çıkacak goldunun iade edilmediğini bilecek."
+  const [closeConfirm, setCloseConfirm] = useState(false);
   // 0 = no dialog, 1 = "yükseltmek ister misiniz?", 2 = "Mythic alınsın mı?" —
   // the only path that ever reaches this is Apex -> Mythic (see
   // handlePremiumClick). Every other combination is either a direct
@@ -56,9 +68,10 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   // Kullanıcı isteği: "Pazardaki eşyaların üstüne bir kere tıklandığı zaman
   // eşyanın özelliğini gösteren bir widget açılsın." — InventoryTab'daki
   // aynı itemSheetOverlay/ItemTooltip düzeni burada da kullanılıyor.
-  const [inspectListing, setInspectListing] = useState(null);
+  // `source: "mine" | "npc"` hangi eylem düğmelerinin göründüğünü belirler.
+  const [inspectEntry, setInspectEntry] = useState(null);
   // Kullanıcı isteği: "Pazardan eşya alıyorken Almak istediğine emin misin
-  // tarzında bir cümle ile onay istensin."
+  // tarzında bir cümle ile onay istensin." — sadece NPC eşyaları için.
   const [buyConfirm, setBuyConfirm] = useState(null);
   // Pot alım adedi — kullanıcı isteği: "+/- ikonları olsun sayıyı arttırıp
   // kaç tane almak istersek ayarlayabilelim... sayıyı elle yazabilsin."
@@ -67,28 +80,28 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   const qtyFor = (key) => potionQty[key] ?? 1;
   const setQty = (key, value) => setPotionQty((q) => ({ ...q, [key]: Math.max(1, Math.min(999, value)) }));
 
-  // fetchListings/resolveMyListings are async (Promise-returning) even
-  // though the "server" is local for now — see services/marketService.js.
+  // fetchMarket/resolveMyStall are async (Promise-returning) even though
+  // the "server" is local for now — see services/marketService.js.
   //
   // Kullanıcı isteği: "Pazarlar altın ile kurulsun" + hesap artık birden
   // fazla karakter arasında paylaşılan bir Depo Altını'na sahip (bkz.
-  // InventoryTab) — bir ilan satıldığında kazanılan altın, o an hangi
-  // karakter oynanıyorsa ona değil, ortak depo altınına ekleniyor. Böylece
-  // hangi karakterin ilanı olduğu önemli değil, aile bütçesi gibi paylaşılıyor.
-  const refreshListings = useCallback(async () => {
+  // InventoryTab) — tezgahtan bir eşya satıldığında kazanılan altın, o an
+  // hangi karakter oynanıyorsa ona değil, ortak depo altınına ekleniyor.
+  const refreshMarket = useCallback(async () => {
     setLoading(true);
-    const sold = await marketService.resolveMyListings(username);
+    const sold = await marketService.resolveMyStall(username);
     if (sold.length > 0) {
-      setBankGold((g) => g + sold.reduce((sum, l) => sum + l.price, 0));
-      sold.forEach((l) => pushToast(`İlanın satıldı: ${l.item.name} → +${l.price} altın (Depoya eklendi)`, "loot"));
+      setBankGold((g) => g + sold.reduce((sum, entry) => sum + entry.price, 0));
+      sold.forEach((entry) => pushToast(`Pazarından satıldı: ${entry.item.name} → +${entry.price} altın (Depoya eklendi)`, "loot"));
     }
-    const fresh = await marketService.fetchListings(username);
-    setListings(fresh);
+    const fresh = await marketService.fetchMarket(username);
+    setMyStall(fresh.myStall);
+    setNpcListings(fresh.npcListings);
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username]);
 
-  useEffect(() => { refreshListings(); }, [refreshListings]);
+  useEffect(() => { refreshMarket(); }, [refreshMarket]);
 
   const purchasePremium = (tierId) => {
     const result = buyPremium(player, tierId, bank);
@@ -153,9 +166,111 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     pushToast(`${potionName(potionType, tier)} x${amount} satın alındı (-${price}g).`, "loot");
   };
 
-  // Kullanıcı isteği: "Pazardan eşya alıyorken Almak istediğine emin misin
-  // tarzında bir cümle ile onay istensin." — requestBuy sadece onay
-  // penceresini açar, gerçek satın alma confirmBuy'da.
+  // ---- Kendi tezgahım (Pazarım) ----
+
+  const openStall = async (durationHours) => {
+    const fee = marketService.MARKET_DURATION_FEE[durationHours];
+    if (player.gold < fee) { pushToast(`Pazar ücretini (${fee}g) karşılayacak altının yok.`, "warn"); return; }
+    const result = await marketService.openStall(username, player.nickname, durationHours);
+    if (!result.ok) { pushToast(result.reason || "Pazar açılamadı.", "warn"); refreshMarket(); return; }
+    setPlayer((p) => ({ ...p, gold: p.gold - fee }));
+    setMyStall(result.stall);
+    pushToast(`Pazarın açıldı: ${DURATION_LABEL[durationHours]} (-${fee}g)`, "loot");
+  };
+
+  const sellableItems = player.inventory.filter((i) => i.kind === "armor" || i.kind === "weapon" || i.kind === "accessory");
+  // Sandıklar player.chests'te yaşıyor, player.inventory'de değil (bkz.
+  // InventoryTab'ın ayrı "Sandıklar" alt sekmesi) — tezgaha eklerken de
+  // ayrı bir havuz olarak sunuluyor.
+  const sellableChests = player.chests.map((c) => ({
+    id: c.id, kind: "chest", tier: c.tier, special: c.special,
+    name: c.special ? "Özel Etkinlik Sandığı" : `T${c.tier} Sandık`,
+  }));
+
+  const openPicker = (mode) => {
+    if (!myStall || !myStall.active) { pushToast("Önce pazarını açman gerekiyor.", "warn"); return; }
+    if (myStall.items.length >= marketService.MARKET_STALL_MAX_ITEMS) { pushToast(`Pazarın dolu (${marketService.MARKET_STALL_MAX_ITEMS}/${marketService.MARKET_STALL_MAX_ITEMS}).`, "warn"); return; }
+    setPickerOpen(true); setPickerMode(mode); setPickedItem(null); setPriceInput("");
+  };
+  const pickItem = (item) => { setPickedItem(item); setPriceInput(""); };
+
+  const confirmAddToStall = async () => {
+    const price = parseInt(priceInput, 10);
+    if (!pickedItem) return;
+    if (!Number.isFinite(price) || price <= 0) { pushToast("Geçerli bir fiyat gir.", "warn"); return; }
+    const result = await marketService.addItemToStall(username, pickedItem, price);
+    if (!result.ok) { pushToast(result.reason || "Eklenemedi.", "warn"); refreshMarket(); return; }
+    if (pickerMode === "chest") {
+      setPlayer((p) => ({ ...p, chests: p.chests.filter((c) => c.id !== pickedItem.id) }));
+    } else {
+      setPlayer((p) => ({ ...p, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
+    }
+    setMyStall(result.stall);
+    pushToast(`${pickedItem.name} pazarına eklendi — ${price}g.`, "loot");
+    setPickerOpen(false);
+    setPickedItem(null);
+    setPriceInput("");
+  };
+
+  // Bir eşya grubunu (içindekiler) çantaya/depoya/sandıklara dağıtır —
+  // hem "pazarı erken kapat" hem "süresi dolan tezgahı al" tarafından
+  // paylaşılıyor. Sığmayanlar hakkında toast basar, hiçbirini kaybetmez.
+  const distributeReclaimedItems = (entries) => {
+    let nextPlayer = player;
+    let nextBank = bank;
+    let placedChests = 0, placedItems = 0, lost = 0;
+    const placedIds = [];
+    for (const entry of entries) {
+      if (entry.item.kind === "chest") {
+        nextPlayer = { ...nextPlayer, chests: [...nextPlayer.chests, { id: entry.item.id, tier: entry.item.tier, special: entry.item.special }] };
+        placedChests++;
+        placedIds.push(entry.id);
+        continue;
+      }
+      const bankResult = addItemToAnyBankPage(entry.item, nextBank);
+      if (bankResult.added) {
+        nextBank = bankResult.bank;
+        placedItems++;
+        placedIds.push(entry.id);
+      } else {
+        lost++;
+      }
+    }
+    if (nextPlayer !== player) setPlayer(nextPlayer);
+    if (nextBank !== bank) setBank(nextBank);
+    return { placedIds, placedChests, placedItems, lost };
+  };
+
+  // Kullanıcı isteği: "Pazarı kurduktan sonra pazarı bozarsa kullanıcı
+  // uyarı çıkacak goldunun iade edilmediğini bilecek." — uyarı closeConfirm
+  // penceresinde gösteriliyor, bu fonksiyon sadece onaylandıktan sonra çalışır.
+  const confirmCloseStall = async () => {
+    setCloseConfirm(false);
+    const result = await marketService.closeStall(username);
+    if (!result) { pushToast("Pazar zaten kapalı.", "warn"); refreshMarket(); return; }
+    const { placedChests, placedItems, lost } = distributeReclaimedItems(result.items.map((entry) => ({ ...entry })));
+    setMyStall(null);
+    if (lost > 0) pushToast(`Pazar kapatıldı ama ${lost} eşya depoya sığmadı — kaybolmadı, tekrar dene.`, "warn");
+    else pushToast(`Pazar kapatıldı. ${placedItems + placedChests} eşya depoya/sandığa döndü. İlan ücreti iade edilmedi.`, "default");
+  };
+
+  // Kullanıcı isteği (bir önceki turdan, aynı ilke): "Deaktif olan
+  // pazardaki eşyaları satıcı kendisi alacak... envanterinde ya da
+  // deposunda yer yoksa bir bug problem yaşanmayacak." — otomatik iade yok,
+  // burada elle tetikleniyor; sığmayanlar tezgahta kalır, hiçbiri kaybolmaz.
+  const reclaimStall = async () => {
+    const result = await marketService.reclaimStall(username);
+    if (!result) { pushToast("Alınacak bir şey yok.", "warn"); refreshMarket(); return; }
+    const { placedIds, placedChests, placedItems, lost } = distributeReclaimedItems(result.items);
+    await marketService.removeReclaimedItems(username, placedIds);
+    const fresh = await marketService.fetchMarket(username);
+    setMyStall(fresh.myStall);
+    if (lost > 0) pushToast(`${placedItems + placedChests} eşya alındı, ${lost} tanesi depoya sığmadı — tekrar dene.`, "warn");
+    else pushToast(`Süresi dolan pazarının ${placedItems + placedChests} eşyası geri alındı.`, "default");
+  };
+
+  // ---- NPC tezgahları (Diğer Pazarlar) ----
+
   const requestBuy = (listing) => {
     if (player.gold < listing.price) { pushToast("Yeterli altının yok.", "warn"); return; }
     setBuyConfirm(listing);
@@ -166,10 +281,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     setBuyConfirm(null);
     if (!listing) return;
     const result = await marketService.buyListing(listing.id);
-    if (!result.ok) { pushToast(result.reason || "Satın alınamadı.", "warn"); refreshListings(); return; }
-    // Sandık ilanları çantaya değil player.chests'e gider — inventory'deki
-    // gerçek eşyalardan yapısal olarak ayrı bir liste (bkz. sellableChests,
-    // confirmListing'in "chest" dalı).
+    if (!result.ok) { pushToast(result.reason || "Satın alınamadı.", "warn"); refreshMarket(); return; }
     if (result.listing.item.kind === "chest") {
       setPlayer((p) => ({ ...p, gold: p.gold - listing.price, chests: [...p.chests, { id: result.listing.item.id, tier: result.listing.item.tier, special: result.listing.item.special }] }));
     } else {
@@ -177,102 +289,28 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
       if (!addResult.added) { pushToast(`Satın alındı ama çantana sığmadı — ${addResult.reason}`, "warn"); }
       setPlayer(addResult.player);
     }
-    setListings((ls) => ls.filter((l) => l.id !== listing.id));
+    setNpcListings((ls) => ls.filter((l) => l.id !== listing.id));
     pushToast(`${result.listing.item.name} satın alındı.`, "loot");
   };
 
-  const cancelListing = async (listing) => {
-    const cancelled = await marketService.cancelListing(username, listing.id);
-    if (!cancelled) { pushToast("İlan zaten kaldırılmış.", "warn"); refreshListings(); return; }
-    if (cancelled.item.kind === "chest") {
-      setPlayer((p) => ({ ...p, chests: [...p.chests, { id: cancelled.item.id, tier: cancelled.item.tier, special: cancelled.item.special }] }));
-      pushToast("İlan iptal edildi, sandık geri döndü.", "default");
-    } else {
-      const addResult = addItemToInventory(player, cancelled.item);
-      setPlayer(addResult.player);
-      if (!addResult.added) pushToast(`İlan iptal edildi ama ${addResult.reason}`, "warn");
-      else pushToast("İlan iptal edildi, eşya çantana döndü.", "default");
-    }
-    setListings((ls) => ls.filter((l) => l.id !== listing.id));
-  };
+  // Kullanıcı isteği: "İtemler tek tek listelenmeyecek." — NPC eşyaları
+  // isim bazlı gruplanıp "X'in Pazarı (N eşya)" şeklinde tek satır olarak
+  // gösteriliyor, tıklanınca içindekiler açılıyor.
+  const npcStalls = [];
+  const seenSellers = new Set();
+  npcListings.forEach((l) => {
+    if (seenSellers.has(l.sellerName)) return;
+    seenSellers.add(l.sellerName);
+    npcStalls.push({ sellerName: l.sellerName, items: npcListings.filter((x) => x.sellerName === l.sellerName) });
+  });
 
-  // Kullanıcı isteği: "Deaktif olan pazardaki eşyaları satıcı kendisi
-  // alacak. Bu şekilde envanterinde ya da deposunda yer yoksa bir bug
-  // problem yaşanmayacak." — sandık ise uçsuz player.chests'e (hiç dolmaz),
-  // eşya ise paylaşılan Depo'ya (herhangi bir sayfada yer varsa) gider.
-  // Depo da doluysa reclaimListing marketService'te hiç çağrılmaz, ilan
-  // claim edilmeden kalır, hiçbir şey kaybolmaz.
-  const reclaimListing = async (listing) => {
-    if (listing.item.kind === "chest") {
-      const claimed = await marketService.reclaimListing(username, listing.id);
-      if (!claimed) { pushToast("İlan zaten alınmış.", "warn"); refreshListings(); return; }
-      setPlayer((p) => ({ ...p, chests: [...p.chests, { id: claimed.item.id, tier: claimed.item.tier, special: claimed.item.special }] }));
-      setListings((ls) => ls.filter((l) => l.id !== listing.id));
-      pushToast("Süresi dolan ilanın sandığı geri alındı.", "default");
-      return;
-    }
-    const bankResult = addItemToAnyBankPage(listing.item, bank);
-    if (!bankResult.added) { pushToast(`Depoda yer yok — ${bankResult.reason}`, "warn"); return; }
-    const claimed = await marketService.reclaimListing(username, listing.id);
-    if (!claimed) { pushToast("İlan zaten alınmış.", "warn"); refreshListings(); return; }
-    setBank(bankResult.bank);
-    setListings((ls) => ls.filter((l) => l.id !== listing.id));
-    pushToast("Süresi dolan ilanın eşyası depoya alındı.", "default");
-  };
-
-  const sellableItems = player.inventory.filter((i) => i.kind === "armor" || i.kind === "weapon" || i.kind === "accessory");
-  // Sandıklar player.chests'te yaşıyor, player.inventory'de değil (bkz.
-  // InventoryTab'ın ayrı "Sandıklar" alt sekmesi) — ilan için de ayrı bir
-  // havuz olarak sunuluyor, kullanıcı isteği: "Pazar bölümümüzde sandık
-  // satışımız yok."
-  const sellableChests = player.chests.map((c) => ({
-    id: c.id, kind: "chest", tier: c.tier, special: c.special,
-    name: c.special ? "Özel Etkinlik Sandığı" : `T${c.tier} Sandık`,
-  }));
-
-  // Kullanıcı isteği: "Deaktif olan pazarda ki eşyalar alınmadan yeni pazar
-  // kurulamaz." — açmadan önce kontrol edip anlaşılır bir mesajla engelle,
-  // marketService.createListing zaten aynı kontrolü sunucu tarafı gibi
-  // tekrar yapıyor (bkz. o fonksiyonun kendi reddi).
-  const openPicker = (mode) => {
-    if (myExpiredListings.length > 0) {
-      pushToast("Süresi dolmuş bir ilanının eşyasını almadan yeni ilan açamazsın — aşağıdan al.", "warn");
-      return;
-    }
-    setPickerOpen(true); setPickerMode(mode); setPickedItem(null); setPriceInput(""); setDurationHours(marketService.MARKET_DURATIONS_HOURS[2]);
-  };
-  const pickItem = (item) => { setPickedItem(item); setPriceInput(""); };
-
-  const confirmListing = async () => {
-    const price = parseInt(priceInput, 10);
-    if (!pickedItem) return;
-    if (!Number.isFinite(price) || price <= 0) { pushToast("Geçerli bir fiyat gir.", "warn"); return; }
-    const fee = marketService.listingFeeFor(price);
-    if (player.gold < fee) { pushToast(`İlan ücretini (${fee}g) karşılayacak altının yok.`, "warn"); return; }
-    const result = await marketService.createListing(username, pickedItem, price, durationHours, player.nickname);
-    if (!result.ok) { pushToast(result.reason || "İlan açılamadı.", "warn"); return; }
-    if (pickerMode === "chest") {
-      setPlayer((p) => ({ ...p, gold: p.gold - fee, chests: p.chests.filter((c) => c.id !== pickedItem.id) }));
-    } else {
-      setPlayer((p) => ({ ...p, gold: p.gold - fee, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
-    }
-    setListings((ls) => [result.listing, ...ls]);
-    pushToast(`İlan yayınlandı: ${pickedItem.name} — ${price}g, ${DURATION_LABEL[durationHours]} (-${fee}g ilan ücreti)`, "loot");
-    setPickerOpen(false);
-    setPickedItem(null);
-    setPriceInput("");
-  };
-
-  const myAllListings = listings.filter((l) => l.sellerId === "me");
-  const myActiveListings = myAllListings.filter((l) => l.active);
-  const myExpiredListings = myAllListings.filter((l) => !l.active);
-  const otherListings = listings.filter((l) => l.sellerId !== "me");
+  const stallFee = marketService.MARKET_DURATION_FEE[openDuration];
 
   return (
     <div style={styles.panelScroll}>
       <div style={styles.subtabRow}>
         <button onClick={() => setSubtab("market")} style={{ ...styles.subtabBtn, ...(subtab === "market" ? styles.subtabBtnActive : {}) }}>
-          Pazar {myAllListings.length > 0 && `(${myAllListings.length})`}
+          Pazar
         </button>
         <button onClick={() => setSubtab("shop")} style={{ ...styles.subtabBtn, ...(subtab === "shop" ? styles.subtabBtnActive : {}) }}>
           Dükkan
@@ -421,155 +459,177 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
 
       {subtab === "market" && (
         <>
-          <SectionLabel>Oyuncu Pazarı</SectionLabel>
-          <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: -4, marginBottom: 12 }}>
-            Çantandaki bir eşyayı istediğin fiyata ilana çıkar, diğer oyuncular incelesin.
-            Diğer oyuncuların ilanlarından da istediğini satın alabilirsin.
-          </p>
+          <SectionLabel>Pazarım</SectionLabel>
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <button style={{ ...styles.smallBtn, background: "#5FA8A0", flex: 1 }} onClick={() => openPicker("item")}>
-              <Plus size={14} /> Eşya İlanı Ver
-            </button>
-            <button style={{ ...styles.smallBtn, background: "#D4AF6A", flex: 1 }} onClick={() => openPicker("chest")}>
-              <Plus size={14} /> Sandık İlanı Ver
-            </button>
-          </div>
-
-          {pickerOpen && (
-            <div style={styles.pickerCard}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 10, color: "var(--text-faint)" }}>
-                  {pickedItem ? "Fiyat belirle" : pickerMode === "chest" ? "Satılacak sandığı seç" : "Satılacak eşyayı seç"}
-                </span>
-                <button onClick={() => setPickerOpen(false)} style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer" }}>
-                  <X size={14} />
-                </button>
+          {!myStall && (
+            <>
+              <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: -4, marginBottom: 12 }}>
+                Kendi adınla bir pazar tezgahı aç — içine en çok {marketService.MARKET_STALL_MAX_ITEMS} eşya koyabilirsin, diğer oyuncular tezgahını görüp istediğini alır. Süre uzadıkça saat başına ücret ucuzlar.
+              </p>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {marketService.MARKET_DURATIONS_HOURS.map((h) => (
+                  <button
+                    key={h}
+                    onClick={() => setOpenDuration(h)}
+                    style={{ ...styles.tinyBtn, flex: "1 0 auto", ...(openDuration === h ? {} : { background: "var(--bg-panel-alt)", color: "var(--text-muted)" }) }}
+                  >
+                    {DURATION_LABEL[h]}
+                  </button>
+                ))}
               </div>
-              {!pickedItem ? (
-                (pickerMode === "chest" ? sellableChests : sellableItems).length === 0 ? (
-                  <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                    {pickerMode === "chest" ? "Satılabilecek sandığın yok." : "Çantanda satılabilecek eşya yok."}
-                  </div>
-                ) : (
-                  (pickerMode === "chest" ? sellableChests : sellableItems).map((item) => (
-                    <button key={item.id} style={styles.pickerRow} onClick={() => pickItem(item)}>
-                      <ItemIcon item={item} size={20} color={itemTierColor(item.tier)} strokeWidth={1.6} />
-                      <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item)}</span>
-                      <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{item.tier} · {itemStatLabel(item)}</span>
-                    </button>
-                  ))
-                )
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <ItemIcon item={pickedItem} size={26} color={itemTierColor(pickedItem.tier)} strokeWidth={1.6} />
-                    <span style={{ fontSize: 12 }}>{displayItemName(pickedItem)}</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="Fiyat (altın)"
-                    value={priceInput}
-                    onChange={(e) => setPriceInput(e.target.value)}
-                    style={styles.numInput}
-                  />
-                  <div style={{ fontSize: 10, color: "var(--text-faint)" }}>İlan süresi</div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {marketService.MARKET_DURATIONS_HOURS.map((h) => (
-                      <button
-                        key={h}
-                        onClick={() => setDurationHours(h)}
-                        style={{
-                          ...styles.tinyBtn, flex: "1 0 auto",
-                          ...(durationHours === h ? {} : { background: "var(--bg-panel-alt)", color: "var(--text-muted)" }),
-                        }}
-                      >
-                        {DURATION_LABEL[h]}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPickedItem(null)}>Geri</button>
-                    <button style={styles.tinyBtn} onClick={confirmListing}>İlanı Yayınla</button>
+              <button style={{ ...styles.smallBtn, background: "#5FA8A0", width: "100%" }} onClick={() => openStall(openDuration)}>
+                <Store size={14} /> Pazarımı Aç — {stallFee}g
+              </button>
+            </>
+          )}
+
+          {myStall && myStall.active && (
+            <>
+              <div style={{ ...styles.itemDetailCard, marginBottom: 12, borderColor: "#5FA8A066", background: "#5FA8A00d" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Store size={16} color="#5FA8A0" strokeWidth={1.6} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#5FA8A0" }}>{possessiveName(player.nickname)} Pazarı</div>
+                    <div style={{ fontSize: 10, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>{myStall.items.length}/{marketService.MARKET_STALL_MAX_ITEMS} eşya</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 2 }}><Clock size={9} /> {DURATION_LABEL[myStall.durationHours]}</span>
+                    </div>
                   </div>
                 </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button style={{ ...styles.tinyBtn, background: "#5FA8A0", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }} onClick={() => openPicker("item")}>
+                    <Plus size={12} /> Eşya Ekle
+                  </button>
+                  <button style={{ ...styles.tinyBtn, background: "#D4AF6A", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }} onClick={() => openPicker("chest")}>
+                    <Plus size={12} /> Sandık Ekle
+                  </button>
+                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => setCloseConfirm(true)}>
+                    Pazarı Kapat
+                  </button>
+                </div>
+              </div>
+
+              {pickerOpen && (
+                <div style={styles.pickerCard}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 10, color: "var(--text-faint)" }}>
+                      {pickedItem ? "Fiyat belirle" : pickerMode === "chest" ? "Eklenecek sandığı seç" : "Eklenecek eşyayı seç"}
+                    </span>
+                    <button onClick={() => setPickerOpen(false)} style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer" }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {!pickedItem ? (
+                    (pickerMode === "chest" ? sellableChests : sellableItems).length === 0 ? (
+                      <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                        {pickerMode === "chest" ? "Ekleyebileceğin sandığın yok." : "Çantanda ekleyebileceğin eşya yok."}
+                      </div>
+                    ) : (
+                      (pickerMode === "chest" ? sellableChests : sellableItems).map((item) => (
+                        <button key={item.id} style={styles.pickerRow} onClick={() => pickItem(item)}>
+                          <ItemIcon item={item} size={20} color={itemTierColor(item.tier)} strokeWidth={1.6} />
+                          <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item)}</span>
+                          <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{item.tier} · {itemStatLabel(item)}</span>
+                        </button>
+                      ))
+                    )
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <ItemIcon item={pickedItem} size={26} color={itemTierColor(pickedItem.tier)} strokeWidth={1.6} />
+                        <span style={{ fontSize: 12 }}>{displayItemName(pickedItem)}</span>
+                      </div>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Fiyat (altın)"
+                        value={priceInput}
+                        onChange={(e) => setPriceInput(e.target.value)}
+                        style={styles.numInput}
+                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPickedItem(null)}>Geri</button>
+                        <button style={styles.tinyBtn} onClick={confirmAddToStall}>Pazara Ekle</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
+
+              {myStall.items.length === 0 ? (
+                <EmptyState icon={Package2} title="Tezgahın boş" subtitle="Yukarıdan eşya ya da sandık ekleyebilirsin." />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {myStall.items.map((entry) => (
+                    <div key={entry.id} style={{ ...styles.itemRow, borderColor: `${itemTierColor(entry.item.tier)}44` }}>
+                      <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex" }} onClick={() => setInspectEntry({ ...entry, source: "mine" })}>
+                        <ItemIcon item={entry.item} size={24} color={itemTierColor(entry.item.tier)} strokeWidth={1.6} />
+                      </button>
+                      <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setInspectEntry({ ...entry, source: "mine" })}>
+                        <div style={{ fontSize: 13 }}>{displayItemName(entry.item)}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{entry.item.tier} · {itemStatLabel(entry.item)}</div>
+                      </div>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A" }}>{entry.price}g</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {myStall && !myStall.active && (
+            <div style={{ ...styles.itemDetailCard, marginBottom: 12, borderColor: "#E8A5AF66", background: "#E8A5AF0d" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertTriangle size={16} color="#E8A5AF" strokeWidth={1.6} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#E8A5AF" }}>Pazarının süresi doldu</div>
+                  <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{myStall.items.length} eşya alınmayı bekliyor. Almadan yeni pazar açamazsın.</div>
+                </div>
+              </div>
+              <button style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, background: "#E8A5AF", color: "#15171E" }} onClick={reclaimStall}>
+                Eşyalarımı Al
+              </button>
             </div>
           )}
 
-          {myExpiredListings.length > 0 && (
-            <>
-              <div style={{ fontSize: 10, color: "#E8A5AF", marginTop: 14, marginBottom: 6, letterSpacing: 1, textTransform: "uppercase" }}>
-                Süresi Doldu — Eşyanı Al
-              </div>
-              <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: -4, marginBottom: 8, lineHeight: 1.5 }}>
-                Bu ilanlar deaktif oldu, artık satın alınamıyor. Eşyayı geri almadan yeni ilan açamazsın.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {myExpiredListings.map((l) => (
-                  <div key={l.id} style={{ ...styles.itemRow, borderColor: "#E8A5AF44", opacity: 0.85 }}>
-                    <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex" }} onClick={() => setInspectListing(l)}>
-                      <ItemIcon item={l.item} size={24} color={itemTierColor(l.item.tier)} strokeWidth={1.6} />
-                    </button>
-                    <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setInspectListing(l)}>
-                      <div style={{ fontSize: 13 }}>{displayItemName(l.item)}</div>
-                      <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{l.item.tier} · {itemStatLabel(l.item)}</div>
-                    </div>
-                    <button style={{ ...styles.tinyBtn, background: "#E8A5AF", color: "#15171E" }} onClick={() => reclaimListing(l)}>Al</button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {myActiveListings.length > 0 && (
-            <>
-              <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 14, marginBottom: 6, letterSpacing: 1, textTransform: "uppercase" }}>Benim ilanlarım</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {myActiveListings.map((l) => (
-                  <div key={l.id} style={{ ...styles.itemRow, borderColor: `${itemTierColor(l.item.tier)}44`, flexWrap: "wrap" }}>
-                    <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex" }} onClick={() => setInspectListing(l)}>
-                      <ItemIcon item={l.item} size={24} color={itemTierColor(l.item.tier)} strokeWidth={1.6} />
-                    </button>
-                    <div style={{ flex: 1, minWidth: 110, cursor: "pointer" }} onClick={() => setInspectListing(l)}>
-                      <div style={{ fontSize: 13 }}>{displayItemName(l.item)}</div>
-                      <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 6 }}>
-                        <span>T{l.item.tier} · {itemStatLabel(l.item)}</span>
-                        <span style={{ display: "flex", alignItems: "center", gap: 2 }}><Clock size={9} /> {DURATION_LABEL[l.durationHours] || `${l.durationHours}s`}</span>
-                      </div>
-                    </div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{l.price}g</div>
-                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => cancelListing(l)}>İptal Et</button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 14, marginBottom: 6, letterSpacing: 1, textTransform: "uppercase" }}>Diğer oyuncular</div>
-          {!loading && otherListings.length === 0 ? (
-            <EmptyState icon={Store} title="Pazar sessiz" subtitle="Şu anda başka ilan yok. Sonra tekrar bak." />
+          <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 14, marginBottom: 6, letterSpacing: 1, textTransform: "uppercase" }}>Diğer Pazarlar</div>
+          {!loading && npcStalls.length === 0 ? (
+            <EmptyState icon={Store} title="Pazar sessiz" subtitle="Şu anda başka tezgah yok. Sonra tekrar bak." />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {otherListings.map((l) => (
-                <div key={l.id} style={{ ...styles.itemRow, borderColor: `${itemTierColor(l.item.tier)}44`, flexWrap: "wrap" }}>
-                  <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex" }} onClick={() => setInspectListing(l)}>
-                    <ItemIcon item={l.item} size={18} color={itemTierColor(l.item.tier)} strokeWidth={1.6} />
-                  </button>
-                  <div style={{ flex: 1, minWidth: 110, cursor: "pointer" }} onClick={() => setInspectListing(l)}>
-                    <div style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-                      {displayItemName(l.item)}
-                      <span style={{ fontSize: 9, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 2 }}>
-                        <Tag size={9} /> {l.sellerName}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{l.item.tier} · {itemStatLabel(l.item)}</div>
+              {npcStalls.map((stall) => {
+                const expanded = expandedSeller === stall.sellerName;
+                return (
+                  <div key={stall.sellerName} style={{ ...styles.itemDetailCard, padding: 0, overflow: "hidden" }}>
+                    <button
+                      style={{ width: "100%", background: "none", border: "none", padding: 12, display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--text-primary)" }}
+                      onClick={() => setExpandedSeller(expanded ? null : stall.sellerName)}
+                    >
+                      <Tag size={14} color="var(--text-faint)" />
+                      <span style={{ flex: 1, fontSize: 13, textAlign: "left" }}>{possessiveName(stall.sellerName)} Pazarı</span>
+                      <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{stall.items.length} eşya</span>
+                      {expanded ? <ChevronUp size={14} color="var(--text-faint)" /> : <ChevronDown size={14} color="var(--text-faint)" />}
+                    </button>
+                    {expanded && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 10px 10px" }}>
+                        {stall.items.map((l) => (
+                          <div key={l.id} style={{ ...styles.itemRow, borderColor: `${itemTierColor(l.item.tier)}44`, flexWrap: "wrap" }}>
+                            <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex" }} onClick={() => setInspectEntry({ ...l, source: "npc" })}>
+                              <ItemIcon item={l.item} size={18} color={itemTierColor(l.item.tier)} strokeWidth={1.6} />
+                            </button>
+                            <div style={{ flex: 1, minWidth: 110, cursor: "pointer" }} onClick={() => setInspectEntry({ ...l, source: "npc" })}>
+                              <div style={{ fontSize: 13 }}>{displayItemName(l.item)}</div>
+                              <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{l.item.tier} · {itemStatLabel(l.item)}</div>
+                            </div>
+                            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{l.price}g</div>
+                            <button style={styles.tinyBtn} onClick={() => requestBuy(l)}>Al</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{l.price}g</div>
-                  <button style={styles.tinyBtn} onClick={() => requestBuy(l)}>Al</button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>
@@ -609,30 +669,20 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
       {/* Kullanıcı isteği: "Pazardaki eşyaların üstüne bir kere tıklandığı
           zaman eşyanın özelliğini gösteren bir widget açılsın." —
           InventoryTab'daki itemSheetOverlay/ItemTooltip düzeniyle aynı. */}
-      {inspectListing && (
-        <div style={styles.itemSheetOverlay} onClick={() => setInspectListing(null)}>
+      {inspectEntry && (
+        <div style={styles.itemSheetOverlay} onClick={() => setInspectEntry(null)}>
           <div style={styles.itemSheet} onClick={(e) => e.stopPropagation()}>
             <div style={styles.itemSheetHandle} />
-            <ItemTooltip item={inspectListing.item} player={player} />
+            <ItemTooltip item={inspectEntry.item} player={player} />
             <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "#D4AF6A" }}>{inspectListing.price}g</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "#D4AF6A" }}>{inspectEntry.price}g</div>
               <div style={{ flex: 1 }} />
-              {inspectListing.sellerId === "me" ? (
-                inspectListing.active ? (
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => { cancelListing(inspectListing); setInspectListing(null); }}>
-                    İptal Et
-                  </button>
-                ) : (
-                  <button style={{ ...styles.tinyBtn, background: "#E8A5AF", color: "#15171E" }} onClick={() => { reclaimListing(inspectListing); setInspectListing(null); }}>
-                    Al
-                  </button>
-                )
-              ) : (
-                <button style={styles.tinyBtn} onClick={() => { setInspectListing(null); requestBuy(inspectListing); }}>
+              {inspectEntry.source === "npc" && (
+                <button style={styles.tinyBtn} onClick={() => { setInspectEntry(null); requestBuy(inspectEntry); }}>
                   Al
                 </button>
               )}
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} onClick={() => setInspectListing(null)}>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} onClick={() => setInspectEntry(null)}>
                 <X size={11} />
               </button>
             </div>
@@ -655,6 +705,30 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               </button>
               <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E" }} onClick={confirmBuy}>
                 Evet, Satın Al
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kullanıcı isteği: "Pazarı kurduktan sonra pazarı bozarsa kullanıcı
+          uyarı çıkacak goldunun iade edilmediğini bilecek." */}
+      {closeConfirm && (
+        <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setCloseConfirm(false)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <AlertTriangle size={32} color="#E8A5AF" strokeWidth={1.4} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
+              Pazarını kapatmak istediğine emin misin?
+            </div>
+            <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)", textAlign: "center", maxWidth: 240 }}>
+              Ödediğin ilan ücreti iade edilmez. İçindeki eşyalar depona geri döner.
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setCloseConfirm(false)}>
+                Vazgeç
+              </button>
+              <button style={{ ...styles.tinyBtn, background: "#E8A5AF", color: "#15171E" }} onClick={confirmCloseStall}>
+                Evet, Kapat
               </button>
             </div>
           </div>

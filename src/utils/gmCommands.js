@@ -39,7 +39,8 @@ function grant(player, item, bank) {
 }
 
 const HELP_TEXT = "Komutlar: /altın [miktar], /elmas [miktar], /zırh [tier] [sınıf], /silah [tier], "
-  + "/aksesuar [tier], /parşömen [tier], /bonus [adet], /premium [mythic|apex], /iksir [hp|mp] [adet] [tier], /sandık [tier|özel], "
+  + "/aksesuar [tier], /parşömen [tier], /bonus [adet], /premium [mythic|apex], /iksir [hp|mp] [adet] [tier], /sandık [tier(1-6)|özel], "
+  + "/sandıklar [tier başına adet] (her tier'dan + özel, toplu test için), "
   + "/skill [id], /uyan, /seviye [1-65], /np [miktar], /expevent [saat] [yüzde], /yardım";
 
 // Executes a recognized GM command against the current player and returns
@@ -115,8 +116,28 @@ export function executeGmCommand(player, cmd, args, bank) {
           resultText: "Özel Etkinlik Sandığı verildi.",
         };
       }
-      const tier = clampTier(args[0]);
+      // T6 sandık gerçek — max artık 5 değil 6 (bkz. utils/loot.js#rollLoot'un
+      // T6'da her zaman silaha düşme düzeltmesi, bu komutla test edilebilsin).
+      const tier = clampTier(args[0], 6);
       return { player: { ...player, chests: [...player.chests, { id: uid(), tier }] }, bank, resultText: `T${tier} Sandık verildi.` };
+    }
+    // Kullanıcı isteği: "GM Mode için test edebilmem açısından Tüm chestleri
+    // alabileceğim bir düzende ekler misin. Buradan istediğim kadar chest
+    // kırıp test edebilirim." — tek komutla her tier'dan (T1-T6) + bir özel
+    // sandık, hepsinden `adet` tane (varsayılan 5) birden veriyor.
+    case "sandiklar":
+    case "sandıklar": {
+      const perTier = Math.max(1, Math.min(50, parseInt(args[0], 10) || 5));
+      const newChests = [];
+      for (let tier = 1; tier <= 6; tier++) {
+        for (let i = 0; i < perTier; i++) newChests.push({ id: uid(), tier });
+      }
+      newChests.push({ id: uid(), tier: 5, special: true });
+      return {
+        player: { ...player, chests: [...player.chests, ...newChests] },
+        bank,
+        resultText: `Her tier'dan (T1-T6) ${perTier} sandık + 1 özel sandık verildi (toplam ${newChests.length}).`,
+      };
     }
     case "skill": {
       const skillId = (args[0] || "").toLowerCase();
