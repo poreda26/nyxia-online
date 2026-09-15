@@ -14,12 +14,12 @@ import ItemIcon from "./ItemIcon";
 // decide.
 export default function Paperdoll({ player, cls, onSlotClick }) {
   return (
-    <div style={styles.paperdollRoot}>
+    <div className="equipment-layout" style={styles.paperdollRoot}>
       <div
         style={{ ...styles.paperdollPortrait, borderColor: cls ? `${cls.color}55` : "var(--border)", background: cls ? `linear-gradient(180deg, ${cls.color}22, var(--bg-panel))` : "var(--bg-panel)" }}
         title="Kuşanılan silahla karakter önizlemesi"
       >
-        <div className="paperdoll-character paperdoll-character-equipped"><CharacterFigure player={player} align="xMidYMax meet"/></div>
+        <div className="paperdoll-character paperdoll-character-equipped"><CharacterFigure player={player} align="xMidYMid meet"/></div>
       </div>
 
       <div style={styles.paperdollGrid}>

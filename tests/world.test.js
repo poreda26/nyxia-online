@@ -96,19 +96,23 @@ test('PvP uses reproducible symmetric rules and matching fighters split wins',()
 });
 test('T4 Warrior and archer Rogue remain within the beta PvP win band',()=>{
  let warrior=initialPlayer('warrior','human','T4 Warrior');
- warrior={...warrior,level:45,stats:{str:190,sta:115,dex:70,int:50,mag:50}};
+ warrior={...warrior,level:45,stats:{...warrior.stats,str:65+10+3*44}};
  const weapon=gmWeaponTemplates('warrior').filter((item)=>item.tier===4&&item.atk).sort((a,b)=>b.atk-a.atk)[0];
  warrior=equipItem(warrior,gmBuildWeaponById('warrior',weapon.id,5)).player;
  for(const slot of ['head','chest','legs','gauntlets','boots'])warrior=equipItem(warrior,gmBuildArmor('warrior',slot,4,5)).player;
  const accessories=[['necklace','Ejder Muhafızı Kolye'],['belt','Ejder Muhafızı Kemer'],['ring','Ejder Muhafızı Yüzük'],['ring','Ejder Muhafızı Yüzük'],['earring','Ejder Muhafızı Küpe'],['earring','Ejder Muhafızı Küpe']];
- for(const [slot,name] of accessories)warrior=equipItem(warrior,gmBuildAccessory(slot,4,3,name)).player;
  let rogue=comparablePlayer(warrior,'rogue');
- for(const [slot,name] of accessories)rogue=equipItem(rogue,gmBuildAccessory(slot,4,3,name)).player;
+ for(const [slot,name] of accessories){
+  warrior=equipItem(warrior,gmBuildAccessory(slot,4,3,name)).player;
+  rogue=equipItem(rogue,gmBuildAccessory(slot,4,3,name.replace('Ejder Muhafızı','Fırtına Avcısı'))).player;
+ }
+ for(const p of [warrior,rogue])for(const slot of ['head','chest','legs','gauntlets','boots','mainHand'])assert.equal(p.equipped[slot]?.tier,4,`${p.class} ${slot}`);
  const a=pvpSnapshot(warrior),b=pvpSnapshot(rogue);let seed=71;
  const random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
  let warriorWins=0;const fights=2000;
  for(let i=0;i<fights;i++){let ah=a.hp,bh=b.hp,turn=i%2;for(let t=0;t<400;t++){if(turn===0)bh-=rollPvpDamage(a,b,random)||0;else ah-=rollPvpDamage(b,a,random)||0;turn=1-turn;if(ah<=0||bh<=0){warriorWins+=bh<=0;break;}}}
  const rate=warriorWins/fights;
+ console.log(`T4 +5 / accessory +3: Warrior ${rate*100}%, Rogue ${(1-rate)*100}% (2000 duels)`);
  assert.ok(rate>=.44&&rate<=.56,`Warrior win rate ${rate}; W ${JSON.stringify(a)} R ${JSON.stringify(b)}`);
 });
 test('universal tier accessories merge three matching copies and locked map rings do not',()=>{
@@ -123,6 +127,20 @@ test('universal tier accessories merge three matching copies and locked map ring
  assert.equal(result.upgraded,true);assert.equal(result.item.upgradeLevel,1);assert.ok(result.item.def>copies[0].def);
  const locked=gmBuildAccessory('ring',2,0,'Volkan Güç Yüzüğü');
  assert.equal(canUpgradeAccessory({...p,inventory:[locked,locked,locked]},locked).ok,false);
+});
+test('consumables cannot corrupt equipment or disappear through equip',()=>{
+ const scroll={id:'accessory-paper',kind:'accessoryScroll',count:3};
+ const p={...player(),inventory:[scroll]};const result=equipItem(p,scroll);
+ assert.ok(result.blocked);assert.equal(result.player,p);assert.equal(result.player.inventory[0].count,3);
+});
+test('PvP counts item STR once and Mage armor MP does not turn into attack',()=>{
+ const p=player(),base=pvpSnapshot(p);
+ const geared={...p,equipped:{...p.equipped,ring1:{kind:'accessory',statBonus:{str:10}}}};
+ const allocated={...p,stats:{...p.stats,str:p.stats.str+10}};
+ assert.ok(pvpSnapshot(geared).atk>base.atk);assert.equal(pvpSnapshot(geared).atk,pvpSnapshot(allocated).atk);
+ const m=initialPlayer('mage','human','Mage');
+ const armor={kind:'armor',class:'mage',upgradeLevel:8,def:0,hp:0};
+ assert.equal(pvpSnapshot({...m,equipped:{...m.equipped,chest:armor}}).atk,pvpSnapshot(m).atk);
 });
 function settle(w,p,seconds=.45) {
   const events=[];

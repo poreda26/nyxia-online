@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ScreenPanel from './ScreenPanel';
 import { CLASSES } from "../data/classes";
 import { totalStats, playerDef, playerMaxHp } from "../utils/player";
 import { MONSTER_QUESTS } from "../data/quests";
@@ -118,7 +119,7 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
 
       <ScheduledEventBanner player={player} setPlayer={setPlayer} pushToast={pushToast} />
 
-      <div style={styles.tabContent}>
+      <ScreenPanel key={tab} screen={tab}>
         {tab === "battle" && (
           <BattleTab player={player} setPlayer={setPlayer} cls={cls} def={def} atk={atk} pushToast={pushToast} />
         )}
@@ -146,7 +147,7 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
         {tab === "character" && (
           <CharacterTab player={player} setPlayer={setPlayer} cls={cls} maxHp={maxHp} def={def} atk={atk} pushToast={pushToast} onChangeCharacter={onChangeCharacter} onReplayTutorial={reopenTutorial} />
         )}
-      </div>
+      </ScreenPanel>
 
       <BottomNav tab={tab} setTab={setTab} notifications={notifications} />
 

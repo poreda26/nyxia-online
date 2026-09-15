@@ -10,12 +10,12 @@ export function pvpSnapshot(p) {
  const items=Object.values(p.equipped).filter(i=>i&&!isBroken(i));
  // Warrior has the larger HP pool. Rogue compensates through its bow damage
  // and critical rate; this coefficient is calibrated against equal T4 gear.
- const weapon=items.filter(i=>i.kind==='weapon').reduce((n,i)=>n+(i.atk||0),0)/({warrior:1,rogue:.75,mage:1.12}[p.class]);
+ const weapon=items.filter(i=>i.kind==='weapon').reduce((n,i)=>n+(i.atk||0),0)/({warrior:1,rogue:1.10,mage:1.04}[p.class]);
  const armor=items.filter(i=>i.kind==='armor');
  const accessories=items.filter(i=>i.kind==='accessory');
  const bonusStats=items.reduce((all,i)=>Object.entries(i.statBonus||{}).reduce((next,[key,value])=>({...next,[key]:(next[key]||0)+value}),all),{});
  const investment=p.stats[base.mainStat]-base.baseStats[base.mainStat]+(bonusStats[base.mainStat]||0)+(p.class==='mage'?Math.max(0,p.stats.int+(bonusStats.int||0)-70):0);
- const gearBonus=items.reduce((n,i)=>n+(i.statBonus?.[base.mainStat]||0),0)+armor.reduce((n,i)=>n+armorLevelBonus(i.upgradeLevel),0);
+ const gearBonus=p.class==='mage'?0:armor.reduce((n,i)=>n+armorLevelBonus(i.upgradeLevel),0);
  const power=(18+weapon*(.8+.006*(investment+gearBonus)+.005*p.level))/(1+.8*base.crit);
  const defense=(armor.reduce((n,i)=>n+(i.def||0),0)+accessories.reduce((n,i)=>n+(i.def||0),0))*({warrior:1,rogue:1.44,mage:1.67}[p.class]);
  // Keep world HP in UI and storage. Convert normalized duel damage back

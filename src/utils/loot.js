@@ -243,8 +243,8 @@ export function rollLoot(tierId) {
 
 // Accessories are deliberately rare. T1/T2 also have a very small chance to
 // yield their locked early STR rings; chests use rollLoot and never bypass it.
-export function rollMapLoot(tierId) {
-  if (tierId <= 2 && Math.random() < 0.06) return rollMapAccessory(tierId);
+export function rollMapLoot(tierId, mapTier = tierId) {
+  if (mapTier <= 2 && Math.random() < 0.06) return rollMapAccessory(mapTier);
   return rollLoot(tierId);
 }
 

@@ -646,6 +646,7 @@ export function displayItemName(item) {
 // armor. Returns { player, blocked } — blocked carries a reason string
 // when the equip was refused so the caller can toast it.
 export function equipItem(player, item) {
+  if (!item || !['weapon','armor','accessory'].includes(item.kind)) return {player,blocked:'Bu eşya kuşanılamaz.'};
   if (player.class === "rogue" && item.kind === "weapon" && !["bow", "crossbow"].includes(item.weaponType)) {
     return { player, blocked: "Rogue yalnızca yay veya arbalet kuşanabilir." };
   }

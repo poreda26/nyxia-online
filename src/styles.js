@@ -2,7 +2,7 @@ import { BAG_COLUMNS } from "./utils/inventory";
 
 export const styles = {
   appRoot: {
-    width: "100%", maxWidth: 420, margin: "0 auto", height: "100%", minHeight: 480,
+    width: "100%", maxWidth: 420, margin: "0 auto", height: "100%", minHeight: 0, boxSizing: "border-box",
     background: "var(--bg-void)", color: "var(--text-primary)", fontFamily: "var(--font-body)",
     position: "relative", overflow: "hidden", borderRadius: 18, border: "1px solid var(--border)",
   },
@@ -123,7 +123,7 @@ export const styles = {
   // kökünden ortadan kalkıyor (iki blok da aynı flex satırının parçası).
   paperdollRoot: { display: "flex", gap: 8 },
   paperdollPortrait: {
-    flex: "0 0 36%", borderRadius: 14, borderWidth: 1, borderStyle: "solid",
+    flex: "0 0 64%", borderRadius: 14, borderWidth: 1, borderStyle: "solid",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
   paperdollGrid: { flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, alignContent: "space-between" },

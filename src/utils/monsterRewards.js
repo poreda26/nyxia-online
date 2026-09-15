@@ -57,7 +57,7 @@ export function grantMonsterReward(p, m, map) {
 
   if (Math.random() < map.dropChance * dropMult) {
     const dropTier = pickDropTier(map.tier);
-    const item = rollMapLoot(dropTier);
+    const item = rollMapLoot(dropTier, map.tier);
     if (item) {
       const addResult = addItemToInventory(np, item);
       np = addResult.player;

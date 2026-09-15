@@ -9,7 +9,8 @@ export default function GlobalStyle() {
          appRoot's height:100% resolves to nothing and it silently falls
          back to growing with content instead, which is why the frame used
          to visibly resize switching between tabs. */
-      html, body, #root { height: 100%; }
+      html, body, #root { height: 100%; height:100dvh; overflow:hidden; }
+      #root { box-sizing:border-box; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
       body { margin: 0; overscroll-behavior: none; }
 
       :root {
