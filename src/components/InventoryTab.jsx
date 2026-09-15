@@ -27,7 +27,7 @@ import BankGrid from "./BankGrid";
 export default function InventoryTab({ player, setPlayer, bank, setBank, pushToast, onChangeRace }) {
   const [openingChest, setOpeningChest] = useState(null); // {chest, phase, result}
   const [bulkChestResult, setBulkChestResult] = useState(null); // {items, failed} | null
-  const [subtab, setSubtab] = useState("equipped");
+  const [subtab, setSubtab] = useState("armor");
   const [selectedId, setSelectedId] = useState(null);
   const [bankPage, setBankPage] = useState(0);
   // Kuşanılmış bir slota dokununca artık direkt çıkarmıyor — kullanıcı
@@ -251,10 +251,6 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
 
   return (
     <div style={styles.panelScroll}>
-      <div style={{...styles.subtabRow,marginTop:0}}>
-        {[["equipped","Kuşanılmış"],["armor",`Çanta (${bagSlotsFilled})`],["bank","Depo"],["chests",`Sandık (${player.chests.length})`]].map(([key,label])=><button key={key} onClick={()=>{setSubtab(key);setSelectedId(null);setSelectedEquipSlot(null)}} style={{...styles.subtabBtn,...(subtab===key?styles.subtabBtnActive:{})}}>{label}</button>)}
-      </div>
-      {subtab === "equipped" && <>
       <SectionLabel>Kuşanılmış</SectionLabel>
       <Paperdoll
         player={player}
@@ -305,7 +301,18 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
       >
         <Wrench size={12} /> Kuşanılmışları Tamir Et
       </button>
-      </>}
+
+      <div style={styles.subtabRow}>
+        <button onClick={() => { setSubtab("armor"); setSelectedId(null); }} style={{ ...styles.subtabBtn, ...(subtab === "armor" ? styles.subtabBtnActive : {}) }}>
+          Çanta ({bagSlotsFilled}/{BAG_SLOTS})
+        </button>
+        <button onClick={() => { setSubtab("bank"); setSelectedId(null); }} style={{ ...styles.subtabBtn, ...(subtab === "bank" ? styles.subtabBtnActive : {}) }}>
+          Depo
+        </button>
+        <button onClick={() => { setSubtab("chests"); setSelectedId(null); }} style={{ ...styles.subtabBtn, ...(subtab === "chests" ? styles.subtabBtnActive : {}) }}>
+          Sandıklar ({player.chests.length})
+        </button>
+      </div>
 
       {subtab === "armor" && (
         <>
