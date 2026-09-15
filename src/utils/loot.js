@@ -236,9 +236,20 @@ export function buildStartingWeapon(cls) {
 // kilitli değil.
 export function rollLoot(tierId) {
   const r = Math.random();
-  if (r < 0.46) return rollWeapon(tierId, pick(Object.keys(CLASSES)));
-  if (r < 0.92) return rollArmor(tierId);
-  return rollAccessory(tierId);
+  const item = r < 0.46 ? rollWeapon(tierId, pick(Object.keys(CLASSES)))
+    : r < 0.92 ? rollArmor(tierId)
+    : rollAccessory(tierId);
+  if (item) return item;
+  // Kullanıcı isteği: "kutuların içinden boş item çıkmasın" — T6'da zırh ve
+  // aksesuar HİÇ yok (bkz. data/armorSets.js/accessories.js'in üstündeki
+  // notlar: gerçek KO verisinde bu kadar ileri zırh/takı tier'ı yok, T6
+  // sadece silahlarda "Eşsiz" olarak var), o yüzden seçilen kategori o
+  // tier'da boşsa diğerlerini aynı tier'da sırayla dene. Silah her tier'da
+  // dolu (audit: scripts/chest-audit.mjs), o yüzden T6'da bu her zaman bir
+  // silaha düşer — tasarımın zaten istediği şey. Hepsi boşsa (olmamalı) bir
+  // alt tier'a in, T1'in altına inilemez.
+  return rollWeapon(tierId, pick(Object.keys(CLASSES))) || rollArmor(tierId) || rollAccessory(tierId)
+    || (tierId > 1 ? rollLoot(tierId - 1) : null);
 }
 
 // Accessories are deliberately rare. T1/T2 also have a very small chance to
