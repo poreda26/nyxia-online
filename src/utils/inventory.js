@@ -221,6 +221,32 @@ export function depositToBank(player, item, bank, pageIndex) {
   return { player: { ...player, inventory }, bank: nextBank, moved: true };
 }
 
+// Standalone eşyayı (player.inventory'de HİÇ olmayan bir eşyayı, ör.
+// Pazar'daki deaktif bir ilanın eşyasını) doğrudan depoya koyar — herhangi
+// bir sayfada yer varsa oraya, yoksa başarısız olur. depositToBank'tan
+// farkı: bir player.inventory kaynağı gerektirmiyor, tüm sayfaları sırayla
+// dener (tek bir sayfaya sabit değil). Kullanıcı isteği: "Deaktif olan
+// pazardaki eşyaları satıcı kendisi alacak... bu şekilde envanterinde ya da
+// deposunda yer yoksa bir bug problem yaşanmayacak" — depo tamamen doluysa
+// bu sadece added:false döner, eşya ilan kaydında claim edilmemiş kalır,
+// hiçbir şey sessizce kaybolmaz.
+export function addItemToAnyBankPage(item, bank) {
+  if (item.stackable) {
+    const key = stackKeyOf(item);
+    for (let i = 0; i < bank.length; i++) {
+      const existingIdx = bank[i].findIndex((it) => it.stackable && stackKeyOf(it) === key);
+      if (existingIdx >= 0) {
+        const nextBank = bank.map((p, idx) => (idx !== i ? p : p.map((it, j) => (j === existingIdx ? { ...it, count: (it.count || 1) + (item.count || 1) } : it))));
+        return { bank: nextBank, added: true };
+      }
+    }
+  }
+  const pageIdx = bank.findIndex((p) => p.length < BANK_PAGE_SLOTS);
+  if (pageIdx === -1) return { bank, added: false, reason: "depo dolu." };
+  const nextBank = bank.map((p, idx) => (idx !== pageIdx ? p : [...p, item]));
+  return { bank: nextBank, added: true };
+}
+
 export function withdrawFromBank(player, item, bank, pageIndex) {
   const result = addItemToInventory(player, item);
   if (!result.added) return { player, bank, moved: false, reason: result.reason };

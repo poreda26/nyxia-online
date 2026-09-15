@@ -6,16 +6,13 @@ import { CHARACTER_SLOTS, THIRD_SLOT_COST_DIAMONDS, CHARACTER_DELETE_COST_DIAMON
 import { displayClassName } from "../utils/player";
 import { styles } from "../styles";
 
-export default function CharacterSelectScreen({ username, characters, unlockedSlots, onPlay, onCreate, onDelete, onUnlockSlot, onLogout }) {
+export default function CharacterSelectScreen({ username, characters, unlockedSlots, diamonds, onPlay, onCreate, onDelete, onUnlockSlot, onLogout }) {
   const [confirmingIdx, setConfirmingIdx] = useState(null);
   // Üç aşamalı silme onayı: "warn" (eşya/altın kaybı uyarısı) -> "final"
   // (son "emin misin" sorusu, artık elmas bedelini de gösterir) -> gerçek
   // silme. confirmingIdx null olunca ikisi de sıfırlanmış sayılır.
   const [confirmStep, setConfirmStep] = useState(null);
-  const [unlocking, setUnlocking] = useState(false);
-  const payerOptions = characters
-    .map((p, idx) => ({ p, idx }))
-    .filter(({ p }) => p && p.diamonds >= THIRD_SLOT_COST_DIAMONDS);
+  const canUnlock = diamonds >= THIRD_SLOT_COST_DIAMONDS;
 
   return (
     <div style={styles.classSelectRoot}>
@@ -31,43 +28,19 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
 
           if (idx >= unlockedSlots) {
             return (
-              <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ ...styles.slotCard, borderStyle: "dashed", opacity: 0.7 }}>
-                  <div style={styles.slotAvatar}>
-                    <Lock size={16} color="var(--text-faint)" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, color: "var(--text-faint)" }}>Kilitli Slot</div>
-                    <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{THIRD_SLOT_COST_DIAMONDS} Elmas</div>
-                  </div>
-                  <button style={styles.tinyBtn} onClick={() => setUnlocking((v) => !v)}>Aç</button>
+              <div key={idx} style={styles.slotCard}>
+                <div style={styles.slotAvatar}>
+                  <Lock size={16} color="var(--text-faint)" />
                 </div>
-
-                {unlocking && (
-                  <div style={{ ...styles.itemDetailCard, marginTop: 0 }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginBottom: 8 }}>
-                      Bu slotu açmak için mevcut karakterlerinden birinin {THIRD_SLOT_COST_DIAMONDS} elmasını harcaman gerekiyor. Hangi karakter ödesin?
-                    </div>
-                    {payerOptions.length === 0 ? (
-                      <div style={{ fontSize: 11, color: "#E8A5AF" }}>Hiçbir karakterinde yeterli elmas yok ({THIRD_SLOT_COST_DIAMONDS} gerekiyor).</div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {payerOptions.map(({ p: payer, idx: payerIdx }) => (
-                          <button
-                            key={payerIdx}
-                            style={{ ...styles.pickerRow, justifyContent: "space-between" }}
-                            onClick={() => { onUnlockSlot(payerIdx); setUnlocking(false); }}
-                          >
-                            <span>{payer.nickname || displayClassName(payer)}</span>
-                            <span style={{ display: "flex", alignItems: "center", gap: 3, color: "#8B6FC9", fontFamily: "var(--font-mono)" }}>
-                              <Gem size={11} /> {payer.diamonds}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>Kilitli Slot</div>
+                  <div style={{ fontSize: 9, color: canUnlock ? "#8B6FC9" : "var(--text-faint)", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 3 }}>
+                    <Gem size={9} /> {THIRD_SLOT_COST_DIAMONDS} Elmas — hesapta {diamonds}
                   </div>
-                )}
+                </div>
+                <button style={{ ...styles.tinyBtn, ...(canUnlock ? {} : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }) }} disabled={!canUnlock} onClick={onUnlockSlot}>
+                  Aç
+                </button>
               </div>
             );
           }
@@ -116,17 +89,17 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
               </div>
 
               {confirming && (() => {
-                const canAfford = p.diamonds >= CHARACTER_DELETE_COST_DIAMONDS;
+                const canAfford = diamonds >= CHARACTER_DELETE_COST_DIAMONDS;
                 return (
                   <div style={{ ...styles.itemDetailCard, marginTop: 0, borderColor: "#C9425A55", background: "#C9425A0d" }}>
                     <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6 }}>
                       {confirmStep === "warn"
-                        ? `Karakteri silersen üstündeki tüm eşyaları ve altını kaybedersin. Silme bedeli ${CHARACTER_DELETE_COST_DIAMONDS} elmas.`
+                        ? `Karakteri silersen üstündeki tüm eşyaları ve altını kaybedersin. Silme bedeli ${CHARACTER_DELETE_COST_DIAMONDS} elmas (hesaptan).`
                         : "Karakteri silmek istediğine kesinlikle emin misin? Bu işlem geri alınamaz."}
                     </div>
                     {confirmStep === "final" && !canAfford && (
                       <div style={{ fontSize: 11, color: "#E8A5AF", marginTop: 6 }}>
-                        Silmek için üzerinde en az {CHARACTER_DELETE_COST_DIAMONDS} elmas olmalı (şu an: {p.diamonds}).
+                        Silmek için hesapta en az {CHARACTER_DELETE_COST_DIAMONDS} elmas olmalı (şu an: {diamonds}).
                       </div>
                     )}
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>

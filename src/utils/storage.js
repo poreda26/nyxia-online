@@ -26,7 +26,7 @@ export const THIRD_SLOT_COST_DIAMONDS = 500;
 export const CHARACTER_DELETE_COST_DIAMONDS = 500;
 
 function emptyAccount() {
-  return { race: null, characters: Array(CHARACTER_SLOTS).fill(null), bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS };
+  return { race: null, characters: Array(CHARACTER_SLOTS).fill(null), bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS, diamonds: 0, bankGold: 0 };
 }
 
 function readAccounts() {
@@ -47,12 +47,23 @@ function writeAccounts(accounts) {
 // alma sistemi vardı — böyle bir hesabın zaten 3. slotta (index 2) bir
 // karakteri varsa (3 slot herkese açıkken oluşturulmuş) geriye dönük hakkı
 // elinden alınmaz, direkt 3 açık sayılır; yoksa yeni varsayılan olan 2'ye düşer.
+//
+// Kullanıcı isteği: "Elmaslar hesaba bağlı olacak. Karakter bazında
+// değişmeyecek." — elmas artık her karakterin kendi alanı değil, TEK bir
+// hesap havuzu (bkz. App.jsx'teki senkronizasyon). Bu değişiklikten önce
+// kaydedilmiş hesaplarda account.diamonds hiç yoktu, sadece her karakterin
+// KENDİ diamonds'ı vardı — bir seferlik geçiş olarak hepsi toplanıp havuza
+// aktarılıyor (hiçbir elmas kaybolmasın diye), sonrasında account.diamonds
+// gerçek kaynak oluyor.
 export function loadAccount(username) {
   const accounts = readAccounts();
   const account = accounts[username] || emptyAccount();
   const bank = (account.bank || Array.from({ length: BANK_PAGES }, () => [])).map(page=>page.map(rebalanceSavedWeapon));
   const unlockedSlots = account.unlockedSlots ?? (account.characters?.[2] ? CHARACTER_SLOTS : DEFAULT_UNLOCKED_SLOTS);
-  return { ...account, bank, unlockedSlots };
+  const diamonds = account.diamonds ?? (account.characters || []).reduce((sum, c) => sum + (c?.diamonds || 0), 0);
+  const bankGold = account.bankGold ?? 0;
+  const market = account.market || [];
+  return { ...account, bank, unlockedSlots, diamonds, bankGold, market };
 }
 
 // Race is chosen once per ACCOUNT, not per character — every character on
@@ -112,6 +123,42 @@ export function saveAccountUnlockedSlots(username, unlockedSlots) {
   const accounts = readAccounts();
   const account = accounts[username] || emptyAccount();
   accounts[username] = { ...account, unlockedSlots };
+  writeAccounts(accounts);
+}
+
+// Elmas artık karakter değil hesap alanı — bkz. loadAccount'un üstündeki not.
+export function saveAccountDiamonds(username, diamonds) {
+  const accounts = readAccounts();
+  const account = accounts[username] || emptyAccount();
+  accounts[username] = { ...account, diamonds };
+  writeAccounts(accounts);
+}
+
+// Depodaki ortak altın — kullanıcı isteği: "Altın depoya atılabilsin. Yan
+// karakterden altın alınabilir bu şekilde." Bank (Depo) zaten hesap
+// genelinde paylaşılıyordu (eşyalar için); bu aynı deponun içine bir de
+// paylaşılan altın yığını ekliyor.
+export function saveAccountBankGold(username, bankGold) {
+  const accounts = readAccounts();
+  const account = accounts[username] || emptyAccount();
+  accounts[username] = { ...account, bankGold };
+  writeAccounts(accounts);
+}
+
+// Oyuncu Pazarı'ndaki kendi ilanlarım — artık sayfa yenilenince sıfırlanan
+// bellek içi bir dizi değil, hesaba kalıcı kaydediliyor (bkz.
+// services/marketService.js). NPC'lerin sahte ilanları hâlâ kalıcı değil,
+// sadece gerçek (oyuncunun kendi) ilanları.
+export function loadMarketListings(username) {
+  const accounts = readAccounts();
+  const account = accounts[username] || emptyAccount();
+  return account.market || [];
+}
+
+export function saveMarketListings(username, listings) {
+  const accounts = readAccounts();
+  const account = accounts[username] || emptyAccount();
+  accounts[username] = { ...account, market: listings };
   writeAccounts(accounts);
 }
 

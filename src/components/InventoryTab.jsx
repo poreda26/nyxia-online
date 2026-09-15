@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, X, ListChecks, Coins } from "lucide-react";
+import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, ArrowDownToLine, X, ListChecks, Coins } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
@@ -24,10 +24,34 @@ import Paperdoll from "./Paperdoll";
 import BagGrid from "./BagGrid";
 import BankGrid from "./BankGrid";
 
-export default function InventoryTab({ player, setPlayer, bank, setBank, pushToast, onChangeRace }) {
+export default function InventoryTab({ player, setPlayer, bank, setBank, bankGold, setBankGold, pushToast, onChangeRace }) {
   const [openingChest, setOpeningChest] = useState(null); // {chest, phase, result}
   const [bulkChestResult, setBulkChestResult] = useState(null); // {items, failed} | null
   const [subtab, setSubtab] = useState("armor");
+  // Depodaki paylaşılan altın — kullanıcı isteği: "Altın depoya atılabilsin.
+  // Yan karakterden altın alınabilir bu şekilde." Depo (bank) zaten hesap
+  // genelinde paylaşılıyordu (eşyalar için), bu aynı deponun içine bir
+  // altın yığını ekliyor — herhangi bir karakter yatırabilir, herhangi bir
+  // karakter çekebilir.
+  const [goldAmount, setGoldAmount] = useState("");
+  const depositGold = () => {
+    const amount = parseInt(goldAmount, 10);
+    if (!Number.isFinite(amount) || amount <= 0) { pushToast("Geçerli bir miktar gir.", "warn"); return; }
+    if (player.gold < amount) { pushToast("Yeterli altının yok.", "warn"); return; }
+    setPlayer((p) => ({ ...p, gold: p.gold - amount }));
+    setBankGold((g) => g + amount);
+    pushToast(`${amount}g depoya yatırıldı.`, "default");
+    setGoldAmount("");
+  };
+  const withdrawGold = () => {
+    const amount = parseInt(goldAmount, 10);
+    if (!Number.isFinite(amount) || amount <= 0) { pushToast("Geçerli bir miktar gir.", "warn"); return; }
+    if (bankGold < amount) { pushToast("Depoda yeterli altın yok.", "warn"); return; }
+    setBankGold((g) => g - amount);
+    setPlayer((p) => ({ ...p, gold: p.gold + amount }));
+    pushToast(`${amount}g depodan çekildi.`, "default");
+    setGoldAmount("");
+  };
   const [selectedId, setSelectedId] = useState(null);
   const [bankPage, setBankPage] = useState(0);
   // Kuşanılmış bir slota dokununca artık direkt çıkarmıyor — kullanıcı
@@ -363,6 +387,28 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, pushToa
 
       {subtab === "bank" && (
         <>
+          <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <Coins size={16} color="#D4AF6A" strokeWidth={1.6} />
+            <div style={{ fontSize: 12 }}>
+              Depo Altını: <span style={{ fontFamily: "var(--font-mono)", color: "#D4AF6A" }}>{bankGold}g</span>
+            </div>
+            <div style={{ fontSize: 9, color: "var(--text-faint)", width: "100%" }}>
+              Hesaptaki tüm karakterler ortak — biri yatırır, diğeri çekebilir.
+            </div>
+            <input
+              type="number" min="1" placeholder="Miktar"
+              value={goldAmount}
+              onChange={(e) => setGoldAmount(e.target.value)}
+              style={{ ...styles.numInput, flex: 1, minWidth: 80 }}
+            />
+            <button style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={depositGold}>
+              <ArrowDownToLine size={11} /> Yatır
+            </button>
+            <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }} onClick={withdrawGold}>
+              <ArrowUpFromLine size={11} /> Çek
+            </button>
+          </div>
+
           <div style={styles.subtabRow}>
             {Array.from({ length: bank.length }, (_, i) => (
               <button

@@ -27,7 +27,7 @@ import TutorialModal from "./TutorialModal";
 import DailyLoginModal from "./DailyLoginModal";
 import ScheduledEventBanner from "./ScheduledEventBanner";
 
-export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pushToast, onChangeCharacter, onChangeRace }) {
+export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace }) {
   const cls = CLASSES[player.class];
   const { atk } = totalStats(player);
   const def = playerDef(player);
@@ -124,10 +124,10 @@ export default function Hub({ player, setPlayer, bank, setBank, tab, setTab, pus
           <BattleTab player={player} setPlayer={setPlayer} cls={cls} def={def} atk={atk} pushToast={pushToast} />
         )}
         {tab === "inventory" && (
-          <InventoryTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast} onChangeRace={onChangeRace} />
+          <InventoryTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} pushToast={pushToast} onChangeRace={onChangeRace} />
         )}
         {tab === "market" && (
-          <MarketTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast} />
+          <MarketTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} username={username} pushToast={pushToast} />
         )}
         {tab === "upgrade" && (
           <UpgradeTab player={player} setPlayer={setPlayer} pushToast={pushToast} />

@@ -4,8 +4,8 @@ import { applyWeeklyRollover } from "./utils/nationalPoint";
 import { uid } from "./utils/random";
 import {
   loadAccount, saveCharacterSlot, deleteCharacterSlot, saveAccountRace, changeAccountRace,
-  saveAccountBank, saveAccountUnlockedSlots, saveLastUsername, loadLastUsername,
-  CHARACTER_SLOTS, DEFAULT_UNLOCKED_SLOTS, THIRD_SLOT_COST_DIAMONDS,
+  saveAccountBank, saveAccountUnlockedSlots, saveAccountDiamonds, saveAccountBankGold, saveLastUsername, loadLastUsername,
+  CHARACTER_SLOTS, DEFAULT_UNLOCKED_SLOTS, THIRD_SLOT_COST_DIAMONDS, CHARACTER_DELETE_COST_DIAMONDS,
 } from "./utils/storage";
 import { styles } from "./styles";
 import GlobalStyle from "./components/GlobalStyle";
@@ -18,7 +18,7 @@ import Hub from "./components/Hub";
 export default function App() {
   const [screen, setScreen] = useState("login");
   const [username, setUsername] = useState("");
-  const [account, setAccount] = useState({ race: null, characters: [null, null, null], bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS });
+  const [account, setAccount] = useState({ race: null, characters: [null, null, null], bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS, diamonds: 0, bankGold: 0 });
   const [activeSlot, setActiveSlot] = useState(null);
   const [player, setPlayer] = useState(null);
   const [tab, setTab] = useState("battle");
@@ -40,10 +40,24 @@ export default function App() {
   // Every change to the active character is written straight back to its
   // slot — this is the game's only save mechanism (see utils/storage.js),
   // so skipping it would silently lose progress on refresh/close.
+  //
+  // Kullanıcı isteği: "Elmaslar hesaba bağlı olacak. Karakter bazında
+  // değişmeyecek." — player.diamonds hâlâ var (her yerde okunan/yazılan
+  // alan değişmedi, blast radius küçük kalsın diye), ama artık sadece
+  // AKTİF karakterin geçici bir yansıması: her değiştiğinde buradan
+  // account.diamonds'a (gerçek, paylaşılan kaynak) geri yazılıyor. Bir
+  // karakter oynanmaya başladığında (handlePlay/handleChooseClass) de aynı
+  // account.diamonds'tan senkronize ediliyor, yani hangi karakteri
+  // açarsan aç hep aynı havuzu görürsün.
   useEffect(() => {
     if (screen === "hub" && player && activeSlot !== null) {
       saveCharacterSlot(username, activeSlot, player);
+      if (player.diamonds !== account.diamonds) {
+        setAccount((a) => ({ ...a, diamonds: player.diamonds }));
+        saveAccountDiamonds(username, player.diamonds);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player, screen, activeSlot, username]);
 
   // Depo is account-wide (shared across all 3 character slots), so it saves
@@ -54,8 +68,20 @@ export default function App() {
     }
   }, [account.bank, screen, username]);
 
+  // Depodaki paylaşılan altın — kullanıcı isteği: "Altın depoya atılabilsin.
+  // Yan karakterden altın alınabilir bu şekilde." bank ile aynı desen.
+  useEffect(() => {
+    if (screen === "hub" && typeof account.bankGold === "number") {
+      saveAccountBankGold(username, account.bankGold);
+    }
+  }, [account.bankGold, screen, username]);
+
   const setBank = useCallback((updater) => {
     setAccount((a) => ({ ...a, bank: typeof updater === "function" ? updater(a.bank) : updater }));
+  }, []);
+
+  const setBankGold = useCallback((updater) => {
+    setAccount((a) => ({ ...a, bankGold: typeof updater === "function" ? updater(a.bankGold) : updater }));
   }, []);
 
   const handleLogin = (name) => {
@@ -80,7 +106,11 @@ export default function App() {
   };
 
   const handlePlay = (slotIndex) => {
-    const migrated = migratePlayer(account.characters[slotIndex]);
+    // Hangi karakteri oynarsak oynayalım, elmas her zaman hesabın paylaşılan
+    // havuzundan gelir — applyWeeklyRollover'dan ÖNCE senkronize ediliyor ki
+    // Savaş Alanı haftalık ödülü (varsa) doğru (güncel, paylaşılan) taban
+    // üzerine eklensin, karakterin üstünde kalmış eski/bayat değere değil.
+    const migrated = { ...migratePlayer(account.characters[slotIndex]), diamonds: account.diamonds };
     const { player: rolled, diamondsAwarded, rank } = applyWeeklyRollover(migrated);
     setPlayer(rolled);
     setActiveSlot(slotIndex);
@@ -97,7 +127,9 @@ export default function App() {
   };
 
   const handleChooseClass = (cls, nickname) => {
-    const p = initialPlayer(cls, account.race, nickname);
+    // Yeni karakter de hesabın paylaşılan elmas havuzunu miras alır — 0'dan
+    // başlamaz, aynı account.diamonds'ı görür (bkz. handlePlay'deki aynı not).
+    const p = { ...initialPlayer(cls, account.race, nickname), diamonds: account.diamonds };
     saveCharacterSlot(username, activeSlot, p);
     setAccount((a) => {
       const characters = [...a.characters];
@@ -109,30 +141,33 @@ export default function App() {
     setScreen("hub");
   };
 
+  // Silme bedeli artık hesabın paylaşılan elmas havuzundan düşüyor — eskiden
+  // "bedel, silinen karakterin üstündeki elmasla birlikte yok oluyor"
+  // örtük mantığı vardı (elmas karakter alanıydı), o mantık artık geçersiz
+  // (bkz. CharacterSelectScreen'in canAfford kontrolü, artık account.diamonds
+  // kullanıyor) — o yüzden burada AÇIKÇA düşülmesi gerekiyor, yoksa silme
+  // bedavaya gelirdi.
   const handleDelete = (slotIndex) => {
+    if (account.diamonds < CHARACTER_DELETE_COST_DIAMONDS) return;
+    const nextDiamonds = account.diamonds - CHARACTER_DELETE_COST_DIAMONDS;
     deleteCharacterSlot(username, slotIndex);
+    saveAccountDiamonds(username, nextDiamonds);
     setAccount((a) => {
       const characters = [...a.characters];
       characters[slotIndex] = null;
-      return { ...a, characters };
+      return { ...a, characters, diamonds: nextDiamonds };
     });
   };
 
-  // 3. karakter slotu — mevcut karakterlerden birinin ELMASIYLA açılıyor,
-  // hesap genelinde ayrı bir elmas havuzu olmadığı için (bkz. utils/storage.js
-  // #THIRD_SLOT_COST_DIAMONDS). payerSlotIndex CharacterSelectScreen'de
-  // seçilen, yeterli elması olan bir karakterin slotu.
-  const handleUnlockSlot = (payerSlotIndex) => {
-    const payer = account.characters[payerSlotIndex];
-    if (!payer || payer.diamonds < THIRD_SLOT_COST_DIAMONDS) return;
-    const paidPlayer = { ...payer, diamonds: payer.diamonds - THIRD_SLOT_COST_DIAMONDS };
-    saveCharacterSlot(username, payerSlotIndex, paidPlayer);
+  // 3. karakter slotu artık hesabın paylaşılan elmas havuzundan açılıyor —
+  // eskiden "hangi karakter ödesin" seçimi gerekiyordu (elmas karakter
+  // alanıydı), artık tek bir ortak bakiye olduğu için gerek kalmadı.
+  const handleUnlockSlot = () => {
+    if (account.diamonds < THIRD_SLOT_COST_DIAMONDS) return;
+    const nextDiamonds = account.diamonds - THIRD_SLOT_COST_DIAMONDS;
+    saveAccountDiamonds(username, nextDiamonds);
     saveAccountUnlockedSlots(username, CHARACTER_SLOTS);
-    setAccount((a) => {
-      const characters = [...a.characters];
-      characters[payerSlotIndex] = paidPlayer;
-      return { ...a, characters, unlockedSlots: CHARACTER_SLOTS };
-    });
+    setAccount((a) => ({ ...a, diamonds: nextDiamonds, unlockedSlots: CHARACTER_SLOTS }));
   };
 
   const handleLogout = () => {
@@ -166,6 +201,7 @@ export default function App() {
           username={username}
           characters={account.characters}
           unlockedSlots={account.unlockedSlots}
+          diamonds={account.diamonds}
           onPlay={handlePlay}
           onCreate={handleCreate}
           onDelete={handleDelete}
@@ -180,6 +216,9 @@ export default function App() {
           setPlayer={setPlayer}
           bank={account.bank}
           setBank={setBank}
+          bankGold={account.bankGold}
+          setBankGold={setBankGold}
+          username={username}
           tab={tab}
           setTab={setTab}
           pushToast={pushToast}

@@ -16,13 +16,18 @@ export default function ClassSelect({ onChoose }) {
   const [hovered, setHovered] = useState("warrior");
   const [nickname, setNickname] = useState("");
   const [nicknameError, setNicknameError] = useState(false);
+  // Kullanıcı isteği: "Sınıf seçiyorken doğrulama yap. Emin misin diye sor."
+  // Seçim kalıcı (sonradan değişmek için ayrı bir Job Değiştirme Kağıdı
+  // gerekiyor, bkz. MarketTab), o yüzden gerçek onChoose'a geçmeden önce
+  // hangi sınıfın onaylanmak üzere olduğunu tutan bu ekstra adım var.
+  const [confirming, setConfirming] = useState(null);
   const active = CLASSES[hovered];
   // Her yeni karakter için bir nickname artık zorunlu (kullanıcı isteği) —
   // eskiden "(opsiyonel)" olup boş bırakılabiliyordu, sınıf adına düşüyordu.
   const choose = (cls) => {
     const trimmed = nickname.trim();
     if (!trimmed) { setNicknameError(true); return; }
-    onChoose(cls, trimmed);
+    setConfirming(cls);
   };
   return (
     <div style={styles.classSelectRoot}>
@@ -80,6 +85,32 @@ export default function ClassSelect({ onChoose }) {
       >
         {active.name} olarak başla <ChevronRight size={16} />
       </button>
+
+      {confirming && (() => {
+        const c = CLASSES[confirming];
+        const Icon = c.icon;
+        return (
+          <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setConfirming(null)}>
+            <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+              <Icon size={32} color={c.color} strokeWidth={1.4} />
+              <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
+                {c.name} sınıfını seçmek istediğine emin misin?
+              </div>
+              <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)", textAlign: "center", maxWidth: 240 }}>
+                "{nickname.trim()}" adıyla bu sınıfta bir macera başlıyor.
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+                <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirming(null)}>
+                  Vazgeç
+                </button>
+                <button style={{ ...styles.tinyBtn, background: c.color, color: "#0B0C10" }} onClick={() => onChoose(confirming, nickname.trim())}>
+                  Evet, Başla
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
