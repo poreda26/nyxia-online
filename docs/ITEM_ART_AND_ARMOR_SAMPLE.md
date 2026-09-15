@@ -22,3 +22,11 @@ character-check.html tüm sınıf/ırk, beş zırh yuvası, T1–T5, silah ve up
 
 Kontroller: 30 dünya testi; 6 silah efekti testi; 4 zırh katalog/bağımsız yuva/regresyon testi. Tarayıcıda 150 tek parça takma-çıkarma; karışık tier zırhlarla bütün silah geçişleri; 128 silah/ırk geçişi; dört element +6/+7/+8 ve nefes animasyonu. audit-armor-appearance.mjs, 30 set görünümünü görsel kontrol için üretir.
 
+
+## +7 / +8 zırh ve Mage düzeltmesi
+
+Zırh ışığı her parçanın gerçek upgradeLevel ve katalog tier'ından okunur. +1–+6 ışık almaz; +7 yavaşça yanıp söner, +8 sürekli ışık ve kayan parıltı gösterir. T1–T5 yoğunluk/kenar/ışık yayılımı kademeli artar. Parçanın kendi silüet ve slot maskesi kullanılır; ellik ışığı tutuş katmanından sonra çizilir. Hareketi azalt tercihi desteklenir.
+
+Elementi olmayan Mage asalarına yalnızca görsel, açık mor büyü ışığı eklendi. Prismatic Triad Staff ve Ron's Staff'ın eksik çok-elementli görünüm bilgisi orijinal katalogdan okunur; üç renk sırayla yanar. Hasar ve kayıt verileri değişmez. Mage sap kesimleri artık el merkezlerinden zikzak çizmez: her silahın düz ekseni ve dip ucu ayrı tanımlıdır; Human/Karus satır farkları uygulanır. Uç başlığıyla sap kesimi üst üste gelerek kopuk birleşimi önler. Mevcut PNG tasarımları korunur.
+
+Kontrol: 30 dünya testi, 14 görünüm testi, tarayıcıda 90 tier/upgrade durumu ve iki ırkta 46 Mage silah efekti; silah çıkarma, 128 silah/ırk geçişi, kayıt değişmezliği ve hareketi azalt tercihi. Prova ekranındaki Zırh yükseltme seçicisinden +7/+8 denenebilir.

@@ -34,6 +34,17 @@ const mageHeads=[
  [[299,0,460,210],[264,0,447,213],null],
 ];
 const mageShafts=[[[64,537],[277,226]],[[40,557],[283,240]],[[60,534],[282,244]],[[61,517],[277,253]],[[88,544],[292,256]],[[95,517],[283,221]],[[111,496],[293,238]],[[105,497],[298,242]]];
+// Actual staff axes, measured per weapon rather than bent through generic hands.
+const mageStems=[
+ [[[59,549],[300,190]],[[61,549],[330,120]],[[62,550],[338,137]]],
+ [[[28,574],[338,137]],[[29,577],[333,161]],[[24,580],[334,168]]],
+ [[[44,550],[322,186]],[[43,547],[322,186]],[[35,553],[312,190]]],
+ [[[45,535],[342,160]],[[58,528],[307,214]],[[42,532],[320,197]]],
+ [[[113,521],[331,171]],[[93,538],[328,168]],[[73,550],[296,218]]],
+ [[[86,531],[316,173]],[[99,531],[299,168]],[[100,538],[310,178]]],
+ [[[114,497],[332,161]],[[107,503],[311,169]],[[146,503],[323,168]]],
+ [[[111,510],[337,166]],[[128,510],[321,169]],null],
+];
 const warriorButts=[[[78,453],[68,467],[70,466]],[[36,490],[35,479],[51,460]],[[181,365],[183,362],[181,373]],[[86,425],[92,437],[90,430]],[[87,438],[159,371],[180,352]],[[158,382],[174,369],[61,460]],[[78,440],null,null]];
 const polygon = points => 'M'+points.map(p=>p.join(',')).join('L')+'Z';
 export function bowEndpoints(appearance){
@@ -53,7 +64,7 @@ export function weaponGeometry(appearance){
  const {atlasKey,frameIndex,size,weaponName}=appearance;
  const col=frameIndex%3,row=Math.floor(frameIndex/3),sx=size[0]/1254,sy=size[1]/1254;
  const transform=`translate(${col*418*sx} ${row*627*sy}) scale(${sx} ${sy})`;
- let head='',shaft='',hands=[],spread=.75;
+ let head='',shaft='',hands=[],spread=.75,stem='',butt='';
  if(!weaponName)return {head,shaft,hands,transform,spread};
  if(atlasKey.startsWith('rogue')){
   const index=Number(atlasKey.split('-')[1]),key=`${index}:${col}`,bow=bows[key],cross=crossbows[key];
@@ -75,10 +86,14 @@ export function weaponGeometry(appearance){
  }else if(atlasKey.startsWith('mage')){
   const index=Number(atlasKey.split('-')[1]),box=mageHeads[index]?.[col];
   if(box){const [x0,y0,x1,y1]=box;head=polygon([[x0,y0],[x1,y0],[x1,y1],[x0,y1]]);}
-  const [start,end]=mageShafts[index]||mageShafts[0];
-  shaft=ribbon([start,end],6);
-  const dy=row&&index===1?-30:0;
-  hands=[[end[0],end[1]+dy,26,28],[index===4?221:index===6?230:208,(index===4?348:index===6?324:325)+dy,27,24]];
+  const dy=row?([0,-17,-18,0,-6,0,0,0][index]||0):0;
+  const measured=mageStems[index]?.[col]||mageShafts[index]||mageShafts[0];
+  const [start,end]=measured.map(([x,y])=>[x,y+dy]);
+  stem=`M${start}L${end}`;shaft=ribbon([start,end],6);
+  const dx=end[0]-start[0],vy=end[1]-start[1],len=Math.hypot(dx,vy);
+  butt=ribbon([start,[start[0]+dx/len*30,start[1]+vy/len*30],[start[0]+dx/len*65,start[1]+vy/len*65]],[4,30,12]);
+  const atY=y=>[start[0]+(y-start[1])*dx/vy,y];
+  hands=[[...atY(mageShafts[index][1][1]+dy),26,28],[...atY((index===4?348:index===6?324:325)+dy),27,24]];
   spread=.65;
  }else{
   const index=Number(atlasKey.split('-')[1]),scythe=atlasKey.includes('raptor');
@@ -91,5 +106,6 @@ export function weaponGeometry(appearance){
   const butt=scythe?[72,464]:warriorButts[index]?.[col];
   if(butt)shaft=ribbon([butt,[scythe?330:330,scythe?148:153]],6);
  }
- return {head,shaft,hands,transform,spread};
+ return {head,shaft,hands,transform,spread,stem,butt};
 }
+
