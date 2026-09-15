@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ShieldCheck, Gift, Crown, Skull, Flag, CalendarCheck, BookOpen, Trophy } from "lucide-react";
 import { MONSTER_QUESTS, AWAKENING_QUEST } from "../data/quests";
 import { questProgress, isQuestClaimed, claimQuest, awakeningProgress, claimAwakening } from "../utils/quests";
@@ -20,6 +21,12 @@ import BarTrack from "./shared/BarTrack";
 // player.monsterKills (see utils/quests.js). No accept/turn-in ceremony,
 // just "kill enough, then claim."
 export default function CaptainTab({ player, setPlayer, pushToast }) {
+  // Kullanıcı isteği: içerik (Haftalık Görev Zinciri, Canavar Kitabı)
+  // büyüyünce tek uzun kaydırma yorucu olmaya başladı — "önceki/sonraki"
+  // sayfalama yerine (bkz. ScreenPanel'in kaldırılan versiyonu) bunun
+  // yerine InventoryTab'daki gibi tıkla-geç sekmeler kuruldu, sayfalama
+  // DEĞİL: her sekme kendi içinde düz kaydırmalı kalıyor.
+  const [subtab, setSubtab] = useState("quests");
   const claim = (questId) => {
     const result = claimQuest(player, questId);
     if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
@@ -99,9 +106,18 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
         </p>
       </div>
 
+      <div style={styles.subtabRow}>
+        {[["quests", "Görevler"], ["daily", "Günlük"], ["weekly", "Haftalık"], ["book", "Canavar Kitabı"]].map(([key, label]) => (
+          <button key={key} onClick={() => setSubtab(key)} style={{ ...styles.subtabBtn, ...(subtab === key ? styles.subtabBtnActive : {}) }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Günlük görevler — kullanıcı isteği: her gün geri gelmek için somut
           bir sebep. Kaptan'ın kalıcı canavar-görevlerinden AYRI (bkz.
-          utils/dailyQuests.js), en üstte, ilk göze çarpan şey. */}
+          utils/dailyQuests.js). */}
+      {subtab === "daily" && (
       <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#5FA8A066", background: "#5FA8A00d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
           <CalendarCheck size={16} color="#5FA8A0" strokeWidth={1.6} />
@@ -137,7 +153,9 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
           })}
         </div>
       </div>
+      )}
 
+      {subtab === "weekly" && (
       <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#D4AF6A66", background: "#D4AF6A0d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
           <Trophy size={16} color="#D4AF6A" strokeWidth={1.6} />
@@ -159,7 +177,9 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
           })}
         </div>
       </div>
+      )}
 
+      {subtab === "book" && (
       <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#6FD1E066", background: "#6FD1E00d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
           <BookOpen size={16} color="#6FD1E0" strokeWidth={1.6} />
@@ -180,7 +200,10 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
           })}
         </div>
       </div>
+      )}
 
+      {subtab === "quests" && (
+      <>
       <div style={{ ...styles.itemDetailCard, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Flag size={16} color="#D4AF6A" strokeWidth={1.6} />
@@ -265,6 +288,8 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }
