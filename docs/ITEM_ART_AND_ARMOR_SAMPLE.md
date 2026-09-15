@@ -1,23 +1,24 @@
-# Eşya görselleri ve Chitin zırh provası
+# Karakter zırhları ve eşya görselleri
 
-61 silahın iki ırktaki 122 pozu gözden geçirildi. Envanterdeki ortak/piksel ikonlar ve eksik başlangıç resimleri yerine, eldeki silahların şekillerini referans alan 41 ayrı ikon hazırlandı. Kalan 20 özgün silahın mevcut resimleri korundu. İsim, hasar, gereksinim, upgrade, set bonusu ve kayıt verileri değişmedi.
+Human ve Karus için Warrior, Rogue, Mage sınıflarının T1–T5 zırh görünümleri hazırlandı: 15 set, iki ırkla 30 tam görünüm. Katalogdaki 75 eşyanın kask, göğüslük, pantolon, ellik ve bot yuvaları ayrı katmanlardan çizilir. Farklı tier parçaları birlikte kullanılabilir. Ana oyun ve Kuşanılmış önizlemesi aynı CharacterFigure bileşenini kullanır.
 
-Silah ikonları ItemIcon üzerinden ortak atlas görünümünü kullanır; eski itemImageFor fonksiyonunu tek başına çağırmak yeni atlasları içermez. Başlangıç kılıcı/asası eski adları aynı ikon hücresine gider. Tüm silahlarda +7/+8 efekt rengi mevcut elementten alınır; element yoksa sade gümüş yükseltme ışığı kullanılır. Bu yeni bir hasar elementi değildir. +1–+6'ya aura eklenmez.
+## Görünüm sistemi
 
-Görseller built-in image_gen ile üretildi; tam istemler item-armor-prompts.json içinde. PNG kaynakları src/assets/items/*weapons-v1.png ve src/assets/characters/weapons/warrior-4-chitin-sample.png. Kaynaklar değiştirilmeden saklanır; atlas hücreleri SVG ile gösterilir.
+- Zırhsız temel beden açık gövde, yıpranmış bez alt kıyafet ve sargılardan oluşur. Çıkarılan parça bu temel bedeni açar.
+- armorRig.js, sınıf + slot + gerçek katalog adı üzerinden görünüm tier'ını bulur. Hiçbir istatistik, gereksinim, set bonusu, eşya kimliği, upgrade veya kayıt değişmez.
+- Göğüslük/ellik bölgelerinin çakışması düzeltildi. Katmanların örtüştüğü her pikselin tek sahibi vardır; ellik göğüslüğün eksik bölümünü tamamlamaz.
+- Gövde zırhı ile eldeki silah ayrı katmanlardır. Sınıfın sabit beden pozu silahın ölçülmüş tutuş noktasına hizalanır; Rogue yay ve arbalet için ayrı kol pozları kullanır. Eldiven ve parmaklar silahın önüne çizilir.
+- +7/+8 element ışıkları mevcut silahın kendi bölgesini izler. Poison mor; flame turuncu; lightning ve ice farklı mavi/beyaz efektler kullanır. Elementi olmayan silahın ışığı yalnızca görseldir.
 
-## İlk zırh örneği
+## Kaynaklar
 
-Referans: kullanıcının Warrior T4 Chitin Armor görselleri; mavi çelik, altın griffin ve katmanlı plaka. Human ve Karus için Rusty Sword, Large Hacker, Weight Hammer pozları desteklenir. Beş parça ayrı ayrı gerçek equipped slotlarından seçilir; aynı isimde başka tier setler tetiklenmez. Katman önceliği eklemlerde göğüslüğün eksik eldiveni doldurmasını önler. Silah ve tutuş pikselleri orijinal kaynaktan korunur.
+Kullanıcının mevcut Warrior ve Rogue zırh resimleri referans alındı; eksik aileler ve Mage kıyafetleri sınıfın malzeme/renk ilerlemesine göre tasarlandı. Mevcut envanter ikonları korunur; bu çalışma karakter üstündeki zırh görünümünü tamamlar. Önceki silah aşamasında 41 silah ikonu yenilenmiş, kalan 20 özgün ikon korunmuştu.
 
-Bu bir onay provasıdır: character-check.html?armor=chitin artık zırhsız, bez kıyafetli bedenle açılır. Kuşan/Çıkar düğmeleri gerçek equipItem yordamını kullanan bellekteki karaktere etki eder; localStorage yazılmaz. Ortak CharacterFigure içinde armorPreview özelliğiyle etkinleşir. Ana oyundaki tüm zırhların görsel dönüşümü henüz etkinleştirilmemiştir. Diğer silah pozları ve sınıflar sonraki prova aşamasıdır; desteklenmeyen poz başka silah resmiyle değiştirilmez.
+PNG dosyaları src/assets/characters/weapons/*-armor-t*.png, warrior-4-chitin-sample.png ve *-cloth-base.png altında. Görseller yerleşik image_gen ile üretildi. İstemler armor-catalog-prompts.json ve önceki item-armor-prompts.json içinde; PNG pikselleri programla yeniden çizilmez. index-character-atlases.ps1, saydamlık/silüet maskelerini çıkarır.
 
-Projeye bağlı resim taraması: Rogue 25/25 zırh parçasında özel resim; Warrior 12/25 (T4/T5 ve T3 eldiven/bot); Mage 0/25. Diğer slotlar mevcut çizgi simgelerini kullanıyor. Bu, kullanıcının elindeki kaynakların eksik olduğu anlamına gelmez; yalnızca bu checkout içindeki eşleme durumudur. Sonraki zırh aşamasında kalan Warrior kaynakları bulunup bağlanmalı.
+## Prova ve doğrulama
 
-## Kontrol
+character-check.html tüm sınıf/ırk, beş zırh yuvası, T1–T5, silah ve upgrade seçimini destekler. Eski ?armor=chitin adresi de çalışır. Başlangıç zırhsızdır; Seti kuşan düğmesi seçilen seti giydirir. Gerçek equipItem yordamı bellekteki prova karakterine uygulanır; localStorage yazılmaz.
 
-30 dünya testi, 6 silah efekt testi, 2 zırh görünüm testi; 128 tarayıcı silah/ırk geçişi ve 30 ayrı zırh giyme/çıkarma kontrolü. 32 kısmi set kombinasyonu iki ırkta veri değişmezliğiyle doğrulanır. 148 envanter simgesi taraması; 6 sınıf/ırk silah panosu ve mobil zırh provası görsel olarak kontrol edilir. İksirler, takı ve yardımcı eşyaların mevcut görselleri korunur.
+Kontroller: 30 dünya testi; 6 silah efekti testi; 4 zırh katalog/bağımsız yuva/regresyon testi. Tarayıcıda 150 tek parça takma-çıkarma; karışık tier zırhlarla bütün silah geçişleri; 128 silah/ırk geçişi; dört element +6/+7/+8 ve nefes animasyonu. audit-armor-appearance.mjs, 30 set görünümünü görsel kontrol için üretir.
 
-## Bez kıyafetli temel beden
-
-Warrior prova atlasında iki ırkın gövdesi açık, alt bedeni yıpranmış bezle kapalı; el ve ayaklarda basit sargılar var. Metal zırh temel resimden kaldırıldı. Her çıkarılan parça bu temel bedeni gösterir. Kaynak: src/assets/characters/weapons/warrior-4-cloth-base.png (built-in image_gen). Bu aşama üç Warrior prova pozuyla sınırlıdır; ana oyunun bütün sınıf ve silah pozlarına henüz uygulanmadı. Yeni karakterlerin zırh yuvaları zaten boş olduğundan kayıt/başlangıç istatistikleri değiştirilmedi.

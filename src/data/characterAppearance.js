@@ -1,7 +1,7 @@
 import manifest from './characterWeaponManifest.json';
 import atlasFrames from './characterAtlasFrames.json';
 
-// Armor appearances will be registered here after the weapon pass is approved.
+// This registry selects the original weapon pose. armorRig supplies independent body/armor layers.
 // Equipment still owns every gameplay stat; this registry is presentation only.
 export const CHARACTER_LOOKS = {base:{manifest,frames:atlasFrames}};
 export const CHARACTER_IDENTITIES = Object.freeze(['human-warrior','karus-warrior','human-rogue','karus-rogue','human-mage','karus-mage']);
@@ -29,3 +29,4 @@ export function characterAppearance(player,looks=CHARACTER_LOOKS){
   weaponName:weapon?.name||null,supported,upgrade:weapon?.upgradeLevel||0,element:weapon?.element||null,
   key:`${race}-${cls}:${armorLook}:${atlasKey}:${frameIndex}:${weapon?.upgradeLevel||0}`};
 }
+

@@ -36,6 +36,13 @@ const mageHeads=[
 const mageShafts=[[[64,537],[277,226]],[[40,557],[283,240]],[[60,534],[282,244]],[[61,517],[277,253]],[[88,544],[292,256]],[[95,517],[283,221]],[[111,496],[293,238]],[[105,497],[298,242]]];
 const warriorButts=[[[78,453],[68,467],[70,466]],[[36,490],[35,479],[51,460]],[[181,365],[183,362],[181,373]],[[86,425],[92,437],[90,430]],[[87,438],[159,371],[180,352]],[[158,382],[174,369],[61,460]],[[78,440],null,null]];
 const polygon = points => 'M'+points.map(p=>p.join(',')).join('L')+'Z';
+export function bowEndpoints(appearance){
+ if(!appearance.atlasKey.startsWith('rogue'))return null;
+ const index=Number(appearance.atlasKey.split('-')[1]),col=appearance.frameIndex%3,row=Math.floor(appearance.frameIndex/3),bow=bows[`${index}:${col}`];
+ if(!bow)return null;
+ const dy=row&&(index===0||index===2||index===4)?-10:0;
+ return [bow[0][0],bow[1].at(-1)].map(([x,y])=>[x,y+dy]);
+}
 // Variable-width ribbons prevent broad rectangular selections from catching knees.
 function ribbon(points,widths){
  const left=[],right=[];
