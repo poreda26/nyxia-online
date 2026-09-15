@@ -1,6 +1,6 @@
 import { rand, uid } from "./random";
 import { rollMapLoot } from "./loot";
-import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp } from "./player";
+import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, clampGold, formatGold } from "./player";
 import { addItemToInventory } from "./inventory";
 import { premiumExpMultiplier, premiumDropMultiplier } from "./premium";
 import { clanExpMultiplier } from "./clan";
@@ -25,10 +25,17 @@ export function grantMonsterReward(p, m, map) {
   const goldGain = rand(m.goldMin, m.goldMax);
   const levelPenalty = xpLevelPenaltyMultiplier(p.level, map.levelMax);
   const xpGain = p.level >= MAX_LEVEL ? 0 : Math.round(m.xp * expMult * levelPenalty);
-  np.gold += goldGain;
+  // Kullanıcı isteği: "Karakterin üstünde en fazla 2.000.000.000 gold
+  // bulunabilir... bu paranın üstüne çıkmaya çalışıldığında sistem buna
+  // izin vermesin." — öldürme ödülü gibi otomatik akışlarda "hata" yerine
+  // sessizce tavanda tutuluyor (App.jsx'teki güvenlik ağıyla aynı tavan),
+  // gösterilen mesaj da gerçek kazancı yansıtsın diye clamp SONRASI fark alınıyor.
+  const goldBefore = np.gold;
+  np.gold = clampGold(np.gold + goldGain);
+  const actualGoldGain = np.gold - goldBefore;
   np.xp += xpGain;
 
-  let drops = [`+${goldGain} altın`];
+  let drops = actualGoldGain > 0 ? [`+${formatGold(actualGoldGain)} altın`] : [];
   if (xpGain > 0) drops.push(`+${xpGain} XP`);
 
   const relatedQuest = MONSTER_QUESTS.find((q) => q.monsterId === m.id);

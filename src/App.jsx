@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { initialPlayer, migratePlayer, BANK_PAGES } from "./utils/player";
+import { initialPlayer, migratePlayer, BANK_PAGES, MAX_GOLD, formatGold } from "./utils/player";
 import { applyWeeklyRollover } from "./utils/nationalPoint";
 import { uid } from "./utils/random";
 import {
@@ -49,8 +49,21 @@ export default function App() {
   // karakter oynanmaya başladığında (handlePlay/handleChooseClass) de aynı
   // account.diamonds'tan senkronize ediliyor, yani hangi karakteri
   // açarsan aç hep aynı havuzu görürsün.
+  // Kullanıcı isteği: "Karakterin üstünde en fazla 2.000.000.000 gold
+  // bulunabilir... bu paranın üstüne çıkmaya çalışıldığında sistem buna
+  // izin vermesin." — asıl bloklama InventoryTab'ın Yatır/Çek'inde ve GM
+  // /altın komutunda anında olur (bkz. o dosyalar), ama gold'un ARTABİLECEĞİ
+  // her yol (canavar öldürme, sandık, Pazar satışı, GM komutları...) buraya
+  // kadar sonunda player state'i değiştirdiği için, burası son bir güvenlik
+  // ağı: tavanı aşan HERHANGİ bir yoldan gelen artış burada yakalanıp
+  // kırpılıyor ve kullanıcıya haber veriliyor.
   useEffect(() => {
     if (screen === "hub" && player && activeSlot !== null) {
+      if (player.gold > MAX_GOLD) {
+        setPlayer((p) => ({ ...p, gold: MAX_GOLD }));
+        pushToast(`Karakterde en fazla ${formatGold(MAX_GOLD)} altın bulunabilir — fazlası silindi.`, "warn");
+        return;
+      }
       saveCharacterSlot(username, activeSlot, player);
       if (player.diamonds !== account.diamonds) {
         setAccount((a) => ({ ...a, diamonds: player.diamonds }));
@@ -69,11 +82,19 @@ export default function App() {
   }, [account.bank, screen, username]);
 
   // Depodaki paylaşılan altın — kullanıcı isteği: "Altın depoya atılabilsin.
-  // Yan karakterden altın alınabilir bu şekilde." bank ile aynı desen.
+  // Yan karakterden altın alınabilir bu şekilde." bank ile aynı desen. Aynı
+  // tavan güvenlik ağı player.gold ile aynı mantıkla burada da var (bkz.
+  // yukarıdaki not).
   useEffect(() => {
     if (screen === "hub" && typeof account.bankGold === "number") {
+      if (account.bankGold > MAX_GOLD) {
+        setAccount((a) => ({ ...a, bankGold: MAX_GOLD }));
+        pushToast(`Depoda en fazla ${formatGold(MAX_GOLD)} altın bulunabilir — fazlası silindi.`, "warn");
+        return;
+      }
       saveAccountBankGold(username, account.bankGold);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account.bankGold, screen, username]);
 
   const setBank = useCallback((updater) => {

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award } from "lucide-react";
 import { STAT_KEYS, STAT_FULL_LABELS, STAT_COLORS, STAT_CAP } from "../data/stats";
 import { RACES } from "../data/races";
-import { allocateStat, displayClassName, respecCost, canRespecStats, respecStats } from "../utils/player";
+import { allocateStat, displayClassName, respecCost, canRespecStats, respecStats, formatGold } from "../utils/player";
 import { activePremiumTier, premiumDaysLeft } from "../utils/premium";
 import { classSkills, isKnown, canUnlockSkill, unlockSkill, setLoadoutSlot, describeEffect } from "../utils/skills";
 import { MAX_LOADOUT_SLOTS } from "../data/skills";
@@ -117,7 +117,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         <StatBlock label="Defans (DEF)" value={def} color="#4FC3D9" />
         <StatBlock label="Can (HP)" value={maxHp} color="#5FA8A0" />
         <StatBlock label="Kritik" value={`${Math.round(cls.crit * 100)}%`} color="#8B6FC9" />
-        <StatBlock label="Altın" value={player.gold} color="#D4AF6A" />
+        <StatBlock label="Altın" value={formatGold(player.gold)} color="#D4AF6A" />
         <StatBlock label="Elmas" value={player.diamonds} color="#8B6FC9" />
       </div>
 
@@ -174,7 +174,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
             style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginTop: 12 }}
             onClick={() => setConfirmingRespec(true)}
           >
-            <RotateCcw size={12} /> Statüleri Sıfırla ({respecCost(player)}g)
+            <RotateCcw size={12} /> Statüleri Sıfırla ({formatGold(respecCost(player))}g)
           </button>
         </>
       )}
@@ -288,7 +288,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <RotateCcw size={28} color="#8B6FC9" strokeWidth={1.4} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-              Tüm dağıtılmış statü puanların geri alınıp yeniden dağıtman için serbest bırakılacak. Bunun için <b>{respecCost(player)} altın</b> gerekiyor. Emin misin?
+              Tüm dağıtılmış statü puanların geri alınıp yeniden dağıtman için serbest bırakılacak. Bunun için <b>{formatGold(respecCost(player))} altın</b> gerekiyor. Emin misin?
             </div>
             {!respecCheck.ok && (
               <div style={{ marginTop: 8, fontSize: 11, color: "#E8A5AF", textAlign: "center" }}>{respecCheck.reason}</div>

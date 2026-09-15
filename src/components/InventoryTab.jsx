@@ -6,7 +6,7 @@ import { CLASSES } from "../data/classes";
 import { rollLoot, rollSpecialChestLoot } from "../utils/loot";
 import {
   equipItem, sellPrice, displayItemName, clampPlayerHp, discountedRepairCost, repairItem, canChangeJob, changeJob,
-  totalEquippedRepairCost, repairAllEquipped,
+  totalEquippedRepairCost, repairAllEquipped, MAX_GOLD, formatGold,
 } from "../utils/player";
 import { isConsumable } from "../utils/itemDisplay";
 import { newlyUnlocked } from "../utils/achievements";
@@ -34,22 +34,30 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
   // altın yığını ekliyor — herhangi bir karakter yatırabilir, herhangi bir
   // karakter çekebilir.
   const [goldAmount, setGoldAmount] = useState("");
+  // Kullanıcı isteği: "Depo'da en fazla 2.000.000.000 gold bulunabilir...
+  // bu paranın üstüne çıkmaya çalışıldığında sistem buna izin vermesin.
+  // Hata versin." — App.jsx'teki güvenlik ağı tavanı her koşulda kırpar,
+  // ama burası doğrudan kullanıcı eylemi olduğu için ÖNCEDEN net bir
+  // hatayla engelliyor, sessizce kırpılıp yatırdığı miktarın bir kısmını
+  // kaybetmiş gibi hissetmesin.
   const depositGold = () => {
     const amount = parseInt(goldAmount, 10);
     if (!Number.isFinite(amount) || amount <= 0) { pushToast("Geçerli bir miktar gir.", "warn"); return; }
     if (player.gold < amount) { pushToast("Yeterli altının yok.", "warn"); return; }
+    if (bankGold + amount > MAX_GOLD) { pushToast(`Depoda en fazla ${formatGold(MAX_GOLD)} altın bulunabilir — bu kadarı sığmaz.`, "warn"); return; }
     setPlayer((p) => ({ ...p, gold: p.gold - amount }));
     setBankGold((g) => g + amount);
-    pushToast(`${amount}g depoya yatırıldı.`, "default");
+    pushToast(`${formatGold(amount)}g depoya yatırıldı.`, "default");
     setGoldAmount("");
   };
   const withdrawGold = () => {
     const amount = parseInt(goldAmount, 10);
     if (!Number.isFinite(amount) || amount <= 0) { pushToast("Geçerli bir miktar gir.", "warn"); return; }
     if (bankGold < amount) { pushToast("Depoda yeterli altın yok.", "warn"); return; }
+    if (player.gold + amount > MAX_GOLD) { pushToast(`Üstünde en fazla ${formatGold(MAX_GOLD)} altın bulunabilir — bu kadarı sığmaz.`, "warn"); return; }
     setBankGold((g) => g - amount);
     setPlayer((p) => ({ ...p, gold: p.gold + amount }));
-    pushToast(`${amount}g depodan çekildi.`, "default");
+    pushToast(`${formatGold(amount)}g depodan çekildi.`, "default");
     setGoldAmount("");
   };
   const [selectedId, setSelectedId] = useState(null);
@@ -111,7 +119,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     const total = sellable.reduce((sum, i) => sum + Math.round(sellPrice(i) * premiumSellMultiplier(player)), 0);
     const soldIds = new Set(sellable.map((i) => i.id));
     setPlayer((p) => ({ ...p, gold: p.gold + total, inventory: p.inventory.filter((i) => !soldIds.has(i.id)) }));
-    pushToast(`${sellable.length} eşya satıldı: +${total} altın`, "loot");
+    pushToast(`${sellable.length} eşya satıldı: +${formatGold(total)} altın`, "loot");
     setBulkSelected(new Set());
     setBulkMode(false);
   };
@@ -137,7 +145,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
   const sellItem = (item) => {
     const price = Math.round(sellPrice(item) * premiumSellMultiplier(player));
     setPlayer((p) => ({ ...p, gold: p.gold + price, inventory: p.inventory.filter((i) => i.id !== item.id) }));
-    pushToast(`Satıldı: +${price} altın`, "loot");
+    pushToast(`Satıldı: +${formatGold(price)} altın`, "loot");
     setSelectedId(null);
   };
 
@@ -146,7 +154,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     if (!result.repaired) { pushToast(result.reason || "Tamir edilemedi.", "warn"); return; }
     setPlayer(result.player);
     if (result.bank) setBank(result.bank);
-    pushToast(`Tamir edildi: -${result.cost} altın`, "default");
+    pushToast(`Tamir edildi: -${formatGold(result.cost)} altın`, "default");
   };
 
   const depositItem = (item) => {
@@ -267,7 +275,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     const result = repairAllEquipped(player, premiumRepairDiscount(player));
     if (!result.repaired) { pushToast(result.reason || "Tamir edilecek bir şey yok.", "warn"); return; }
     setPlayer(result.player);
-    pushToast(`Tüm kuşanılmış eşyalar tamir edildi: -${result.cost} altın`, "default");
+    pushToast(`Tüm kuşanılmış eşyalar tamir edildi: -${formatGold(result.cost)} altın`, "default");
   };
 
   const cls = CLASSES[player.class];
@@ -313,7 +321,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
           repairItem zaten kuşanılı eşyayı yerinde yamıyordu, eksik olan
           sadece çıkarmadan ulaşan bir yoldu. */}
       <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>
-        Kuşanılı eşyaların toplam tamir ücreti: {totalRepairAll}g
+        Kuşanılı eşyaların toplam tamir ücreti: {formatGold(totalRepairAll)}g
       </div>
       <button
         style={{
@@ -390,7 +398,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
           <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <Coins size={16} color="#D4AF6A" strokeWidth={1.6} />
             <div style={{ fontSize: 12 }}>
-              Depo Altını: <span style={{ fontFamily: "var(--font-mono)", color: "#D4AF6A" }}>{bankGold}g</span>
+              Depo Altını: <span style={{ fontFamily: "var(--font-mono)", color: "#D4AF6A" }}>{formatGold(bankGold)}g</span>
             </div>
             <div style={{ fontSize: 9, color: "var(--text-faint)", width: "100%" }}>
               Hesaptaki tüm karakterler ortak — biri yatırır, diğeri çekebilir.
@@ -478,7 +486,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                   </button>
                   {repairAmount > 0 && (
                     <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
-                      <Wrench size={11} /> Tamir ({repairAmount}g)
+                      <Wrench size={11} /> Tamir ({formatGold(repairAmount)}g)
                     </button>
                   )}
                 </>
@@ -541,7 +549,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                   )}
                   {repairAmount > 0 && (
                     <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
-                      <Wrench size={11} /> Tamir ({repairAmount}g)
+                      <Wrench size={11} /> Tamir ({formatGold(repairAmount)}g)
                     </button>
                   )}
                   {/* Kullanıcının bildirdiği bug: bu buton eskiden
@@ -557,7 +565,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                   </button>
                   {!isConsumable(selectedItem) && !selectedItem.noTrade && (
                     <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => sellItem(selectedItem)}>
-                      Sat ({Math.round(sellPrice(selectedItem) * premiumSellMultiplier(player))}g)
+                      Sat ({formatGold(Math.round(sellPrice(selectedItem) * premiumSellMultiplier(player)))}g)
                     </button>
                   )}
                 </>

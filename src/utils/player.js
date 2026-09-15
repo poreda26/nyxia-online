@@ -15,6 +15,19 @@ import {rebalanceSavedWeapon} from '../data/balancedWeapons';
 // realistic hours to hit MAX_LEVEL, versus ~15-25 before.
 export function xpToNext(level) { return Math.round(90 * Math.pow(level, 1.62)); }
 
+// Kullanıcı isteği: "Karakterin üstünde en fazla 2.000.000.000 gold
+// bulunabilir. Depo'da en fazla 2.000.000.000 gold bulunabilir." — hem
+// player.gold hem account.bankGold için AYNI tavan (bkz. App.jsx'teki
+// clamp noktaları, InventoryTab'ın Yatır/Çek kontrolleri).
+export const MAX_GOLD = 2_000_000_000;
+export function clampGold(amount) { return Math.max(0, Math.min(MAX_GOLD, Math.round(amount))); }
+
+// Kullanıcı isteği: "para birimimizde 3 sıfırda bir '.' atılsın. 100.000.000
+// gibi." — tr-TR locale'i zaten binlik ayıracı olarak nokta kullanıyor
+// (WorldTab'da bir yerde önceden de bu şekilde kullanılmıştı), burada tek
+// bir yerden garanti altına alınıyor ki her ekran aynı biçimi kullansın.
+export function formatGold(amount) { return Math.round(amount).toLocaleString("tr-TR"); }
+
 // KO'nun AIServer/User.cpp:347-397'deki seviye-farkı XP kademeleri —
 // yüksek seviyeli bir karakterin çok düşük seviyeli haritada avlanıp
 // tam XP almasını engeller. Referans "canavar seviyesi" olarak haritanın

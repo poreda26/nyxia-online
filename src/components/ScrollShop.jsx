@@ -3,6 +3,7 @@ import { GEAR_TIERS } from "../data/tiers";
 import { itemTierColor } from "../data/itemRarity";
 import { scrollPrice } from "../utils/upgrade";
 import { addItemToInventory, makeScrollStack, makeAccessoryScrollStack } from "../utils/inventory";
+import { formatGold } from "../utils/player";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 
@@ -42,7 +43,7 @@ export default function ScrollShop({ player, setPlayer, pushToast }) {
             <ScrollText size={14} color={itemTierColor(tierId)} strokeWidth={1.6} />
             <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: itemTierColor(tierId), marginTop: 3 }}>T{tierId}</div>
             <button style={{ ...styles.tinyBtn, ...styles.scrollBuyBtn, background: "#D4AF6A", color: "#15171E" }} onClick={() => buyScroll(tierId)}>
-              {scrollPrice(tierId)}g
+              {formatGold(scrollPrice(tierId))}g
             </button>
           </div>
         ))}
@@ -50,7 +51,7 @@ export default function ScrollShop({ player, setPlayer, pushToast }) {
           <ScrollText size={14} color="#5FA8A0" strokeWidth={1.6} />
           <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "#5FA8A0", marginTop: 3 }}>Takı</div>
           <button style={{ ...styles.tinyBtn, ...styles.scrollBuyBtn, background: "#5FA8A0", color: "#15171E" }} onClick={buyAccessoryScroll}>
-            {ACCESSORY_SCROLL_PRICE}g
+            {formatGold(ACCESSORY_SCROLL_PRICE)}g
           </button>
         </div>
       </div>

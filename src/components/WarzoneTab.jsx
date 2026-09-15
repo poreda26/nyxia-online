@@ -12,7 +12,7 @@ import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointCo
 import { leaderboardFor } from "../utils/leaderboard";
 import { rollLoot } from "../utils/loot";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
-import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty, armorSetDamageReduction } from "../utils/player";
+import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty, armorSetDamageReduction, clampGold, formatGold } from "../utils/player";
 import { premiumNpLossReduction } from "../utils/premium";
 import { mitigate, MONSTER_DEF_K, rollHit } from "../utils/combat";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
@@ -232,7 +232,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         <EmptyState
           icon={DoorOpen}
           title="Savaş Alanı'na ışınlan"
-          subtitle={`Işınlanma ücreti: ${WARZONE_TELEPORT_COST} altın. Şu an ${player.gold} altının var.`}
+          subtitle={`Işınlanma ücreti: ${formatGold(WARZONE_TELEPORT_COST)} altın. Şu an ${formatGold(player.gold)} altının var.`}
         />
         <button
           style={{ ...styles.primaryBtn, width: "100%", marginTop: 4, background: "#C9425A", opacity: canAfford ? 1 : 0.5 }}
@@ -247,7 +247,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
             <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
               <DoorOpen size={28} color="#C9425A" strokeWidth={1.4} />
               <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-                Savaş Alanı'na ışınlanmak {WARZONE_TELEPORT_COST} altın tutar. Onaylıyor musun?
+                Savaş Alanı'na ışınlanmak {formatGold(WARZONE_TELEPORT_COST)} altın tutar. Onaylıyor musun?
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
                 <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingEntry(false)}>Hayır</button>
@@ -255,7 +255,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
                   style={{ ...styles.tinyBtn, background: "#C9425A" }}
                   onClick={() => {
                     setPlayer((p) => ({ ...p, gold: p.gold - WARZONE_TELEPORT_COST }));
-                    pushToast(`Savaş Alanı'na ışınlandın. (-${WARZONE_TELEPORT_COST} altın)`, "default");
+                    pushToast(`Savaş Alanı'na ışınlandın. (-${formatGold(WARZONE_TELEPORT_COST)} altın)`, "default");
                     setEntered(true);
                     setConfirmingEntry(false);
                   }}
@@ -343,8 +343,9 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     setPlayer((p) => {
       let np = { ...p, inventory: [...p.inventory], chests: [...p.chests] };
       const goldGain = rand(WORLD_BOSS.bonusGoldMin, WORLD_BOSS.bonusGoldMax);
-      np.gold += goldGain;
-      drops = [`+${goldGain} altın`];
+      const goldBefore = np.gold;
+      np.gold = clampGold(np.gold + goldGain);
+      drops = [`+${formatGold(np.gold - goldBefore)} altın`];
       if (Math.random() < WORLD_BOSS.equipDropChance) {
         const item = rollLoot(WORLD_BOSS.lootTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz

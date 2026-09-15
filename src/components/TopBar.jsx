@@ -1,5 +1,5 @@
 import { Coins, Crown, Gift } from "lucide-react";
-import { xpToNext, MAX_LEVEL } from "../utils/player";
+import { xpToNext, MAX_LEVEL, formatGold } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { activeTitleInfo } from "../utils/achievements";
 import { styles } from "../styles";
@@ -43,7 +43,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
         </div>
         <div style={styles.goldChip}>
           <Coins size={13} color="#D4AF6A" />
-          <span style={{ fontFamily: "var(--font-mono)" }}>{player.gold}</span>
+          <span style={{ fontFamily: "var(--font-mono)" }}>{formatGold(player.gold)}</span>
         </div>
         {onOpenDailyLogin && (
           <button

@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Gift, X, CheckCircle2 } from "lucide-react";
 import { DAILY_LOGIN_REWARDS } from "../data/dailySystems";
 import { previewDailyLoginReward, claimDailyLogin } from "../utils/dailyLogin";
+import { formatGold } from "../utils/player";
 import { styles } from "../styles";
 
 function RewardLine({ reward }) {
   const parts = [];
-  if (reward.gold) parts.push(`${reward.gold} altın`);
+  if (reward.gold) parts.push(`${formatGold(reward.gold)} altın`);
   if (reward.diamonds) parts.push(`${reward.diamonds} elmas`);
   if (reward.scrollCount) parts.push(`${reward.scrollCount}x T1 Parşömen`);
   if (reward.chestTier) parts.push("Sandık");

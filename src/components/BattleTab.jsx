@@ -7,7 +7,7 @@ import { buildSoloDungeonStages, buildDungeonStageChoices, SOLO_DUNGEON_DAILY_LI
 import { buildMapBoss } from "../data/mapBosses";
 import { canFightMapBoss } from "../utils/mapBoss";
 import { rand, uid } from "../utils/random";
-import { playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS } from "../utils/player";
+import { playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS, clampGold, formatGold } from "../utils/player";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { hasAutoBattleAccess } from "../utils/premium";
@@ -229,13 +229,16 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const grantDungeonCompletionReward = (boss) => {
     const bonusGold = rand(boss.goldMin, boss.goldMax) * 2;
     let toastMsg = "";
+    let actualGold = bonusGold;
     setPlayer((p) => {
       const chest = { id: uid(), tier: map.tier };
-      toastMsg = `Zindan tamamlandı! ${boss.name} yenildi. +${bonusGold} altın, T${map.tier} Sandık kazandın.`;
-      return { ...p, gold: p.gold + bonusGold, chests: [...p.chests, chest] };
+      const nextGold = clampGold(p.gold + bonusGold);
+      actualGold = nextGold - p.gold;
+      toastMsg = `Zindan tamamlandı! ${boss.name} yenildi. +${formatGold(actualGold)} altın, T${map.tier} Sandık kazandın.`;
+      return { ...p, gold: nextGold, chests: [...p.chests, chest] };
     });
     pushToast(toastMsg, "level");
-    setDungeonComplete({ mapName: map.name, bonusGold, chestTier: map.tier });
+    setDungeonComplete({ mapName: map.name, bonusGold: actualGold, chestTier: map.tier });
   };
 
   // Shared tail-end for both attack() and useSkill(): the monster's counter
@@ -873,7 +876,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <Castle size={32} color="#A34FD9" strokeWidth={1.3} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>Zindan Tamamlandı!</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 240 }}>
-              {dungeonComplete.mapName} Zindan Efendisi'ni yendin — +{dungeonComplete.bonusGold} altın ve T{dungeonComplete.chestTier} Sandık kazandın.
+              {dungeonComplete.mapName} Zindan Efendisi'ni yendin — +{formatGold(dungeonComplete.bonusGold)} altın ve T{dungeonComplete.chestTier} Sandık kazandın.
             </div>
             <button style={{ ...styles.tinyBtn, background: "#A34FD9", marginTop: 20 }} onClick={() => setDungeonComplete(null)}>
               Harika!

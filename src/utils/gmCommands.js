@@ -7,7 +7,7 @@ import { PREMIUM_TIERS } from "../data/premium";
 import { classSkills, isKnown, learnFreeSkills } from "./skills";
 import { claimAwakening } from "./quests";
 import { AWAKENING_QUEST } from "../data/quests";
-import { MAX_LEVEL, xpToNext, playerMaxHp, playerMaxMp } from "./player";
+import { MAX_LEVEL, xpToNext, playerMaxHp, playerMaxMp, MAX_GOLD, clampGold, formatGold } from "./player";
 import { uid } from "./random";
 
 // Only messages starting with "/" are candidate GM codes — everything else
@@ -54,7 +54,18 @@ export function executeGmCommand(player, cmd, args, bank) {
     case "altin":
     case "altın": {
       const amount = Math.max(1, parseInt(args[0], 10) || 100);
-      return { player: { ...player, gold: player.gold + amount }, bank, resultText: `+${amount} altın verildi.` };
+      // Kullanıcı isteği: "Karakterin üstünde en fazla 2.000.000.000 gold
+      // bulunabilir... bu paranın üstüne çıkmaya çalışıldığında sistem buna
+      // izin vermesin. Hata versin." — GM komutu bile bu tavanı aşamaz.
+      if (player.gold >= MAX_GOLD) return { player, bank, resultText: `Zaten tavanda (${formatGold(MAX_GOLD)} altın) — daha fazlası eklenemez.` };
+      const nextGold = clampGold(player.gold + amount);
+      const actual = nextGold - player.gold;
+      return {
+        player: { ...player, gold: nextGold }, bank,
+        resultText: actual < amount
+          ? `+${formatGold(actual)} altın verildi (tavana ulaşıldı, ${formatGold(MAX_GOLD)} altın sınırı aşılamaz).`
+          : `+${formatGold(actual)} altın verildi.`,
+      };
     }
     case "elmas": {
       const amount = Math.max(1, parseInt(args[0], 10) || 100);

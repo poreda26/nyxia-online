@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, ShoppingBag, AlertTriangle, ChevronDown, ChevronUp, Package2 } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
-import { displayItemName } from "../utils/player";
+import { displayItemName, formatGold } from "../utils/player";
 import { itemStatLabel } from "../utils/itemDisplay";
 import { addItemToInventory, addItemToAnyBankPage, makePotionStack, makeRaceScroll, makeJobScroll, makeBonusScrollStack } from "../utils/inventory";
 import { HP_POTION_TIERS, MP_POTION_TIERS, potionName, potionPrice } from "../data/potions";
@@ -92,7 +92,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     const sold = await marketService.resolveMyStall(username);
     if (sold.length > 0) {
       setBankGold((g) => g + sold.reduce((sum, entry) => sum + entry.price, 0));
-      sold.forEach((entry) => pushToast(`Pazarından satıldı: ${entry.item.name} → +${entry.price} altın (Depoya eklendi)`, "loot"));
+      sold.forEach((entry) => pushToast(`Pazarından satıldı: ${entry.item.name} → +${formatGold(entry.price)} altın (Depoya eklendi)`, "loot"));
     }
     const fresh = await marketService.fetchMarket(username);
     setMyStall(fresh.myStall);
@@ -163,7 +163,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     const result = addItemToInventory({ ...player, gold: player.gold - price }, makePotionStack(potionType, tier, amount));
     if (!result.added) { pushToast(`Satın alınamadı — ${result.reason}`, "warn"); return; }
     setPlayer(result.player);
-    pushToast(`${potionName(potionType, tier)} x${amount} satın alındı (-${price}g).`, "loot");
+    pushToast(`${potionName(potionType, tier)} x${amount} satın alındı (-${formatGold(price)}g).`, "loot");
   };
 
   // ---- Kendi tezgahım (Pazarım) ----
@@ -175,7 +175,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     if (!result.ok) { pushToast(result.reason || "Pazar açılamadı.", "warn"); refreshMarket(); return; }
     setPlayer((p) => ({ ...p, gold: p.gold - fee }));
     setMyStall(result.stall);
-    pushToast(`Pazarın açıldı: ${DURATION_LABEL[durationHours]} (-${fee}g)`, "loot");
+    pushToast(`Pazarın açıldı: ${DURATION_LABEL[durationHours]} (-${formatGold(fee)}g)`, "loot");
   };
 
   const sellableItems = player.inventory.filter((i) => i.kind === "armor" || i.kind === "weapon" || i.kind === "accessory");
@@ -206,7 +206,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
       setPlayer((p) => ({ ...p, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
     }
     setMyStall(result.stall);
-    pushToast(`${pickedItem.name} pazarına eklendi — ${price}g.`, "loot");
+    pushToast(`${pickedItem.name} pazarına eklendi — ${formatGold(price)}g.`, "loot");
     setPickerOpen(false);
     setPickedItem(null);
     setPriceInput("");
@@ -424,7 +424,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                     <div style={{ fontSize: 10, color: "var(--text-faint)" }}>+{amount} can yeniler</div>
                   </div>
                   <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{potionPrice("hp", tier) * qty}g</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(potionPrice("hp", tier) * qty)}g</div>
                   <button style={styles.tinyBtn} onClick={() => buyPotion("hp", tier, qty)}>Al</button>
                 </div>
               );
@@ -445,7 +445,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                     <div style={{ fontSize: 10, color: "var(--text-faint)" }}>+{amount} mana yeniler</div>
                   </div>
                   <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{potionPrice("mp", tier) * qty}g</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(potionPrice("mp", tier) * qty)}g</div>
                   <button style={styles.tinyBtn} onClick={() => buyPotion("mp", tier, qty)}>Al</button>
                 </div>
               );
@@ -478,7 +478,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                 ))}
               </div>
               <button style={{ ...styles.smallBtn, background: "#5FA8A0", width: "100%" }} onClick={() => openStall(openDuration)}>
-                <Store size={14} /> Pazarımı Aç — {stallFee}g
+                <Store size={14} /> Pazarımı Aç — {formatGold(stallFee)}g
               </button>
             </>
           )}
@@ -569,7 +569,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                         <div style={{ fontSize: 13 }}>{displayItemName(entry.item)}</div>
                         <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{entry.item.tier} · {itemStatLabel(entry.item)}</div>
                       </div>
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A" }}>{entry.price}g</div>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A" }}>{formatGold(entry.price)}g</div>
                     </div>
                   ))}
                 </div>
@@ -621,7 +621,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                               <div style={{ fontSize: 13 }}>{displayItemName(l.item)}</div>
                               <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{l.item.tier} · {itemStatLabel(l.item)}</div>
                             </div>
-                            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{l.price}g</div>
+                            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(l.price)}g</div>
                             <button style={styles.tinyBtn} onClick={() => requestBuy(l)}>Al</button>
                           </div>
                         ))}
@@ -675,7 +675,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
             <div style={styles.itemSheetHandle} />
             <ItemTooltip item={inspectEntry.item} player={player} />
             <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "#D4AF6A" }}>{inspectEntry.price}g</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "#D4AF6A" }}>{formatGold(inspectEntry.price)}g</div>
               <div style={{ flex: 1 }} />
               {inspectEntry.source === "npc" && (
                 <button style={styles.tinyBtn} onClick={() => { setInspectEntry(null); requestBuy(inspectEntry); }}>
@@ -697,7 +697,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <ShoppingBag size={32} color="#D4AF6A" strokeWidth={1.4} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-              {displayItemName(buyConfirm.item)}'i {buyConfirm.price}g karşılığında almak istediğine emin misin?
+              {displayItemName(buyConfirm.item)}'i {formatGold(buyConfirm.price)}g karşılığında almak istediğine emin misin?
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
               <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setBuyConfirm(null)}>
