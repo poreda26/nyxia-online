@@ -13,6 +13,7 @@ import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { hasAutoBattleAccess } from "../utils/premium";
 import { classSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
 import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry } from "../utils/soloDungeon";
+import { playHit, playMiss, playHurt } from "../audio/sfx";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -312,6 +313,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       : 0;
     const playerDied = currentHp - mdmg <= 0;
     log = pushLog(log, monsterHits ? `${monster.name} sana ${mdmg} hasar verdi.` : `${monster.name} saldırdı ama ıskaladı.`);
+    if (monsterHits) playHurt(); else playMiss();
 
     // Getting hit wears the armor down — same durability/repair loop as
     // the weapon uses on a landed hit (see utils/player.js's repair
@@ -371,6 +373,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       : 0;
     const monsterHp = Math.max(0, ticked.monsterHp - dmg);
     const log = pushLog(ticked.log, !playerHits ? "Vuruşunu ıskaladın." : isCrit ? `Kritik vuruş! ${dmg} hasar verdin.` : `${dmg} hasar verdin.`);
+    if (playerHits) playHit({ crit: isCrit }); else playMiss();
 
     // Every swing wears the weapon down a little — see utils/player.js's
     // repair system, the intended gold sink for this (misses don't wear it).
@@ -419,6 +422,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const dmg = Math.max(1, Math.round(computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct, rand }) * atkMult));
       monsterHp = Math.max(0, ticked.monsterHp - dmg);
       log = pushLog(log, `${skill.name}! ${dmg} hasar verdin.`);
+      playHit({ crit: false });
       setShake("monster");
       setTimeout(() => setShake(null), 260);
     } else if (e.type === "heal") {
@@ -431,6 +435,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const perTick = computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct: 1, rand: () => 0 });
       dot = { dmgPerTurn: perTick, turnsLeft: e.turns };
       log = pushLog(log, `${skill.name}! Hedef sürekli hasar almaya başladı.`);
+      playHit({ crit: false });
       setShake("monster");
       setTimeout(() => setShake(null), 260);
     }

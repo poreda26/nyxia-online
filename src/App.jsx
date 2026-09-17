@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Settings } from "lucide-react";
 import { initialPlayer, migratePlayer, BANK_PAGES, MAX_GOLD, formatGold } from "./utils/player";
 import { applyWeeklyRollover } from "./utils/nationalPoint";
 import { uid } from "./utils/random";
 import { createBgMusicEngine } from "./audio/bgMusic";
+import { setSfxVolume, setSfxMuted } from "./audio/sfx";
+import { loadSettings, saveSetting } from "./utils/settings";
 import {
   loadAccount, saveCharacterSlot, deleteCharacterSlot, saveAccountRace, changeAccountRace,
   saveAccountBank, saveAccountUnlockedSlots, saveAccountDiamonds, saveAccountBankGold, saveLastUsername, loadLastUsername,
@@ -16,6 +18,7 @@ import CharacterSelectScreen from "./components/CharacterSelectScreen";
 import RaceSelect from "./components/RaceSelect";
 import ClassSelect from "./components/ClassSelect";
 import Hub from "./components/Hub";
+import SettingsModal from "./components/SettingsModal";
 
 export default function App() {
   const [screen, setScreen] = useState("login");
@@ -27,22 +30,27 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
-  // Arka plan müziği — kullanıcı isteği: "knight online fon müziğine
-  // benzeyen efsane bir arka plan müziği". Gerçek KO müziğini kullanmak
-  // telif sorunu olurdu, bu yüzden Web Audio API ile canlı sentezlenen,
-  // tamamen özgün bir tema (bkz. audio/bgMusic.js). Tarayıcılar sesi ancak
-  // bir kullanıcı jestinden sonra başlatmaya izin verdiği için ilk
-  // pointerdown'da başlatılıyor; kapalı/açık tercihi hesap değil cihaz
-  // bazlı (localStorage) — her ekranda (login'den Hub'a kadar) tek bir
-  // motor aralıksız çalıyor.
+  // Arka plan müziği + savaş efektleri — kullanıcı isteği: "knight online
+  // fon müziğine benzeyen efsane bir arka plan müziği" ve ardından "ses
+  // kısıp yükseltme seçeneğimiz olsun... savaştayken vuruş animasyon sesi
+  // istiyorum". Müzik Web Audio API ile canlı sentezleniyor (bkz.
+  // audio/bgMusic.js), efektler de aynı şekilde (bkz. audio/sfx.js) — hiçbir
+  // ses dosyası yok. Ses seviyesi/mute tercihleri hesaba değil cihaza bağlı
+  // (localStorage, bkz. utils/settings.js). Tarayıcılar sesi ancak bir
+  // kullanıcı jestinden sonra başlatmaya izin verdiği için motor ilk
+  // pointerdown'da başlatılıyor; müzik login'den Hub'a kadar aralıksız
+  // çalıyor, efektler BattleTab.jsx'ten doğrudan audio/sfx.js'i çağırıyor.
   const musicRef = useRef(null);
-  const [musicMuted, setMusicMuted] = useState(() => {
-    try { return localStorage.getItem("rpgmarket:musicMuted") === "1"; } catch { return false; }
-  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [audioSettings, setAudioSettings] = useState(loadSettings);
   useEffect(() => {
     musicRef.current = createBgMusicEngine();
+    musicRef.current.setVolume(audioSettings.musicVolume / 100);
+    musicRef.current.setMuted(audioSettings.musicMuted);
+    setSfxVolume(audioSettings.sfxVolume / 100);
+    setSfxMuted(audioSettings.sfxMuted);
     const startOnGesture = () => {
-      if (!musicMuted) musicRef.current.start();
+      musicRef.current.start();
       window.removeEventListener("pointerdown", startOnGesture);
     };
     window.addEventListener("pointerdown", startOnGesture);
@@ -52,13 +60,14 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const toggleMusic = () => {
-    setMusicMuted((prev) => {
-      const next = !prev;
-      try { localStorage.setItem("rpgmarket:musicMuted", next ? "1" : "0"); } catch {}
-      if (next) musicRef.current?.stop(); else musicRef.current?.start();
-      return next;
-    });
+
+  const updateAudioSetting = (key, value) => {
+    setAudioSettings((prev) => ({ ...prev, [key]: value }));
+    saveSetting(key, value);
+    if (key === "musicVolume") musicRef.current?.setVolume(value / 100);
+    else if (key === "musicMuted") musicRef.current?.setMuted(value);
+    else if (key === "sfxVolume") setSfxVolume(value / 100);
+    else if (key === "sfxMuted") setSfxMuted(value);
   };
 
   // Kullanıcı: loot bildirimini "yakalamakta zorlanıyorum" — 2.6s özellikle
@@ -290,17 +299,31 @@ export default function App() {
       )}
 
       <button
-        onClick={toggleMusic}
-        title={musicMuted ? "Müziği Aç" : "Müziği Kapat"}
+        onClick={() => setSettingsOpen(true)}
+        title="Ayarlar"
         style={{
           position: "absolute", top: 10, right: 10, zIndex: 40,
           width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
           background: "rgba(11,12,16,0.55)", border: "1px solid var(--border)",
-          color: musicMuted ? "var(--text-faint)" : "#D4AF6A", cursor: "pointer", padding: 0,
+          color: "#D4AF6A", cursor: "pointer", padding: 0,
         }}
       >
-        {musicMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+        <Settings size={14} />
       </button>
+
+      {settingsOpen && (
+        <SettingsModal
+          musicVolume={audioSettings.musicVolume}
+          musicMuted={audioSettings.musicMuted}
+          onMusicVolumeChange={(v) => updateAudioSetting("musicVolume", v)}
+          onToggleMusicMute={() => updateAudioSetting("musicMuted", !audioSettings.musicMuted)}
+          sfxVolume={audioSettings.sfxVolume}
+          sfxMuted={audioSettings.sfxMuted}
+          onSfxVolumeChange={(v) => updateAudioSetting("sfxVolume", v)}
+          onToggleSfxMute={() => updateAudioSetting("sfxMuted", !audioSettings.sfxMuted)}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 }

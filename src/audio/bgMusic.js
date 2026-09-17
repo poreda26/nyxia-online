@@ -5,6 +5,7 @@
 // klasik "lookahead scheduler" deseniyle yapılıyor (setInterval'ın kendi
 // gecikmesine güvenmek yerine, audioCtx.currentTime'a göre önceden
 // planlanıyor) — bu yüzden tempo kaymaz, sekme arka plana alınsa bile.
+import { getAudioContext, ensureAudioStarted, getNoiseBuffer } from "./audioContext";
 
 const BPM = 84;
 const BEAT = 60 / BPM; // saniye
@@ -36,14 +37,6 @@ const PROGRESSION = [
     sparse: ["G4", null, "E4", null, "C4", null, "D4", null] },
 ];
 
-function makeNoiseBuffer(ctx) {
-  const length = ctx.sampleRate * 1;
-  const buf = ctx.createBuffer(1, length, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
-  return buf;
-}
-
 function makeReverbImpulse(ctx, duration = 2.8, decay = 3.2) {
   const rate = ctx.sampleRate;
   const length = Math.floor(rate * duration);
@@ -59,16 +52,18 @@ export function createBgMusicEngine() {
   let ctx = null;
   let master, dry, wetSend, noiseBuffer;
   let timerId = null;
-  let playing = false;
+  let scheduling = false;
+  let volume = 0.55;
+  let muted = false;
   let step = 0; // 0..31 (4 bar x 8 step)
   let loopCount = 0;
   let nextNoteTime = 0;
 
   function init() {
     if (ctx) return;
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx = getAudioContext();
     master = ctx.createGain();
-    master.gain.value = 0.55;
+    master.gain.value = muted ? 0 : volume;
     master.connect(ctx.destination);
 
     dry = ctx.createGain();
@@ -82,7 +77,7 @@ export function createBgMusicEngine() {
     wetSend.connect(convolver);
     convolver.connect(master);
 
-    noiseBuffer = makeNoiseBuffer(ctx);
+    noiseBuffer = getNoiseBuffer();
     nextNoteTime = ctx.currentTime + 0.1;
   }
 
@@ -206,20 +201,33 @@ export function createBgMusicEngine() {
   }
 
   return {
+    // Bir kez çağrılır (ilk kullanıcı jestinde) — zamanlayıcı sürekli
+    // çalışır, ses seviyesi artık `stop()` ile değil `setMuted`/`setVolume`
+    // ile kontrol ediliyor (bkz. aşağıda) ki kapat/aç anlık olsun, motor
+    // her seferinde yeniden ısınmasın.
     start() {
       init();
-      if (ctx.state === "suspended") ctx.resume();
-      if (playing) return;
-      playing = true;
+      ensureAudioStarted();
+      if (scheduling) return;
+      scheduling = true;
       nextNoteTime = ctx.currentTime + 0.1;
       timerId = setInterval(scheduler, LOOKAHEAD_MS);
     },
+    // Sadece bileşen kaldırılırken (unmount) çağrılır — kalıcı kapatma için
+    // setMuted(true) kullan.
     stop() {
-      playing = false;
+      scheduling = false;
       if (timerId) clearInterval(timerId);
       timerId = null;
-      if (ctx && ctx.state === "running") ctx.suspend();
     },
-    isPlaying() { return playing; },
+    setVolume(v) {
+      volume = Math.max(0, Math.min(1, v));
+      if (ctx && master && !muted) master.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
+    },
+    setMuted(m) {
+      muted = m;
+      if (ctx && master) master.gain.setTargetAtTime(muted ? 0 : volume, ctx.currentTime, 0.05);
+    },
+    isPlaying() { return scheduling; },
   };
 }
