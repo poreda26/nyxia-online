@@ -321,6 +321,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       ? Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
       : 0;
     const playerDied = currentHp - mdmg <= 0;
+    setVisual(v => ({...v, incoming:{hit:monsterHits,damage:mdmg}}));
     log = pushLog(log, monsterHits ? `${monster.name} sana ${mdmg} hasar verdi.` : `${monster.name} saldırdı ama ıskaladı.`);
     if (monsterHits) playHurt(); else playMiss();
 

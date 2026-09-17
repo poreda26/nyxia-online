@@ -23,7 +23,7 @@ try {
   const t=gmWeaponTemplates('warrior').find(w=>w.name==='Raptor'),item=gmBuildWeaponById('warrior',t.id,6),next=gmBuildWeaponById('warrior',t.id,7);
   const h=React.createElement,root=createRoot(document.querySelector('#root'));let serial=0;
   window.showReward=(mode)=>{
-   const view=mode==='battle'?h('div',{className:'battle-mobile'},h(Battle,{player:initialPlayer('warrior','human','Test'),monster:MAPS[0].monsters[0],map:MAPS[0],battle:{monsterHp:60,monsterMaxHp:100},visual:{id:1,type:'attack',label:'Vuruş'}})):
+   const view=mode.startsWith('battle')?h('div',{className:'battle-mobile'},h(Battle,{player:initialPlayer('warrior','human','Test'),monster:MAPS[0].monsters[0],map:MAPS[0],battle:{monsterHp:mode==='battle-victory'?0:60,monsterMaxHp:100},visual:{id:1,type:'attack',label:'Vuruş',incoming:mode==='battle'?null:{hit:mode!=='battle-miss',damage:24}}})):
     mode.startsWith('chest')?h(Chest,{state:{chest:{tier:4},phase:mode==='chest-open'?'shaking':'reveal',result:next},playerClass:'warrior',onClose:()=>window.closedReward=true}):
     h(Forge,{item,success:mode!=='fail',bumpedItem:next,onClose:()=>window.closedReward=true});
    root.render(h(React.Fragment,{key:++serial},h(Global),view));
@@ -39,5 +39,10 @@ try {
  const fits=await page.locator('.reward-modal').evaluate(e=>{const r=e.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight});assert.ok(fits);
  await page.evaluate(()=>showReward('battle'));await page.locator('.battle-impact').waitFor({state:'attached'});
  const layers=await page.evaluate(()=>({effect:+getComputedStyle(document.querySelector('.battle-effect')).zIndex,unit:+getComputedStyle(document.querySelector('.battle-unit')).zIndex}));assert.ok(layers.effect>layers.unit);
+ await page.evaluate(()=>showReward('battle-hit'));await page.locator('.incoming-hit').waitFor({state:'attached'});
+ assert.equal(await page.locator('.incoming-number').textContent(),'−24');
+ assert.equal(await page.locator('.battle-hero .battle-motion').evaluate(el=>getComputedStyle(el).animationName),'hero-exchange');
+ await page.evaluate(()=>showReward('battle-miss'));await page.locator('.incoming-miss').waitFor({state:'attached'});assert.equal(await page.locator('.incoming-burst').count(),0);
+ await page.evaluate(()=>showReward('battle-victory'));await page.locator('.is-victory').waitFor({state:'attached'});assert.equal(await page.locator('.incoming-number').count(),0);
  assert.deepEqual(errors,[]);console.log('PASS: upgrade +7 visual and stats, failure, chest opening/result, mobile fit and foreground hit effects.');
 }finally{await browser.close()}

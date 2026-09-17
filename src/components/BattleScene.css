@@ -6,6 +6,20 @@
 .battle-slash:after{content:'';position:absolute;inset:5px -5px -5px 5px;border-top:2px solid #fff6d099;border-radius:50%}
 @keyframes hit-impact{0%,25%{opacity:0;transform:scale(.3)}42%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}
 .battle-mobile .battle-impact{top:57%}
+.battle-cast.is-active:not(.has-counter) .battle-enemy .battle-motion{animation:enemy-recoil .32s ease-out}
+.battle-cast.incoming-hit .battle-hero .battle-motion{animation:hero-exchange .32s ease-out}
+.battle-cast.incoming-hit.is-support .battle-hero .battle-motion,.battle-cast.incoming-hit.is-ranged .battle-hero .battle-motion{animation:hero-ranged-exchange .32s ease-out}
+.battle-cast .battle-counter{left:22%;width:16%;height:18%;border-top:4px solid #fff0d6;border-bottom:2px solid #ff795566;border-radius:50%;filter:drop-shadow(0 0 6px #ff744e);animation:counter-sweep .32s ease-out both}
+.incoming-burst{position:absolute;left:24%;top:57%;width:50px;height:50px;z-index:3;pointer-events:none;opacity:0;border-radius:50%;background:radial-gradient(circle,#fff2d8 0 8%,#ff976ccc 16%,#e34c4633 40%,transparent 68%);animation:counter-burst .32s ease-out both}
+.incoming-number{position:absolute;left:14%;top:48%;width:26%;text-align:center;z-index:4;pointer-events:none;color:#ffb49c;font:bold 21px var(--font-mono);text-shadow:0 2px 4px #180500,0 0 8px #8d1e11;opacity:0;animation:incoming-number .7s ease-out both}
+.incoming-miss{color:#d1e7ef;font-size:13px;text-shadow:0 2px 4px #000}
+@keyframes enemy-recoil{0%,100%{transform:none}45%{transform:translateX(5%) rotate(2deg)}}
+@keyframes hero-exchange{0%,100%{transform:none;filter:none}32%{transform:translateX(25%) rotate(3deg)}55%{transform:none}72%{transform:translateX(-9%) rotate(-4deg);filter:brightness(1.7) drop-shadow(0 0 5px #ff8b68)}}
+@keyframes hero-ranged-exchange{0%,100%{transform:none;filter:none}32%{transform:rotate(-2deg)}72%{transform:translateX(-8%) rotate(-4deg);filter:brightness(1.7) drop-shadow(0 0 5px #ff8b68)}}
+@keyframes counter-sweep{0%,52%{opacity:0;transform:translateX(30%) rotate(30deg) scale(.7)}72%{opacity:1;transform:translateX(0) rotate(-25deg) scale(1.2)}100%{opacity:0;transform:translateX(-15%) rotate(-55deg)}}
+@keyframes counter-burst{0%,55%{opacity:0;transform:scale(.4)}72%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.5)}}
+@keyframes incoming-number{0%,25%{opacity:0;transform:translateY(5px)}38%,65%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
+@media(prefers-reduced-motion:reduce){.battle-scene .incoming-number{animation:incoming-static .8s linear!important}@keyframes incoming-static{0%,85%{opacity:1}100%{opacity:0}}}
 .battle-scene:after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(#07100f80,transparent 30%,transparent 80%,#07100faa);z-index:-1}
 .battle-scene-title{position:absolute;top:15px;left:20px;font:16px Georgia,serif;letter-spacing:1px;text-shadow:0 2px 4px #000}.battle-scene-title span{display:block;font:9px sans-serif;letter-spacing:3px;margin-top:5px;color:#b5c8af}
 .battle-cast{position:absolute;inset:0}.battle-unit{position:absolute;bottom:16%;width:26%;height:59%}.battle-hero{left:14%}.battle-enemy{right:12%;height:51%;width:30%}

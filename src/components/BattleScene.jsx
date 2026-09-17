@@ -29,16 +29,18 @@ export default function BattleScene({player,monster,battle,map,visual}) {
   const support=visual.type==='heal'||visual.type==='buffAtk'||visual.type==='buffDef'||visual.type==='potion';
   const ranged=player.class!=='warrior';
   const active=visual.id>0;
+  const incoming=active&&battle.monsterHp>0?visual.incoming:null;
   return <section className="battle-scene" aria-label="Savaş sahnesi" style={art.atlas==='fallow'?{backgroundImage:`url(${arena})`}:{backgroundImage:`url(${regions})`,backgroundSize:'300% 200%',backgroundPosition:`${(art.background%3)*50}% ${Math.floor(art.background/3)*100}%`}}>
     <div className="battle-scene-title">Savaş<span>{map.name}</span></div>
     <div className="battle-hud">
       <div><strong>{player.nickname || 'Sen'}</strong><meter aria-label="Canın" min="0" max={playerMaxHp(player)} value={player.hp}/><small>{player.hp} / {playerMaxHp(player)}</small><meter className="mana" aria-label="Manan" min="0" max={playerMaxMp(player)} value={player.mp}/><small>MP {player.mp} / {playerMaxMp(player)}</small></div>
       <div><strong>{monster.name}</strong><meter aria-label="Düşman canı" min="0" max={battle.monsterMaxHp} value={battle.monsterHp}/><small>{battle.monsterHp} / {battle.monsterMaxHp}</small><small>{monster.isBoss?'BOSS':'DÜŞMAN'}</small></div>
     </div>
-    <div key={visual.id} className={`battle-cast ${active?'is-active':''} ${support?'is-support':''} ${ranged?'is-ranged':''} ${battle.monsterHp<=0?'is-victory':''}`}>
+    <div key={visual.id} className={`battle-cast ${active?'is-active':''} ${support?'is-support':''} ${ranged?'is-ranged':''} ${incoming?'has-counter':''} ${incoming?.hit?'incoming-hit':''} ${battle.monsterHp<=0?'is-victory':''}`}>
       <div className="battle-unit battle-hero"><div className="battle-motion"><CharacterFigure player={player}/></div><span className="battle-unit-name">{player.nickname || 'Sen'}</span></div>
       <div className="battle-unit battle-enemy"><div className="battle-motion"><Figure rect={rect} label={monster.name} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name">{monster.name}</span></div>
-      {active&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} />{!support&&<><i className="battle-impact" aria-hidden="true"/><i className="battle-counter" /></>}</>}
+      {active&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} />{!support&&<i className="battle-impact" aria-hidden="true"/>}</>}
+      {incoming&&<>{incoming.hit&&<><i className="battle-counter" aria-hidden="true"/><i className="incoming-burst" aria-hidden="true"/></>}<span className={`incoming-number ${incoming.hit?'':'incoming-miss'}`}>{incoming.hit?`−${incoming.damage}`:'Iskaladı'}</span></>}
     </div>
     <div className="battle-scene-caption">{battle.monsterHp<=0?'Düşman yenildi':visual.label||'Savaşa hazır'}</div>
   </section>;
