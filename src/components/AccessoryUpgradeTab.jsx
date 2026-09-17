@@ -2,6 +2,7 @@ import { ScrollText } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { upgradeAccessory, canUpgradeAccessory, ACCESSORY_UPGRADE_MAX_LEVEL } from "../utils/accessoryUpgrade";
 import { displayItemName } from "../utils/player";
+import { playUpgradeSuccess } from "../audio/sfx";
 import { styles } from "../styles";
 import EmptyState from "./shared/EmptyState";
 import ItemIcon from "./ItemIcon";
@@ -25,6 +26,7 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
     const result = upgradeAccessory(player, sample.id);
     if (!result.upgraded) { pushToast(result.reason || "Yükseltilemedi.", "warn"); return; }
     setPlayer(result.player);
+    playUpgradeSuccess();
     pushToast(`${displayItemName(sample)} → +${(sample.upgradeLevel || 0) + 1} oldu!`, "loot");
   };
 

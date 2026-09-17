@@ -1,9 +1,11 @@
-// Savaş efekt sesleri — vuruş, ıskalama, hasar alma. bgMusic.js ile aynı
+// Savaş efekt sesleri — vuruş, ıskalama, hasar alma — ve kısa bildirim
+// sesleri (yükseltme başarılı/başarısız gibi). bgMusic.js ile aynı
 // paylaşılan AudioContext'i kullanır (bkz. audioContext.js) ama kendi
 // bağımsız ses seviyesi/mute durumuna sahip — Ayarlar'da Müzik ve Efekt
 // sesleri ayrı ayrı kısılıp açılabiliyor. Sahnesi olmayan, tamamen kod ile
 // sentezlenen kısa perküsif sesler (osilatör + gürültü buffer), hiçbir ses
-// dosyası yok.
+// dosyası yok. Bildirim sesleri kullanıcı isteğiyle bilinçli olarak kısa
+// tutuldu ("insanların kafasını yormadan") — hiçbiri yarım saniyeyi geçmiyor.
 import { getAudioContext, ensureAudioStarted, getNoiseBuffer } from "./audioContext";
 
 let master = null;
@@ -109,4 +111,45 @@ export function playHurt() {
   og.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
   osc.connect(og); og.connect(master);
   osc.start(now); osc.stop(now + 0.25);
+}
+
+// Yükseltme başarılı — parlak, kısa bir majör arpej (çan gibi triangle
+// dalgası). Toplam ~350ms, tek seferlik — döngüsüz.
+export function playUpgradeSuccess() {
+  const ctx = bus();
+  const now = ctx.currentTime;
+  [523.25, 659.25, 783.99].forEach((freq, i) => {
+    const t = now + i * 0.07;
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, t);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.3, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    osc.connect(g); g.connect(master);
+    osc.start(t); osc.stop(t + 0.4);
+  });
+}
+
+// Yükseltme başarısız — donuk, alçalan iki nota. Bir alarm gibi uzamıyor,
+// kısa ve net bir "olmadı" hissi (kullanıcı isteği: rahatsız etmesin).
+export function playUpgradeFail() {
+  const ctx = bus();
+  const now = ctx.currentTime;
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 900;
+  filter.connect(master);
+  [233.08, 174.61].forEach((freq, i) => {
+    const t = now + i * 0.11;
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, t);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.32, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    osc.connect(g); g.connect(filter);
+    osc.start(t); osc.stop(t + 0.28);
+  });
 }

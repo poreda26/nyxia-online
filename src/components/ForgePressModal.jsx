@@ -4,6 +4,7 @@ import { itemTierColor } from "../data/itemRarity";
 import { pick } from "../utils/random";
 import { displayItemName } from "../utils/player";
 import { itemStatLabel } from "../utils/itemDisplay";
+import { playUpgradeSuccess, playUpgradeFail } from "../audio/sfx";
 import { styles } from "../styles";
 
 const PRESS_DURATION = 2600; // ms — suspense window before the reveal
@@ -11,19 +12,27 @@ const PRESS_DURATION = 2600; // ms — suspense window before the reveal
 // Plays a 2.5s "forging" animation after Bas is pressed, then reveals
 // success or failure. The actual player-state change already happened the
 // moment press() was called (see UpgradeTab) — this modal is purely the
-// presentational suspense/reveal layer sitting on top of it.
+// presentational suspense/reveal layer sitting on top of it. Bildirim sesi
+// (kullanıcı isteği) tam bu reveal anında çalıyor, "Bas"a basıldığı anda
+// değil — görselle senkron olsun diye.
 export default function ForgePressModal({ item, success, bumpedItem, onClose }) {
   const [phase, setPhase] = useState("pressing");
   const timerRef = useRef(null);
 
+  const reveal = () => {
+    setPhase(success ? "success" : "failed");
+    if (success) playUpgradeSuccess(); else playUpgradeFail();
+  };
+
   useEffect(() => {
-    timerRef.current = setTimeout(() => setPhase(success ? "success" : "failed"), PRESS_DURATION);
+    timerRef.current = setTimeout(reveal, PRESS_DURATION);
     return () => clearTimeout(timerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [success]);
 
   const skip = () => {
     clearTimeout(timerRef.current);
-    setPhase(success ? "success" : "failed");
+    reveal();
   };
 
   const color = itemTierColor(item.tier);
