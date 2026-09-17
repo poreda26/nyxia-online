@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import { initialPlayer, migratePlayer, BANK_PAGES, MAX_GOLD, formatGold } from "./utils/player";
 import { applyWeeklyRollover } from "./utils/nationalPoint";
 import { uid } from "./utils/random";
+import { createBgMusicEngine } from "./audio/bgMusic";
 import {
   loadAccount, saveCharacterSlot, deleteCharacterSlot, saveAccountRace, changeAccountRace,
   saveAccountBank, saveAccountUnlockedSlots, saveAccountDiamonds, saveAccountBankGold, saveLastUsername, loadLastUsername,
@@ -24,6 +26,40 @@ export default function App() {
   const [tab, setTab] = useState("battle");
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
+
+  // Arka plan müziği — kullanıcı isteği: "knight online fon müziğine
+  // benzeyen efsane bir arka plan müziği". Gerçek KO müziğini kullanmak
+  // telif sorunu olurdu, bu yüzden Web Audio API ile canlı sentezlenen,
+  // tamamen özgün bir tema (bkz. audio/bgMusic.js). Tarayıcılar sesi ancak
+  // bir kullanıcı jestinden sonra başlatmaya izin verdiği için ilk
+  // pointerdown'da başlatılıyor; kapalı/açık tercihi hesap değil cihaz
+  // bazlı (localStorage) — her ekranda (login'den Hub'a kadar) tek bir
+  // motor aralıksız çalıyor.
+  const musicRef = useRef(null);
+  const [musicMuted, setMusicMuted] = useState(() => {
+    try { return localStorage.getItem("rpgmarket:musicMuted") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    musicRef.current = createBgMusicEngine();
+    const startOnGesture = () => {
+      if (!musicMuted) musicRef.current.start();
+      window.removeEventListener("pointerdown", startOnGesture);
+    };
+    window.addEventListener("pointerdown", startOnGesture);
+    return () => {
+      window.removeEventListener("pointerdown", startOnGesture);
+      musicRef.current?.stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const toggleMusic = () => {
+    setMusicMuted((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("rpgmarket:musicMuted", next ? "1" : "0"); } catch {}
+      if (next) musicRef.current?.stop(); else musicRef.current?.start();
+      return next;
+    });
+  };
 
   // Kullanıcı: loot bildirimini "yakalamakta zorlanıyorum" — 2.6s özellikle
   // öldürme bildirimi gibi çok parçalı (altın+XP+drop+görev) mesajlar için
@@ -252,6 +288,19 @@ export default function App() {
           {toast.msg}
         </div>
       )}
+
+      <button
+        onClick={toggleMusic}
+        title={musicMuted ? "Müziği Aç" : "Müziği Kapat"}
+        style={{
+          position: "absolute", top: 10, right: 10, zIndex: 40,
+          width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(11,12,16,0.55)", border: "1px solid var(--border)",
+          color: musicMuted ? "var(--text-faint)" : "#D4AF6A", cursor: "pointer", padding: 0,
+        }}
+      >
+        {musicMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+      </button>
     </div>
   );
 }
