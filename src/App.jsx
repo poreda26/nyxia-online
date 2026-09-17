@@ -290,6 +290,7 @@ export default function App() {
           pushToast={pushToast}
           onChangeCharacter={handleChangeCharacter}
           onChangeRace={handleChangeRace}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
       )}
       {toast && (
@@ -298,18 +299,25 @@ export default function App() {
         </div>
       )}
 
-      <button
-        onClick={() => setSettingsOpen(true)}
-        title="Ayarlar"
-        style={{
-          position: "absolute", top: 10, right: 10, zIndex: 40,
-          width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(11,12,16,0.55)", border: "1px solid var(--border)",
-          color: "#D4AF6A", cursor: "pointer", padding: 0,
-        }}
-      >
-        <Settings size={14} />
-      </button>
+      {/* Hub ekranında Ayarlar artık TopBar'ın kendi satırında (bkz.
+          TopBar.jsx) — burada da gösterirsek Hediye ikonunun tam üstüne
+          biniyordu (kullanıcının bildirdiği çakışma bug'ı). Diğer ekranlarda
+          (login/karakter seçimi/sınıf seçimi) TopBar yok, o yüzden bu yüzen
+          buton hâlâ gerekli. */}
+      {screen !== "hub" && (
+        <button
+          onClick={() => setSettingsOpen(true)}
+          title="Ayarlar"
+          style={{
+            position: "absolute", top: 10, right: 10, zIndex: 40,
+            width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(11,12,16,0.55)", border: "1px solid var(--border)",
+            color: "#D4AF6A", cursor: "pointer", padding: 0,
+          }}
+        >
+          <Settings size={14} />
+        </button>
+      )}
 
       {settingsOpen && (
         <SettingsModal

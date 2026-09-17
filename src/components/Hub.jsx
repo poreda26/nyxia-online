@@ -27,7 +27,7 @@ import TutorialModal from "./TutorialModal";
 import DailyLoginModal from "./DailyLoginModal";
 import ScheduledEventBanner from "./ScheduledEventBanner";
 
-export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace }) {
+export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings }) {
   const cls = CLASSES[player.class];
   const { atk } = totalStats(player);
   const def = playerDef(player);
@@ -115,6 +115,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         player={player} cls={cls} maxHp={maxHp} def={def} atk={atk}
         dailyLoginAvailable={dailyLoginAvailable}
         onOpenDailyLogin={() => setDailyLoginOpen(true)}
+        onOpenSettings={onOpenSettings}
       />
 
       <ScheduledEventBanner player={player} setPlayer={setPlayer} pushToast={pushToast} />

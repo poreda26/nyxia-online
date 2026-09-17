@@ -1,10 +1,10 @@
-import { Coins, Crown, Gift } from "lucide-react";
+import { Coins, Crown, Gift, Settings } from "lucide-react";
 import { xpToNext, MAX_LEVEL, formatGold } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { activeTitleInfo } from "../utils/achievements";
 import { styles } from "../styles";
 
-export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin }) {
+export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, onOpenSettings }) {
   const atCap = player.level >= MAX_LEVEL;
   const need = xpToNext(player.level);
   const pct = atCap ? 100 : Math.min(100, (player.xp / need) * 100);
@@ -53,6 +53,19 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
           >
             <Gift size={16} strokeWidth={1.8} />
             {dailyLoginAvailable && <span style={{ ...styles.navNotifDot, top: 0, left: "auto", right: -1, marginLeft: 0 }} />}
+          </button>
+        )}
+        {/* Ayarlar artık burada, satır içinde (kullanıcının bildirdiği bug:
+            App.jsx'teki eski mutlak konumlu dişli ikonu tam bu Hediye
+            ikonunun üstüne biniyordu, ikisi de sağ üst köşeye sabitti).
+            App.jsx bu ekrandayken kendi yüzen butonunu render etmiyor. */}
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            title="Ayarlar"
+            style={{ background: "none", border: "none", color: "#D4AF6A", cursor: "pointer", padding: 4, flexShrink: 0 }}
+          >
+            <Settings size={16} strokeWidth={1.8} />
           </button>
         )}
       </div>

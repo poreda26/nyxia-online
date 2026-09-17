@@ -11,6 +11,7 @@ import { registerDailyKill, ensureDailyQuestsFresh } from "./dailyQuests";
 import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
 import { registerWeeklyKill } from "./weeklyQuests";
 import { registerMapBossDefeat, canFightMapBoss } from "./mapBoss";
+import { MAPS } from "../data/maps";
 
 // Called exactly once per defeated monster, outside React state updaters.
 // Shared by the original panel battles and the real-time world.
@@ -85,6 +86,7 @@ export function grantMonsterReward(p, m, map) {
     drops.push(`Muhafız Sandığı kazandın! (T${map.tier})`);
   }
 
+  const levelBefore = p.level;
   let leveled = false;
   let levelsGained = 0;
   while (np.level < MAX_LEVEL && np.xp >= xpToNext(np.level)) {
@@ -101,5 +103,11 @@ export function grantMonsterReward(p, m, map) {
     drops.push(`Seviye atladın! Lv.${np.level} (+${levelsGained * 3} statü puanı)`);
   }
   np = learnFreeSkills(np);
-  return { player: np, msg: drops.join("  ·  "), tone: leveled ? "level" : "loot" };
+  // Kullanıcı isteği: "5 Lvl oldun!" tarzında bir widget — bu geçişte hangi
+  // haritanın (varsa) yeni açıldığını da bilmesi gerekiyor. Birden fazla
+  // seviye birden atlansa bile (nadir, büyük bir XP kazancında) aralıktaki
+  // İLK yeni haritayı buluyoruz — BattleTab'daki widget onu gösterecek.
+  const unlockedMap = leveled ? MAPS.find((m) => m.levelMin > levelBefore && m.levelMin <= np.level) : null;
+  const levelUp = leveled ? { fromLevel: levelBefore, toLevel: np.level, levelsGained, statPointsGained: levelsGained * 3, unlockedMap } : null;
+  return { player: np, msg: drops.join("  ·  "), tone: leveled ? "level" : "loot", levelUp };
 }

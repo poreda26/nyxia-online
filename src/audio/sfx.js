@@ -153,3 +153,45 @@ export function playUpgradeFail() {
     osc.start(t); osc.stop(t + 0.28);
   });
 }
+
+// Seviye atlama — savaştaki en büyük an, o yüzden yükseltmeden daha
+// gösterişli: kısa bir "boom" (gravitas) + 5 notalık yükselen bir fanfar
+// (D-F#-A-D-F# — parlak majör), son nota hafif vibratoyla sürüyor.
+// Toplam ~800ms, hâlâ kısa/tek seferlik.
+export function playLevelUp() {
+  const ctx = bus();
+  const now = ctx.currentTime;
+
+  const boom = ctx.createOscillator();
+  boom.type = "sine";
+  boom.frequency.setValueAtTime(160, now);
+  boom.frequency.exponentialRampToValueAtTime(55, now + 0.22);
+  const boomGain = ctx.createGain();
+  boomGain.gain.setValueAtTime(0.55, now);
+  boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+  boom.connect(boomGain); boomGain.connect(master);
+  boom.start(now); boom.stop(now + 0.4);
+
+  const notes = [293.66, 369.99, 440.0, 587.33, 739.99]; // D4 F#4 A4 D5 F#5
+  notes.forEach((freq, i) => {
+    const t = now + 0.08 + i * 0.09;
+    const dur = i === notes.length - 1 ? 0.55 : 0.16;
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, t);
+    if (i === notes.length - 1) {
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 6;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 4;
+      lfo.connect(lfoGain); lfoGain.connect(osc.detune);
+      lfo.start(t); lfo.stop(t + dur + 0.05);
+    }
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(i === notes.length - 1 ? 0.38 : 0.3, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g); g.connect(master);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  });
+}

@@ -13,13 +13,14 @@ import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { hasAutoBattleAccess } from "../utils/premium";
 import { classSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
 import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry } from "../utils/soloDungeon";
-import { playHit, playMiss, playHurt } from "../audio/sfx";
+import { playHit, playMiss, playHurt, playLevelUp } from "../audio/sfx";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
 import BarTrack from "./shared/BarTrack";
 import SkillIcon from "./SkillIcon";
 import DeathModal from "./DeathModal";
+import LevelUpModal from "./LevelUpModal";
 
 // potionCooldowns: her tur bir azalır (bkz. tickBattleEffects) — Can/Mana
 // potları 2 turda bir kullanılabilir, ikisi birlikte de basılamaz (bir pot
@@ -70,6 +71,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const [shake, setShake] = useState(null); // 'player' | 'monster' | null
   const [pendingMap, setPendingMap] = useState(null); // map awaiting teleport confirmation
   const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal
+  const [levelUpInfo, setLevelUpInfo] = useState(null); // { toLevel, statPointsGained, unlockedMap } | null — drives LevelUpModal
   const [victoryMonster, setVictoryMonster] = useState(null); // just-defeated monster template — drives the "Tekrar Savaş?" prompt
   // Günlük Solo Zindan — bkz. data/soloDungeon.js, utils/soloDungeon.js.
   // dungeonRun: { stages, index } | null — aktif bir zindan koşusu sürerken
@@ -219,6 +221,13 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     latestPlayer.current = result.player;
     setPlayer(result.player);
     pushToast(result.msg, result.tone);
+    // Kullanıcı isteği: "Seviye atladığımız zaman 5 Lvl oldun! tarzında bir
+    // widget açılsın... buna bir ses ekle." — toast zaten "Seviye atladın!"
+    // satırını taşıyor, bu modal/ses üstüne kutlama katmanı ekliyor.
+    if (result.levelUp) {
+      setLevelUpInfo(result.levelUp);
+      playLevelUp();
+    }
   };
 
   // Solo Zindan'ın boss aşaması yenildiğinde applyLoot'un normal
@@ -846,7 +855,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       {deathInfo && <DeathModal xpLost={deathInfo.xpLost} onClose={() => setDeathInfo(null)} />}
 
-      {victoryMonster && (
+      {/* Seviye atlama kutlaması, "Tekrar Savaş?"/zindan tamamlama
+          modallarından ÖNCE gösteriliyor — ikisi de aynı öldürme anında
+          birden set edilebiliyor (bkz. applyLoot + resolveMonsterTurn'ün
+          aynı setTimeout'u), o yüzden bu modal kapanana kadar diğerleri
+          bekletiliyor (aşağıdaki `!levelUpInfo` şartları). */}
+      {levelUpInfo && <LevelUpModal levelUp={levelUpInfo} onClose={() => setLevelUpInfo(null)} />}
+
+      {!levelUpInfo && victoryMonster && (
         <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setVictoryMonster(null)}>
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <Trophy size={32} color="#D4AF6A" strokeWidth={1.3} />
@@ -875,7 +891,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         </div>
       )}
 
-      {dungeonComplete && (
+      {!levelUpInfo && dungeonComplete && (
         <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setDungeonComplete(null)}>
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <Castle size={32} color="#A34FD9" strokeWidth={1.3} />

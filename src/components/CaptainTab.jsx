@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShieldCheck, Gift, Crown, Skull, Flag, CalendarCheck, BookOpen, Trophy } from "lucide-react";
+import { Gift, Crown, Skull, Flag, CalendarCheck, BookOpen, Trophy } from "lucide-react";
 import { MONSTER_QUESTS, AWAKENING_QUEST } from "../data/quests";
 import { questProgress, isQuestClaimed, claimQuest, awakeningProgress, claimAwakening } from "../utils/quests";
 import { dailyQuestProgress, claimDailyQuest } from "../utils/dailyQuests";
@@ -15,6 +15,7 @@ import { NP_RECOVERY_GOLD_COST, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalP
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import BarTrack from "./shared/BarTrack";
+import CaptainPortrait from "./CaptainPortrait";
 
 // Kaptan's board is deliberately a single static screen, not a branching
 // dialogue — every quest is always visible and just tracks itself off
@@ -98,8 +99,8 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
     <div style={styles.panelScroll}>
       <SectionLabel>Kaptan</SectionLabel>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <ShieldCheck size={20} color="#D4AF6A" strokeWidth={1.5} />
+        <div style={{ flexShrink: 0, borderRadius: "50%", overflow: "hidden" }}>
+          <CaptainPortrait size={48} />
         </div>
         <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
           "Bu topraklarda hayatta kalmak beceri ister, evlat. Canavarları temizle, sana onları öğreteyim."
