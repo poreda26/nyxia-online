@@ -27,7 +27,7 @@ test('armor intensity, radius and blur increase for every higher tier',()=>{
  }
 });
 test('missing staff element metadata restores cosmetic palettes without changing combat data',()=>{
- for(const name of ['Prismatic Triad Staff',"Ron's Staff"]){
+ for(const name of ['Gökkuşağı Asası',"Kadim Asa"]){
   const item={name,weaponType:'staff',upgradeLevel:8,element:null,elements:null,atk:222},before=JSON.stringify(item);
   assert.deepEqual(weaponEffects(item).map(e=>e.key),['flame','ice','lightning']);assert.equal(JSON.stringify(item),before);
  }
@@ -35,7 +35,7 @@ test('missing staff element metadata restores cosmetic palettes without changing
   assert.ok(weaponEffects({...w,upgradeLevel:8}).length,w.name);
   assert.equal(weaponEffects({...w,upgradeLevel:6}).length,0);
  }
- assert.equal(weaponEffects({name:'Wooden Staff',upgradeLevel:8})[0].key,'arcane');
+ assert.equal(weaponEffects({name:'Tahta Asa',upgradeLevel:8})[0].key,'arcane');
 });
 test('all staff stems remain straight and overlap their head crop in both races',()=>{
  const manifest=JSON.parse(readFileSync(new URL('../src/data/characterWeaponManifest.json',import.meta.url)));

@@ -5,7 +5,7 @@ import atlasFrames from './characterAtlasFrames.json';
 // Equipment still owns every gameplay stat; this registry is presentation only.
 export const CHARACTER_LOOKS = {base:{manifest,frames:atlasFrames}};
 export const CHARACTER_IDENTITIES = Object.freeze(['human-warrior','karus-warrior','human-rogue','karus-rogue','human-mage','karus-mage']);
-const aliases={warrior:{'Short Blade':'Rusty Sword'},mage:{'Wood Staff':'Wooden Staff'}};
+const aliases={warrior:{'Short Blade':'Paslı Kılıç'},mage:{'Wood Staff':'Tahta Asa'}};
 export function characterArmorLook(){return 'base';}
 
 export function characterAppearance(player,looks=CHARACTER_LOOKS){
@@ -23,7 +23,7 @@ export function characterAppearance(player,looks=CHARACTER_LOOKS){
  const supported=col>=0;
  if(col<0)col=batch.items.findIndex(([name])=>name==='__unarmed__');
  const frameIndex=(race==='karus'?3:0)+col;
- const atlasKey=armorLook==='base'&&cls==='warrior'&&weaponName==='Raptor'?'warrior-raptor-v3':batch.key;
+ const atlasKey=armorLook==='base'&&cls==='warrior'&&weaponName==='Yırtıcı Pençe'?'warrior-raptor-v3':batch.key;
  const atlas=look.frames[atlasKey];
  return {identity:`${race}-${cls}`,armorLook,atlasKey,frameIndex,frame:atlas?.frames[frameIndex],size:atlas?.size,
   weaponName:weapon?.name||null,supported,upgrade:weapon?.upgradeLevel||0,element:weapon?.element||null,

@@ -4,7 +4,7 @@
 // C:\Users\akcel\Desktop\RPGMarket\_legacy_items_backup\rogueWeapons.js'te
 // yedekli duruyor, gerekirse referans alınabilir.
 //
-// Bu ilk parti tamamı "Bow" ailesi (Kind=6, gerçek KO'da "Iron Crossbow"
+// Bu ilk parti tamamı "Avcı Yayı" ailesi (Kind=6, gerçek KO'da "Demir Arbalet"
 // gibi isimler de aynı Bow kind'ının içinde yer alır — ayrı bir Crossbow
 // silah türü henüz yok, kullanıcı "Bowları bitirince Crossbowlara
 // geçeceğiz" dediği için o ayrım ileride kendi weaponType'ıyla gelecek).
@@ -103,7 +103,7 @@ export const ROGUE_WEAPONS = [
   // Bow — oyunumuzdaki en güçsüz bow, Tier 1. Basit, süslemesiz bir avcı
   // yayı tasarlandı: düz ahşap gövde, gergin kiriş, hiç metal/süsleme yok.
   {
-    tier: 1, levelMin: 1, levelMax: 15, name: "Bow", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 1, levelMin: 1, levelMax: 15, name: "Avcı Yayı", weaponType: "bow", weaponSlot: "twoHand",
     weight: 3, range: 35, element: "poison",
     levels: [
       simpleBowLevel(8, 10, 56, 5000, "low"),    // +1
@@ -121,7 +121,7 @@ export const ROGUE_WEAPONS = [
   // Bamboo Bow — Bow'un biraz daha güçlü hali, Tier 1. Bow'a göre çok az
   // daha ihtişamlı: bambu-yeşili gövde, ince desenli sarım.
   {
-    tier: 1, levelMin: 1, levelMax: 15, name: "Bamboo Bow", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 1, levelMin: 1, levelMax: 15, name: "Bambu Yay", weaponType: "bow", weaponSlot: "twoHand",
     weight: 3, range: 35, element: "poison",
     levels: [
       simpleBowLevel(15, 10, 64, 5000, "low"),    // +1
@@ -139,7 +139,7 @@ export const ROGUE_WEAPONS = [
   // Iron Crossbow (Normal) — Tier 3, Bamboo Bow'dan daha ihtişamlı: demir
   // gövdeli, gerçek bir mekanik germe kolu olan bir arbalet görünümü.
   {
-    tier: 3, levelMin: 30, levelMax: 45, name: "Iron Crossbow", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 3, levelMin: 30, levelMax: 45, name: "Demir Arbalet", weaponType: "bow", weaponSlot: "twoHand",
     weight: 4, element: "poison",
     levels: [
       simpleBowLevel(84, 10, 130, 5000, "middle"),   // +1
@@ -158,7 +158,7 @@ export const ROGUE_WEAPONS = [
   // fena değil. Iron Crossbow'dan daha ihtişamlı: zehirli-yeşil parlayan
   // bir akrep kuyruğu siluetiyle şekillendirilmiş yay kolları.
   {
-    tier: 4, levelMin: 45, levelMax: 55, name: "Scorpion Bow", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 4, levelMin: 45, levelMax: 55, name: "Zehir Dikeni", weaponType: "bow", weaponSlot: "twoHand",
     weight: 3, element: "poison",
     levels: [
       scorpionBowLevel(71, 100, 45, 30, 94),   // +1
@@ -176,7 +176,7 @@ export const ROGUE_WEAPONS = [
   // Iron Bow (Normal) — Tier 5, oldukça güçlü ve güzel. İhtişamlı bir
   // görünüm: parlak çelik uçlu, gergin çift kiriş.
   {
-    tier: 5, levelMin: 55, levelMax: 65, name: "Iron Bow", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 5, levelMin: 55, levelMax: 65, name: "Çelik Yay", weaponType: "bow", weaponSlot: "twoHand",
     weight: 4, element: "poison",
     levels: [
       simpleBowLevel(93, 10, 140, 5000),   // +1
@@ -195,7 +195,7 @@ export const ROGUE_WEAPONS = [
   // parlayan bir bow. Kitin-kabuk dokulu koyu kahve gövde, uçları ateşle
   // kaplı.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Chitin Bow", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Köz Yayı", weaponType: "bow", weaponSlot: "twoHand",
     weight: 3, element: "flame",
     levels: [
       chitinBowLevel(101, 100, 10, 30, 94),   // +1
@@ -214,7 +214,7 @@ export const ROGUE_WEAPONS = [
   // Yıldırım hasarı, çok ihtişamlı bir görünüm: elektrik-mavi parıltılı,
   // yıldırım çatlaklı bir gövde.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Enion Bow", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Yıldırım Teli", weaponType: "bow", weaponSlot: "twoHand",
     weight: 4, element: "lightning",
     levels: [
       enionBowLevel(91, 5, 30, 130, 10000),   // +1
@@ -234,7 +234,7 @@ export const ROGUE_WEAPONS = [
   // sistemi kurulunca devreye girecek) taşıyan tek eşya. Çok ihtişamlı bir
   // görünüm: altın-beyaz kartal tüyü motifli, gerilimde parlayan bir yay.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Eagle's Eye", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Kartal Bakışı", weaponType: "bow", weaponSlot: "twoHand",
     weight: 4, element: "poison",
     levels: [
       eaglesEyeLevel(95, 1, 70, 11, 0, 13, 140, 10000),    // +1
@@ -249,12 +249,12 @@ export const ROGUE_WEAPONS = [
       eaglesEyeLevel(163, 20, 250, 140, 14, 46, 176, 14500), // +10
     ],
   },
-  // Crossbow — Tier 2. İsminde "Crossbow" geçse de kullanıcı isteğiyle
+  // Crossbow — Tier 2. İsminde "Arbalet" geçse de kullanıcı isteğiyle
   // kategori/weaponType hâlâ "bow" (Iron Crossbow'daki aynı karar) — gerçek
   // bir Crossbow silah türü henüz yok. Görseli sade/işlenmemiş bir arbalet:
   // ham ahşap dipçik, süslemesiz düz gri demir kollar.
   {
-    tier: 2, levelMin: 15, levelMax: 30, name: "Crossbow", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 2, levelMin: 15, levelMax: 30, name: "Arbalet", weaponType: "bow", weaponSlot: "twoHand",
     weight: 4.5, element: "poison",
     levels: [
       simpleBowLevel(63, 10, 110, 5000),   // +1
@@ -272,7 +272,7 @@ export const ROGUE_WEAPONS = [
   // Horn Crossbow — Tier 2, normal Crossbow'dan daha ihtişamlı: boynuz/kemik
   // kollu, cilalı ahşap dipçikli daha zarif bir arbalet.
   {
-    tier: 2, levelMin: 15, levelMax: 30, name: "Horn Crossbow", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 2, levelMin: 15, levelMax: 30, name: "Boynuz Arbalet", weaponType: "bow", weaponSlot: "twoHand",
     weight: 4.5, element: "poison",
     levels: [
       simpleBowLevel(74, 10, 120, 5000),   // +1
@@ -292,7 +292,7 @@ export const ROGUE_WEAPONS = [
   // arbalet — diğer iki Crossbow'un (ham ahşap, boynuz/altın) sıcak
   // paletlerinden bilinçli olarak ayrışan soğuk bir tasarım.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Helenid", weaponType: "bow", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Ayaz Yayı", weaponType: "bow", weaponSlot: "twoHand",
     weight: 4, element: "ice",
     levels: [
       helenidLevel(95, 30, 188, 10000),   // +1

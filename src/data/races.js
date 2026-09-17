@@ -7,11 +7,11 @@ import { Flame, Moon } from "lucide-react";
 // mechanically.
 export const RACES = {
   karus: {
-    name: "Karus", icon: Flame, color: "#C9425A",
+    name: "Kızılkurt", icon: Flame, color: "#C9425A",
     desc: "Savaşçı ruhlu, disiplinli bir ordu milleti. Kızıl bayrak altında birleşir.",
   },
   elmorad: {
-    name: "ElMorad", icon: Moon, color: "#4FC3D9",
+    name: "Aymuhafız", icon: Moon, color: "#4FC3D9",
     desc: "Zarif, stratejik düşünen bir bilgelik milleti. Gümüş ay altında yürür.",
   },
 };

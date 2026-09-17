@@ -89,7 +89,7 @@ function buildWeaponFromTemplate(w, tierId, cls) {
     weight, upgradeLevel: 0, stackable: false, reqStats: w.reqStats, levels: w.levels || null,
   };
   // Gerçek KO ekran görüntüsünden birebir +1..+10 satırları girilmiş
-  // eşyalar (bkz. data/warriorWeapons.js#"Giantic Axe") +1'e kurulu doğar,
+  // eşyalar (bkz. data/warriorWeapons.js#"Gökdev Baltası") +1'e kurulu doğar,
   // applyStartingPlusOne'ın ×1.18 tahminine hiç girmez — kendi gerçek
   // sayıları zaten var.
   return base.levels ? applyLevelData(base, 1) : base;

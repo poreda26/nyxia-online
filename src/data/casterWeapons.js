@@ -53,14 +53,14 @@ export const CASTER_WEAPONS = [
   // kalibre edildi, sabit tek satır (levels dizisi yok, forge'un ×1.18
   // tahminiyle yükseliyor, bkz. utils/upgrade.js#bumpedStats).
   {
-    tier: 1, levelMin: 1, levelMax: 15, name: "Wooden Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 1, levelMin: 1, levelMax: 15, name: "Tahta Asa", weaponType: "staff", weaponSlot: "twoHand",
     weight: 3, atk: 10, mp: 5,
     reqStats: [{ key: "mag", value: 50 }, { key: "int", value: 50 }],
   },
   // Apprentice Staff — Wooden Staff'la aynı sebepten (tek tier1 seçenek =
   // her seferinde aynı silah) ikinci bir tier1 alternatif olarak eklendi.
   {
-    tier: 1, levelMin: 1, levelMax: 15, name: "Apprentice Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 1, levelMin: 1, levelMax: 15, name: "Çırak Asası", weaponType: "staff", weaponSlot: "twoHand",
     weight: 3, atk: 13, mp: 3,
     reqStats: [{ key: "mag", value: 58 }, { key: "int", value: 46 }],
   },
@@ -74,29 +74,29 @@ export const CASTER_WEAPONS = [
   // (bkz. data/armorSets.js) hizalandı, atk Rogue'un T2-T5 eğrisine yakın
   // bir bantta kalibre edildi.
   {
-    tier: 2, levelMin: 15, levelMax: 25, name: "Iron-Tipped Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 2, levelMin: 15, levelMax: 25, name: "Demir Uçlu Asa", weaponType: "staff", weaponSlot: "twoHand",
     weight: 3, atk: 65, mp: 8,
     reqStats: [{ key: "mag", value: 105 }, { key: "int", value: 100 }],
   },
   {
-    tier: 3, levelMin: 25, levelMax: 40, name: "Silk-Bound Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 3, levelMin: 25, levelMax: 40, name: "İpek Sarılı Asa", weaponType: "staff", weaponSlot: "twoHand",
     weight: 3, atk: 85, mp: 14,
     reqStats: [{ key: "mag", value: 130 }, { key: "int", value: 124 }],
   },
   {
-    tier: 4, levelMin: 40, levelMax: 60, name: "Crimson-Runed Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 4, levelMin: 40, levelMax: 60, name: "Kızıl Rün Asası", weaponType: "staff", weaponSlot: "twoHand",
     weight: 4, atk: 105, mp: 20,
     reqStats: [{ key: "mag", value: 168 }, { key: "int", value: 160 }],
   },
   {
-    tier: 5, levelMin: 60, levelMax: 65, name: "Chitin-Woven Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 5, levelMin: 60, levelMax: 65, name: "Kabuk Dokuma Asa", weaponType: "staff", weaponSlot: "twoHand",
     weight: 4, atk: 120, mp: 26,
     reqStats: [{ key: "mag", value: 168 }, { key: "int", value: 160 }],
   },
   // Scorching Staff (Unique) — Flame. Görseli: kıvrık siyah-kızıl bir asa,
   // ucunda alevli bir kristal/kafatası motifi.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Scorching Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Kavurucu Asa", weaponType: "staff", weaponSlot: "twoHand",
     weight: 4, element: "flame", attackSpeed: "Çok Yavaş", range: 1,
     levels: [
       staffLevel(87, 0, 8, 0, 90, 6000),    // +1
@@ -114,7 +114,7 @@ export const CASTER_WEAPONS = [
   // Oasis Staff (Unique) — Glacier (element "ice", bkz. data/elements.js).
   // Görseli: mavi-turkuaz buz kristalleriyle kaplı, serin bir asa.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Oasis Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Buzvaha Asası", weaponType: "staff", weaponSlot: "twoHand",
     weight: 4, element: "ice", attackSpeed: "Çok Yavaş", range: 1,
     levels: [
       staffLevel(87, 0, 8, 0, 90, 6000),    // +1
@@ -132,7 +132,7 @@ export const CASTER_WEAPONS = [
   // Chaotic Staff (Unique) — Lightning. Görseli: mor-eflatun yıldırım
   // çatlaklarıyla kaplı, kaotik bir asa.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Chaotic Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Kaos Asası", weaponType: "staff", weaponSlot: "twoHand",
     weight: 4, element: "lightning", attackSpeed: "Çok Yavaş", range: 1,
     levels: [
       staffLevel(87, 0, 8, 0, 90, 6000),    // +1
@@ -180,7 +180,7 @@ CASTER_WEAPONS.push(
   // koyu bir asa — Scorching Staff'ın sade kristalinden bilinçli olarak
   // daha karanlık/organik.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Hell Blood", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Cehennem Kanı", weaponType: "staff", weaponSlot: "twoHand",
     weight: 3, element: "flame", attackSpeed: "Çok Yavaş", range: 1,
     levels: [
       bloodStaffLevel(95, 10, 10, "flame", 20, 114, 10000),   // +1
@@ -198,7 +198,7 @@ CASTER_WEAPONS.push(
   // Elysium (Unique) — Lightning. Görseli: mor-eflatun, elektrik çatlaklı
   // zarif bir asa.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Elysium", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Cennetbahçe", weaponType: "staff", weaponSlot: "twoHand",
     weight: 3, element: "lightning", attackSpeed: "Çok Yavaş", range: 1,
     levels: [
       bloodStaffLevel(95, 10, 10, "lightning", 20, 114, 10000),   // +1
@@ -216,7 +216,7 @@ CASTER_WEAPONS.push(
   // Garp (Unique) — Glacier (element "ice"). Görseli: buz-beyaz, sivri
   // kristal uçlu soğuk bir asa.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Garp", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Poyraz", weaponType: "staff", weaponSlot: "twoHand",
     weight: 3, element: "ice", attackSpeed: "Çok Yavaş", range: 1,
     levels: [
       bloodStaffLevel(95, 10, 10, "glacier", 20, 114, 10000),   // +1
@@ -290,7 +290,7 @@ CASTER_WEAPONS.push(
   // Görseli: kişiselleştirilmiş, gösterişli bir asa (kullanıcı görselleri
   // sonradan Gemini ile ayrıca yenileyecek).
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Prismatic Triad Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Gökkuşağı Asası", weaponType: "staff", weaponSlot: "twoHand",
     weight: 3, attackSpeed: "Çok Yavaş", range: 1,
     levels: [
       selfnameStaffLevel(85, 1, 8, 2, 150, 6000),    // +1
@@ -309,7 +309,7 @@ CASTER_WEAPONS.push(
   // (mana havuzu) Bonusu bir arada taşıyan hibrit bir eşya, MP Bonusu
   // ekran görüntüsünde +2'den itibaren başlıyordu (+1'de yok).
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Ron's Staff", weaponType: "staff", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Kadim Asa", weaponType: "staff", weaponSlot: "twoHand",
     weight: 4, attackSpeed: "Çok Yavaş", range: 1,
     levels: [
       ronsStaffLevel(60, 5, 1, 0, 20, 5, 86, 10000),     // +1

@@ -92,7 +92,7 @@ function avedonLevel(atk, hp, glacier, reqStr, durability) {
 
 // Stormweaver — "Two-handed Sword of <selfname>" gerçek KO'nun oyuncu
 // tarafından isimlendirilebilen özel silah şablonu (<selfname> yer
-// tutucusu); kullanıcı bu şablonu "Stormweaver" adıyla somutlaştırdı.
+// tutucusu); kullanıcı bu şablonu "Fırtına Ustası" adıyla somutlaştırdı.
 // STR Bonus VE Health Bonus aynı satırda gösterildiği için (kullanıcının
 // notu) ikisi de aynı ham değeri alıyor — düz +1 statü puanı gibi, +1'de
 // 1 → +10'da 10. Sadece Glacier direnci var (Flame/Lightning satırları
@@ -136,7 +136,7 @@ export const WARRIOR_WEAPONS = [
   // dışında normal forge ile henüz erişilemiyor. Tier 6 eşyalar takas/satış
   // edilebilir (kullanıcının kuralı) — noTrade yok.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Giantic Axe", weaponType: "axe", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Gökdev Baltası", weaponType: "axe", weaponSlot: "twoHand",
     durability: 15000, weight: 12, element: "lightning",
     lore: "*Devlerin dövdüğü bu balta, tek elle savrulacak kadar hafif değil — ama onu kaldırabilen için yıldırım kadar hızlı düşer.*",
     levels: [
@@ -161,7 +161,7 @@ export const WARRIOR_WEAPONS = [
   // WEAPON_TYPE_* tablolarına eklenen "longspear" girdisi (bow/longbow'daki
   // aynı desen).
   {
-    tier: 3, levelMin: 30, levelMax: 45, name: "Glave", weaponType: "longspear", weaponSlot: "twoHand",
+    tier: 3, levelMin: 30, levelMax: 45, name: "Kara Diken", weaponType: "longspear", weaponSlot: "twoHand",
     weight: 15, element: "poison",
     levels: [
       simpleWeaponLevel(127, 10, 190, 8000),   // +1
@@ -181,7 +181,7 @@ export const WARRIOR_WEAPONS = [
   // Grade" satırı +1..+7 "Middle Class", +8..+10 "High Class" — itemGrade
   // olarak dormant veri (bkz. longspearLevel).
   {
-    tier: 2, levelMin: 15, levelMax: 30, name: "Halberd", weaponType: "longspear", weaponSlot: "twoHand",
+    tier: 2, levelMin: 15, levelMax: 30, name: "Yılan Ucu", weaponType: "longspear", weaponSlot: "twoHand",
     weight: 15, element: "poison",
     levels: [
       simpleWeaponLevel(107, 10, 168, 8000, "middle"),   // +1
@@ -205,7 +205,7 @@ export const WARRIOR_WEAPONS = [
   // Kullanıcının ekran görüntüsündeki +1'den +10'a TAM tablo birebir
   // girildi (aynı +3 dayanıklılık yazım hatası düzeltmesi burada da var).
   {
-    tier: 5, levelMin: 55, levelMax: 65, name: "Raptor", weaponType: "longspear", weaponSlot: "twoHand",
+    tier: 5, levelMin: 55, levelMax: 65, name: "Yırtıcı Pençe", weaponType: "longspear", weaponSlot: "twoHand",
     weight: 15, element: "poison",
     levels: [
       simpleWeaponLevel(137, 10, 200, 8000),   // +1
@@ -229,7 +229,7 @@ export const WARRIOR_WEAPONS = [
   // sefer +3 dayanıklılık hücresinde yazım hatası YOK (7000→16000 düz
   // +1000). "Glacier Damage" bizim element sistemimizde "ice" karşılığı.
   {
-    tier: 4, levelMin: 45, levelMax: 55, name: "Blade Axe", weaponType: "axe", weaponSlot: "twoHand",
+    tier: 4, levelMin: 45, levelMax: 55, name: "Ayaz Balta", weaponType: "axe", weaponSlot: "twoHand",
     weight: 12, element: "ice",
     levels: [
       simpleWeaponLevel(117, 10, 172, 7000),   // +1
@@ -253,7 +253,7 @@ export const WARRIOR_WEAPONS = [
   // kazanılan eşya" hissi. Kullanıcının ekran görüntüsündeki +1'den +10'a
   // TAM tablo birebir girildi.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Avedon", weaponType: "axe", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Buzul Kıran", weaponType: "axe", weaponSlot: "twoHand",
     weight: 80, element: "ice",
     lore: "*Bir zamanlar bir kralın elindeydi — şimdi onu ancak bir kral kadar güçlü olan kaldırabilir.*",
     levels: [
@@ -278,7 +278,7 @@ export const WARRIOR_WEAPONS = [
   // pixel-art aldı (bkz. src/assets/items/durandal.svg — alev turuncusu
   // parıltılı, Flame Damage temasına uygun).
   {
-    tier: 3, levelMin: 30, levelMax: 45, name: "Durandal", weaponType: "sword", weaponSlot: "mainHand",
+    tier: 3, levelMin: 30, levelMax: 45, name: "Ateş Dili", weaponType: "sword", weaponSlot: "mainHand",
     weight: 10, element: "flame",
     levels: [
       simpleWeaponLevel(112, 10, 166, 5000),   // +1
@@ -300,7 +300,7 @@ export const WARRIOR_WEAPONS = [
   // src/assets/items/mirage.svg). Kullanıcının ekran görüntüsündeki
   // +1'den +10'a TAM tablo birebir girildi.
   {
-    tier: 5, levelMin: 55, levelMax: 65, name: "Mirage", weaponType: "sword", weaponSlot: "mainHand",
+    tier: 5, levelMin: 55, levelMax: 65, name: "Serap", weaponType: "sword", weaponSlot: "mainHand",
     weight: 10, element: "flame",
     levels: [
       simpleWeaponLevel(123, 10, 178, 5000),   // +1
@@ -322,7 +322,7 @@ export const WARRIOR_WEAPONS = [
   // parlayan yıldırım çekirdeği) çevirdi. Kullanıcının ekran görüntüsündeki
   // +1'den +10'a TAM tablo birebir girildi.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Stormweaver", weaponType: "sword", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Fırtına Ustası", weaponType: "sword", weaponSlot: "twoHand",
     weight: 10, element: "lightning",
     lore: "*Fırtınanın kendisinden dövülmüş — her savuruşunda gökyüzü bir an için susar.*",
     levels: [
@@ -349,7 +349,7 @@ export const WARRIOR_WEAPONS = [
   // sadece STR'ye bağlandı. Kullanıcının ekran görüntüsündeki +1'den
   // +10'a TAM tablo birebir girildi.
   {
-    tier: 6, levelMin: 60, levelMax: 65, name: "Hell Breaker", weaponType: "mace", weaponSlot: "twoHand",
+    tier: 6, levelMin: 60, levelMax: 65, name: "Cehennem Kıran", weaponType: "mace", weaponSlot: "twoHand",
     weight: 16, element: "flame",
     lore: "*Cehennemin kendi demirhanesinde dövüldü — her darbesi bir ruhu daha söndürür.*",
     levels: [
@@ -376,7 +376,7 @@ export const WARRIOR_WEAPONS = [
   // girildi — Gerekli STR bu sefer +2/seviye artıyor (diğer çoğu eşyada
   // +4'tü), tabloya sadık kalındı.
   {
-    tier: 5, levelMin: 55, levelMax: 65, name: "Iron Impact", weaponType: "mace", weaponSlot: "twoHand",
+    tier: 5, levelMin: 55, levelMax: 65, name: "Şimşek Yumruğu", weaponType: "mace", weaponSlot: "twoHand",
     weight: 14, element: "lightning",
     levels: [
       simpleWeaponLevel(130, 10, 176, 10000),  // +1
@@ -400,7 +400,7 @@ export const WARRIOR_WEAPONS = [
   // görüntüsündeki +1'den +10'a TAM tablo birebir girildi — Gerekli STR
   // yine +2/seviye (Iron Impact'le aynı oran).
   {
-    tier: 3, levelMin: 30, levelMax: 45, name: "Totamic Club", weaponType: "mace", weaponSlot: "twoHand",
+    tier: 3, levelMin: 30, levelMax: 45, name: "Totem Topuzu", weaponType: "mace", weaponSlot: "twoHand",
     weight: 14, element: "lightning",
     levels: [
       simpleWeaponLevel(117, 10, 164, 10000),  // +1
@@ -426,7 +426,7 @@ export const WARRIOR_WEAPONS = [
   // üç Club'dan farklı bir silüet. Kullanıcının ekran görüntüsündeki
   // +1'den +10'a TAM tablo birebir girildi.
   {
-    tier: 2, levelMin: 15, levelMax: 30, name: "Large Hacker", weaponType: "mace", weaponSlot: "twoHand",
+    tier: 2, levelMin: 15, levelMax: 30, name: "Kırıcı Gürz", weaponType: "mace", weaponSlot: "twoHand",
     weight: 14, element: "lightning",
     levels: [
       simpleWeaponLevel(107, 10, 154, 10000),  // +1
@@ -449,7 +449,7 @@ export const WARRIOR_WEAPONS = [
   // +2/seviye ama en düşük tabanla başlıyor (114), ailenin en giriş
   // seviyesi silahı olduğunu yansıtıyor.
   {
-    tier: 1, levelMin: 1, levelMax: 15, name: "Weight Hammer", weaponType: "mace", weaponSlot: "twoHand",
+    tier: 1, levelMin: 1, levelMax: 15, name: "Ağır Çekiç", weaponType: "mace", weaponSlot: "twoHand",
     weight: 14, element: "lightning",
     levels: [
       simpleWeaponLevel(48, 10, 114, 10000),   // +1
@@ -473,12 +473,12 @@ export const WARRIOR_WEAPONS = [
   // (levels dizisiz, forge'un ×1.18 tahminiyle yükselen) giriş silahları —
   // amaç sadece havuzu 1'den 3'e çıkarıp çeşitlilik katmak.
   {
-    tier: 1, levelMin: 1, levelMax: 15, name: "Rusty Sword", weaponType: "sword", weaponSlot: "twoHand",
+    tier: 1, levelMin: 1, levelMax: 15, name: "Paslı Kılıç", weaponType: "sword", weaponSlot: "twoHand",
     weight: 10, atk: 44, hp: 8,
     reqStats: [{ key: "str", value: 108 }],
   },
   {
-    tier: 1, levelMin: 1, levelMax: 15, name: "Iron Axe", weaponType: "axe", weaponSlot: "twoHand",
+    tier: 1, levelMin: 1, levelMax: 15, name: "Demir Balta", weaponType: "axe", weaponSlot: "twoHand",
     weight: 13, atk: 52, hp: 12,
     reqStats: [{ key: "str", value: 120 }],
   },

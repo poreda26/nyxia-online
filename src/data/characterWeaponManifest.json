@@ -4,15 +4,15 @@
     "index": 0,
     "items": [
       [
-        "Giantic Axe",
+        "Gökdev Baltası",
         "huge blue twin crescent steel poleaxe with ivory wrapped shaft"
       ],
       [
-        "Glave",
+        "Kara Diken",
         "long silver glaive spear with broad curved blade"
       ],
       [
-        "Halberd",
+        "Yılan Ucu",
         "bronze halberd with narrow axe blade and spear tip"
       ]
     ],
@@ -23,15 +23,15 @@
     "index": 1,
     "items": [
       [
-        "Raptor",
+        "Yırtıcı Pençe",
         "long black steel spear with silver forked dragon-tooth tip and crimson wrapping"
       ],
       [
-        "Blade Axe",
+        "Ayaz Balta",
         "broad asymmetrical single-blade iron axe with a red circular inset"
       ],
       [
-        "Avedon",
+        "Buzul Kıran",
         "heavy symmetrical gold-edged double axe with an amber central jewel"
       ]
     ],
@@ -42,15 +42,15 @@
     "index": 2,
     "items": [
       [
-        "Durandal",
+        "Ateş Dili",
         "straight slender silver longsword with blue crossguard"
       ],
       [
-        "Mirage",
+        "Serap",
         "wide gently curved dark steel sword with purple angular guard"
       ],
       [
-        "Stormweaver",
+        "Fırtına Ustası",
         "long jagged silver lightning sword with cyan crystalline spine"
       ]
     ],
@@ -61,15 +61,15 @@
     "index": 3,
     "items": [
       [
-        "Hell Breaker",
+        "Cehennem Kıran",
         "large demonic red-black hammer with horned skull head"
       ],
       [
-        "Iron Impact",
+        "Şimşek Yumruğu",
         "large rectangular iron maul with gold corners"
       ],
       [
-        "Totamic Club",
+        "Totem Topuzu",
         "carved dark wooden totem mace with green carved faces"
       ]
     ],
@@ -80,15 +80,15 @@
     "index": 4,
     "items": [
       [
-        "Large Hacker",
+        "Kırıcı Gürz",
         "long iron hammer with an angular pointed striking head"
       ],
       [
-        "Weight Hammer",
+        "Ağır Çekiç",
         "short heavy rounded bronze hammer"
       ],
       [
-        "Rusty Sword",
+        "Paslı Kılıç",
         "plain worn rusty brown straight sword"
       ]
     ],
@@ -99,7 +99,7 @@
     "index": 5,
     "items": [
       [
-        "Iron Axe",
+        "Demir Balta",
         "small plain single-bladed iron battleaxe"
       ],
       [
@@ -137,15 +137,15 @@
     "index": 0,
     "items": [
       [
-        "Bow",
+        "Avcı Yayı",
         "simple dark brown recurved short bow"
       ],
       [
-        "Bamboo Bow",
+        "Bambu Yay",
         "slender pale green bamboo longbow with visible joints"
       ],
       [
-        "Iron Crossbow",
+        "Demir Arbalet",
         "compact dark iron crossbow with straight steel limbs and short stock"
       ]
     ],
@@ -156,15 +156,15 @@
     "index": 1,
     "items": [
       [
-        "Scorpion Bow",
+        "Zehir Dikeni",
         "black-and-red recurve bow with scorpion tail hooks"
       ],
       [
-        "Iron Bow",
+        "Çelik Yay",
         "tall polished steel bow with broad flared limbs"
       ],
       [
-        "Chitin Bow",
+        "Köz Yayı",
         "brown layered insect-chitin bow with serrated tips"
       ]
     ],
@@ -175,15 +175,15 @@
     "index": 2,
     "items": [
       [
-        "Enion Bow",
+        "Yıldırım Teli",
         "long golden wing-shaped bow with blue jewel at center"
       ],
       [
-        "Eagle's Eye",
+        "Kartal Bakışı",
         "slender silver and violet eagle-wing bow"
       ],
       [
-        "Crossbow",
+        "Arbalet",
         "plain wood crossbow with curved brown limbs"
       ]
     ],
@@ -194,11 +194,11 @@
     "index": 3,
     "items": [
       [
-        "Horn Crossbow",
+        "Boynuz Arbalet",
         "white horn crossbow with leather bindings and pointed tips"
       ],
       [
-        "Helenid",
+        "Ayaz Yayı",
         "wide ornate ivory bow with green and gold vine limbs"
       ],
       [
@@ -270,15 +270,15 @@
     "index": 0,
     "items": [
       [
-        "Wooden Staff",
+        "Tahta Asa",
         "plain crooked brown oak staff with knotted top"
       ],
       [
-        "Apprentice Staff",
+        "Çırak Asası",
         "thin maple staff with small blue pebble tied at top"
       ],
       [
-        "Iron-Tipped Staff",
+        "Demir Uçlu Asa",
         "straight dark staff with conical iron cap"
       ]
     ],
@@ -289,15 +289,15 @@
     "index": 1,
     "items": [
       [
-        "Silk-Bound Staff",
+        "İpek Sarılı Asa",
         "white birch staff with purple silk ribbons and small silver ring"
       ],
       [
-        "Crimson-Runed Staff",
+        "Kızıl Rün Asası",
         "dark staff with large red triangular runestone"
       ],
       [
-        "Chitin-Woven Staff",
+        "Kabuk Dokuma Asa",
         "brown insect carapace staff with green forked claw head"
       ]
     ],
@@ -308,15 +308,15 @@
     "index": 2,
     "items": [
       [
-        "Scorching Staff",
+        "Kavurucu Asa",
         "golden staff topped with orange flame-shaped crystal"
       ],
       [
-        "Oasis Staff",
+        "Buzvaha Asası",
         "pale silver staff with curved ice-blue teardrop"
       ],
       [
-        "Chaotic Staff",
+        "Kaos Asası",
         "black staff topped with irregular violet jagged star"
       ]
     ],
@@ -327,15 +327,15 @@
     "index": 3,
     "items": [
       [
-        "Hell Blood",
+        "Cehennem Kanı",
         "red-black hooked scythe staff with crimson skull"
       ],
       [
-        "Elysium",
+        "Cennetbahçe",
         "white-gold curved winged staff with a blue celestial orb"
       ],
       [
-        "Garp",
+        "Poyraz",
         "dark forked staff with three sharp ice crystals"
       ]
     ],
@@ -346,11 +346,11 @@
     "index": 4,
     "items": [
       [
-        "Prismatic Triad Staff",
+        "Gökkuşağı Asası",
         "silver staff with three small floating red blue green crystals"
       ],
       [
-        "Ron's Staff",
+        "Kadim Asa",
         "long bronze staff topped by a narrow gold halo and violet oval"
       ],
       [

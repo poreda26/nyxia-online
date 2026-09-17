@@ -75,17 +75,17 @@ export function weaponLight(weapon) {
   if(!weapon || (weapon.upgradeLevel||0)<7)return null;
   const name=weapon.name||'';
   const element=String(weapon.element||weapon.elementType||'').toLowerCase();
-  if(/poison/.test(element)||/Halberd|Raptor|Glave/.test(name))return '#96ed66';
-  if(/glacier|ice/.test(element)||/Avedon|Blade Axe/.test(name))return '#83dfff';
-  if(/lightning/.test(element)||/Stormweaver|Giantic|Large Hacker|Weight Hammer|Iron Impact|Totamic/.test(name))return '#b3a0ff';
+  if(/poison/.test(element)||/Yılan Ucu|Yırtıcı Pençe|Kara Diken/.test(name))return '#96ed66';
+  if(/glacier|ice/.test(element)||/Buzul Kıran|Ayaz Balta/.test(name))return '#83dfff';
+  if(/lightning/.test(element)||/Fırtına Ustası|Gökdev|Kırıcı Gürz|Ağır Çekiç|Şimşek Yumruğu|Totem/.test(name))return '#b3a0ff';
   return '#ffae64';
 }
 
 export function weaponGrip(weapon) {
   // Individual source orientations differ: axes/Raptor have lower-right grips.
-  if(/^(Raptor|Glave)$/.test(weapon.name))return {x:.78,y:.77,rotation:Math.PI/2};
-  if(/^(Giantic Axe|Avedon)$/.test(weapon.name)||weapon.weaponType==='axe')return {x:.70,y:.72,rotation:Math.PI/2};
-  if(weapon.name==='Halberd')return {x:.49,y:.51,rotation:0};
+  if(/^(Yırtıcı Pençe|Kara Diken)$/.test(weapon.name))return {x:.78,y:.77,rotation:Math.PI/2};
+  if(/^(Gökdev Baltası|Buzul Kıran)$/.test(weapon.name)||weapon.weaponType==='axe')return {x:.70,y:.72,rotation:Math.PI/2};
+  if(weapon.name==='Yılan Ucu')return {x:.49,y:.51,rotation:0};
   if(/hammer|mace/.test(weapon.weaponType||''))return {x:.49,y:.53,rotation:0};
   return {x:.28,y:.72,rotation:0};
 }

@@ -44,7 +44,7 @@ test('every weapon has a distinct held pose for both races, driven by real equip
 
 test('inventory inspection does not change the equipped appearance, upgrade keeps grip pose',()=>{
  const p=initialPlayer('warrior','human','Preview'),a=characterAppearance(p);
- assert.ok(a.frame?.mask);assert.equal(characterAppearance({...p,selectedItem:{name:'Raptor'}}).key,a.key);
+ assert.ok(a.frame?.mask);assert.equal(characterAppearance({...p,selectedItem:{name:'Yırtıcı Pençe'}}).key,a.key);
  const upgraded=characterAppearance({...p,equipped:{...p.equipped,mainHand:{...p.equipped.mainHand,upgradeLevel:8}}});
  assert.equal(upgraded.frameIndex,a.frameIndex);assert.equal(upgraded.atlasKey,a.atlasKey);assert.equal(upgraded.upgrade,8);
  const unknown=characterAppearance({...p,equipped:{mainHand:{name:'unknown legacy'}}});
@@ -258,10 +258,10 @@ test('new warrior atlas keeps attack frames tied to impact time and pauses',()=>
 });
 
 test('world weapon art reuses base items, removes unequipped weapon and separates upgrade light',()=>{
-  const w={name:'Mirage',weaponType:'sword',upgradeLevel:1};
+  const w={name:'Serap',weaponType:'sword',upgradeLevel:1};
   assert.ok(warriorWeaponUrl(w));assert.equal(weaponLight(w),null);
   assert.equal(warriorWeaponUrl({...w,upgradeLevel:8}),warriorWeaponUrl(w));
-  assert.notEqual(weaponLight({...w,upgradeLevel:8}),weaponLight({...w,name:'Stormweaver',upgradeLevel:8}));
+  assert.notEqual(weaponLight({...w,upgradeLevel:8}),weaponLight({...w,name:'Fırtına Ustası',upgradeLevel:8}));
   assert.equal(warriorWeaponUrl(null),null);assert.equal(weaponLight(null),null);
 });
 

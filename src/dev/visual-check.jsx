@@ -22,14 +22,14 @@ function Check(){
         const [name,weaponType,upgradeLevel]=e.target.value.split('|');
         setPlayer(p=>({...p,equipped:{...p.equipped,mainHand:name==='none'?null:{...p.equipped.mainHand,name,weaponType,upgradeLevel:Number(upgradeLevel)}}}));
       }} value={player.equipped.mainHand?`${player.equipped.mainHand.name}|${player.equipped.mainHand.weaponType}|${player.equipped.mainHand.upgradeLevel}`:'none||0'}>
-        <option value="Short Blade|sword|1">Başlangıç kılıcı</option><option value="Durandal|sword|1">Durandal</option>
-        <option value="Mirage|sword|8">Mirage +8</option><option value="Stormweaver|sword|8">Stormweaver +8</option>
-        <option value="Raptor|longspear|7">Raptor +7</option><option value="Giantic Axe|axe|8">Giantic Axe +8</option>
+        <option value="Short Blade|sword|1">Başlangıç kılıcı</option><option value="Ateş Dili|sword|1">Ateş Dili</option>
+        <option value="Serap|sword|8">Serap +8</option><option value="Fırtına Ustası|sword|8">Fırtına Ustası +8</option>
+        <option value="Yırtıcı Pençe|longspear|7">Yırtıcı Pençe +7</option><option value="Gökdev Baltası|axe|8">Gökdev Baltası +8</option>
         <option value="none||0">Silahsız</option>
-        <option value="Bow|bow|1">Okçu yayı</option><option value="Wood Staff|staff|1">Büyücü asası</option>
+        <option value="Avcı Yayı|bow|1">Okçu yayı</option><option value="Wood Staff|staff|1">Büyücü asası</option>
       </select>
-      <button onClick={()=>setPlayer(p=>({...p,equipped:{...p.equipped,head:{name:'Chitin Armor Helmet'},chest:{name:'Chitin Armor Pauldron'}}}))}>T4 zırh</button>
-      <button onClick={()=>setPlayer(p=>({...p,equipped:{...p.equipped,head:{name:'Chitin Shell Helmet'},chest:{name:'Chitin Shell Pauldron'}}}))}>T5 zırh</button>
+      <button onClick={()=>setPlayer(p=>({...p,equipped:{...p.equipped,head:{name:'Carapace Armor Helmet'},chest:{name:'Carapace Armor Pauldron'}}}))}>T4 zırh</button>
+      <button onClick={()=>setPlayer(p=>({...p,equipped:{...p.equipped,head:{name:'Bone Shell Helmet'},chest:{name:'Bone Shell Pauldron'}}}))}>T5 zırh</button>
       <button onClick={()=>setPlayer(p=>({...p,equipped:{...p.equipped,head:null,chest:null}}))}>Zırhı çıkar</button>
       <span>Kayıtsız görsel test · Açılan panel: {panel}</span>
     </div>

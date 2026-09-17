@@ -136,9 +136,9 @@ import mpPotion4 from "../assets/items/mp-potion-4.png";
 // same weapon still falls back to the procedural line-art icon in
 // ItemIcon. Add more entries here as more art comes in.
 export const ITEM_IMAGE_BY_NAME = {
-  "Totamic Club": totamicClub,
-  "Prismatic Triad Staff": prismaticTriadStaff,
-  "Ron's Staff": ronsStaff,
+  "Totem Topuzu": totamicClub,
+  "Gökkuşağı Asası": prismaticTriadStaff,
+  "Kadim Asa": ronsStaff,
   // Warrior'ın zırh seti — T1/T2 henüz yüklenmedi (Görseller/Warrior
   // Zırh/T1,T2 klasörleri var ama boş), T3'te de sadece Gauntlet/Boots
   // yüklendi (Helmet/Pads/Pauldron bekleniyor). T4/T5 tam.
@@ -208,23 +208,23 @@ export const ITEM_IMAGE_BY_NAME = {
 // boyutunda bile parıltı tüm kareyi doldurduğu için kusursuz okunuyor.
 const LEVEL_IMAGE_VARIANTS = {
   // Halberd — kendine özel görsel (aile paylaşımı yok), Zehir element.
-  Halberd: [
+  "Yılan Ucu": [
     { maxLevel: 6, src: halberdBase },
     { maxLevel: 7, src: halberd7 },
     { maxLevel: 10, src: halberd8 },
   ],
   // Blade Axe — kendine özel görsel (aile paylaşımı yok), Buz element.
-  "Blade Axe": [
+  "Ayaz Balta": [
     { maxLevel: 6, src: bladeAxeBase },
     { maxLevel: 7, src: bladeAxe7 },
     { maxLevel: 10, src: bladeAxe8 },
   ],
-  Raptor: [
+  "Yırtıcı Pençe": [
     { maxLevel: 6, src: raptor },
     { maxLevel: 7, src: raptor7 },
     { maxLevel: 10, src: raptor8 },
   ],
-  Glave: [
+  "Kara Diken": [
     { maxLevel: 6, src: glave },
     { maxLevel: 7, src: glave7 },
     { maxLevel: 10, src: glave8 },
@@ -233,76 +233,76 @@ const LEVEL_IMAGE_VARIANTS = {
   // de aynı" (element parıltısı henüz yok), bu yüzden +1..+6 için TEK bir
   // paylaşımlı dosya (staffBase) üçünde de kullanılıyor, +7/+8'den itibaren
   // her biri kendi element rengiyle ayrışıyor.
-  "Scorching Staff": [
+  "Kavurucu Asa": [
     { maxLevel: 6, src: staffBase },
     { maxLevel: 7, src: scorchingStaff7 },
     { maxLevel: 10, src: scorchingStaff8 },
   ],
-  "Oasis Staff": [
+  "Buzvaha Asası": [
     { maxLevel: 6, src: staffBase },
     { maxLevel: 7, src: oasisStaff7 },
     { maxLevel: 10, src: oasisStaff8 },
   ],
-  "Chaotic Staff": [
+  "Kaos Asası": [
     { maxLevel: 6, src: staffBase },
     { maxLevel: 7, src: chaoticStaff7 },
     { maxLevel: 10, src: chaoticStaff8 },
   ],
   // Hell Breaker / Iron Impact — aynı desen: +1 paylaşımlı (clubBase),
   // +7/+8 kendi elementiyle (Alev / Yıldırım) ayrışıyor.
-  "Hell Breaker": [
+  "Cehennem Kıran": [
     { maxLevel: 6, src: clubBase },
     { maxLevel: 7, src: hellBreaker7 },
     { maxLevel: 10, src: hellBreaker8 },
   ],
-  "Iron Impact": [
+  "Şimşek Yumruğu": [
     { maxLevel: 6, src: clubBase },
     { maxLevel: 7, src: ironImpact7 },
     { maxLevel: 10, src: ironImpact8 },
   ],
   // Avedon / Giantic Axe — aynı desen: +1 paylaşımlı (axeBase), +7/+8 kendi
   // elementiyle (Buz / Yıldırım) ayrışıyor.
-  "Avedon": [
+  "Buzul Kıran": [
     { maxLevel: 6, src: axeBase },
     { maxLevel: 7, src: avedon7 },
     { maxLevel: 10, src: avedon8 },
   ],
-  "Giantic Axe": [
+  "Gökdev Baltası": [
     { maxLevel: 6, src: axeBase },
     { maxLevel: 7, src: gianticAxe7 },
     { maxLevel: 10, src: gianticAxe8 },
   ],
   // Durandal — kendine özel görsel (aile paylaşımı yok), Flame element.
-  "Durandal": [
+  "Ateş Dili": [
     { maxLevel: 6, src: durandalBase },
     { maxLevel: 7, src: durandal7 },
     { maxLevel: 10, src: durandal8 },
   ],
   // Mirage / Stormweaver — aynı ejder-kabzalı kılıç ailesi (+1 paylaşımlı:
   // swordBase), Mirage Alev, Stormweaver Yıldırım elementiyle ayrışıyor.
-  "Mirage": [
+  "Serap": [
     { maxLevel: 6, src: swordBase },
     { maxLevel: 7, src: mirage7 },
     { maxLevel: 10, src: mirage8 },
   ],
-  "Stormweaver": [
+  "Fırtına Ustası": [
     { maxLevel: 6, src: swordBase },
     { maxLevel: 7, src: stormweaver7 },
     { maxLevel: 10, src: stormweaver8 },
   ],
   // Hell Blood / Garp / Elysium — aynı kemik-tırpan ailesi (+1 paylaşımlı:
   // scytheBase), sırasıyla Alev / Buz / Yıldırım elementiyle ayrışıyor.
-  "Hell Blood": [
+  "Cehennem Kanı": [
     { maxLevel: 6, src: scytheBase },
     { maxLevel: 7, src: hellBlood7 },
     { maxLevel: 10, src: hellBlood8 },
   ],
-  "Garp": [
+  "Poyraz": [
     { maxLevel: 6, src: scytheBase },
     { maxLevel: 7, src: garp7 },
     { maxLevel: 10, src: garp8 },
   ],
-  "Elysium": [
+  "Cennetbahçe": [
     { maxLevel: 6, src: scytheBase },
     { maxLevel: 7, src: elysium7 },
     { maxLevel: 10, src: elysium8 },
@@ -310,12 +310,12 @@ const LEVEL_IMAGE_VARIANTS = {
   // Large Hacker / Weight Hammer — aynı balyoz ailesi (+1 paylaşımlı:
   // hammerBase), ikisi de Yıldırım elementiyle ama ayrışan renk varyantıyla
   // (Large Hacker mavi-camgöbeği, Weight Hammer mor) ayrışıyor.
-  "Large Hacker": [
+  "Kırıcı Gürz": [
     { maxLevel: 6, src: hammerBase },
     { maxLevel: 7, src: largeHacker7 },
     { maxLevel: 10, src: largeHacker8 },
   ],
-  "Weight Hammer": [
+  "Ağır Çekiç": [
     { maxLevel: 6, src: hammerBase },
     { maxLevel: 7, src: weightHammer7 },
     { maxLevel: 10, src: weightHammer8 },
@@ -328,57 +328,57 @@ const LEVEL_IMAGE_VARIANTS = {
   // bu yüzden +1'leri de +7/+8 gibi "kart" (zemin korunmuş, sadece dış
   // çerçeve kırpılmış) muameleye alındı, aile paylaşımı da yok (11'i de
   // kendine özel görsel).
-  "Bow": [
+  "Avcı Yayı": [
     { maxLevel: 6, src: bowBase },
     { maxLevel: 7, src: bow7 },
     { maxLevel: 10, src: bow8 },
   ],
-  "Bamboo Bow": [
+  "Bambu Yay": [
     { maxLevel: 6, src: bambooBowBase },
     { maxLevel: 7, src: bambooBow7 },
     { maxLevel: 10, src: bambooBow8 },
   ],
-  "Crossbow": [
+  "Arbalet": [
     { maxLevel: 6, src: crossbowBase },
     { maxLevel: 7, src: crossbow7 },
     { maxLevel: 10, src: crossbow8 },
   ],
-  "Horn Crossbow": [
+  "Boynuz Arbalet": [
     { maxLevel: 6, src: hornCrossbowBase },
     { maxLevel: 7, src: hornCrossbow7 },
     { maxLevel: 10, src: hornCrossbow8 },
   ],
-  "Iron Crossbow": [
+  "Demir Arbalet": [
     { maxLevel: 6, src: ironCrossbowBase },
     { maxLevel: 7, src: ironCrossbow7 },
     { maxLevel: 10, src: ironCrossbow8 },
   ],
-  "Iron Bow": [
+  "Çelik Yay": [
     { maxLevel: 6, src: ironBowBase },
     { maxLevel: 7, src: ironBow7 },
     { maxLevel: 10, src: ironBow8 },
   ],
-  "Scorpion Bow": [
+  "Zehir Dikeni": [
     { maxLevel: 6, src: scorpionBowBase },
     { maxLevel: 7, src: scorpionBow7 },
     { maxLevel: 10, src: scorpionBow8 },
   ],
-  "Chitin Bow": [
+  "Köz Yayı": [
     { maxLevel: 6, src: chitinBowBase },
     { maxLevel: 7, src: chitinBow7 },
     { maxLevel: 10, src: chitinBow8 },
   ],
-  "Enion Bow": [
+  "Yıldırım Teli": [
     { maxLevel: 6, src: enionBowBase },
     { maxLevel: 7, src: enionBow7 },
     { maxLevel: 10, src: enionBow8 },
   ],
-  "Eagle's Eye": [
+  "Kartal Bakışı": [
     { maxLevel: 6, src: eaglesEyeBase },
     { maxLevel: 7, src: eaglesEye7 },
     { maxLevel: 10, src: eaglesEye8 },
   ],
-  "Helenid": [
+  "Ayaz Yayı": [
     { maxLevel: 6, src: helenidBase },
     { maxLevel: 7, src: helenid7 },
     { maxLevel: 10, src: helenid8 },

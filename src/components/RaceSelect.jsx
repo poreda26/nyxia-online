@@ -12,7 +12,7 @@ export default function RaceSelect({ onChoose }) {
       <div style={styles.classSelectHeader}>
         <div style={styles.eyebrow}>YENİ KARAKTER</div>
         <h1 style={styles.h1}>Bir ırk seç.</h1>
-        <p style={styles.subtext}>Karus mu, ElMorad mı — hangi milletin bayrağı altında savaşacaksın?</p>
+        <p style={styles.subtext}>{RACES.karus.name} mı, {RACES.elmorad.name} mı — hangi milletin bayrağı altında savaşacaksın?</p>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

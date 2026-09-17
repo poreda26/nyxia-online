@@ -8,14 +8,14 @@ import {initialPlayer,equipItem} from '../utils/player';
 import {gmBuildWeaponById,gmWeaponTemplates,gmBuildArmor} from '../utils/loot';
 import arena from '../assets/battle/arena-v1.png';
 const slots={head:'Kask',chest:'Göğüslük',legs:'Pantolon',gauntlets:'Ellik',boots:'Bot'};
-function fresh(cls,race){let p={...initialPlayer(cls,race,'Önizleme'),level:65,awakened:true,stats:{str:300,dex:300,int:300,mag:300,sta:300}};const name={warrior:'Rusty Sword',rogue:'Bow',mage:'Wooden Staff'}[cls],t=gmWeaponTemplates(cls).find(w=>w.name===name),item=gmBuildWeaponById(cls,t.id,1);return equipItem({...p,inventory:[...p.inventory,item]},item).player;}
+function fresh(cls,race){let p={...initialPlayer(cls,race,'Önizleme'),level:65,awakened:true,stats:{str:300,dex:300,int:300,mag:300,sta:300}};const name={warrior:'Paslı Kılıç',rogue:'Avcı Yayı',mage:'Tahta Asa'}[cls],t=gmWeaponTemplates(cls).find(w=>w.name===name),item=gmBuildWeaponById(cls,t.id,1);return equipItem({...p,inventory:[...p.inventory,item]},item).player;}
 function takeOff(p,slot){const old=p.equipped[slot];return old?{...p,equipped:{...p.equipped,[slot]:null},inventory:[...p.inventory,old]}:p;}
 function putArmor(p,slot,tier,plus=1){if(!tier)return takeOff(p,slot);if(p.equipped[slot]?.tier===tier&&p.equipped[slot]?.upgradeLevel===plus)return p;const item=gmBuildArmor(p.class,slot,tier,plus),r=equipItem({...p,inventory:[...p.inventory,item]},item);if(r.blocked)throw Error(r.blocked);return r.player;}
 function Demo(){const [p,setP]=useState(()=>fresh('warrior','human')),[plus,setPlus]=useState(1),[tier,setTier]=useState(4),[armorPlus,setArmorPlus]=useState(1);
  function equip(name){if(!name){setP(takeOff(p,'mainHand'));return;}const t=gmWeaponTemplates(p.class).find(w=>w.name===name),item=gmBuildWeaponById(p.class,t.id,plus);setP(equipItem({...p,inventory:[...p.inventory,item]},item).player);}
  return <main><h1>Karakter, silah ve zırh</h1><p>Bu deneme oyun kaydını değiştirmez. Boş zırh yuvaları bez kıyafetli bedeni gösterir.</p><nav>
  <select aria-label="Sınıf" value={p.class} onChange={e=>{setP(fresh(e.target.value,p.race));setPlus(1)}}>{['warrior','rogue','mage'].map(c=><option key={c}>{c}</option>)}</select>
- <select aria-label="Irk" value={p.race} onChange={e=>setP({...p,race:e.target.value})}><option value="human">Human</option><option value="karus">Karus</option></select>
+ <select aria-label="Irk" value={p.race} onChange={e=>setP({...p,race:e.target.value})}><option value="human">Human</option><option value="karus">Kızılkurt</option></select>
  <select aria-label="Upgrade" value={plus} onChange={e=>{setPlus(+e.target.value);if(p.equipped.mainHand)setP({...p,equipped:{...p.equipped,mainHand:{...p.equipped.mainHand,upgradeLevel:+e.target.value}}})}}>{[1,2,3,4,5,6,7,8].map(n=><option key={n}>{n}</option>)}</select></nav>
  <select className="weapon" aria-label="Silah" value={p.equipped.mainHand?.name||''} onChange={e=>equip(e.target.value)}><option value="">Silahsız</option>{BALANCED_WEAPONS[p.class].map(w=><option key={w.name}>{w.name}</option>)}</select>
  <div className="weapon-info">{p.equipped.mainHand&&<ItemIcon item={p.equipped.mainHand} size={68}/>}<span>{p.equipped.mainHand?.name||'Silahsız'} · +{plus}</span></div>
