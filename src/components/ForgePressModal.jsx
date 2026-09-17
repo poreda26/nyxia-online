@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Hammer, Sparkles, Skull, CheckCircle2, ChevronsRight } from "lucide-react";
+import { Hammer, Skull, CheckCircle2, ChevronsRight } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { pick } from "../utils/random";
 import { displayItemName } from "../utils/player";
-import { itemStatLabel } from "../utils/itemDisplay";
 import { playUpgradeSuccess, playUpgradeFail } from "../audio/sfx";
 import { styles } from "../styles";
+import ItemIcon from './ItemIcon';
+import RewardReveal from './RewardReveal';
 
 const PRESS_DURATION = 2600; // ms — suspense window before the reveal
 
@@ -40,14 +41,15 @@ export default function ForgePressModal({ item, success, bumpedItem, onClose }) 
   return (
     <div style={styles.modalOverlay} onClick={phase !== "pressing" ? onClose : undefined}>
       <div
-        className={phase === "pressing" ? "forge-glow" : phase === "failed" ? "forge-fail-shake" : ""}
+        className={`reward-modal ${phase === "pressing" ? "forge-glow" : phase === "failed" ? "forge-fail-shake" : ""}`}
         style={styles.modalCard}
         onClick={(e) => e.stopPropagation()}
       >
         {phase === "pressing" && (
           <>
-            <div className="forge-hit" style={{ color }}>
-              <Hammer size={60} strokeWidth={1.3} />
+            <div className="forge-item-stage" style={{ color }}>
+              <ItemIcon item={item} size={104} color={color}/>
+              <div className="forge-hit"><Hammer size={42} strokeWidth={1.3} /></div>
             </div>
             <div style={{ marginTop: 18, fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
               Basılıyor...
@@ -65,15 +67,9 @@ export default function ForgePressModal({ item, success, bumpedItem, onClose }) 
                 <span key={i} className="confetti-bit" style={{ background: pick([color, "#D4AF6A", "#EDE8DC"]), left: `${(i * 7) % 100}%`, animationDelay: `${(i % 5) * 0.06}s` }} />
               ))}
             </div>
-            <div style={{ color, filter: `drop-shadow(0 0 18px ${color}aa)` }}>
-              <Sparkles size={56} strokeWidth={1.3} />
-            </div>
-            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>{displayItemName(bumpedItem)}</div>
+            <RewardReveal item={bumpedItem}/>
             <div style={{ fontSize: 10, color, fontFamily: "var(--font-mono)", marginTop: 6, letterSpacing: 1, textTransform: "uppercase" }}>
               +{bumpedItem.upgradeLevel} seviyesine yükseldi
-            </div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)", marginTop: 6 }}>
-              {itemStatLabel(bumpedItem)}
             </div>
             <button style={{ ...styles.primaryBtn, marginTop: 22, background: color }} onClick={onClose}>
               Harika! <CheckCircle2 size={15} />

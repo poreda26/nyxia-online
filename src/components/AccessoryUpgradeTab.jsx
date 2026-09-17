@@ -1,8 +1,9 @@
 import { ScrollText } from "lucide-react";
+import {useState} from 'react';
+import ForgePressModal from './ForgePressModal';
 import { itemTierColor } from "../data/itemRarity";
 import { upgradeAccessory, canUpgradeAccessory, ACCESSORY_UPGRADE_MAX_LEVEL } from "../utils/accessoryUpgrade";
 import { displayItemName } from "../utils/player";
-import { playUpgradeSuccess } from "../audio/sfx";
 import { styles } from "../styles";
 import EmptyState from "./shared/EmptyState";
 import ItemIcon from "./ItemIcon";
@@ -12,6 +13,7 @@ import ItemIcon from "./ItemIcon";
 // Aynı isim+seviyeden HER takı grubunu listeler (3'ten az olsa bile, ki
 // oyuncu ilerlemesini görsün), ama sadece 3+ olanlarda buton aktif olur.
 export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
+  const [reveal,setReveal]=useState(null);
   const groups = new Map();
   for (const it of player.inventory) {
     if (it.kind !== "accessory") continue;
@@ -23,15 +25,17 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
   const scrollCount = player.inventory.find((it) => it.kind === "accessoryScroll")?.count || 0;
 
   const handleUpgrade = (sample) => {
+    if(reveal)return;
     const result = upgradeAccessory(player, sample.id);
     if (!result.upgraded) { pushToast(result.reason || "Yükseltilemedi.", "warn"); return; }
     setPlayer(result.player);
-    playUpgradeSuccess();
+    setReveal({item:sample,bumpedItem:result.item});
     pushToast(`${displayItemName(sample)} → +${(sample.upgradeLevel || 0) + 1} oldu!`, "loot");
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {reveal&&<ForgePressModal {...reveal} success={true} onClose={()=>setReveal(null)}/>}
       <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
         Aynı takıdan ve aynı +'dan <b>3 tane</b> + <b>1 Aksesuar Yükseltme Kağıdı</b> %100 oranda
         bir sonraki seviyeye birleşir. +{ACCESSORY_UPGRADE_MAX_LEVEL}'ten sonrası henüz açılmadı.

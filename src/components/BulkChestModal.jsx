@@ -3,6 +3,7 @@ import { itemTierColor } from "../data/itemRarity";
 import { displayItemName } from "../utils/player";
 import { styles } from "../styles";
 import ItemIcon from "./ItemIcon";
+import {itemStatLabel} from '../utils/itemDisplay';
 
 // Tek tek sandık açma animasyonu (bkz. ChestModal.jsx) çok kutu birden
 // açılınca pratik değil — kullanıcı: "elimizde fazla kutu olduğu zaman
@@ -33,8 +34,8 @@ export default function BulkChestModal({ result, onClose }) {
         <div style={{ width: "100%", maxHeight: 260, overflowY: "auto", marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
           {items.map((item, i) => (
             <div key={item.id || i} style={{ ...styles.itemRow, borderColor: `${itemTierColor(item.tier)}44` }}>
-              <ItemIcon item={item} size={20} color={itemTierColor(item.tier)} strokeWidth={1.6} />
-              <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item)}</span>
+              <ItemIcon item={item} size={48} color={itemTierColor(item.tier)} strokeWidth={1.6} />
+              <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item)}<small style={{display:'block',marginTop:4,color:'var(--text-muted)',lineHeight:1.5}}>{itemStatLabel(item)}</small></span>
               <span style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{item.tier}</span>
             </div>
           ))}

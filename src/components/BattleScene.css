@@ -1,4 +1,11 @@
 .battle-scene{position:relative;isolation:isolate;overflow:hidden;aspect-ratio:16/9;min-height:230px;max-height:410px;border:1px solid #9f8e5866;border-radius:12px;margin-bottom:14px;background-size:cover;background-position:center;color:#f7eacc;box-shadow:inset 0 0 70px #06131199}
+.battle-effect,.battle-counter,.battle-impact{z-index:3;pointer-events:none}
+.battle-impact{position:absolute;left:67%;top:54%;width:48px;height:48px;opacity:0;border-radius:50%;background:radial-gradient(circle,#fffce9 0 7%,#ffcf70b3 12%,transparent 62%);animation:hit-impact .34s ease-out both}
+.battle-impact:before,.battle-impact:after{content:'';position:absolute;left:47%;top:-15%;height:130%;width:3px;background:linear-gradient(transparent,#fff6d0,transparent);transform:rotate(40deg)}
+.battle-impact:after{transform:rotate(-55deg)}
+.battle-slash:after{content:'';position:absolute;inset:5px -5px -5px 5px;border-top:2px solid #fff6d099;border-radius:50%}
+@keyframes hit-impact{0%,25%{opacity:0;transform:scale(.3)}42%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}
+.battle-mobile .battle-impact{top:57%}
 .battle-scene:after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(#07100f80,transparent 30%,transparent 80%,#07100faa);z-index:-1}
 .battle-scene-title{position:absolute;top:15px;left:20px;font:16px Georgia,serif;letter-spacing:1px;text-shadow:0 2px 4px #000}.battle-scene-title span{display:block;font:9px sans-serif;letter-spacing:3px;margin-top:5px;color:#b5c8af}
 .battle-cast{position:absolute;inset:0}.battle-unit{position:absolute;bottom:16%;width:26%;height:59%}.battle-hero{left:14%}.battle-enemy{right:12%;height:51%;width:30%}

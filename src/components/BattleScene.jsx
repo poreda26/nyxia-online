@@ -38,7 +38,7 @@ export default function BattleScene({player,monster,battle,map,visual}) {
     <div key={visual.id} className={`battle-cast ${active?'is-active':''} ${support?'is-support':''} ${ranged?'is-ranged':''} ${battle.monsterHp<=0?'is-victory':''}`}>
       <div className="battle-unit battle-hero"><div className="battle-motion"><CharacterFigure player={player}/></div><span className="battle-unit-name">{player.nickname || 'Sen'}</span></div>
       <div className="battle-unit battle-enemy"><div className="battle-motion"><Figure rect={rect} label={monster.name} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name">{monster.name}</span></div>
-      {active&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} /><i className="battle-counter" /></>}
+      {active&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} />{!support&&<><i className="battle-impact" aria-hidden="true"/><i className="battle-counter" /></>}</>}
     </div>
     <div className="battle-scene-caption">{battle.monsterHp<=0?'Düşman yenildi':visual.label||'Savaşa hazır'}</div>
   </section>;
