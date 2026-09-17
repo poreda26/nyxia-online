@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { CLASSES } from "../data/classes";
 import { styles } from "../styles";
+import { useTranslation } from "../i18n/LanguageContext";
 
 function StatPill({ label, value }) {
   return (
@@ -13,6 +14,7 @@ function StatPill({ label, value }) {
 }
 
 export default function ClassSelect({ onChoose }) {
+  const { t } = useTranslation();
   const [hovered, setHovered] = useState("warrior");
   const [nickname, setNickname] = useState("");
   const [nicknameError, setNicknameError] = useState(false);
@@ -32,21 +34,21 @@ export default function ClassSelect({ onChoose }) {
   return (
     <div style={styles.classSelectRoot}>
       <div style={styles.classSelectHeader}>
-        <div style={styles.eyebrow}>YENİ MACERA</div>
-        <h1 style={styles.h1}>Bir sınıf seç.</h1>
-        <p style={styles.subtext}>Zindanlara ineceksin, zırh toplayacaksın, pazarda satacaksın.</p>
+        <div style={styles.eyebrow}>{t("classSelect.eyebrow")}</div>
+        <h1 style={styles.h1}>{t("classSelect.title")}</h1>
+        <p style={styles.subtext}>{t("classSelect.subtitle")}</p>
       </div>
 
       <input
         type="text"
         value={nickname}
         onChange={(e) => { setNickname(e.target.value); if (nicknameError) setNicknameError(false); }}
-        placeholder="Karakter adı"
+        placeholder={t("classSelect.namePlaceholder")}
         maxLength={20}
         style={{ ...styles.numInput, width: "100%", maxWidth: 320, alignSelf: "center", textAlign: "center", marginBottom: nicknameError ? 6 : 20, ...(nicknameError ? { borderColor: "#C9425A" } : {}) }}
       />
       {nicknameError && (
-        <div style={{ fontSize: 11, color: "#E8A5AF", textAlign: "center", marginBottom: 14 }}>Bir karakter adı girmelisin.</div>
+        <div style={{ fontSize: 11, color: "#E8A5AF", textAlign: "center", marginBottom: 14 }}>{t("classSelect.nameRequired")}</div>
       )}
 
       <div style={styles.classGrid}>
@@ -83,7 +85,7 @@ export default function ClassSelect({ onChoose }) {
         style={{ ...styles.primaryBtn, marginTop: 28, alignSelf: "center", background: active.color }}
         onClick={() => choose(hovered)}
       >
-        {active.name} olarak başla <ChevronRight size={16} />
+        {t("classSelect.startAs", { cls: active.name })} <ChevronRight size={16} />
       </button>
 
       {confirming && (() => {
@@ -94,17 +96,17 @@ export default function ClassSelect({ onChoose }) {
             <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
               <Icon size={32} color={c.color} strokeWidth={1.4} />
               <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-                {c.name} sınıfını seçmek istediğine emin misin?
+                {t("classSelect.confirmTitle", { cls: c.name })}
               </div>
               <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)", textAlign: "center", maxWidth: 240 }}>
-                "{nickname.trim()}" adıyla bu sınıfta bir macera başlıyor.
+                {t("classSelect.confirmSubtitle", { nick: nickname.trim() })}
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
                 <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirming(null)}>
-                  Vazgeç
+                  {t("classSelect.cancel")}
                 </button>
                 <button style={{ ...styles.tinyBtn, background: c.color, color: "#0B0C10" }} onClick={() => onChoose(confirming, nickname.trim())}>
-                  Evet, Başla
+                  {t("classSelect.confirmYes")}
                 </button>
               </div>
             </div>

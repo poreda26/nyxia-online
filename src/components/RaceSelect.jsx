@@ -2,17 +2,19 @@ import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { RACES } from "../data/races";
 import { styles } from "../styles";
+import { useTranslation } from "../i18n/LanguageContext";
 
 export default function RaceSelect({ onChoose }) {
+  const { t } = useTranslation();
   const [hovered, setHovered] = useState("karus");
   const active = RACES[hovered];
 
   return (
     <div style={styles.classSelectRoot}>
       <div style={styles.classSelectHeader}>
-        <div style={styles.eyebrow}>YENİ KARAKTER</div>
-        <h1 style={styles.h1}>Bir ırk seç.</h1>
-        <p style={styles.subtext}>{RACES.karus.name} mı, {RACES.elmorad.name} mı — hangi milletin bayrağı altında savaşacaksın?</p>
+        <div style={styles.eyebrow}>{t("raceSelect.eyebrow")}</div>
+        <h1 style={styles.h1}>{t("raceSelect.title")}</h1>
+        <p style={styles.subtext}>{t("raceSelect.subtitle", { a: RACES.karus.name, b: RACES.elmorad.name })}</p>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -46,7 +48,7 @@ export default function RaceSelect({ onChoose }) {
         style={{ ...styles.primaryBtn, marginTop: 28, alignSelf: "center", background: active.color }}
         onClick={() => onChoose(hovered)}
       >
-        {active.name} olarak devam et <ChevronRight size={16} />
+        {t("raceSelect.continueAs", { race: active.name })} <ChevronRight size={16} />
       </button>
     </div>
   );

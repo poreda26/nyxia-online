@@ -19,6 +19,7 @@ import RaceSelect from "./components/RaceSelect";
 import ClassSelect from "./components/ClassSelect";
 import Hub from "./components/Hub";
 import SettingsModal from "./components/SettingsModal";
+import { LanguageProvider } from "./i18n/LanguageContext";
 
 export default function App() {
   const [screen, setScreen] = useState("login");
@@ -258,6 +259,7 @@ export default function App() {
   };
 
   return (
+    <LanguageProvider lang={audioSettings.language} setLang={(l) => updateAudioSetting("language", l)}>
     <div style={styles.appRoot}>
       <GlobalStyle />
       {screen === "login" && <LoginScreen initialUsername={initialUsername} onLogin={handleLogin} />}
@@ -329,9 +331,12 @@ export default function App() {
           sfxMuted={audioSettings.sfxMuted}
           onSfxVolumeChange={(v) => updateAudioSetting("sfxVolume", v)}
           onToggleSfxMute={() => updateAudioSetting("sfxMuted", !audioSettings.sfxMuted)}
+          lang={audioSettings.language}
+          onLangChange={(l) => updateAudioSetting("language", l)}
           onClose={() => setSettingsOpen(false)}
         />
       )}
     </div>
+    </LanguageProvider>
   );
 }

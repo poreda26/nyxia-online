@@ -5,8 +5,10 @@ import { RACES } from "../data/races";
 import { CHARACTER_SLOTS, THIRD_SLOT_COST_DIAMONDS, CHARACTER_DELETE_COST_DIAMONDS } from "../utils/storage";
 import { displayClassName } from "../utils/player";
 import { styles } from "../styles";
+import { useTranslation } from "../i18n/LanguageContext";
 
 export default function CharacterSelectScreen({ username, characters, unlockedSlots, diamonds, onPlay, onCreate, onDelete, onUnlockSlot, onLogout }) {
+  const { t } = useTranslation();
   const [confirmingIdx, setConfirmingIdx] = useState(null);
   // Üç aşamalı silme onayı: "warn" (eşya/altın kaybı uyarısı) -> "final"
   // (son "emin misin" sorusu, artık elmas bedelini de gösterir) -> gerçek
@@ -19,7 +21,7 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
       <div style={styles.classSelectHeader}>
         <div style={styles.eyebrow}>{username.toUpperCase()}</div>
         <h1 style={styles.h1}>Karakterini seç.</h1>
-        <p style={styles.subtext}>{unlockedSlots} karakter slotun var. Birini oyna, ya da boş bir slotta yeni bir karakter yarat.</p>
+        <p style={styles.subtext}>{t("characterSelect.subtitle", { n: unlockedSlots })}</p>
       </div>
 
       <div style={styles.slotList}>
@@ -33,13 +35,13 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
                   <Lock size={16} color="var(--text-faint)" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>Kilitli Slot</div>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("characterSelect.lockedSlot")}</div>
                   <div style={{ fontSize: 9, color: canUnlock ? "#8B6FC9" : "var(--text-faint)", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 3 }}>
-                    <Gem size={9} /> {THIRD_SLOT_COST_DIAMONDS} Elmas — hesapta {diamonds}
+                    <Gem size={9} /> {t("characterSelect.diamondCost", { cost: THIRD_SLOT_COST_DIAMONDS, have: diamonds })}
                   </div>
                 </div>
                 <button style={{ ...styles.tinyBtn, ...(canUnlock ? {} : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }) }} disabled={!canUnlock} onClick={onUnlockSlot}>
-                  Aç
+                  {t("characterSelect.open")}
                 </button>
               </div>
             );
@@ -52,9 +54,9 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
                   <Plus size={18} color="var(--text-faint)" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>Boş Slot</div>
+                  <div style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("characterSelect.emptySlot")}</div>
                 </div>
-                <button style={styles.tinyBtn} onClick={() => onCreate(idx)}>Karakter Oluştur</button>
+                <button style={styles.tinyBtn} onClick={() => onCreate(idx)}>{t("characterSelect.createCharacter")}</button>
               </div>
             );
           }
@@ -84,7 +86,7 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
                   >
                     <Trash2 size={12} />
                   </button>
-                  <button style={styles.tinyBtn} onClick={() => onPlay(idx)}>Oyna</button>
+                  <button style={styles.tinyBtn} onClick={() => onPlay(idx)}>{t("characterSelect.play")}</button>
                 </div>
               </div>
 
@@ -94,16 +96,16 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
                   <div style={{ ...styles.itemDetailCard, marginTop: 0, borderColor: "#C9425A55", background: "#C9425A0d" }}>
                     <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6 }}>
                       {confirmStep === "warn"
-                        ? `Karakteri silersen üstündeki tüm eşyaları ve altını kaybedersin. Silme bedeli ${CHARACTER_DELETE_COST_DIAMONDS} elmas (hesaptan).`
-                        : "Karakteri silmek istediğine kesinlikle emin misin? Bu işlem geri alınamaz."}
+                        ? t("characterSelect.deleteWarn", { cost: CHARACTER_DELETE_COST_DIAMONDS })
+                        : t("characterSelect.deleteFinal")}
                     </div>
                     {confirmStep === "final" && !canAfford && (
                       <div style={{ fontSize: 11, color: "#E8A5AF", marginTop: 6 }}>
-                        Silmek için hesapta en az {CHARACTER_DELETE_COST_DIAMONDS} elmas olmalı (şu an: {diamonds}).
+                        {t("characterSelect.deleteNotEnough", { cost: CHARACTER_DELETE_COST_DIAMONDS, have: diamonds })}
                       </div>
                     )}
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                      <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={cancelDelete}>Vazgeç</button>
+                      <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={cancelDelete}>{t("characterSelect.cancel")}</button>
                       <button
                         style={{ ...styles.tinyBtn, background: "#C9425A", ...(confirmStep === "final" && !canAfford ? { opacity: 0.5 } : {}) }}
                         disabled={confirmStep === "final" && !canAfford}
@@ -113,7 +115,7 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
                           cancelDelete();
                         }}
                       >
-                        {confirmStep === "warn" ? "Devam Et" : `Evet, Sil (${CHARACTER_DELETE_COST_DIAMONDS} Elmas)`}
+                        {confirmStep === "warn" ? t("characterSelect.continue") : t("characterSelect.confirmDelete", { cost: CHARACTER_DELETE_COST_DIAMONDS })}
                       </button>
                     </div>
                   </div>
@@ -128,7 +130,7 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
         style={{ ...styles.tinyBtn, background: "none", color: "var(--text-faint)", marginTop: 24, alignSelf: "center", display: "flex", alignItems: "center", gap: 6 }}
         onClick={onLogout}
       >
-        <LogOut size={12} /> Çıkış Yap
+        <LogOut size={12} /> {t("characterSelect.logout")}
       </button>
     </div>
   );

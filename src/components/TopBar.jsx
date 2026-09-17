@@ -3,8 +3,10 @@ import { xpToNext, MAX_LEVEL, formatGold } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { activeTitleInfo } from "../utils/achievements";
 import { styles } from "../styles";
+import { useTranslation } from "../i18n/LanguageContext";
 
 export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, onOpenSettings }) {
+  const { t } = useTranslation();
   const atCap = player.level >= MAX_LEVEL;
   const need = xpToNext(player.level);
   const pct = atCap ? 100 : Math.min(100, (player.xp / need) * 100);
@@ -34,7 +36,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
               </span>
             </span>
             <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", flexShrink: 0, whiteSpace: "nowrap" }}>
-              {atCap ? "MAKS SEVİYE" : `${player.xp}/${need} XP`}
+              {atCap ? t("topBar.maxLevel") : `${player.xp}/${need} XP`}
             </span>
           </div>
           <div style={styles.xpTrack}>
@@ -48,7 +50,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
         {onOpenDailyLogin && (
           <button
             onClick={onOpenDailyLogin}
-            title="Günlük Giriş Ödülü"
+            title={t("topBar.dailyLogin")}
             style={{ position: "relative", background: "none", border: "none", color: dailyLoginAvailable ? "#D4AF6A" : "var(--text-faint)", cursor: "pointer", padding: 4, flexShrink: 0 }}
           >
             <Gift size={16} strokeWidth={1.8} />
@@ -62,7 +64,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
         {onOpenSettings && (
           <button
             onClick={onOpenSettings}
-            title="Ayarlar"
+            title={t("settings.title")}
             style={{ background: "none", border: "none", color: "#D4AF6A", cursor: "pointer", padding: 4, flexShrink: 0 }}
           >
             <Settings size={16} strokeWidth={1.8} />

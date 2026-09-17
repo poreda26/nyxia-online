@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronRight, User } from "lucide-react";
 import { styles } from "../styles";
+import { useTranslation } from "../i18n/LanguageContext";
 
 // No password field on purpose — there's no backend to check one against,
 // and storing something LABELED a password in localStorage (in plaintext,
@@ -8,6 +9,7 @@ import { styles } from "../styles";
 // is a local profile name only: it separates characters on this browser,
 // nothing more. See utils/storage.js for the full caveat.
 export default function LoginScreen({ initialUsername, onLogin }) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState(initialUsername || "");
 
   const submit = () => {
@@ -19,9 +21,9 @@ export default function LoginScreen({ initialUsername, onLogin }) {
   return (
     <div style={styles.classSelectRoot}>
       <div style={styles.classSelectHeader}>
-        <div style={styles.eyebrow}>HOŞ GELDİN</div>
-        <h1 style={styles.h1}>Kullanıcı adını gir.</h1>
-        <p style={styles.subtext}>Bu isim karakterlerini bu tarayıcıda ayırt eder.</p>
+        <div style={styles.eyebrow}>{t("login.welcome")}</div>
+        <h1 style={styles.h1}>{t("login.title")}</h1>
+        <p style={styles.subtext}>{t("login.subtitle")}</p>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -33,7 +35,7 @@ export default function LoginScreen({ initialUsername, onLogin }) {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-          placeholder="kullanıcı adı"
+          placeholder={t("login.placeholder")}
           maxLength={20}
           style={{ ...styles.loginInput, flex: 1, textAlign: "left" }}
           autoFocus
@@ -45,12 +47,11 @@ export default function LoginScreen({ initialUsername, onLogin }) {
         disabled={!username.trim()}
         onClick={submit}
       >
-        Giriş Yap <ChevronRight size={16} />
+        {t("login.submit")} <ChevronRight size={16} />
       </button>
 
       <p style={styles.loginCaveat}>
-        Bu yerel bir profildir — şifre yok, sunucu yok. Sadece bu tarayıcıda
-        karakterlerini saklamak için kullanılır.
+        {t("login.caveat")}
       </p>
     </div>
   );

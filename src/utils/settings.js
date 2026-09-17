@@ -6,6 +6,7 @@ const KEYS = {
   musicMuted: "rpgmarket:musicMuted",
   sfxVolume: "rpgmarket:sfxVolume",
   sfxMuted: "rpgmarket:sfxMuted",
+  language: "rpgmarket:language",
 };
 
 function readNum(key, fallback) {
@@ -20,6 +21,9 @@ function readBool(key, fallback) {
     return v === null ? fallback : v === "1";
   } catch { return fallback; }
 }
+function readStr(key, fallback) {
+  try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
+}
 
 export function loadSettings() {
   return {
@@ -27,6 +31,7 @@ export function loadSettings() {
     musicMuted: readBool(KEYS.musicMuted, false),
     sfxVolume: readNum(KEYS.sfxVolume, 60),
     sfxMuted: readBool(KEYS.sfxMuted, false),
+    language: readStr(KEYS.language, "tr"),
   };
 }
 
