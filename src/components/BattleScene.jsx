@@ -12,6 +12,7 @@ import {battleVisualFor} from '../data/battleVisuals';
 const enemyAtlases={fallow:actors,ashen,frost,sanctuary,abyss,crimson};
 import './BattleScene.css';
 import CharacterFigure from './CharacterFigure';
+import {useTranslation} from '../i18n/LanguageContext';
 
 // Read-only presentation: no timers, rewards, combat decisions or storage writes.
 export const hasBattleScene = monster => !!battleVisualFor(monster);
@@ -23,6 +24,7 @@ function Figure({rect,label,source=actors,size=[1448,1086]}) {
   </svg>;
 }
 export default function BattleScene({player,monster,battle,map,visual}) {
+  const {t}=useTranslation();
   const art=battleVisualFor(monster);
   if(!art) return null;
   const rect=art.rect;
@@ -33,19 +35,19 @@ export default function BattleScene({player,monster,battle,map,visual}) {
   // Kullanıcı isteği: canavara vurduğumuzda da (incoming'in aynısı, ters
   // yönde) bir "−X"/"Iskaladın" uçan yazısı görünsün.
   const outgoing=active?visual.outgoing:null;
-  return <section className="battle-scene" aria-label="Savaş sahnesi" style={art.atlas==='fallow'?{backgroundImage:`url(${arena})`}:{backgroundImage:`url(${regions})`,backgroundSize:'300% 200%',backgroundPosition:`${(art.background%3)*50}% ${Math.floor(art.background/3)*100}%`}}>
-    <div className="battle-scene-title">Savaş<span>{map.name}</span></div>
+  return <section className="battle-scene" aria-label={t('battle.sceneTitle')} style={art.atlas==='fallow'?{backgroundImage:`url(${arena})`}:{backgroundImage:`url(${regions})`,backgroundSize:'300% 200%',backgroundPosition:`${(art.background%3)*50}% ${Math.floor(art.background/3)*100}%`}}>
+    <div className="battle-scene-title">{t('battle.sceneTitle')}<span>{map.name}</span></div>
     <div className="battle-hud">
-      <div><strong>{player.nickname || 'Sen'}</strong><meter aria-label="Canın" min="0" max={playerMaxHp(player)} value={player.hp}/><small>{player.hp} / {playerMaxHp(player)}</small><meter className="mana" aria-label="Manan" min="0" max={playerMaxMp(player)} value={player.mp}/><small>MP {player.mp} / {playerMaxMp(player)}</small></div>
-      <div><strong>{monster.name}</strong><meter aria-label="Düşman canı" min="0" max={battle.monsterMaxHp} value={battle.monsterHp}/><small>{battle.monsterHp} / {battle.monsterMaxHp}</small><small>{monster.isBoss?'BOSS':'DÜŞMAN'}</small></div>
+      <div><strong>{player.nickname || t('battle.you')}</strong><meter aria-label={t('battle.yourHp')} min="0" max={playerMaxHp(player)} value={player.hp}/><small>{player.hp} / {playerMaxHp(player)}</small><meter className="mana" aria-label={t('battle.yourMp')} min="0" max={playerMaxMp(player)} value={player.mp}/><small>MP {player.mp} / {playerMaxMp(player)}</small></div>
+      <div><strong>{monster.name}</strong><meter aria-label={t('battle.enemyHp')} min="0" max={battle.monsterMaxHp} value={battle.monsterHp}/><small>{battle.monsterHp} / {battle.monsterMaxHp}</small><small>{monster.isBoss?t('battle.boss'):t('battle.enemy')}</small></div>
     </div>
     <div key={visual.id} className={`battle-cast ${active?'is-active':''} ${support?'is-support':''} ${ranged?'is-ranged':''} ${incoming?'has-counter':''} ${incoming?.hit?'incoming-hit':''} ${battle.monsterHp<=0?'is-victory':''}`}>
-      <div className="battle-unit battle-hero"><div className="battle-motion"><CharacterFigure player={player}/></div><span className="battle-unit-name">{player.nickname || 'Sen'}</span></div>
+      <div className="battle-unit battle-hero"><div className="battle-motion"><CharacterFigure player={player}/></div><span className="battle-unit-name">{player.nickname || t('battle.you')}</span></div>
       <div className="battle-unit battle-enemy"><div className="battle-motion"><Figure rect={rect} label={monster.name} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name">{monster.name}</span></div>
       {active&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} />{!support&&<i className="battle-impact" aria-hidden="true"/>}</>}
-      {incoming&&<>{incoming.hit&&<><i className="battle-counter" aria-hidden="true"/><i className="incoming-burst" aria-hidden="true"/></>}<span className={`incoming-number ${incoming.hit?'':'incoming-miss'}`}>{incoming.hit?`−${incoming.damage}`:'Iskaladı'}</span></>}
-      {outgoing&&<span className={`outgoing-number ${outgoing.hit?(outgoing.crit?'outgoing-crit':''):'outgoing-miss'}`}>{outgoing.hit?`−${outgoing.damage}`:'Iskaladın'}</span>}
+      {incoming&&<>{incoming.hit&&<><i className="battle-counter" aria-hidden="true"/><i className="incoming-burst" aria-hidden="true"/></>}<span className={`incoming-number ${incoming.hit?'':'incoming-miss'}`}>{incoming.hit?`−${incoming.damage}`:t('battle.missIncoming')}</span></>}
+      {outgoing&&<span className={`outgoing-number ${outgoing.hit?(outgoing.crit?'outgoing-crit':''):'outgoing-miss'}`}>{outgoing.hit?`−${outgoing.damage}`:t('battle.missOutgoing')}</span>}
     </div>
-    <div className="battle-scene-caption">{battle.monsterHp<=0?'Düşman yenildi':visual.label||'Savaşa hazır'}</div>
+    <div className="battle-scene-caption">{battle.monsterHp<=0?t('battle.enemyDefeated'):visual.label||t('battle.readyForBattle')}</div>
   </section>;
 }

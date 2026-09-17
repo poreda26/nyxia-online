@@ -1,6 +1,7 @@
 import { Sparkles, Zap, MapPinned, CheckCircle2 } from "lucide-react";
 import { pick } from "../utils/random";
 import { styles } from "../styles";
+import { useTranslation } from "../i18n/LanguageContext";
 
 // Kullanıcı isteği: "Seviye atladığımız zaman 5 Lvl oldun ! tarzında bir
 // widget açılsın... kazandığı 3 statü'yü de hatırlatmayı unutma. Yeni
@@ -9,6 +10,7 @@ import { styles } from "../styles";
 // tetikleniyor. ForgePressModal'ın başarı ekranıyla aynı konfeti deseni
 // kullanılıyor ki oyunun geri kalanıyla görsel dili tutarlı olsun.
 export default function LevelUpModal({ levelUp, onClose }) {
+  const { t } = useTranslation();
   const { toLevel, statPointsGained, unlockedMap } = levelUp;
   return (
     <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={onClose}>
@@ -27,18 +29,18 @@ export default function LevelUpModal({ levelUp, onClose }) {
             <Sparkles size={56} strokeWidth={1.3} />
           </div>
           <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 22 }}>
-            Seviye {toLevel} oldun!
+            {t("levelUp.title", { level: toLevel })}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, color: "#8B6FC9", fontFamily: "var(--font-mono)" }}>
-            <Zap size={13} /> +{statPointsGained} statü puanı kazandın
+            <Zap size={13} /> {t("levelUp.statPoints", { n: statPointsGained })}
           </div>
           {unlockedMap && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 12, color: unlockedMap.color, fontFamily: "var(--font-mono)" }}>
-              <MapPinned size={13} /> Yeni bölge açıldı: {unlockedMap.name}
+              <MapPinned size={13} /> {t("levelUp.mapUnlocked", { map: unlockedMap.name })}
             </div>
           )}
           <button style={{ ...styles.primaryBtn, marginTop: 22, background: "#D4AF6A", color: "#0B0C10" }} onClick={onClose}>
-            Harika! <CheckCircle2 size={15} />
+            {t("levelUp.great")} <CheckCircle2 size={15} />
           </button>
         </div>
       </div>

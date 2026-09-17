@@ -14,6 +14,7 @@ import { hasAutoBattleAccess } from "../utils/premium";
 import { classSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
 import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry } from "../utils/soloDungeon";
 import { playHit, playMiss, playHurt, playLevelUp } from "../audio/sfx";
+import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -60,6 +61,7 @@ function pickAutoSkill({ loadout, playerClass, skillCooldowns, mp, monsterHpPct,
 }
 
 export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
+  const { t } = useTranslation();
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const latestPlayer = useRef(player);
@@ -367,7 +369,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     if (attackLockRef.current) return;
     if (!battle || battle.finished || player.hp <= 0) return;
     attackLockRef.current = true;
-    showAction('attack','Saldırı');
+    showAction('attack', t('battle.actionAttack'));
 
     const ticked = tickBattleEffects(battle);
     if (ticked.monsterHp <= 0) { resolveMonsterTurn(ticked.monsterHp, ticked.log, ticked); return; }
@@ -473,7 +475,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     const result = usePotion(player, kind, tier);
     if (result.reason) { pushToast(result.reason, "warn"); return; }
     attackLockRef.current = true;
-    showAction('potion',kind === 'hp' ? 'Can iksiri' : 'Mana iksiri');
+    showAction('potion', kind === 'hp' ? t('battle.actionHpPotion') : t('battle.actionMpPotion'));
 
     const ticked = tickBattleEffects(battle);
     const potionCooldowns = { ...ticked.potionCooldowns, [kind]: POTION_COOLDOWN_TURNS };
@@ -559,11 +561,11 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <DoorOpen size={28} color={pendingMap.color} strokeWidth={1.4} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-              {pendingMap.name}'e ışınlanmak {GATE_TELEPORT_COST} altın tutar. Onaylıyor musun?
+              {t("battle.teleportConfirm", { map: pendingMap.name, cost: GATE_TELEPORT_COST })}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPendingMap(null)}>Hayır</button>
-              <button style={{ ...styles.tinyBtn, background: pendingMap.color }} onClick={confirmTeleport}>Evet</button>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPendingMap(null)}>{t("battle.no")}</button>
+              <button style={{ ...styles.tinyBtn, background: pendingMap.color }} onClick={confirmTeleport}>{t("battle.yes")}</button>
             </div>
           </div>
         </div>
@@ -571,20 +573,20 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
       {!monster && (
         <>
-          <SectionLabel>Günlük Solo Zindan</SectionLabel>
+          <SectionLabel>{t("battle.dailyDungeon")}</SectionLabel>
           <div style={{ ...styles.itemDetailCard, borderColor: "#A34FD966", background: "#A34FD90d", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Castle size={20} color="#A34FD9" strokeWidth={1.6} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13 }}>{map.name} Zindanı</div>
+                <div style={{ fontSize: 13 }}>{t("battle.dungeonName", { map: map.name })}</div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
-                  5 gitgide güçleşen aşama + boss. Günde {SOLO_DUNGEON_DAILY_LIMIT} kez girilebilir.
+                  {t("battle.dungeonDesc", { limit: SOLO_DUNGEON_DAILY_LIMIT })}
                 </div>
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
               <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-                Bugün {dungeonEntriesLeft(player)}/{SOLO_DUNGEON_DAILY_LIMIT} giriş hakkın var.
+                {t("battle.dungeonEntriesLeft", { left: dungeonEntriesLeft(player), limit: SOLO_DUNGEON_DAILY_LIMIT })}
               </span>
               <button
                 style={{
@@ -596,32 +598,32 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                 disabled={dungeonEntriesLeft(player) <= 0 || locked}
                 onClick={enterSoloDungeon}
               >
-                Zindana Gir
+                {t("battle.enterDungeon")}
               </button>
             </div>
           </div>
 
-          <SectionLabel>Harita Sonu Boss</SectionLabel>
+          <SectionLabel>{t("battle.mapBoss")}</SectionLabel>
           <div style={{ ...styles.itemDetailCard, borderColor: `${map.color}77`, background: `${map.color}12`, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Trophy size={20} color="#D4AF6A" strokeWidth={1.6} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13 }}>{mapBoss.name}</div>
-                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>Günde bir kez. Normal ödüllere ek garanti Muhafız Sandığı verir.</div>
+                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("battle.mapBossDesc")}</div>
               </div>
               <button
                 style={{ ...styles.tinyBtn, ...(mapBossCheck.ok && !locked ? { background: "#D4AF6A", color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }) }}
                 disabled={!mapBossCheck.ok || locked}
                 onClick={() => startBattle(mapBoss)}
               >
-                {mapBossCheck.ok ? "Boss'a Git" : "Bugün Yenildi"}
+                {mapBossCheck.ok ? t("battle.goToBoss") : t("battle.defeatedToday")}
               </button>
             </div>
           </div>
 
-          <SectionLabel>Kapı · Bölge seç</SectionLabel>
+          <SectionLabel>{t("battle.gateTitle")}</SectionLabel>
           <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: -6, marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
-            <DoorOpen size={12} /> Başka bir haritaya ışınlanmak {GATE_TELEPORT_COST} altın tutar.
+            <DoorOpen size={12} /> {t("battle.gateDesc", { cost: GATE_TELEPORT_COST })}
           </p>
           <div style={styles.tierScroller}>
             {MAPS.map((m2) => {
@@ -650,12 +652,12 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           {locked ? (
             <EmptyState
               icon={Lock}
-              title={`${map.name} kilitli`}
-              subtitle={`Bu bölgeye girmek için Lv.${map.levelMin} olman gerekiyor.`}
+              title={t("battle.mapLocked", { map: map.name })}
+              subtitle={t("battle.mapLockedDesc", { level: map.levelMin })}
             />
           ) : (
             <>
-              <SectionLabel>{map.name} · canavarlar</SectionLabel>
+              <SectionLabel>{t("battle.monstersHeader", { map: map.name })}</SectionLabel>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {map.monsters.map((m) => (
                   <div key={m.id} style={{ ...styles.monsterCard, borderColor: `${map.color}44` }}>
@@ -671,7 +673,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                       </div>
                     </div>
                     <button style={{ ...styles.smallBtn, background: map.color }} onClick={() => startBattle(m)}>
-                      Savaşı Başlat
+                      {t("battle.startBattle")}
                     </button>
                   </div>
                 ))}
@@ -687,14 +689,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           {dungeonRun && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "#A34FD914", border: "1px solid #A34FD944" }}>
               <span style={{ fontSize: 11, color: "#A34FD9", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 5 }}>
-                <Castle size={12} /> Zindan · Aşama {dungeonRun.index + 1}/{dungeonRun.stages.length}
+                <Castle size={12} /> {t("battle.dungeonStage", { current: dungeonRun.index + 1, total: dungeonRun.stages.length })}
               </span>
-              {monster.isBoss && <span style={{ fontSize: 10, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>BOSS</span>}
+              {monster.isBoss && <span style={{ fontSize: 10, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>{t("battle.boss")}</span>}
             </div>
           )}
           {monster.mapBoss && (
             <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "#D4AF6A14", border: "1px solid #D4AF6A44", fontSize: 11, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>
-              <Trophy size={12} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Harita Sonu Boss · Muhafız Sandığı garanti
+              <Trophy size={12} style={{ verticalAlign: "-2px", marginRight: 5 }} /> {t("battle.mapBossBanner")}
             </div>
           )}
           {!hasBattleScene(monster) && <>
@@ -724,7 +726,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           </div>
 
           </>}
-          <details className="battle-history"><summary>Savaş kaydı · {battle.log.at(-1)}</summary><div ref={logRef} style={styles.combatLog}>
+          <details className="battle-history"><summary>{t("battle.combatLog")} · {battle.log.at(-1)}</summary><div ref={logRef} style={styles.combatLog}>
             {battle.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}
           </div></details>
 
@@ -733,7 +735,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               if (!skillId) {
                 return (
                   <div key={i} style={{ ...styles.equipSlotCard, opacity: 0.4 }}>
-                    <Plus size={12} color="var(--text-faint)" /><span className="battle-slot-label">Boş</span>
+                    <Plus size={12} color="var(--text-faint)" /><span className="battle-slot-label">{t("battle.empty")}</span>
                   </div>
                 );
               }
@@ -760,7 +762,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
           <div className="battle-action-dock" style={styles.battleControls}>
             <button style={{ ...styles.primaryBtn, flex: 1, background: cls.color, opacity: (playerDead || battle.finished) ? 0.5 : 1 }} onClick={attack} disabled={playerDead || battle.finished}>
-              <Sword size={15} /> Saldır
+              <Sword size={15} /> {t("battle.attack")}
             </button>
             <button
               style={{ ...styles.potionBtn, opacity: (battle.potionCooldowns.hp > 0 || playerDead || battle.finished) ? 0.5 : 1 }}
@@ -785,10 +787,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                 // Zindan koşusu sürerken elle geri çekilmek koşuyu yarıda
                 // bırakır — kalan aşamalar/boss ödülü kaybedilir, giriş hakkı
                 // (zaten enterSoloDungeon'da harcandı) geri gelmiyor.
-                if (dungeonRun) { setDungeonRun(null); pushToast("Zindan koşusu yarıda bırakıldı.", "warn"); }
+                if (dungeonRun) { setDungeonRun(null); pushToast(t("battle.dungeonAbandoned"), "warn"); }
               }}
             >
-              <ArrowLeft size={13} /> Geri Çekil
+              <ArrowLeft size={13} /> {t("battle.retreat")}
             </button>
             {/* Savaş ekranının ALTINDA, küçük bir ikon (kullanıcı isteği —
                 önceden ekranın en üstünde, tam genişlikte bir anahtardı).
@@ -796,7 +798,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                 döngüyü açmaz, sadece uyarı toast'ı gösterir. */}
             <button
               onClick={toggleAutoBattle}
-              title={autoBattleAccess ? `Otomatik Saldırı — ${autoBattleOn ? "Açık" : "Kapalı"}` : "Otomatik Saldırı bir Apex/Mythic Premium özelliğidir"}
+              title={autoBattleAccess ? `${t("battle.autoBattleTitle")} — ${autoBattleOn ? t("battle.autoBattleOn") : t("battle.autoBattleOff")}` : t("battle.autoBattlePremiumOnly")}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                 width: 40, borderRadius: 10, border: "1px solid",
@@ -817,7 +819,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <div style={styles.autoBattleCard}>
               <div style={styles.sliderRow}>
                 <div style={styles.sliderLabelRow}>
-                  <span>HP Pot Eşiği</span>
+                  <span>{t("battle.hpPotThreshold")}</span>
                   <span style={{ fontFamily: "var(--font-mono)", color: "#C9425A" }}>%{player.autoBattle?.hpThreshold ?? 35}</span>
                 </div>
                 <input
@@ -829,7 +831,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               </div>
               <div style={styles.sliderRow}>
                 <div style={styles.sliderLabelRow}>
-                  <span>MP Pot Eşiği</span>
+                  <span>{t("battle.mpPotThreshold")}</span>
                   <span style={{ fontFamily: "var(--font-mono)", color: "#4FC3D9" }}>%{player.autoBattle?.mpThreshold ?? 35}</span>
                 </div>
                 <input
@@ -848,7 +850,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                 }}
               >
                 <span style={{ fontSize: 11, color: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--text-muted)" }}>
-                  Otomatik Beceri Kullan — {player.autoBattle?.autoSkill ? "Açık" : "Kapalı"}
+                  {t("battle.autoSkill")} — {player.autoBattle?.autoSkill ? t("battle.autoBattleOn") : t("battle.autoBattleOff")}
                 </span>
                 <span style={{ ...styles.toggleSwitch, background: player.autoBattle?.autoSkill ? "#8B6FC9" : "var(--bg-panel-alt)", justifyContent: player.autoBattle?.autoSkill ? "flex-end" : "flex-start" }}>
                   <span style={styles.toggleKnob} />
@@ -872,9 +874,9 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setVictoryMonster(null)}>
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <Trophy size={32} color="#D4AF6A" strokeWidth={1.3} />
-            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>Tekrar Savaş?</div>
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>{t("battle.rematchTitle")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 220 }}>
-              {victoryMonster.name}'i yendin. Tekrar savaşmak ister misin?
+              {t("battle.rematchDesc", { monster: victoryMonster.name })}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
               <button
@@ -884,13 +886,13 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                   setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
                 }}
               >
-                Hayır
+                {t("battle.no")}
               </button>
               <button
                 style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#0B0C10" }}
                 onClick={() => { const m = victoryMonster; setVictoryMonster(null); startBattle(m, { preserveAutoBattle: true }); }}
               >
-                Evet
+                {t("battle.yes")}
               </button>
             </div>
           </div>
@@ -901,12 +903,12 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setDungeonComplete(null)}>
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <Castle size={32} color="#A34FD9" strokeWidth={1.3} />
-            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>Zindan Tamamlandı!</div>
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>{t("battle.dungeonCompleteTitle")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 240 }}>
-              {dungeonComplete.mapName} Zindan Efendisi'ni yendin — +{formatGold(dungeonComplete.bonusGold)} altın ve T{dungeonComplete.chestTier} Sandık kazandın.
+              {t("battle.dungeonCompleteDesc", { map: dungeonComplete.mapName, gold: formatGold(dungeonComplete.bonusGold), tier: dungeonComplete.chestTier })}
             </div>
             <button style={{ ...styles.tinyBtn, background: "#A34FD9", marginTop: 20 }} onClick={() => setDungeonComplete(null)}>
-              Harika!
+              {t("battle.great")}
             </button>
           </div>
         </div>
@@ -916,13 +918,13 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         <div style={{ ...styles.modalOverlay, position: "fixed" }}>
           <div style={styles.modalCard}>
             <Castle size={30} color="#A34FD9" strokeWidth={1.3} />
-            <div style={{ marginTop: 12, fontFamily: "var(--font-display)", fontSize: 17 }}>Yolunu Seç</div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center" }}>Bir sonraki aşamaya nasıl ilerleyeceksin?</div>
+            <div style={{ marginTop: 12, fontFamily: "var(--font-display)", fontSize: 17 }}>{t("battle.choosePath")}</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center" }}>{t("battle.choosePathDesc")}</div>
             <div style={{ display: "flex", gap: 8, marginTop: 18, width: "100%" }}>
               {dungeonChoice.choices.map((choice) => (
                 <button key={choice.id} style={{ ...styles.tinyBtn, flex: 1, minHeight: 58, background: choice.risk ? "#C9425A" : "#5FA8A0" }} onClick={() => chooseDungeonPath(choice)}>
-                  <span>{choice.risk ? "Riskli Yol" : "Güvenli Yol"}</span>
-                  <small style={{ display: "block", opacity: 0.82, marginTop: 3 }}>{choice.risk ? "+%45 XP/altın · daha zor" : "Normal ödül · dengeli"}</small>
+                  <span>{choice.risk ? t("battle.riskyPath") : t("battle.safePath")}</span>
+                  <small style={{ display: "block", opacity: 0.82, marginTop: 3 }}>{choice.risk ? t("battle.riskyPathDesc") : t("battle.safePathDesc")}</small>
                 </button>
               ))}
             </div>

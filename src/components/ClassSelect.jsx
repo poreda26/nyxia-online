@@ -69,7 +69,7 @@ export default function ClassSelect({ onChoose }) {
             >
               <Icon size={26} color={c.color} strokeWidth={1.75} />
               <div style={{ fontFamily: "var(--font-display)", fontSize: 17, letterSpacing: 0.3, marginTop: 10 }}>{c.name}</div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>{c.desc}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>{t(`classes.${key}`)}</div>
               <div style={styles.classStatRow}>
                 <StatPill label="ATK" value={c.atk} />
                 <StatPill label="DEF" value={c.def} />

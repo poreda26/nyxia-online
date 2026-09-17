@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback } from "react";
+import { createContext, useContext, useCallback, useEffect } from "react";
 import { translations } from "./translations";
 
 const LanguageContext = createContext(null);
@@ -23,6 +23,14 @@ function interpolate(str, vars) {
 // translations.js'in üstündeki not) — kısmi çeviri hiçbir zaman boş/kırık
 // bir satır göstermez.
 export function LanguageProvider({ lang, setLang, children }) {
+  // index.html sabit lang="tr" ile başlıyor — düzeltilmezse CSS'teki
+  // textTransform:uppercase, İngilizce metinlerde bile Türkçe büyük harf
+  // kuralını uyguluyor (ör. "region" -> "REGİON", noktalı İ). Dil
+  // değişince <html lang> da senkron değişmeli.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   const t = useCallback((key, vars) => {
     const primary = lookup(translations[lang], key);
     const value = primary ?? lookup(translations.tr, key);
