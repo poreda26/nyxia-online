@@ -383,6 +383,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       : 0;
     const monsterHp = Math.max(0, ticked.monsterHp - dmg);
     const log = pushLog(ticked.log, !playerHits ? "Vuruşunu ıskaladın." : isCrit ? `Kritik vuruş! ${dmg} hasar verdin.` : `${dmg} hasar verdin.`);
+    // Kullanıcı isteği: canavarın bize vurunca gösterdiği "−X"/"Iskaladı"
+    // uçan yazı sadece o yönde çalışıyordu — bkz. resolveMonsterTurn'daki
+    // aynı desenin `incoming` karşılığı, BattleScene.jsx'te render ediliyor.
+    setVisual((v) => ({ ...v, outgoing: { hit: playerHits, damage: dmg, crit: isCrit } }));
     if (playerHits) playHit({ crit: isCrit }); else playMiss();
 
     // Every swing wears the weapon down a little — see utils/player.js's
@@ -432,6 +436,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const dmg = Math.max(1, Math.round(computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct, rand }) * atkMult));
       monsterHp = Math.max(0, ticked.monsterHp - dmg);
       log = pushLog(log, `${skill.name}! ${dmg} hasar verdin.`);
+      setVisual((v) => ({ ...v, outgoing: { hit: true, damage: dmg, crit: false } }));
       playHit({ crit: false });
       setShake("monster");
       setTimeout(() => setShake(null), 260);

@@ -13,13 +13,16 @@
 .incoming-burst{position:absolute;left:24%;top:57%;width:50px;height:50px;z-index:3;pointer-events:none;opacity:0;border-radius:50%;background:radial-gradient(circle,#fff2d8 0 8%,#ff976ccc 16%,#e34c4633 40%,transparent 68%);animation:counter-burst .32s ease-out both}
 .incoming-number{position:absolute;left:14%;top:48%;width:26%;text-align:center;z-index:4;pointer-events:none;color:#ffb49c;font:bold 21px var(--font-mono);text-shadow:0 2px 4px #180500,0 0 8px #8d1e11;opacity:0;animation:incoming-number .7s ease-out both}
 .incoming-miss{color:#d1e7ef;font-size:13px;text-shadow:0 2px 4px #000}
+.outgoing-number{position:absolute;left:60%;top:48%;width:26%;text-align:center;z-index:4;pointer-events:none;color:#ffe9b0;font:bold 21px var(--font-mono);text-shadow:0 2px 4px #180500,0 0 8px #8d6a1e;opacity:0;animation:incoming-number .7s ease-out both}
+.outgoing-miss{color:#d1e7ef;font-size:13px;text-shadow:0 2px 4px #000}
+.outgoing-crit{color:#ffd54a;font-size:25px;text-shadow:0 2px 4px #180500,0 0 10px #ff9d1e}
 @keyframes enemy-recoil{0%,100%{transform:none}45%{transform:translateX(5%) rotate(2deg)}}
 @keyframes hero-exchange{0%,100%{transform:none;filter:none}32%{transform:translateX(25%) rotate(3deg)}55%{transform:none}72%{transform:translateX(-9%) rotate(-4deg);filter:brightness(1.7) drop-shadow(0 0 5px #ff8b68)}}
 @keyframes hero-ranged-exchange{0%,100%{transform:none;filter:none}32%{transform:rotate(-2deg)}72%{transform:translateX(-8%) rotate(-4deg);filter:brightness(1.7) drop-shadow(0 0 5px #ff8b68)}}
 @keyframes counter-sweep{0%,52%{opacity:0;transform:translateX(30%) rotate(30deg) scale(.7)}72%{opacity:1;transform:translateX(0) rotate(-25deg) scale(1.2)}100%{opacity:0;transform:translateX(-15%) rotate(-55deg)}}
 @keyframes counter-burst{0%,55%{opacity:0;transform:scale(.4)}72%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.5)}}
 @keyframes incoming-number{0%,25%{opacity:0;transform:translateY(5px)}38%,65%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
-@media(prefers-reduced-motion:reduce){.battle-scene .incoming-number{animation:incoming-static .8s linear!important}@keyframes incoming-static{0%,85%{opacity:1}100%{opacity:0}}}
+@media(prefers-reduced-motion:reduce){.battle-scene .incoming-number,.battle-scene .outgoing-number{animation:incoming-static .8s linear!important}@keyframes incoming-static{0%,85%{opacity:1}100%{opacity:0}}}
 .battle-scene:after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(#07100f80,transparent 30%,transparent 80%,#07100faa);z-index:-1}
 .battle-scene-title{position:absolute;top:15px;left:20px;font:16px Georgia,serif;letter-spacing:1px;text-shadow:0 2px 4px #000}.battle-scene-title span{display:block;font:9px sans-serif;letter-spacing:3px;margin-top:5px;color:#b5c8af}
 .battle-cast{position:absolute;inset:0}.battle-unit{position:absolute;bottom:16%;width:26%;height:59%}.battle-hero{left:14%}.battle-enemy{right:12%;height:51%;width:30%}

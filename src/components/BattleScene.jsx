@@ -30,6 +30,9 @@ export default function BattleScene({player,monster,battle,map,visual}) {
   const ranged=player.class!=='warrior';
   const active=visual.id>0;
   const incoming=active&&battle.monsterHp>0?visual.incoming:null;
+  // Kullanıcı isteği: canavara vurduğumuzda da (incoming'in aynısı, ters
+  // yönde) bir "−X"/"Iskaladın" uçan yazısı görünsün.
+  const outgoing=active?visual.outgoing:null;
   return <section className="battle-scene" aria-label="Savaş sahnesi" style={art.atlas==='fallow'?{backgroundImage:`url(${arena})`}:{backgroundImage:`url(${regions})`,backgroundSize:'300% 200%',backgroundPosition:`${(art.background%3)*50}% ${Math.floor(art.background/3)*100}%`}}>
     <div className="battle-scene-title">Savaş<span>{map.name}</span></div>
     <div className="battle-hud">
@@ -41,6 +44,7 @@ export default function BattleScene({player,monster,battle,map,visual}) {
       <div className="battle-unit battle-enemy"><div className="battle-motion"><Figure rect={rect} label={monster.name} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name">{monster.name}</span></div>
       {active&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} />{!support&&<i className="battle-impact" aria-hidden="true"/>}</>}
       {incoming&&<>{incoming.hit&&<><i className="battle-counter" aria-hidden="true"/><i className="incoming-burst" aria-hidden="true"/></>}<span className={`incoming-number ${incoming.hit?'':'incoming-miss'}`}>{incoming.hit?`−${incoming.damage}`:'Iskaladı'}</span></>}
+      {outgoing&&<span className={`outgoing-number ${outgoing.hit?(outgoing.crit?'outgoing-crit':''):'outgoing-miss'}`}>{outgoing.hit?`−${outgoing.damage}`:'Iskaladın'}</span>}
     </div>
     <div className="battle-scene-caption">{battle.monsterHp<=0?'Düşman yenildi':visual.label||'Savaşa hazır'}</div>
   </section>;
