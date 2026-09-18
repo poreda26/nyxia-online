@@ -1,9 +1,11 @@
-import { Gem, X, Star, Sparkles, Castle, Archive, Users } from "lucide-react";
+import { Gem, X, Star, Sparkles, Castle, Archive, Users, ScrollText } from "lucide-react";
 import { DIAMOND_PACKS } from "../data/diamondPacks";
 import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS, EXTRA_DUNGEON_ENTRIES_PER_PURCHASE } from "../data/soloDungeon";
 import { buyExtraDungeonEntries } from "../utils/soloDungeon";
 import { buyExtraBankPage, EXTRA_BANK_PAGE_COST_DIAMONDS, MAX_BANK_PAGES } from "../utils/inventory";
 import { CHARACTER_SLOTS, THIRD_SLOT_COST_DIAMONDS } from "../utils/storage";
+import { BOOST_SCROLLS, BOOST_SCROLL_PACK_SIZE, boostScrollName } from "../data/boostScrolls";
+import { buyBoostScrollPack } from "../utils/boosts";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 
@@ -15,7 +17,7 @@ import { useTranslation } from "../i18n/LanguageContext";
 // paketleri (DIAMOND_PACKS) henüz gerçek ödeme almıyor, RevenueCat bağlanana
 // kadar "yakında" toast'ı gösteriyor.
 export default function DiamondShopModal({ player, setPlayer, bank, setBank, unlockedSlots, onUnlockSlot, onClose, pushToast }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
 
   const handleBuyPack = () => {
     pushToast(t("diamondShop.comingSoonToast"), "default");
@@ -43,6 +45,16 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
     const bought = onUnlockSlot();
     if (!bought) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     pushToast(t("diamondShop.slotUnlockedToast"), "loot");
+  };
+
+  const handleBuyBoostPack = (scrollId) => {
+    const result = buyBoostScrollPack(player, scrollId);
+    if (!result.bought) {
+      pushToast(result.reason === "notEnoughDiamonds" ? t("shop.notEnoughDiamonds") : t("shop.purchaseFailed", { reason: result.reason }), "warn");
+      return;
+    }
+    setPlayer(result.player);
+    pushToast(t("boosts.boughtToast", { name: boostScrollName(scrollId, lang), pack: BOOST_SCROLL_PACK_SIZE }), "loot");
   };
 
   return (
@@ -94,6 +106,32 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
               </button>
             </div>
           )}
+        </div>
+
+        <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, alignSelf: "flex-start", marginTop: 18 }}>
+          {t("boosts.shopTitle")}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 4, lineHeight: 1.5 }}>
+          {t("boosts.shopDesc", { pack: BOOST_SCROLL_PACK_SIZE })}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, width: "100%" }}>
+          {BOOST_SCROLLS.map((s) => (
+            <div key={s.id} style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <ScrollText size={18} color={s.color} strokeWidth={1.6} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13 }}>{boostScrollName(s.id, lang)}</div>
+                <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>{t(`boosts.${s.id}.desc`)}</div>
+              </div>
+              <button
+                style={{ ...styles.tinyBtn, flexShrink: 0, background: "var(--bg-panel-alt)", color: s.color, display: "flex", alignItems: "center", gap: 4 }}
+                onClick={() => handleBuyBoostPack(s.id)}
+              >
+                <Gem size={11} /> {s.packCost} <span style={{ opacity: 0.7 }}>({t("boosts.packLabel", { pack: BOOST_SCROLL_PACK_SIZE })})</span>
+              </button>
+            </div>
+          ))}
         </div>
 
         <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, alignSelf: "flex-start", marginTop: 18 }}>

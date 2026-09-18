@@ -36,7 +36,9 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
             </div>
           </div>
         </div>
-        {item.desc && (
+        {item.kind === "boostScroll" ? (
+          <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5, marginTop: 8 }}>{t(`boosts.${item.boostId}.desc`)}</div>
+        ) : item.desc && (
           <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5, marginTop: 8 }}>{item.desc}</div>
         )}
       </div>

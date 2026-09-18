@@ -2,13 +2,15 @@ import { premiumNpBonus, premiumNpLossReduction } from "./premium";
 import { currentWeekId } from "./week";
 import { leaderboardFor, WEEKLY_REWARDS } from "./leaderboard";
 import { NP_LOSS_PENALTY, NP_RECOVERY_GOLD_COST, NP_RECOVERY_NP_AMOUNT } from "./nationalPointConstants";
+import { boostMultiplier } from "./boosts";
 
 const BASE_NATIONAL_POINT = 50;
 
 // Karşı ırktan bir hayaleti PK'lediğinde kazanılan National Point — Apex
-// +10, Mythic +25 (bkz. data/premium.js#nationalPointBonus).
+// +10, Mythic +25 (bkz. data/premium.js#nationalPointBonus), NP Parşömeni
+// aktifse üstüne %15 daha (bkz. data/boostScrolls.js).
 export function nationalPointGain(player) {
-  return BASE_NATIONAL_POINT + premiumNpBonus(player);
+  return Math.round((BASE_NATIONAL_POINT + premiumNpBonus(player)) * boostMultiplier(player, "np"));
 }
 
 export function awardNationalPoint(player) {

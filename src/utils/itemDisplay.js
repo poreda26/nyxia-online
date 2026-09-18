@@ -38,7 +38,7 @@ export function itemSubLabel(item, lang = "tr") {
 // Potions and scrolls are pure consumables — no atk/def/hp stats, so the
 // bag detail panel shows just their weight instead of an empty stat line.
 export function isConsumable(item) {
-  return item.kind === "potion" || item.kind === "scroll" || item.kind === "raceScroll" || item.kind === "jobScroll" || item.kind === "bonusScroll";
+  return item.kind === "potion" || item.kind === "scroll" || item.kind === "raceScroll" || item.kind === "jobScroll" || item.kind === "bonusScroll" || item.kind === "boostScroll";
 }
 
 export function itemStatLabel(item) {

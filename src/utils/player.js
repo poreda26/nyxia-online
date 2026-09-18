@@ -9,6 +9,8 @@ import { currentWeekId } from "./week";
 import { STARTING_NATIONAL_POINT } from "./nationalPointConstants";
 import { buildStartingWeapon } from "./loot";
 import {rebalanceSavedWeapon} from '../data/balancedWeapons';
+import { boostMultiplier, boostFlatBonus } from "./boosts";
+import { boostScrollName } from "../data/boostScrolls";
 
 // Deliberately backloaded: the exponent (not just the base) is what makes
 // early levels feel close to before while late levels get dramatically
@@ -191,6 +193,10 @@ export function initialPlayer(cls, race, nickname) {
     // elmasla satın alınıp bir daha ücretsiz seçilebilecek boyalar.
     armorDye: null,
     ownedDyes: [],
+    // Geçici elmas takviyeleri (30dk) — bkz. data/boostScrolls.js,
+    // utils/boosts.js. { [scrollId]: expiresAt } — yoksa/süresi geçmişse
+    // no-op sayılır, bu yüzden {} güvenli varsayılan.
+    activeBoosts: {},
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -298,6 +304,7 @@ export function migratePlayer(player) {
     scheduledEvents: player.scheduledEvents || {},
     armorDye: player.armorDye ?? null,
     ownedDyes: player.ownedDyes || [],
+    activeBoosts: player.activeBoosts || {},
   };
 }
 
@@ -419,7 +426,7 @@ export function totalStats(player) {
   const damageStat = CLASS_DAMAGE_STAT[player.class];
   const statVal = s[damageStat] + bonus[damageStat] + (player.class==='mage'?Math.max(0,s.int-70):0);
   const scaling = ATK_SCALE_C1 * (statVal + ATK_SCALE_OFFSET) + ATK_SCALE_C2 * player.level * statVal;
-  const atk = Math.round(weaponAtk * scaling);
+  const atk = Math.round(weaponAtk * scaling * boostMultiplier(player, "atk"));
   return { hp, def, atk, mp };
 }
 
@@ -483,7 +490,7 @@ export function playerMaxHp(player) {
   const sta = player.stats.sta + equippedStatBonus(player).sta;
   const level = player.level;
   const quadratic = HP_COEFF[player.class] * level * level * sta * HP_SCALE;
-  return Math.round(base.maxHp + quadratic + level * 0.4 + sta * 0.15 + gearHp + (setBonus?.hp || 0));
+  return Math.round(base.maxHp + quadratic + level * 0.4 + sta * 0.15 + gearHp + (setBonus?.hp || 0) + boostFlatBonus(player, "hp"));
 }
 
 // Tam 5 parça (Kask/Göğüslük/Don/Eldiven/Bot), AYNI tier'dan, oyuncunun
@@ -549,7 +556,8 @@ export function playerMaxMp(player) {
 const DEF_COEFF = { warrior: 0.75, rogue: 0.95, mage: 1.1 };
 export function playerDef(player) {
   const { def: gearDef } = totalStats(player);
-  return Math.round(DEF_COEFF[player.class] * (player.level + gearDef) + 2);
+  const base = DEF_COEFF[player.class] * (player.level + gearDef) + 2;
+  return Math.round(base * boostMultiplier(player, "def"));
 }
 
 export function clampPlayerHp(player) {
@@ -662,6 +670,7 @@ export function displayClassName(player) {
 
 function translatedItemName(item, lang) {
   if (item.kind === "potion") return potionName(item.potionType, item.tier, lang);
+  if (item.kind === "boostScroll") return boostScrollName(item.boostId, lang);
   if (lang !== "en") return item.name;
   if (item.kind === "weapon" && WEAPON_NAME_EN[item.name]) return WEAPON_NAME_EN[item.name];
   if (item.kind === "accessory") {

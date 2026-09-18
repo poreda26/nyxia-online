@@ -7,6 +7,7 @@
 // eksik olan her anahtar LanguageContext.jsx'teki `t()` tarafından
 // otomatik olarak `tr` karşılığına düşüyor — yani eksik bir çeviri asla
 // boş/kırık görünmez, sadece o satır Türkçe kalır.
+import { boostsSection } from "./sections/boosts";
 import { captainSection } from "./sections/captain";
 import { characterSection } from "./sections/character";
 import { diamondShopSection } from "./sections/diamondShop";
@@ -494,12 +495,12 @@ const base = {
 export const translations = {
   tr: {
     ...base.tr,
-    ...captainSection.tr, ...characterSection.tr, ...diamondShopSection.tr, ...inventorySection.tr,
+    ...boostsSection.tr, ...captainSection.tr, ...characterSection.tr, ...diamondShopSection.tr, ...inventorySection.tr,
     ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr,
   },
   en: {
     ...base.en,
-    ...captainSection.en, ...characterSection.en, ...diamondShopSection.en, ...inventorySection.en,
+    ...boostsSection.en, ...captainSection.en, ...characterSection.en, ...diamondShopSection.en, ...inventorySection.en,
     ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en,
   },
 };

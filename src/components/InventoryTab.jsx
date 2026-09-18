@@ -12,6 +12,8 @@ import { isConsumable } from "../utils/itemDisplay";
 import { newlyUnlocked } from "../utils/achievements";
 import { BAG_SLOTS, addItemToInventory, depositToBank, withdrawFromBank, buyExtraBankPage, EXTRA_BANK_PAGE_COST_DIAMONDS, MAX_BANK_PAGES } from "../utils/inventory";
 import { usePotion } from "../utils/potions";
+import { useBoostScroll } from "../utils/boosts";
+import { boostScrollDef } from "../data/boostScrolls";
 import { learnFreeSkills } from "../utils/skills";
 import { premiumSellMultiplier, premiumRepairDiscount } from "../utils/premium";
 import { useTranslation, formatReason } from "../i18n/LanguageContext";
@@ -229,6 +231,14 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     const result = usePotion(player, item.potionType, item.tier);
     if (result.reason) { pushToast(formatReason(t, result), "warn"); return; }
     pushToast(item.potionType === "hp" ? t("inventory.healedHp", { amount: result.healed }) : t("inventory.healedMp", { amount: result.healed }), "heal");
+    setPlayer(result.player);
+    if ((item.count || 1) <= 1) setSelectedId(null);
+  };
+
+  const handleUseBoostScroll = (item) => {
+    const result = useBoostScroll(player, item.boostId);
+    if (!result.used) { pushToast(t("boosts.noScrollsLeft"), "warn"); return; }
+    pushToast(t("boosts.usedToast", { name: displayItemName(item, lang) }), "loot");
     setPlayer(result.player);
     if ((item.count || 1) <= 1) setSelectedId(null);
   };
@@ -530,6 +540,8 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                 <>
                   {selectedItem.kind === "potion" ? (
                     <button style={styles.tinyBtn} onClick={() => handleUsePotion(selectedItem)}>{t("inventory.useBtn")}</button>
+                  ) : selectedItem.kind === "boostScroll" ? (
+                    <button style={{ ...styles.tinyBtn, background: boostScrollDef(selectedItem.boostId)?.color }} onClick={() => handleUseBoostScroll(selectedItem)}>{t("boosts.useBtn")}</button>
                   ) : selectedItem.kind === "scroll" || selectedItem.kind === "bonusScroll" || selectedItem.kind === "accessoryScroll" ? (
                     // Bonus Parşömen'in de tıpkı normal parşömen gibi buradan
                     // hiçbir işlevi yok — sadece Yükselt sekmesindeki forge'a

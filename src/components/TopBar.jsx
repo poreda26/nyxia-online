@@ -1,12 +1,32 @@
-import { Coins, Crown, Gem, Gift, Plus, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Coins, Crown, Gem, Gift, Plus, ScrollText, Settings } from "lucide-react";
 import { xpToNext, MAX_LEVEL, formatGold } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { activeTitleInfo } from "../utils/achievements";
+import { activeBoostsList } from "../utils/boosts";
+import { boostScrollName } from "../data/boostScrolls";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 
+function formatMmSs(ms) {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, onOpenSettings, onOpenDiamondShop }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
+  // Aktif takviyelerin geri sayımı gerçek zamana (Date.now()) bağlı — bkz.
+  // utils/boosts.js, premium ile aynı "duvar saati" deseni. Bu, o değeri
+  // saniyede bir yeniden okutmak için sadece bir "tick" state'i, başka
+  // hiçbir şeyi tetiklemiyor.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const activeBoosts = activeBoostsList(player);
   const atCap = player.level >= MAX_LEVEL;
   const need = xpToNext(player.level);
   const pct = atCap ? 100 : Math.min(100, (player.xp / need) * 100);
@@ -85,6 +105,15 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
         <span style={{ color: "var(--border)" }}>|</span>
         <span>HP {maxHp}</span>
       </div>
+      {activeBoosts.length > 0 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+          {activeBoosts.map(({ def: s, msLeft }) => (
+            <span key={s.id} title={boostScrollName(s.id, lang)} style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 9, fontFamily: "var(--font-mono)", color: s.color }}>
+              <ScrollText size={10} /> {formatMmSs(msLeft)}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

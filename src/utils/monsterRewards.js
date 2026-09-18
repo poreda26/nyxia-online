@@ -5,6 +5,7 @@ import { addItemToInventory } from "./inventory";
 import { premiumExpMultiplier, premiumDropMultiplier } from "./premium";
 import { clanExpMultiplier } from "./clan";
 import { eventExpMultiplier } from "./events";
+import { boostMultiplier } from "./boosts";
 import { learnFreeSkills } from "./skills";
 import { MONSTER_QUESTS } from "../data/quests";
 import { registerDailyKill, ensureDailyQuestsFresh } from "./dailyQuests";
@@ -18,12 +19,13 @@ import { MAPS } from "../data/maps";
 function pickDropTier(tier) { return Math.random() < 0.5 ? tier : Math.max(1, tier - 1); }
 export function grantMonsterReward(p, m, map) {
   if(m.mapBoss&&!canFightMapBoss(p,map.id).ok)return {player:p,drops:null,blockedReasonKey:'battle.bossDefeatedToday',tone:'warn'};
-  const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p);
+  const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p) * boostMultiplier(p, "exp");
   const dropMult = premiumDropMultiplier(p);
+  const goldMult = boostMultiplier(p, "gold");
   let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
   const killsBefore = np.monsterKills[m.id] || 0;
   np.monsterKills[m.id] = killsBefore + 1;
-  const goldGain = rand(m.goldMin, m.goldMax);
+  const goldGain = Math.round(rand(m.goldMin, m.goldMax) * goldMult);
   const levelPenalty = xpLevelPenaltyMultiplier(p.level, map.levelMax);
   const xpGain = p.level >= MAX_LEVEL ? 0 : Math.round(m.xp * expMult * levelPenalty);
   // Kullanıcı isteği: "Karakterin üstünde en fazla 2.000.000.000 gold
