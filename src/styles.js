@@ -79,7 +79,8 @@ export const styles = {
 
   tierScroller: { display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 },
   tierChip: {
-    display: "flex", alignItems: "center", whiteSpace: "nowrap", border: "1px solid var(--border)",
+    display: "flex", alignItems: "center", whiteSpace: "nowrap",
+    borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)",
     borderRadius: 20, padding: "7px 12px", flexShrink: 0,
   },
 
@@ -211,7 +212,7 @@ export const styles = {
 
   itemRow: {
     display: "flex", alignItems: "center", gap: 10, background: "var(--bg-panel)",
-    border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px",
+    borderWidth: 1, borderStyle: "solid", borderColor: "var(--border)", borderRadius: 12, padding: "10px 12px",
   },
   tierDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   tinyBtn: {
