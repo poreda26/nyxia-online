@@ -16,6 +16,7 @@
 .outgoing-number{position:absolute;left:60%;top:48%;width:26%;text-align:center;z-index:4;pointer-events:none;color:#ffe9b0;font:bold 21px var(--font-mono);text-shadow:0 2px 4px #180500,0 0 8px #8d6a1e;opacity:0;animation:incoming-number .7s ease-out both}
 .outgoing-miss{color:#d1e7ef;font-size:13px;text-shadow:0 2px 4px #000}
 .outgoing-crit{color:#ffd54a;font-size:25px;text-shadow:0 2px 4px #180500,0 0 10px #ff9d1e}
+.outgoing-heal{left:14%;color:#8ee6a0;text-shadow:0 2px 4px #051f0a,0 0 8px #2f7d3f}
 @keyframes enemy-recoil{0%,100%{transform:none}45%{transform:translateX(5%) rotate(2deg)}}
 @keyframes hero-exchange{0%,100%{transform:none;filter:none}32%{transform:translateX(25%) rotate(3deg)}55%{transform:none}72%{transform:translateX(-9%) rotate(-4deg);filter:brightness(1.7) drop-shadow(0 0 5px #ff8b68)}}
 @keyframes hero-ranged-exchange{0%,100%{transform:none;filter:none}32%{transform:rotate(-2deg)}72%{transform:translateX(-8%) rotate(-4deg);filter:brightness(1.7) drop-shadow(0 0 5px #ff8b68)}}

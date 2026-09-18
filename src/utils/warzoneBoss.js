@@ -1,8 +1,13 @@
 import { seededRng } from "./seededRng";
-import { WARZONE_BOSSES, WARZONE_BOSS_SLOT_HOURS, WARZONE_BOSS_FIGHT_WINDOW_MIN } from "../data/warzone";
+import {
+  WARZONE_BOSSES, WARZONE_BOSS_SLOT_HOURS, WARZONE_BOSS_FIGHT_WINDOW_MIN,
+  WARZONE_BOSS_GATHER_SECONDS, WARZONE_BOSS_COUNTDOWN_SECONDS,
+} from "../data/warzone";
 
 const SLOT_MS = WARZONE_BOSS_SLOT_HOURS * 3600000;
 const WINDOW_MS = WARZONE_BOSS_FIGHT_WINDOW_MIN * 60000;
+const GATHER_MS = WARZONE_BOSS_GATHER_SECONDS * 1000;
+const COUNTDOWN_MS = WARZONE_BOSS_COUNTDOWN_SECONDS * 1000;
 // Her boss'un ardışık iki çıkışı arasındaki gerçek boşluğun "3-4 saat
 // aralığında" kalması için — spawn, slot'un TAM ortasına yakın DAR bir
 // bantta (slot genişliğinin %40-%60'ı) düşüyor. Bunun matematiği: gap =
@@ -25,23 +30,41 @@ const OFFSET_BAND_MS = SLOT_MS * 0.2;
 // belirleniyor — bu yüzden "ne zaman çıkacağı" gerçekten önceden bilinemez
 // ama sayfa yenilense/sekme değişse bile HERKES (bu build'de tek oyuncu ama
 // ilke aynı) aynı takvimi görür.
+//
+// Kullanıcı isteği: "Bosslar çıkmadan önce herkes boss odasına katılacak.
+// Boss Saldırıları 3-2-1 diye geri sayımla açılacak." — spawnAt'ten
+// GATHER_MS öncesine kadar "dormant" (kimse bilmiyor), sonra "gathering"
+// (oda açık, savaşçılar toplanıyor), son COUNTDOWN_MS'de "countdown"
+// (büyük 3-2-1 sayacı), spawnAt'te "active", despawnAt'ten sonra "gone".
 export function bossSchedule(boss, now = Date.now()) {
   const slotIndex = Math.floor(now / SLOT_MS);
   const rng = seededRng(`${boss.id}:${slotIndex}`);
   const offset = SLOT_MS * 0.4 + rng() * OFFSET_BAND_MS;
   const spawnAt = slotIndex * SLOT_MS + offset;
   const despawnAt = spawnAt + WINDOW_MS;
+  const gatherAt = spawnAt - GATHER_MS;
   let phase;
-  if (now < spawnAt) phase = "dormant";
+  if (now < gatherAt) phase = "dormant";
+  else if (now < spawnAt - COUNTDOWN_MS) phase = "gathering";
+  else if (now < spawnAt) phase = "countdown";
   else if (now < despawnAt) phase = "active";
   else phase = "gone";
-  return { phase, spawnAt, despawnAt, msUntilDespawn: Math.max(0, despawnAt - now) };
+  return {
+    phase, spawnAt, despawnAt, gatherAt,
+    msUntilDespawn: Math.max(0, despawnAt - now),
+    msUntilSpawn: Math.max(0, spawnAt - now),
+    countdownSeconds: Math.max(1, Math.min(WARZONE_BOSS_COUNTDOWN_SECONDS, Math.ceil((spawnAt - now) / 1000))),
+  };
 }
 
-// Hub.jsx#WarzoneBossBanner için — şu an "active" fazda olan (dolayısıyla
-// oyunda "notice" olarak duyurulması gereken) bossları döner.
-export function activeBossEntries(now = Date.now()) {
-  return WARZONE_BOSSES.map((boss) => ({ boss, ...bossSchedule(boss, now) })).filter((e) => e.phase === "active");
+// Hub.jsx#WarzoneBossBanner için — oyunda "notice" olarak duyurulması
+// gereken (yani "gathering"/"countdown"/"active" fazındaki, "dormant"/
+// "gone" DIŞINDAKİ) bossları döner, fazı da birlikte verir ki banner
+// "toplanıyor" ile "ortaya çıktı" arasında farklı metin gösterebilsin.
+export function noticeBossEntries(now = Date.now()) {
+  return WARZONE_BOSSES
+    .map((boss) => ({ boss, ...bossSchedule(boss, now) }))
+    .filter((e) => e.phase === "gathering" || e.phase === "countdown" || e.phase === "active");
 }
 
 // Kullanıcı isteği: "Düşen drop random olacak. Damage atan kişiler arasında

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Skull, Swords, CircleSlash, Wind, Droplets, Heart, Zap, Lock, Gift, LogOut, DoorOpen } from "lucide-react";
+import { Skull, Swords, Heart, Zap, Lock, Gift, LogOut, DoorOpen, Users, Percent, Loader2, X } from "lucide-react";
 import {
-  WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WARZONE_BOSSES, PVP_SKILLS, WARZONE_TICK_MS,
+  WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WARZONE_BOSSES, WARZONE_TICK_MS,
   GHOST_POPULATION, GHOST_REPLACE_SECONDS, AMBUSH_CHANCE_PER_TICK,
   WARZONE_HUNT_POWER_MULT, WARZONE_HUNT_GOLD_MULT, WARZONE_HUNT_DROP_MULT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP,
 } from "../data/warzone";
@@ -43,7 +43,6 @@ function fmtMmSs(ms) {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-const PVP_SKILL_ICON = { pvp_stun: CircleSlash, pvp_flee: Wind, pvp_manaburn: Droplets };
 const POTION_COOLDOWN_TURNS = 2;
 
 function freshWz(player) {
@@ -126,14 +125,11 @@ function initiateDuel(ghost, def, player, t) {
     ghostFirstDmg = dmg ?? 0;
     log.push(dmg == null ? t("warzone.log.ghostMissedYou", { ghost: ghost.name }) : t("warzone.log.ghostHitYou", { ghost: ghost.name, dmg }));
   }
-  const duel = {
-    ghost, ghostHp: ghost.hp, log, finished: false,
-    ghostStunned: false, healBlocked: false, cooldowns: {}, potionCooldowns: { hp: 0, mp: 0 },
-  };
+  const duel = { ghost, ghostHp: ghost.hp, log, finished: false };
   return { duel, ghostFirstDmg };
 }
 
-export default function WarzoneTab({ player, setPlayer, pushToast }) {
+export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChange }) {
   const { t, tm } = useTranslation();
   const cls = CLASSES[player.class];
   const atk = totalStats(player).atk;
@@ -146,6 +142,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   const [confirmingRetreat, setConfirmingRetreat] = useState(false);
   const [entered, setEntered] = useState(false);
   const [confirmingEntry, setConfirmingEntry] = useState(false);
+  const [expandedBossId, setExpandedBossId] = useState(null);
   const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal (Dünya Canavarı/Canavar Ara elinde ölüm)
   const [levelUpInfo, setLevelUpInfo] = useState(null); // Canavar Ara XP verdiği için (düellolar vermiyor) burada da seviye atlanabilir
   const [lbRace, setLbRace] = useState(player.race);
@@ -159,6 +156,19 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // Hub.jsx'in "sekmeden ayrılırken emin misin?" onayını gösterebilmesi
+  // için (bkz. Hub.jsx#requestTabChange) bu bileşen alanda "entered" olup
+  // olmadığını yukarı bildiriyor — kullanıcı isteği: "Savaş Alanından
+  // çıkmak istediğinde emin misin diye sor." Unmount'ta da false'a geri
+  // çekiyoruz ki Hub'ın bayrağı bir sonraki girişte asılı kalmasın.
+  useEffect(() => {
+    onEnteredChange?.(entered);
+  }, [entered, onEnteredChange]);
+  useEffect(() => {
+    return () => onEnteredChange?.(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const locked = player.level < WARZONE_UNLOCK_LEVEL;
@@ -263,6 +273,21 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wz.searching]);
+
+  // Kullanıcı isteği: "1v1'ler otomatik savaş olacak. Karşılıklı olarak
+  // otomatik savaşacaklar. Kazanan bu şekilde adil ortaya çıkacak." —
+  // düello başladıktan sonra hiçbir manuel tıklama gerekmiyor, bu effect
+  // bitene kadar turları kendiliğinden oynatıyor. runDuelTurn aşağıda
+  // (erken return'lerden SONRA) tanımlı olsa da, senkron render sırasında
+  // bu satıra ulaşıldığında const'u zaten atanmış oluyor — tıpkı aşağıdaki
+  // tick effect'in de erken return'lerden önce, ama resolveBossLoot'u
+  // (yine sonradan tanımlı) çağırdığı gibi (bkz. o effect'in yorum notu).
+  useEffect(() => {
+    if (!wz.duel || wz.duel.finished) return;
+    const timer = setTimeout(() => { runDuelTurn(); }, 1100);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wz.duel]);
 
   if (locked || npLocked) {
     return (
@@ -476,6 +501,14 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
 
   const abandonHunt = () => setWz((prev) => ({ ...prev, hunt: null }));
 
+  // Kullanıcı isteği: "Canavar Ara kısmında ara dediğimiz zaman ekrana
+  // Widget açılsın Aranıyor... Bekleme ekranı yükleniyor gibi. Aramayı
+  // iptal etme şansımız olsun." — searching'i doğrudan null'a çekmek
+  // yeterli: yukarıdaki arama-gecikmesi effect'i [wz.searching]'e bağımlı
+  // olduğu için bu değişiklik zaten bekleyen setTimeout'u (cleanup ile)
+  // iptal ediyor, hiçbir canavar üretilmiyor.
+  const cancelSearch = () => setWz((prev) => (prev.searching ? { ...prev, searching: null } : prev));
+
   // actionType: null (düz saldırı) ya da "potion_hp"/"potion_mp" — BattleTab
   // #attack ile aynı PvE hasar formülü (mitigate + MONSTER_DEF_K/PLAYER_DEF_K),
   // sadece burada tek tıkla hem oyuncunun hem canavarın vuruşu birlikte
@@ -632,94 +665,34 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     setConfirmingRetreat(false);
   };
 
-  // actionType: null (temel saldırı), bir PVP_SKILLS id'si, ya da
-  // "potion_hp"/"potion_mp" — pot içmek de artık bir tur harcıyor (bkz.
-  // kullanıcı isteği: "Oyunumuzda Tur sistemi olmak zorunda"), bu yüzden
-  // aynı sıra-tabanlı akışın (tick + rakibin turu) içinden geçiyor.
-  const duelAction = (actionType) => {
+  // Kullanıcı isteği: "1v1'ler otomatik savaş olacak. Karşılıklı olarak
+  // otomatik savaşacaklar. Kazanan bu şekilde adil ortaya çıkacak." — artık
+  // düellolarda hiçbir manuel karar (saldırı/beceri/pot seçimi) yok, tek
+  // tur her zaman aynı: önce oyuncu düz vuruyor, hayalet ölmediyse ya
+  // kendini iyileştiriyor ya da karşılık veriyor. Kazananı SADECE
+  // istatistikler + ilk vuruş yazı-turası + crit/ıskalama RNG'si belirliyor
+  // — yukarıdaki auto-battle effect'i bu fonksiyonu periyodik çağırıyor.
+  const runDuelTurn = () => {
     if (lockRef.current || !wz.duel || wz.duel.finished || player.hp <= 0) return;
-    const duel = wz.duel;
-    const isPotion = actionType === "potion_hp" || actionType === "potion_mp";
-    const potionKind = actionType === "potion_hp" ? "hp" : actionType === "potion_mp" ? "mp" : null;
-    const skill = (!isPotion && actionType) ? PVP_SKILLS.find((s) => s.id === actionType) : null;
-
-    if (skill) {
-      if ((duel.cooldowns[skill.id] || 0) > 0) { pushToast(t("battle.skillOnCooldown"), "warn"); return; }
-      if (player.mp < skill.mpCost) { pushToast(t("battle.notEnoughMana"), "warn"); return; }
-    }
-    let potionResult = null;
-    let potionTier = null;
-    if (isPotion) {
-      if ((duel.potionCooldowns[potionKind] || 0) > 0) { pushToast(t("battle.potionOnCooldown"), "warn"); return; }
-      potionTier = bestAvailablePotionTier(player, potionKind);
-      if (!potionTier) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
-      potionResult = usePotion(player, potionKind, potionTier);
-      if (potionResult.reason) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
-    }
     lockRef.current = true;
-
-    const cooldowns = Object.fromEntries(Object.entries(duel.cooldowns).map(([id, t]) => [id, Math.max(0, t - 1)]));
-    const potionCooldowns = Object.fromEntries(Object.entries(duel.potionCooldowns).map(([k, t]) => [k, Math.max(0, t - 1)]));
+    const duel = wz.duel;
     let log = [...duel.log];
     let ghostHp = duel.ghostHp;
-    let ghostStunned = duel.ghostStunned;
-    let healBlocked = duel.healBlocked;
-    let mpCost = 0;
-    let fledSuccessfully = false;
-    let wonDuel = false;
-    // Bir pot bu turda oyuncuyu iyileştirmiş olabilir — rakibin karşılığını
-    // hesaplarken player.hp'nin bayat (henüz commit edilmemiş) değerini
-    // değil, bu turun gerçek güncel canını kullanmalıyız.
-    let currentHp = player.hp;
+    // Bu turun gerçek güncel canı — rakibin karşılığını hesaplarken
+    // player.hp'nin bayat (henüz commit edilmemiş) değerine değil buna bakılır.
+    const currentHp = player.hp;
 
-    if (isPotion) {
-      potionCooldowns[potionKind] = POTION_COOLDOWN_TURNS;
-      setPlayer(() => potionResult.player);
-      currentHp = potionResult.player.hp;
-      log.push(potionKind === "hp" ? t("warzone.log.potionUsedHp", { healed: potionResult.healed }) : t("warzone.log.potionUsedMp", { healed: potionResult.healed }));
-    } else if (!skill) {
-      const isCrit = Math.random() < cls.crit;
-      const dmg = ghostDamageFromPlayer(cls, atk, duel.ghost, isCrit, player);
-      if (dmg == null) {
-        log.push(t("warzone.log.youMissedGhost", { ghost: duel.ghost.name }));
-      } else {
-        ghostHp = Math.max(0, ghostHp - dmg);
-        log.push(isCrit ? t("warzone.log.youCritGhost", { ghost: duel.ghost.name, dmg }) : t("warzone.log.youHitGhost", { ghost: duel.ghost.name, dmg }));
-      }
-    } else if (skill.id === "pvp_stun") {
-      mpCost = skill.mpCost;
-      ghostStunned = true;
-      cooldowns[skill.id] = skill.cooldown;
-      log.push(t("warzone.log.stunUsed", { skill: t(`warzone.skill.${skill.id}`) }));
-    } else if (skill.id === "pvp_manaburn") {
-      mpCost = skill.mpCost;
-      healBlocked = true;
-      cooldowns[skill.id] = skill.cooldown;
-      log.push(t("warzone.log.manaburnUsed", { skill: t(`warzone.skill.${skill.id}`) }));
-    } else if (skill.id === "pvp_flee") {
-      cooldowns[skill.id] = skill.cooldown;
-      if (Math.random() < skill.effect.chance) {
-        fledSuccessfully = true;
-        log.push(t("warzone.log.fleeSuccess"));
-      } else {
-        log.push(t("warzone.log.fleeFail"));
-      }
+    const isCrit = Math.random() < cls.crit;
+    const dmg = ghostDamageFromPlayer(cls, atk, duel.ghost, isCrit, player);
+    if (dmg == null) {
+      log.push(t("warzone.log.youMissedGhost", { ghost: duel.ghost.name }));
+    } else {
+      ghostHp = Math.max(0, ghostHp - dmg);
+      log.push(isCrit ? t("warzone.log.youCritGhost", { ghost: duel.ghost.name, dmg }) : t("warzone.log.youHitGhost", { ghost: duel.ghost.name, dmg }));
     }
-
-    if (mpCost) setPlayer((p) => ({ ...p, mp: p.mp - mpCost }));
 
     if (ghostHp <= 0) {
-      wonDuel = true;
       log.push(t("warzone.log.ghostDefeated", { ghost: duel.ghost.name }));
-    }
-
-    if (fledSuccessfully) {
-      setWz((prev) => ({ ...prev, duel: { ...prev.duel, log: log.slice(-24) } }));
-      setTimeout(() => { endDuel(duel.ghost.id, false); lockRef.current = false; }, 500);
-      return;
-    }
-
-    if (wonDuel) {
       const result = awardNationalPoint(player);
       const nextPlayer = { ...result.player, milestones: { ...result.player.milestones, duelsWon: (result.player.milestones?.duelsWon || 0) + 1 } };
       setPlayer(() => nextPlayer);
@@ -730,30 +703,24 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       return;
     }
 
-    // Rakibin turu: sersemlemişse pas, değilse önce iyileşme şansı, yoksa saldırı.
+    // Rakibin turu: önce küçük ihtimalle kendini iyileştirme, yoksa saldırı.
     let playerDied = false;
-    if (ghostStunned) {
-      log.push(t("warzone.log.ghostStunnedSkip", { ghost: duel.ghost.name }));
-      ghostStunned = false;
+    const healedTo = ghostSelfHeal({ ...duel.ghost, hp: ghostHp }, false);
+    if (healedTo != null) {
+      ghostHp = healedTo;
+      log.push(t("warzone.log.ghostSelfHealed", { ghost: duel.ghost.name }));
     } else {
-      const healedTo = ghostSelfHeal({ ...duel.ghost, hp: ghostHp }, healBlocked);
-      if (healedTo != null) {
-        ghostHp = healedTo;
-        log.push(t("warzone.log.ghostSelfHealed", { ghost: duel.ghost.name }));
-        healBlocked = false;
+      const gdmg = playerDamageFromGhost(duel.ghost, def, player);
+      if (gdmg == null) {
+        log.push(t("warzone.log.ghostMissedYou", { ghost: duel.ghost.name }));
       } else {
-        const gdmg = playerDamageFromGhost(duel.ghost, def, player);
-        if (gdmg == null) {
-          log.push(t("warzone.log.ghostMissedYou", { ghost: duel.ghost.name }));
-        } else {
-          log.push(t("warzone.log.ghostHitYou", { ghost: duel.ghost.name, dmg: gdmg }));
-          setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - gdmg) }));
-          playerDied = currentHp - gdmg <= 0;
-        }
+        log.push(t("warzone.log.ghostHitYou", { ghost: duel.ghost.name, dmg: gdmg }));
+        setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - gdmg) }));
+        playerDied = currentHp - gdmg <= 0;
       }
     }
 
-    setWz((prev) => ({ ...prev, duel: { ...prev.duel, ghostHp, ghostStunned, healBlocked, cooldowns, potionCooldowns, log: log.slice(-24), finished: playerDied } }));
+    setWz((prev) => ({ ...prev, duel: { ...prev.duel, ghostHp, log: log.slice(-24), finished: playerDied } }));
 
     if (playerDied) {
       setTimeout(() => finishDuelAsLoss(duel.ghost.id), 500);
@@ -789,6 +756,21 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
               const sched = bossSchedule(boss, now);
               const state = wz.bosses[boss.id];
               const active = sched.phase === "active" && state && !state.resolved;
+              const subtitleKey = sched.phase === "dormant" ? "warzone.bossDormant"
+                : sched.phase === "gone" ? "warzone.bossMissed"
+                : sched.phase === "gathering" ? "warzone.bossGatheringLabel"
+                : sched.phase === "countdown" ? "warzone.bossCountdownLabel"
+                : "warzone.bossDesc";
+              // Kullanıcı isteği: "Kimin ne kadar Damage vurduğu %'lik
+              // olarak isteyen oyuncular tarafından aktif olarak
+              // görülebilecek." — bir toggle'ın arkasında, hasarla orantılı
+              // yüzdelere ayrılmış bir liste (bkz. pickWeightedWinner'ın
+              // aynı toplamı).
+              const totalDmg = active ? state.damageByPlayer + Object.values(state.damageByGhost).reduce((a, b) => a + b, 0) : 0;
+              const dmgRows = active
+                ? [{ key: "player", name: t("warzone.youLabel"), dmg: state.damageByPlayer }, ...Object.entries(state.damageByGhost).map(([gid, dmg]) => ({ key: gid, name: wz.ghosts.find((g) => g.id === gid)?.name || t("warzone.bossDeathLabelGhost"), dmg }))]
+                    .filter((r) => r.dmg > 0).sort((a, b) => b.dmg - a.dmg)
+                : [];
               return (
                 <div key={boss.id} style={{ ...styles.combatant, borderColor: `${boss.color}55`, opacity: sched.phase === "dormant" ? 0.6 : 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -797,11 +779,32 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{sched.phase === "dormant" ? "???" : tm(boss)}</div>
-                      <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
-                        {sched.phase === "dormant" ? t("warzone.bossDormant") : sched.phase === "gone" ? t("warzone.bossMissed") : t("warzone.bossDesc")}
-                      </div>
+                      <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t(subtitleKey)}</div>
                     </div>
                   </div>
+
+                  {sched.phase === "gathering" && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 9, color: boss.color, textAlign: "center", fontFamily: "var(--font-mono)" }}>
+                        {t("warzone.bossStartsIn", { time: fmtMmSs(sched.msUntilSpawn) })}
+                      </div>
+                      <div style={{ fontSize: 9, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
+                        <Users size={11} /> {t("warzone.bossRoomJoined")}
+                      </div>
+                      <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" }}>
+                        {idleGhosts.map((g) => (
+                          <span key={g.id} style={{ fontSize: 9, padding: "2px 6px", borderRadius: 6, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }}>{g.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {sched.phase === "countdown" && (
+                    <div key={sched.countdownSeconds} className="wz-countdown-pop" style={{ marginTop: 8, textAlign: "center" }}>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: 34, color: boss.color, lineHeight: 1.1 }}>{sched.countdownSeconds}</div>
+                    </div>
+                  )}
+
                   {active && (
                     <>
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
@@ -812,9 +815,37 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
                       <div style={{ fontSize: 9, color: boss.color, textAlign: "center", marginTop: 4, fontFamily: "var(--font-mono)" }}>
                         {t("warzone.bossWindowLeft", { time: fmtMmSs(sched.msUntilDespawn) })}
                       </div>
+
+                      <div style={styles.vsRow}><Swords size={14} color="var(--text-faint)" /></div>
+                      <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                          <span style={{ fontFamily: "var(--font-display)", fontSize: 14 }}>{displayClassName(player)}</span>
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{player.hp}/{maxHp}</span>
+                        </div>
+                        <BarTrack pct={(player.hp / maxHp) * 100} color="#C9425A" />
+                      </div>
+
                       <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 6, background: boss.color, opacity: playerDead ? 0.5 : 1 }} onClick={() => attackBoss(boss.id)} disabled={playerDead}>
                         <Swords size={14} /> {t("warzone.attack")}
                       </button>
+
+                      <button
+                        style={{ ...styles.ghostBtn, marginTop: 2 }}
+                        onClick={() => setExpandedBossId((id) => (id === boss.id ? null : boss.id))}
+                      >
+                        <Percent size={11} /> {t("warzone.damageToggle")}
+                      </button>
+                      {expandedBossId === boss.id && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 4 }}>
+                          {dmgRows.map((r) => (
+                            <div key={r.key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontSize: 9, color: "var(--text-muted)", width: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                              <div style={{ flex: 1 }}><BarTrack pct={totalDmg > 0 ? (r.dmg / totalDmg) * 100 : 0} color={boss.color} thin /></div>
+                              <span style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)", width: 30, textAlign: "right" }}>{totalDmg > 0 ? Math.round((r.dmg / totalDmg) * 100) : 0}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -858,64 +889,30 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
             <BarTrack pct={(wz.duel.ghostHp / wz.duel.ghost.maxHp) * 100} color="#C9425A" />
           </div>
 
+          <div style={styles.vsRow}><Swords size={14} color="var(--text-faint)" /></div>
+
           <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{displayClassName(player)}</span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{player.hp}/{maxHp}</span>
             </div>
             <BarTrack pct={(player.hp / maxHp) * 100} color="#C9425A" />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 8 }}>
-              <span style={{ fontSize: 10, color: "var(--text-faint)" }}>MP</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>{player.mp}/{maxMp}</span>
-            </div>
-            <BarTrack pct={(player.mp / maxMp) * 100} color="#4FC3D9" thin />
           </div>
 
           <div ref={logRef} style={styles.combatLog}>
             {wz.duel.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 8 }}>
-            {PVP_SKILLS.map((skill) => {
-              const Icon = PVP_SKILL_ICON[skill.id];
-              const cdLeft = wz.duel.cooldowns[skill.id] || 0;
-              const noMp = player.mp < skill.mpCost;
-              const disabled = cdLeft > 0 || noMp || playerDead || wz.duel.finished;
-              return (
-                <button
-                  key={skill.id}
-                  style={{ ...styles.equipSlotCard, borderColor: "#C9425A66", background: "#C9425A12", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1 }}
-                  onClick={() => duelAction(skill.id)}
-                  disabled={disabled}
-                  title={t(`warzone.skill.${skill.id}`)}
-                >
-                  <Icon size={15} color="#C9425A" />
-                  <div style={{ fontSize: 8, marginTop: 2, color: "var(--text-faint)" }}>{t(`warzone.skill.${skill.id}`)}</div>
-                  <div style={{ fontSize: 7, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{cdLeft > 0 ? cdLeft : (skill.mpCost ? `${skill.mpCost}mp` : t("warzone.free"))}</div>
-                </button>
-              );
-            })}
-          </div>
+          {/* Kullanıcı isteği: "1v1'ler otomatik savaş olacak." — artık
+              burada tıklanacak bir saldırı/beceri/pot butonu yok, sadece
+              turların kendiliğinden aktığını gösteren bir gösterge. */}
+          {!wz.duel.finished && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 0", color: "var(--text-faint)", fontSize: 12 }}>
+              <Loader2 className="wz-spin" size={15} />
+              {t("warzone.autoBattling")}
+            </div>
+          )}
 
-          <div style={styles.battleControls}>
-            <button style={{ ...styles.primaryBtn, flex: 1, background: cls.color, opacity: (playerDead || wz.duel.finished) ? 0.5 : 1 }} onClick={() => duelAction(null)} disabled={playerDead || wz.duel.finished}>
-              <Swords size={15} /> {t("warzone.attack")}
-            </button>
-            <button
-              style={{ ...styles.potionBtn, opacity: (wz.duel.potionCooldowns.hp > 0 || playerDead || wz.duel.finished) ? 0.5 : 1 }}
-              onClick={() => duelAction("potion_hp")}
-              disabled={wz.duel.potionCooldowns.hp > 0 || playerDead || wz.duel.finished}
-            >
-              <Heart size={14} color="#C9425A" /> {wz.duel.potionCooldowns.hp > 0 ? wz.duel.potionCooldowns.hp : (hpPotion?.count || 0)}
-            </button>
-            <button
-              style={{ ...styles.potionBtn, opacity: (wz.duel.potionCooldowns.mp > 0 || playerDead || wz.duel.finished) ? 0.5 : 1 }}
-              onClick={() => duelAction("potion_mp")}
-              disabled={wz.duel.potionCooldowns.mp > 0 || playerDead || wz.duel.finished}
-            >
-              <Zap size={14} color="#4FC3D9" /> {wz.duel.potionCooldowns.mp > 0 ? wz.duel.potionCooldowns.mp : (mpPotion?.count || 0)}
-            </button>
-          </div>
           <button style={styles.ghostBtn} onClick={() => setConfirmingRetreat(true)} disabled={wz.duel.finished}>
             <LogOut size={13} /> {t("warzone.retreat")}
           </button>
@@ -954,7 +951,20 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       )}
 
       {subtab === "av" && wz.searching && (
-        <EmptyState icon={Swords} title={t("warzone.huntSearchingTitle")} subtitle={t("warzone.huntSearchingSubtitle")} />
+        <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={cancelSearch}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <Loader2 className="wz-spin" size={30} color="#C9425A" strokeWidth={1.6} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
+              {t("warzone.huntSearchingTitle")}
+            </div>
+            <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)", textAlign: "center", maxWidth: 220 }}>
+              {t("warzone.huntSearchingSubtitle")}
+            </div>
+            <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", marginTop: 18 }} onClick={cancelSearch}>
+              <X size={13} /> {t("warzone.huntSearchingCancel")}
+            </button>
+          </div>
+        </div>
       )}
 
       {subtab === "av" && wz.hunt && (
@@ -968,6 +978,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
             </div>
             <BarTrack pct={(wz.hunt.monster.hp / wz.hunt.monster.maxHp) * 100} color="#C9425A" />
           </div>
+
+          <div style={styles.vsRow}><Swords size={14} color="var(--text-faint)" /></div>
 
           <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

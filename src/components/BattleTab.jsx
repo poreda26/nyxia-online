@@ -478,6 +478,13 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     } else if (e.type === "heal") {
       healAmt = computeSkillHeal(skill, maxHp);
       log = pushLog(log, t("battle.log.skillHeal", { skill: skillName(skill), amount: healAmt }));
+      // Kullanıcı isteği: hasar becerilerinde olduğu gibi (bkz. yukarıdaki
+      // "damage"/"execute" dalı) can çeken becerilerde de uçan bir "+X"
+      // yazısı görünsün — BattleScene.jsx#outgoing.heal, hero tarafında
+      // (savaşçının kendisinde, canavarda değil) gösteriliyor. Can zaten
+      // doluysa (gerçek kazanç 0) hiç göstermiyoruz — boş bir "+0" yanıltıcı olur.
+      const actualHeal = Math.min(healAmt, maxHp - player.hp);
+      if (actualHeal > 0) setVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: actualHeal } }));
     } else if (e.type === "buffAtk" || e.type === "buffDef") {
       buffs = [...buffs, { stat: e.type === "buffAtk" ? "atk" : "def", mult: e.mult, turnsLeft: e.turns }];
       log = pushLog(log, t("battle.log.skillBuff", { skill: skillName(skill) }));
@@ -520,6 +527,11 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     }
 
     setPlayer(() => result.player);
+    // Can potu da bir "can çekme" aksiyonu — beceri heal'iyle aynı "+X"
+    // uçan yazısı burada da görünsün (bkz. useSkill'in heal dalı). Mana
+    // potu "can" değil, o yüzden kapsam dışı. Can zaten doluysa (result.healed
+    // 0 olur) hiç göstermiyoruz.
+    if (kind === "hp" && result.healed > 0) setVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: result.healed } }));
     const log = pushLog(ticked.log, kind === "hp" ? t("battle.log.usedHpPotion", { n: result.healed }) : t("battle.log.usedMpPotion", { n: result.healed }));
     resolveMonsterTurn(ticked.monsterHp, log, { ...ticked, potionCooldowns }, result.player.hp);
   };

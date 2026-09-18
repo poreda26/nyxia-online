@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { LogOut } from "lucide-react";
+import { useTranslation } from "../i18n/LanguageContext";
 import ScreenPanel from './ScreenPanel';
 import { CLASSES } from "../data/classes";
 import { totalStats, playerDef, playerMaxHp } from "../utils/player";
@@ -30,6 +32,7 @@ import ScheduledEventBanner from "./ScheduledEventBanner";
 import WarzoneBossBanner from "./WarzoneBossBanner";
 
 export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings, unlockedSlots, onUnlockSlot }) {
+  const { t } = useTranslation();
   const cls = CLASSES[player.class];
   const { atk } = totalStats(player);
   const def = playerDef(player);
@@ -59,6 +62,20 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   const [dailyLoginOpen, setDailyLoginOpen] = useState(canClaimDailyLogin(player));
   const dailyLoginAvailable = canClaimDailyLogin(player);
   const [diamondShopOpen, setDiamondShopOpen] = useState(false);
+
+  // Kullanıcı isteği: "Savaş Alanından çıkmak istediğinde emin misin? diye
+  // sor." — WarzoneTab, ışınlandıktan sonra (entered=true) bu bayrağı
+  // onEnteredChange ile yukarı bildiriyor. Alandayken başka bir sekmeye
+  // geçiş isteği direkt uygulanmıyor, önce bir onay modalı açılıyor —
+  // BottomNav'a ham setTab yerine requestTabChange veriliyor.
+  const [warzoneEntered, setWarzoneEntered] = useState(false);
+  const [pendingTab, setPendingTab] = useState(null);
+  const requestTabChange = (nextTab) => {
+    if (nextTab === tab) return;
+    if (tab === "warzone" && warzoneEntered) { setPendingTab(nextTab); return; }
+    setTab(nextTab);
+  };
+  const confirmLeaveWarzone = () => { setTab(pendingTab); setPendingTab(null); };
 
   // Alt menü bildirim noktaları (kullanıcı isteği: "yeni bir mesaj geldiği
   // zaman... yeni eşya düştüğü zaman... görev tamamlandığı zaman... verilmeyen
@@ -142,7 +159,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
           <CaptainTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
         )}
         {tab === "warzone" && (
-          <WarzoneTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
+          <WarzoneTab player={player} setPlayer={setPlayer} pushToast={pushToast} onEnteredChange={setWarzoneEntered} />
         )}
         {tab === "clan" && (
           <ClanTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
@@ -155,7 +172,22 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         )}
       </ScreenPanel>
 
-      <BottomNav tab={tab} setTab={setTab} notifications={notifications} />
+      <BottomNav tab={tab} setTab={requestTabChange} notifications={notifications} />
+
+      {pendingTab && (
+        <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setPendingTab(null)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <LogOut size={28} color="#C9425A" strokeWidth={1.4} />
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
+              {t("warzone.exitConfirm")}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPendingTab(null)}>{t("warzone.no")}</button>
+              <button style={{ ...styles.tinyBtn, background: "#C9425A" }} onClick={confirmLeaveWarzone}>{t("warzone.yes")}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {tutorialOpen && <TutorialModal onFinish={closeTutorial} />}
 

@@ -25,6 +25,15 @@ export const WARZONE_TICK_MS = 3000;
 export const WARZONE_BOSS_SLOT_HOURS = 3.5; // ortalama 3-4 saatlik pencere
 export const WARZONE_BOSS_FIGHT_WINDOW_MIN = 3; // aktifken saldırı süresi (dakika)
 
+// Kullanıcı isteği: "Bosslar çıkmadan önce herkes boss odasına katılacak.
+// Boss Saldırıları 3-2-1 diye geri sayımla açılacak." — boss'un gerçek
+// çıkışından (spawnAt) GATHER_SECONDS kadar önce "oda" açılıyor (ghost'lar
+// "toplanmış" gösteriliyor), son COUNTDOWN_SECONDS'de ise büyük bir 3-2-1
+// sayacı gösteriliyor. Her ikisi de utils/warzoneBoss.js#bossSchedule'ın
+// SAF fonksiyonundan türüyor, hiçbir ek state gerekmiyor.
+export const WARZONE_BOSS_GATHER_SECONDS = 20;
+export const WARZONE_BOSS_COUNTDOWN_SECONDS = 3;
+
 // Alanda aynı anda kaç hayalet rakip bulunsun, biri düellodan çıkınca (ölüm
 // ya da kaçış) kaç saniye sonra yenisiyle değişsin.
 export const GHOST_POPULATION = 3;
@@ -94,12 +103,7 @@ export const WARZONE_BOSSES = [
   { id: "kaos_avatari", name: "Kaos Avatarı", color: "#E8A5AF", ...BASE_BOSS_STATS },
 ];
 
-// Evrensel PvP beceri kiti — sınıf/seviye farketmeksizin Savaş Alanı'na
-// giren herkeste aynı, mevcut data/warriorSkills.js vb. ile aynı
-// {id, name, mpCost, cooldown, effect} şeklini paylaşır ama questTier/gold
-// gerektirmez (her zaman kullanılabilir).
-export const PVP_SKILLS = [
-  { id: "pvp_stun", name: "Sersemlet", mpCost: 8, cooldown: 3, effect: { type: "stun" } },
-  { id: "pvp_flee", name: "Kaç", mpCost: 0, cooldown: 1, effect: { type: "flee", chance: 0.5 } },
-  { id: "pvp_manaburn", name: "Mana Çalma", mpCost: 12, cooldown: 3, effect: { type: "suppressHeal" } },
-];
+// Kullanıcı isteği: "1v1'ler otomatik savaş olacak. Karşılıklı olarak
+// otomatik savaşacaklar. Kazanan bu şekilde adil ortaya çıkacak." — bu
+// yüzden düellolarda artık manuel beceri/pot seçimi yok (bkz.
+// WarzoneTab.jsx#runDuelTurn), eski PVP_SKILLS kiti kaldırıldı.

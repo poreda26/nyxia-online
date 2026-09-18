@@ -100,6 +100,19 @@ export default function GlobalStyle() {
       .toast-heal { border-color: #5FA8A055; }
       .toast-level { border-color: #4FC3D9; box-shadow: 0 10px 32px -6px #4FC3D988; }
 
+      .wz-spin { animation: wzSpin 0.9s linear infinite; }
+      @keyframes wzSpin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .wz-countdown-pop { animation: wzCountdownPop 1s ease-out; }
+      @keyframes wzCountdownPop {
+        0% { transform: scale(0.4); opacity: 0; }
+        30% { transform: scale(1.15); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+
       button { font-family: var(--font-body); cursor: pointer; }
       input, select { font-family: var(--font-body); }
 
