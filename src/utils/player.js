@@ -186,6 +186,11 @@ export function initialPlayer(cls, race, nickname) {
     // ticksCredited }. day bugünden farklıysa taze sayılır (gün değişince
     // otomatik yenilenir).
     scheduledEvents: {},
+    // Kozmetik zırh boyası — bkz. data/armorDyes.js, utils/cosmetics.js.
+    // armorDye: şu an giyilen boya (null = orijinal renkler); ownedDyes:
+    // elmasla satın alınıp bir daha ücretsiz seçilebilecek boyalar.
+    armorDye: null,
+    ownedDyes: [],
   };
   // Her karakter sınıfına özel +1 bir silahla kuşanılmış doğar (bkz.
   // data/startingWeapons.js) — eli boş başlamıyor.
@@ -291,6 +296,8 @@ export function migratePlayer(player) {
     claimedCollections: player.claimedCollections || [],
     weeklyQuests: player.weeklyQuests || { weekId: currentWeekId(), kills: 0, bosses: 0, claimed: [] },
     scheduledEvents: player.scheduledEvents || {},
+    armorDye: player.armorDye ?? null,
+    ownedDyes: player.ownedDyes || [],
   };
 }
 

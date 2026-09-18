@@ -1,17 +1,20 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award } from "lucide-react";
+import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award, Gem } from "lucide-react";
 import { STAT_KEYS, STAT_COLORS, STAT_CAP } from "../data/stats";
 import { RACES } from "../data/races";
+import { ARMOR_DYES } from "../data/armorDyes";
 import { allocateStat, displayClassName, respecCost, canRespecStats, respecStats, formatGold } from "../utils/player";
 import { activePremiumTier, premiumDaysLeft } from "../utils/premium";
 import { classSkills, isKnown, canUnlockSkill, unlockSkill, setLoadoutSlot, describeEffect } from "../utils/skills";
 import { MAX_LOADOUT_SLOTS } from "../data/skills";
 import { ACHIEVEMENTS } from "../data/achievements";
 import { isAchievementUnlocked, setActiveTitle } from "../utils/achievements";
+import { selectArmorDye } from "../utils/cosmetics";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import StatBlock from "./shared/StatBlock";
 import SkillIcon from "./SkillIcon";
+import CharacterFigure from "./CharacterFigure";
 import { useTranslation, formatReason } from "../i18n/LanguageContext";
 
 export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter, onReplayTutorial }) {
@@ -67,6 +70,13 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
   };
 
   const unlockedCount = ACHIEVEMENTS.filter((a) => isAchievementUnlocked(player, a)).length;
+
+  const pickDye = (dyeId) => {
+    const result = selectArmorDye(player, dyeId);
+    if (!result.bought) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
+    setPlayer(result.player);
+    if (result.purchased) pushToast(t("character.cosmetics.dyeBought"), "loot");
+  };
 
   const pickTitle = (achievementId) => {
     setPlayer((p) => setActiveTitle(p, achievementId));
@@ -132,6 +142,9 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         </button>
         <button onClick={() => setSubtab("achievements")} style={{ ...styles.subtabBtn, ...(subtab === "achievements" ? styles.subtabBtnActive : {}) }}>
           {t("character.tabs.achievements", { unlocked: unlockedCount, total: ACHIEVEMENTS.length })}
+        </button>
+        <button onClick={() => setSubtab("cosmetics")} style={{ ...styles.subtabBtn, ...(subtab === "cosmetics" ? styles.subtabBtnActive : {}) }}>
+          {t("character.tabs.cosmetics")}
         </button>
       </div>
 
@@ -283,6 +296,55 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
             );
           })}
         </div>
+      )}
+
+      {subtab === "cosmetics" && (
+        <>
+          <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 10px" }}>
+            {t("character.cosmetics.intro")}
+          </p>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+            <div style={{ width: 140, height: 210 }}>
+              <CharacterFigure player={player} />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            <button
+              onClick={() => pickDye(null)}
+              style={{
+                ...styles.itemDetailCard, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 6px",
+                borderColor: !player.armorDye ? "#D4AF6A" : "var(--border)",
+              }}
+            >
+              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--bg-panel-alt)", border: "1px dashed var(--text-faint)" }} />
+              <span style={{ fontSize: 10, textAlign: "center" }}>{t("character.cosmetics.original")}</span>
+            </button>
+            {ARMOR_DYES.map((dye) => {
+              const owned = player.ownedDyes?.includes(dye.id);
+              const active = player.armorDye === dye.id;
+              return (
+                <button
+                  key={dye.id}
+                  onClick={() => pickDye(dye.id)}
+                  style={{
+                    ...styles.itemDetailCard, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 6px",
+                    borderColor: active ? "#D4AF6A" : "var(--border)",
+                  }}
+                >
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: dye.swatch }} />
+                  <span style={{ fontSize: 10, textAlign: "center" }}>{dye.name}</span>
+                  {owned ? (
+                    <span style={{ fontSize: 8, color: "#5FA8A0" }}>{t("character.cosmetics.owned")}</span>
+                  ) : (
+                    <span style={{ fontSize: 9, color: "#8B6FC9", display: "flex", alignItems: "center", gap: 2 }}>
+                      <Gem size={9} /> {dye.cost}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {confirmingRespec && (

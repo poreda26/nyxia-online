@@ -7,6 +7,7 @@ import {weaponEffects} from '../data/weaponEffects';
 import WeaponEffectFilter from './WeaponEffectFilter';
 import ArmorEffectFilter from './ArmorEffectFilter';
 import {armorEffect} from '../data/armorEffects';
+import {ARMOR_DYES} from '../data/armorDyes';
 import './CharacterFigure.css';
 const images=import.meta.glob('../assets/characters/weapons/*.png',{eager:true,query:'?url',import:'default'});
 const url=key=>images[`../assets/characters/weapons/${key}.png`];
@@ -21,6 +22,11 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
  if(!sourceFrame)return <div className="character-loading">Görünüm hazırlanıyor</div>;
  const active=ARMOR_SLOTS.filter(slot=>tiers[slot]);
  const layers=[{name:'cloth',key:clothKey},...active.map(slot=>({name:slot,key:armorAtlas(player.class,tiers[slot]),effect:armorEffect(player.equipped[slot],player.class,slot)}))];
+ // Kozmetik zırh boyası (bkz. data/armorDyes.js) — sadece zırh katmanlarına
+ // uygulanır ('cloth' hariç, öyle ki ten/yüz etkilenmesin), armorDye seçili
+ // değilse orijinal renkler kalır.
+ const dye=player.armorDye&&ARMOR_DYES.find(d=>d.id===player.armorDye);
+ const dyeFilter=dye?`url(#${id}-dye)`:undefined;
  const targetOffset=`translate(${-(a.frameIndex%3)*418} ${-Math.floor(a.frameIndex/3)*627})`;
  const sourceBow=bowEndpoints({atlasKey:rig.sourceKey,frameIndex:si});
  const targetBow=a.weaponName?bowEndpoints(a):null;
@@ -50,10 +56,11 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
   {effects.map(e=><filter key={e.key} id={`${id}-effect-${e.key}`} x="-35%" y="-35%" width="170%" height="170%" colorInterpolationFilters="sRGB"><WeaponEffectFilter effect={e} spread={tg.spread}/></filter>)}
   <linearGradient id={`${id}-armor-shine`}><stop offset="0" stopColor="white" stopOpacity="0"/><stop offset=".46" stopColor="white" stopOpacity="0"/><stop offset=".5" stopColor="#fffbe5" stopOpacity=".32"/><stop offset=".54" stopColor="white" stopOpacity="0"/><stop offset="1" stopColor="white" stopOpacity="0"/></linearGradient>
   {layers.filter(l=>l.effect).map(l=><filter key={l.name} id={`${id}-armor-${l.name}`} x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB"><ArmorEffectFilter effect={l.effect}/></filter>)}
+  {dye&&<filter id={`${id}-dye`} colorInterpolationFilters="sRGB"><feColorMatrix type="hueRotate" values={dye.hue}/><feColorMatrix type="saturate" values={dye.sat}/></filter>}
  </defs>
  <g transform={rig.transform}>
   <svg width="418" height="627" viewBox={`${si%3*418} ${Math.floor(si/3)*627} 418 627`} overflow="visible">
-   {layers.map(layer=><image key={layer.name} data-armor-layer={layer.name} data-armor-tier={tiers[layer.name]||0} href={url(layer.key)} width="1254" height="1254" clipPath={`url(#${id}-${layer.name}-clip)`} mask={`url(#${id}-${layer.name}-mask)`}/>)}
+   {layers.map(layer=><image key={layer.name} data-armor-layer={layer.name} data-armor-tier={tiers[layer.name]||0} href={url(layer.key)} width="1254" height="1254" clipPath={`url(#${id}-${layer.name}-clip)`} mask={`url(#${id}-${layer.name}-mask)`} filter={layer.name!=='cloth'?dyeFilter:undefined}/>)}
    {layers.filter(l=>l.effect&&l.name!=='gauntlets').map(armorLight)}
   </svg>
   {alignedBow&&<g stroke="#987b50" fill="none" strokeWidth="1.5"><path d={stringPath(alignedBow,sourceGrip)}/><path d={`M${sourceGrip}L405,${sourceGrip[1]}`}/><path d={`M400,${sourceGrip[1]-4}L415,${sourceGrip[1]}L400,${sourceGrip[1]+4}`}/></g>}
@@ -62,7 +69,7 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
   <image data-held-weapon={a.weaponName} href={url(a.atlasKey)} width="1254" height="1254" clipPath={`url(#${id}-target)`} mask={`url(#${id}-target-weapon)`}/>
   {effects.map((e,index)=><g key={e.key} style={effects.length>1?{animationDelay:`${-index*1.6}s`}:undefined} className={`weapon-effect ${effects.length>1?"weapon-effect-multi":""} weapon-effect-${e.key} ${e.strong?'weapon-effect-strong':''}`} data-element={e.key} data-upgrade={a.upgrade} mask={`url(#${id}-clearance)`}><g filter={`url(#${id}-effect-${e.key})`}><g mask={`url(#${id}-head)`}>{clipPath(a.atlasKey,a.frameIndex)}</g></g></g>)}
  </g>}
- <g transform={rig.transform}><svg width="418" height="627" viewBox={`${si%3*418} ${Math.floor(si/3)*627} 418 627`} overflow="visible"><image href={url(armorAtlas(player.class,tiers.gauntlets))} width="1254" height="1254" clipPath={`url(#${id}-grip-clip)`} mask={`url(#${id}-grip)`}/>{layers.filter(l=>l.effect&&l.name==='gauntlets').map(armorLight)}</svg></g>
+ <g transform={rig.transform}><svg width="418" height="627" viewBox={`${si%3*418} ${Math.floor(si/3)*627} 418 627`} overflow="visible"><image href={url(armorAtlas(player.class,tiers.gauntlets))} width="1254" height="1254" clipPath={`url(#${id}-grip-clip)`} mask={`url(#${id}-grip)`} filter={tiers.gauntlets?dyeFilter:undefined}/>{layers.filter(l=>l.effect&&l.name==='gauntlets').map(armorLight)}</svg></g>
  </svg>;
 }
 

@@ -27,6 +27,13 @@ export const characterSection = {
         stats: "Statüler",
         skills: "Beceriler ({n})",
         achievements: "Başarımlar ({unlocked}/{total})",
+        cosmetics: "Kozmetik",
+      },
+      cosmetics: {
+        intro: "Elmasla zırhının rengini değiştir — sadece görsel, hiçbir istatistiği etkilemez. Bir kez satın alınan boyalar arasında sonra ücretsiz geçiş yapabilirsin.",
+        original: "Orijinal",
+        owned: "Sahip",
+        dyeBought: "Zırh boyası satın alındı!",
       },
       stats: {
         atk: "Silah Gücü (ATK)",
@@ -155,6 +162,13 @@ export const characterSection = {
         stats: "Stats",
         skills: "Skills ({n})",
         achievements: "Achievements ({unlocked}/{total})",
+        cosmetics: "Cosmetics",
+      },
+      cosmetics: {
+        intro: "Spend diamonds to recolor your armor — purely visual, no stat effect. Once you own a dye, you can switch to it for free anytime.",
+        original: "Original",
+        owned: "Owned",
+        dyeBought: "Armor dye purchased!",
       },
       stats: {
         atk: "Attack Power (ATK)",
