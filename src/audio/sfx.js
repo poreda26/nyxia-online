@@ -7,6 +7,7 @@
 // dosyası yok. Bildirim sesleri kullanıcı isteğiyle bilinçli olarak kısa
 // tutuldu ("insanların kafasını yormadan") — hiçbiri yarım saniyeyi geçmiyor.
 import { getAudioContext, ensureAudioStarted, getNoiseBuffer } from "./audioContext";
+import { hapticHit, hapticHurt, hapticSuccess, hapticError, hapticLevelUp } from "../utils/haptics";
 
 let master = null;
 let volume = 0.6;
@@ -35,6 +36,7 @@ export function setSfxMuted(m) {
 // Oyuncunun ya da canavarın vuruşu — kritik vuruşlarda daha keskin/yüksek
 // bir metalik çınlama + ekstra "ring" katmanı eklenir.
 export function playHit({ crit = false } = {}) {
+  hapticHit(crit);
   const ctx = bus();
   const now = ctx.currentTime;
 
@@ -90,6 +92,7 @@ export function playMiss() {
 
 // Oyuncu hasar aldığında — playHit'ten daha donuk/alçak, "vurulmak" hissi.
 export function playHurt() {
+  hapticHurt();
   const ctx = bus();
   const now = ctx.currentTime;
   const src = ctx.createBufferSource();
@@ -116,6 +119,7 @@ export function playHurt() {
 // Yükseltme başarılı — parlak, kısa bir majör arpej (çan gibi triangle
 // dalgası). Toplam ~350ms, tek seferlik — döngüsüz.
 export function playUpgradeSuccess() {
+  hapticSuccess();
   const ctx = bus();
   const now = ctx.currentTime;
   [523.25, 659.25, 783.99].forEach((freq, i) => {
@@ -135,6 +139,7 @@ export function playUpgradeSuccess() {
 // Yükseltme başarısız — donuk, alçalan iki nota. Bir alarm gibi uzamıyor,
 // kısa ve net bir "olmadı" hissi (kullanıcı isteği: rahatsız etmesin).
 export function playUpgradeFail() {
+  hapticError();
   const ctx = bus();
   const now = ctx.currentTime;
   const filter = ctx.createBiquadFilter();
@@ -159,6 +164,7 @@ export function playUpgradeFail() {
 // (D-F#-A-D-F# — parlak majör), son nota hafif vibratoyla sürüyor.
 // Toplam ~800ms, hâlâ kısa/tek seferlik.
 export function playLevelUp() {
+  hapticLevelUp();
   const ctx = bus();
   const now = ctx.currentTime;
 
