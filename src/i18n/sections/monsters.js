@@ -21,9 +21,11 @@ export const monstersSection = {
     monsters: {},
     races: {
       karus: {
+        name: "Ork",
         desc: "Savaşçı ruhlu, disiplinli bir ordu milleti. Kızıl bayrak altında birleşir.",
       },
       elmorad: {
+        name: "İnsan",
         desc: "Zarif, stratejik düşünen bir bilgelik milleti. Gümüş ay altında yürür.",
       },
     },
@@ -86,9 +88,11 @@ export const monstersSection = {
     },
     races: {
       karus: {
+        name: "Orc",
         desc: "A disciplined warrior nation with a soldier's spirit. United beneath the crimson banner.",
       },
       elmorad: {
+        name: "Human",
         desc: "A graceful nation of strategic wisdom. They walk beneath the silver moon.",
       },
     },

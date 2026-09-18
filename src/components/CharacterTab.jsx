@@ -83,7 +83,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayClassName(player)}</div>
           <div style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {t("character.level", { level: player.level })}{race && <span style={{ color: race.color }}> · {race.name}</span>}
+            {t("character.level", { level: player.level })}{race && <span style={{ color: race.color }}> · {t(`races.${player.race}.name`)}</span>}
           </div>
         </div>
         {onChangeCharacter && (

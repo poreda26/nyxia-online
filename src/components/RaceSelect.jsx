@@ -14,7 +14,7 @@ export default function RaceSelect({ onChoose }) {
       <div style={styles.classSelectHeader}>
         <div style={styles.eyebrow}>{t("raceSelect.eyebrow")}</div>
         <h1 style={styles.h1}>{t("raceSelect.title")}</h1>
-        <p style={styles.subtext}>{t("raceSelect.subtitle", { a: RACES.karus.name, b: RACES.elmorad.name })}</p>
+        <p style={styles.subtext}>{t("raceSelect.subtitle", { a: t("races.karus.name"), b: t("races.elmorad.name") })}</p>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -36,7 +36,7 @@ export default function RaceSelect({ onChoose }) {
             >
               <Icon size={28} color={r.color} strokeWidth={1.6} />
               <div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 16, letterSpacing: 0.3 }}>{r.name}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 16, letterSpacing: 0.3 }}>{t(`races.${key}.name`)}</div>
                 <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.5 }}>{t(`races.${key}.desc`)}</div>
               </div>
             </button>
@@ -48,7 +48,7 @@ export default function RaceSelect({ onChoose }) {
         style={{ ...styles.primaryBtn, marginTop: 28, alignSelf: "center", background: active.color }}
         onClick={() => onChoose(hovered)}
       >
-        {t("raceSelect.continueAs", { race: active.name })} <ChevronRight size={16} />
+        {t("raceSelect.continueAs", { race: t(`races.${hovered}.name`) })} <ChevronRight size={16} />
       </button>
     </div>
   );

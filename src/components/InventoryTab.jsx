@@ -198,7 +198,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
       : player.inventory.map((i) => (i.id === item.id ? { ...i, count: i.count - 1 } : i));
     setPlayer((p) => ({ ...p, inventory }));
     onChangeRace(newRace);
-    pushToast(t("inventory.raceChanged", { race: RACES[newRace].name }), "default");
+    pushToast(t("inventory.raceChanged", { race: t(`races.${newRace}.name`) }), "default");
     setSelectedId(null);
   };
 

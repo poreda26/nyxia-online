@@ -145,7 +145,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             onClick={() => setLbRace(key)}
             style={{ ...styles.tierChip, borderColor: lbRace === key ? r.color : "var(--border)", background: lbRace === key ? `${r.color}1A` : "var(--bg-panel)" }}
           >
-            <span style={{ fontSize: 11, color: r.color }}>{r.name}</span>
+            <span style={{ fontSize: 11, color: r.color }}>{t(`races.${key}.name`)}</span>
           </button>
         ))}
       </div>

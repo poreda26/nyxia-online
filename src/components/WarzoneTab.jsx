@@ -636,7 +636,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12 }}>{g.name}</div>
-                    <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{RACES[g.race].name} · {CLASSES[g.cls].name}</div>
+                    <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{t(`races.${g.race}.name`)} · {CLASSES[g.cls].name}</div>
                   </div>
                   <button style={{ ...styles.tinyBtn, background: "#C9425A" }} onClick={() => startDuel(g)} disabled={playerDead}>
                     {t("warzone.challenge")}

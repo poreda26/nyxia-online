@@ -76,7 +76,7 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: "var(--font-display)", fontSize: 14 }}>{p.nickname || displayClassName(p)}</div>
                   <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
-                    {p.nickname ? `${displayClassName(p)} · ` : ""}Lv.{p.level} {race ? `· ${race.name}` : ""}
+                    {p.nickname ? `${displayClassName(p)} · ` : ""}Lv.{p.level} {race ? `· ${t(`races.${p.race}.name`)}` : ""}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
