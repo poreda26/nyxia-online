@@ -41,7 +41,7 @@ export function previewDailyLoginReward(player) {
 }
 
 export function claimDailyLogin(player) {
-  if (!canClaimDailyLogin(player)) return { player, claimed: false, reason: "Bugünkü ödülünü zaten aldın." };
+  if (!canClaimDailyLogin(player)) return { player, claimed: false, reason: "dailyRewardAlreadyClaimed" };
   const login = player.dailyLogin || freshLogin();
   const streak = nextStreakFor(login);
   const reward = cycleReward(streak);

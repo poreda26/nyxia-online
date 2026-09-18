@@ -7,6 +7,7 @@ import { addItemToInventory, addItemToAnyBankPage, makePotionStack, makeRaceScro
 import { HP_POTION_TIERS, MP_POTION_TIERS, potionName, potionPrice } from "../data/potions";
 import { PREMIUM_TIERS } from "../data/premium";
 import { activePremiumTier, premiumDaysLeft, buyPremium } from "../utils/premium";
+import { useTranslation, formatReason } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -14,8 +15,6 @@ import ItemIcon from "./ItemIcon";
 import ItemTooltip from "./ItemTooltip";
 import { possessiveName } from "../utils/turkish";
 import * as marketService from "../services/marketService";
-
-const DURATION_LABEL = { 1: "1 saat", 3: "3 saat", 6: "6 saat", 12: "12 saat", 24: "24 saat" };
 
 const RACE_SCROLL_PRICE = 500;
 const JOB_SCROLL_PRICE = 1500;
@@ -40,6 +39,8 @@ function PotionQtyStepper({ qty, onChange }) {
 }
 
 export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, pushToast }) {
+  const { t, lang } = useTranslation();
+  const DURATION_LABEL = t("market.durationLabels");
   const [subtab, setSubtab] = useState("market");
   // Kullanıcı isteği: "Pazarımız bir depo gibi açılacak. Maksimum 10 adet
   // eşya konulabilen bir satış yeri." — myStall tek bir tezgah objesi (ya da
@@ -92,7 +93,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     const sold = await marketService.resolveMyStall(username);
     if (sold.length > 0) {
       setBankGold((g) => g + sold.reduce((sum, entry) => sum + entry.price, 0));
-      sold.forEach((entry) => pushToast(`Pazarından satıldı: ${entry.item.name} → +${formatGold(entry.price)} altın (Depoya eklendi)`, "loot"));
+      sold.forEach((entry) => pushToast(t("market.soldFromStall", { item: entry.item.name, gold: formatGold(entry.price) }), "loot"));
     }
     const fresh = await marketService.fetchMarket(username);
     setMyStall(fresh.myStall);
@@ -105,10 +106,10 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
 
   const purchasePremium = (tierId) => {
     const result = buyPremium(player, tierId, bank);
-    if (!result.bought) { pushToast(result.reason || "Satın alınamadı.", "warn"); return; }
+    if (!result.bought) { pushToast(formatReason(t, result, "market.purchaseFailed"), "warn"); return; }
     setPlayer(result.player);
     setBank(result.bank);
-    pushToast(`${PREMIUM_TIERS[tierId].name} etkinleştirildi!`, "loot");
+    pushToast(t("shop.premiumActivated", { tier: PREMIUM_TIERS[tierId].name }), "loot");
   };
 
   // No active premium -> straight purchase. Same tier already active, or
@@ -120,7 +121,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     const active = activePremiumTier(player);
     if (!active) { purchasePremium(tierId); return; }
     if (active.id === tierId || active.id === "mythic") {
-      pushToast("Zaten Premium Mevcut.", "warn");
+      pushToast(t("shop.alreadyHavePremium"), "warn");
       return;
     }
     setUpgradeConfirmStep(1);
@@ -133,49 +134,49 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   };
 
   const buyBonusScroll = () => {
-    if (player.diamonds < BONUS_SCROLL_PRICE) { pushToast("Yeterli elmasın yok.", "warn"); return; }
+    if (player.diamonds < BONUS_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     const result = addItemToInventory({ ...player, diamonds: player.diamonds - BONUS_SCROLL_PRICE }, makeBonusScrollStack());
-    if (!result.added) { pushToast(`Satın alınamadı — ${result.reason}`, "warn"); return; }
+    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
     setPlayer(result.player);
-    pushToast("Bonus Parşömen satın alındı.", "loot");
+    pushToast(t("shop.bonusScrollPurchased"), "loot");
   };
 
   const buyRaceScroll = () => {
-    if (player.diamonds < RACE_SCROLL_PRICE) { pushToast("Yeterli elmasın yok.", "warn"); return; }
+    if (player.diamonds < RACE_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     const result = addItemToInventory({ ...player, diamonds: player.diamonds - RACE_SCROLL_PRICE }, makeRaceScroll(1));
-    if (!result.added) { pushToast(`Satın alınamadı — ${result.reason}`, "warn"); return; }
+    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
     setPlayer(result.player);
-    pushToast("Irk Değiştirme Parşömeni satın alındı.", "loot");
+    pushToast(t("shop.raceScrollPurchased"), "loot");
   };
 
   const buyJobScroll = () => {
-    if (player.diamonds < JOB_SCROLL_PRICE) { pushToast("Yeterli elmasın yok.", "warn"); return; }
+    if (player.diamonds < JOB_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     const result = addItemToInventory({ ...player, diamonds: player.diamonds - JOB_SCROLL_PRICE }, makeJobScroll(1));
-    if (!result.added) { pushToast(`Satın alınamadı — ${result.reason}`, "warn"); return; }
+    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
     setPlayer(result.player);
-    pushToast("Job Değiştirme Kağıdı satın alındı.", "loot");
+    pushToast(t("shop.jobScrollPurchased"), "loot");
   };
 
   const buyPotion = (potionType, tier, qty) => {
     const amount = Math.max(1, qty || 1);
     const price = potionPrice(potionType, tier) * amount;
-    if (player.gold < price) { pushToast("Yeterli altının yok.", "warn"); return; }
+    if (player.gold < price) { pushToast(t("shop.notEnoughGold"), "warn"); return; }
     const result = addItemToInventory({ ...player, gold: player.gold - price }, makePotionStack(potionType, tier, amount));
-    if (!result.added) { pushToast(`Satın alınamadı — ${result.reason}`, "warn"); return; }
+    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
     setPlayer(result.player);
-    pushToast(`${potionName(potionType, tier)} x${amount} satın alındı (-${formatGold(price)}g).`, "loot");
+    pushToast(t("shop.potionPurchased", { name: potionName(potionType, tier, lang), qty: amount, gold: formatGold(price) }), "loot");
   };
 
   // ---- Kendi tezgahım (Pazarım) ----
 
   const openStall = async (durationHours) => {
     const fee = marketService.MARKET_DURATION_FEE[durationHours];
-    if (player.gold < fee) { pushToast(`Pazar ücretini (${fee}g) karşılayacak altının yok.`, "warn"); return; }
+    if (player.gold < fee) { pushToast(t("market.notEnoughForStallFee", { fee }), "warn"); return; }
     const result = await marketService.openStall(username, player.nickname, durationHours);
-    if (!result.ok) { pushToast(result.reason || "Pazar açılamadı.", "warn"); refreshMarket(); return; }
+    if (!result.ok) { pushToast(formatReason(t, result, "market.stallOpenFailed"), "warn"); refreshMarket(); return; }
     setPlayer((p) => ({ ...p, gold: p.gold - fee }));
     setMyStall(result.stall);
-    pushToast(`Pazarın açıldı: ${DURATION_LABEL[durationHours]} (-${formatGold(fee)}g)`, "loot");
+    pushToast(t("market.stallOpened", { duration: DURATION_LABEL[durationHours], fee: formatGold(fee) }), "loot");
   };
 
   const sellableItems = player.inventory.filter((i) => i.kind === "armor" || i.kind === "weapon" || i.kind === "accessory");
@@ -184,12 +185,12 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   // ayrı bir havuz olarak sunuluyor.
   const sellableChests = player.chests.map((c) => ({
     id: c.id, kind: "chest", tier: c.tier, special: c.special,
-    name: c.special ? "Özel Etkinlik Sandığı" : `T${c.tier} Sandık`,
+    name: c.special ? t("market.specialChestName") : t("market.tierChestName", { tier: c.tier }),
   }));
 
   const openPicker = (mode) => {
-    if (!myStall || !myStall.active) { pushToast("Önce pazarını açman gerekiyor.", "warn"); return; }
-    if (myStall.items.length >= marketService.MARKET_STALL_MAX_ITEMS) { pushToast(`Pazarın dolu (${marketService.MARKET_STALL_MAX_ITEMS}/${marketService.MARKET_STALL_MAX_ITEMS}).`, "warn"); return; }
+    if (!myStall || !myStall.active) { pushToast(t("market.openStallFirst"), "warn"); return; }
+    if (myStall.items.length >= marketService.MARKET_STALL_MAX_ITEMS) { pushToast(t("market.stallFull", { count: marketService.MARKET_STALL_MAX_ITEMS, max: marketService.MARKET_STALL_MAX_ITEMS }), "warn"); return; }
     setPickerOpen(true); setPickerMode(mode); setPickedItem(null); setPriceInput("");
   };
   const pickItem = (item) => { setPickedItem(item); setPriceInput(""); };
@@ -197,16 +198,16 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   const confirmAddToStall = async () => {
     const price = parseInt(priceInput, 10);
     if (!pickedItem) return;
-    if (!Number.isFinite(price) || price <= 0) { pushToast("Geçerli bir fiyat gir.", "warn"); return; }
+    if (!Number.isFinite(price) || price <= 0) { pushToast(t("market.enterValidPrice"), "warn"); return; }
     const result = await marketService.addItemToStall(username, pickedItem, price);
-    if (!result.ok) { pushToast(result.reason || "Eklenemedi.", "warn"); refreshMarket(); return; }
+    if (!result.ok) { pushToast(formatReason(t, result, "market.addFailed"), "warn"); refreshMarket(); return; }
     if (pickerMode === "chest") {
       setPlayer((p) => ({ ...p, chests: p.chests.filter((c) => c.id !== pickedItem.id) }));
     } else {
       setPlayer((p) => ({ ...p, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
     }
     setMyStall(result.stall);
-    pushToast(`${pickedItem.name} pazarına eklendi — ${formatGold(price)}g.`, "loot");
+    pushToast(t("market.itemAddedToStall", { item: pickedItem.name, gold: formatGold(price) }), "loot");
     setPickerOpen(false);
     setPickedItem(null);
     setPriceInput("");
@@ -247,11 +248,11 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   const confirmCloseStall = async () => {
     setCloseConfirm(false);
     const result = await marketService.closeStall(username);
-    if (!result) { pushToast("Pazar zaten kapalı.", "warn"); refreshMarket(); return; }
+    if (!result) { pushToast(t("market.stallAlreadyClosed"), "warn"); refreshMarket(); return; }
     const { placedChests, placedItems, lost } = distributeReclaimedItems(result.items.map((entry) => ({ ...entry })));
     setMyStall(null);
-    if (lost > 0) pushToast(`Pazar kapatıldı ama ${lost} eşya depoya sığmadı — kaybolmadı, tekrar dene.`, "warn");
-    else pushToast(`Pazar kapatıldı. ${placedItems + placedChests} eşya depoya/sandığa döndü. İlan ücreti iade edilmedi.`, "default");
+    if (lost > 0) pushToast(t("market.stallClosedSomeLost", { count: lost }), "warn");
+    else pushToast(t("market.stallClosedReturned", { count: placedItems + placedChests }), "default");
   };
 
   // Kullanıcı isteği (bir önceki turdan, aynı ilke): "Deaktif olan
@@ -260,19 +261,19 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   // burada elle tetikleniyor; sığmayanlar tezgahta kalır, hiçbiri kaybolmaz.
   const reclaimStall = async () => {
     const result = await marketService.reclaimStall(username);
-    if (!result) { pushToast("Alınacak bir şey yok.", "warn"); refreshMarket(); return; }
+    if (!result) { pushToast(t("market.nothingToReclaim"), "warn"); refreshMarket(); return; }
     const { placedIds, placedChests, placedItems, lost } = distributeReclaimedItems(result.items);
     await marketService.removeReclaimedItems(username, placedIds);
     const fresh = await marketService.fetchMarket(username);
     setMyStall(fresh.myStall);
-    if (lost > 0) pushToast(`${placedItems + placedChests} eşya alındı, ${lost} tanesi depoya sığmadı — tekrar dene.`, "warn");
-    else pushToast(`Süresi dolan pazarının ${placedItems + placedChests} eşyası geri alındı.`, "default");
+    if (lost > 0) pushToast(t("market.reclaimedSomeLost", { count: placedItems + placedChests, lost }), "warn");
+    else pushToast(t("market.reclaimedAll", { count: placedItems + placedChests }), "default");
   };
 
   // ---- NPC tezgahları (Diğer Pazarlar) ----
 
   const requestBuy = (listing) => {
-    if (player.gold < listing.price) { pushToast("Yeterli altının yok.", "warn"); return; }
+    if (player.gold < listing.price) { pushToast(t("market.notEnoughGold"), "warn"); return; }
     setBuyConfirm(listing);
   };
 
@@ -281,16 +282,16 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     setBuyConfirm(null);
     if (!listing) return;
     const result = await marketService.buyListing(listing.id);
-    if (!result.ok) { pushToast(result.reason || "Satın alınamadı.", "warn"); refreshMarket(); return; }
+    if (!result.ok) { pushToast(formatReason(t, result, "market.purchaseFailed"), "warn"); refreshMarket(); return; }
     if (result.listing.item.kind === "chest") {
       setPlayer((p) => ({ ...p, gold: p.gold - listing.price, chests: [...p.chests, { id: result.listing.item.id, tier: result.listing.item.tier, special: result.listing.item.special }] }));
     } else {
       const addResult = addItemToInventory({ ...player, gold: player.gold - listing.price }, result.listing.item);
-      if (!addResult.added) { pushToast(`Satın alındı ama çantana sığmadı — ${addResult.reason}`, "warn"); }
+      if (!addResult.added) { pushToast(t("market.boughtButBagFull", { reason: addResult.reason }), "warn"); }
       setPlayer(addResult.player);
     }
     setNpcListings((ls) => ls.filter((l) => l.id !== listing.id));
-    pushToast(`${result.listing.item.name} satın alındı.`, "loot");
+    pushToast(t("market.itemPurchased", { item: result.listing.item.name }), "loot");
   };
 
   // Kullanıcı isteği: "İtemler tek tek listelenmeyecek." — NPC eşyaları
@@ -310,28 +311,28 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     <div style={styles.panelScroll}>
       <div style={styles.subtabRow}>
         <button onClick={() => setSubtab("market")} style={{ ...styles.subtabBtn, ...(subtab === "market" ? styles.subtabBtnActive : {}) }}>
-          Pazar
+          {t("market.tabMarket")}
         </button>
         <button onClick={() => setSubtab("shop")} style={{ ...styles.subtabBtn, ...(subtab === "shop" ? styles.subtabBtnActive : {}) }}>
-          Dükkan
+          {t("market.tabShop")}
         </button>
         <button onClick={() => setSubtab("special")} style={{ ...styles.subtabBtn, ...(subtab === "special" ? styles.subtabBtnActive : {}) }}>
-          Özel Market
+          {t("market.tabSpecial")}
         </button>
       </div>
 
       {subtab === "special" && (
         <>
-          <SectionLabel>Özel Market</SectionLabel>
+          <SectionLabel>{t("market.tabSpecial")}</SectionLabel>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: -6, marginBottom: 12 }}>
             <Gem size={13} color="#8B6FC9" />
-            <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#8B6FC9" }}>{player.diamonds} Elmas</span>
+            <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "#8B6FC9" }}>{t("shop.diamondsAmount", { n: player.diamonds })}</span>
           </div>
           <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: -4, marginBottom: 12 }}>
-            Elmas altından ayrı, özel bir para birimi. Şu an için sadece etkinlik/GM ödülü olarak kazanılıyor.
+            {t("shop.diamondsDesc")}
           </p>
 
-          <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>Premium</div>
+          <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>{t("shop.premiumHeader")}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
             {Object.values(PREMIUM_TIERS).map((tier) => {
               const active = activePremiumTier(player);
@@ -343,7 +344,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                     <Crown size={18} color={tier.color} strokeWidth={1.6} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: "var(--font-display)", fontSize: 15, color: tier.color }}>{tier.name}</div>
-                      <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{tier.durationDays} gün</div>
+                      <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("shop.tierDurationDays", { n: tier.durationDays })}</div>
                     </div>
                     <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: tier.color, display: "flex", alignItems: "center", gap: 3 }}>
                       <Gem size={12} /> {tier.price}
@@ -360,57 +361,57 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                     style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, background: tier.color, color: "#0B0C10" }}
                     onClick={() => handlePremiumClick(tier.id)}
                   >
-                    {isThisActive ? `Aktif — ${daysLeft} gün kaldı` : "Satın Al"}
+                    {isThisActive ? t("shop.premiumActive", { days: daysLeft }) : t("shop.buyBtn")}
                   </button>
                 </div>
               );
             })}
           </div>
 
-          <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>Parşömenler</div>
+          <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>{t("shop.scrollsHeader")}</div>
           <div style={{ ...styles.itemRow, borderColor: "#8B6FC955" }}>
             <ScrollText size={18} color="#8B6FC9" />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13 }}>Irk Değiştirme Parşömeni</div>
-              <div style={{ fontSize: 10, color: "var(--text-faint)" }}>Kullanınca hesabının ırkını kalıcı olarak değiştirir.</div>
+              <div style={{ fontSize: 13 }}>{t("shop.raceScrollTitle")}</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("shop.raceScrollDesc")}</div>
             </div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#8B6FC9", marginRight: 8, display: "flex", alignItems: "center", gap: 3 }}>
               <Gem size={11} /> {RACE_SCROLL_PRICE}
             </div>
-            <button style={styles.tinyBtn} onClick={buyRaceScroll}>Al</button>
+            <button style={styles.tinyBtn} onClick={buyRaceScroll}>{t("shop.buyShort")}</button>
           </div>
           <div style={{ ...styles.itemRow, borderColor: "#5FA8A055", marginTop: 8 }}>
             <Shuffle size={18} color="#5FA8A0" />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13 }}>Job Değiştirme Kağıdı</div>
+              <div style={{ fontSize: 13 }}>{t("shop.jobScrollTitle")}</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
-                Kullanınca karakterinin sınıfını kalıcı olarak değiştirir. Hiçbir eşya kuşanılmıyorken ve bir klana üye değilken kullanılabilir.
+                {t("shop.jobScrollDesc")}
               </div>
             </div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#5FA8A0", marginRight: 8, display: "flex", alignItems: "center", gap: 3 }}>
               <Gem size={11} /> {JOB_SCROLL_PRICE}
             </div>
-            <button style={styles.tinyBtn} onClick={buyJobScroll}>Al</button>
+            <button style={styles.tinyBtn} onClick={buyJobScroll}>{t("shop.buyShort")}</button>
           </div>
           <div style={{ ...styles.itemRow, borderColor: "#D4AF6A55", marginTop: 8 }}>
             <Star size={18} color="#D4AF6A" />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13 }}>Bonus Parşömen</div>
+              <div style={{ fontSize: 13 }}>{t("shop.bonusScrollTitle")}</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
-                Silah ve zırh yükseltmesinde kullanılan bir eşya. Bu, eşyanın yok olmayacağının garantisi değildir. Sadece yükseltme şansını artırır.
+                {t("shop.bonusScrollDesc")}
               </div>
             </div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8, display: "flex", alignItems: "center", gap: 3 }}>
               <Gem size={11} /> {BONUS_SCROLL_PRICE}
             </div>
-            <button style={styles.tinyBtn} onClick={buyBonusScroll}>Al</button>
+            <button style={styles.tinyBtn} onClick={buyBonusScroll}>{t("shop.buyShort")}</button>
           </div>
         </>
       )}
 
       {subtab === "shop" && (
         <>
-          <SectionLabel>Can İksirleri</SectionLabel>
+          <SectionLabel>{t("shop.hpPotionsHeader")}</SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {HP_POTION_TIERS.map((amount, i) => {
               const tier = i + 1;
@@ -420,18 +421,18 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                 <div key={tier} style={{ ...styles.itemRow, borderColor: "#C9425A44", flexWrap: "wrap" }}>
                   <FlaskConical size={18} color="#C9425A" />
                   <div style={{ flex: 1, minWidth: 90 }}>
-                    <div style={{ fontSize: 13 }}>{potionName("hp", tier)}</div>
-                    <div style={{ fontSize: 10, color: "var(--text-faint)" }}>+{amount} can yeniler</div>
+                    <div style={{ fontSize: 13 }}>{potionName("hp", tier, lang)}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("shop.hpRestoreDesc", { amount })}</div>
                   </div>
                   <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(potionPrice("hp", tier) * qty)}g</div>
-                  <button style={styles.tinyBtn} onClick={() => buyPotion("hp", tier, qty)}>Al</button>
+                  <button style={styles.tinyBtn} onClick={() => buyPotion("hp", tier, qty)}>{t("shop.buyShort")}</button>
                 </div>
               );
             })}
           </div>
 
-          <SectionLabel>Mana İksirleri</SectionLabel>
+          <SectionLabel>{t("shop.mpPotionsHeader")}</SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {MP_POTION_TIERS.map((amount, i) => {
               const tier = i + 1;
@@ -441,30 +442,30 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                 <div key={tier} style={{ ...styles.itemRow, borderColor: "#4FC3D944", flexWrap: "wrap" }}>
                   <FlaskConical size={18} color="#4FC3D9" />
                   <div style={{ flex: 1, minWidth: 90 }}>
-                    <div style={{ fontSize: 13 }}>{potionName("mp", tier)}</div>
-                    <div style={{ fontSize: 10, color: "var(--text-faint)" }}>+{amount} mana yeniler</div>
+                    <div style={{ fontSize: 13 }}>{potionName("mp", tier, lang)}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("shop.mpRestoreDesc", { amount })}</div>
                   </div>
                   <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(potionPrice("mp", tier) * qty)}g</div>
-                  <button style={styles.tinyBtn} onClick={() => buyPotion("mp", tier, qty)}>Al</button>
+                  <button style={styles.tinyBtn} onClick={() => buyPotion("mp", tier, qty)}>{t("shop.buyShort")}</button>
                 </div>
               );
             })}
           </div>
           <div style={styles.dropInfoRow}>
-            <span>Sandıklar artık dükkanda satılmıyor — sadece canavarlardan düşük ihtimalle düşer.</span>
+            <span>{t("shop.chestsNoLongerSold")}</span>
           </div>
         </>
       )}
 
       {subtab === "market" && (
         <>
-          <SectionLabel>Pazarım</SectionLabel>
+          <SectionLabel>{t("market.myStallHeader")}</SectionLabel>
 
           {!myStall && (
             <>
               <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: -4, marginBottom: 12 }}>
-                Kendi adınla bir pazar tezgahı aç — içine en çok {marketService.MARKET_STALL_MAX_ITEMS} eşya koyabilirsin, diğer oyuncular tezgahını görüp istediğini alır. Süre uzadıkça saat başına ücret ucuzlar.
+                {t("market.stallIntro", { max: marketService.MARKET_STALL_MAX_ITEMS })}
               </p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                 {marketService.MARKET_DURATIONS_HOURS.map((h) => (
@@ -478,7 +479,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                 ))}
               </div>
               <button style={{ ...styles.smallBtn, background: "#5FA8A0", width: "100%" }} onClick={() => openStall(openDuration)}>
-                <Store size={14} /> Pazarımı Aç — {formatGold(stallFee)}g
+                <Store size={14} /> {t("market.openStallBtn", { fee: formatGold(stallFee) })}
               </button>
             </>
           )}
@@ -489,22 +490,24 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Store size={16} color="#5FA8A0" strokeWidth={1.6} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#5FA8A0" }}>{possessiveName(player.nickname)} Pazarı</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#5FA8A0" }}>
+                      {t("market.stallTitleFor", { name: lang === "tr" ? possessiveName(player.nickname) : player.nickname })}
+                    </div>
                     <div style={{ fontSize: 10, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>{myStall.items.length}/{marketService.MARKET_STALL_MAX_ITEMS} eşya</span>
+                      <span>{t("market.stallItemCount", { count: myStall.items.length, max: marketService.MARKET_STALL_MAX_ITEMS })}</span>
                       <span style={{ display: "flex", alignItems: "center", gap: 2 }}><Clock size={9} /> {DURATION_LABEL[myStall.durationHours]}</span>
                     </div>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                   <button style={{ ...styles.tinyBtn, background: "#5FA8A0", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }} onClick={() => openPicker("item")}>
-                    <Plus size={12} /> Eşya Ekle
+                    <Plus size={12} /> {t("market.addItemBtn")}
                   </button>
                   <button style={{ ...styles.tinyBtn, background: "#D4AF6A", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }} onClick={() => openPicker("chest")}>
-                    <Plus size={12} /> Sandık Ekle
+                    <Plus size={12} /> {t("market.addChestBtn")}
                   </button>
                   <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => setCloseConfirm(true)}>
-                    Pazarı Kapat
+                    {t("market.closeStallBtn")}
                   </button>
                 </div>
               </div>
@@ -513,7 +516,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                 <div style={styles.pickerCard}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 10, color: "var(--text-faint)" }}>
-                      {pickedItem ? "Fiyat belirle" : pickerMode === "chest" ? "Eklenecek sandığı seç" : "Eklenecek eşyayı seç"}
+                      {pickedItem ? t("market.pickerSetPrice") : pickerMode === "chest" ? t("market.pickerChooseChest") : t("market.pickerChooseItem")}
                     </span>
                     <button onClick={() => setPickerOpen(false)} style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer" }}>
                       <X size={14} />
@@ -522,7 +525,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                   {!pickedItem ? (
                     (pickerMode === "chest" ? sellableChests : sellableItems).length === 0 ? (
                       <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                        {pickerMode === "chest" ? "Ekleyebileceğin sandığın yok." : "Çantanda ekleyebileceğin eşya yok."}
+                        {pickerMode === "chest" ? t("market.noChestsToAdd") : t("market.noItemsToAdd")}
                       </div>
                     ) : (
                       (pickerMode === "chest" ? sellableChests : sellableItems).map((item) => (
@@ -542,14 +545,14 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                       <input
                         type="number"
                         min="1"
-                        placeholder="Fiyat (altın)"
+                        placeholder={t("market.pricePlaceholder")}
                         value={priceInput}
                         onChange={(e) => setPriceInput(e.target.value)}
                         style={styles.numInput}
                       />
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPickedItem(null)}>Geri</button>
-                        <button style={styles.tinyBtn} onClick={confirmAddToStall}>Pazara Ekle</button>
+                        <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPickedItem(null)}>{t("market.backBtn")}</button>
+                        <button style={styles.tinyBtn} onClick={confirmAddToStall}>{t("market.addToStallBtn")}</button>
                       </div>
                     </div>
                   )}
@@ -557,7 +560,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               )}
 
               {myStall.items.length === 0 ? (
-                <EmptyState icon={Package2} title="Tezgahın boş" subtitle="Yukarıdan eşya ya da sandık ekleyebilirsin." />
+                <EmptyState icon={Package2} title={t("market.stallEmptyTitle")} subtitle={t("market.stallEmptySubtitle")} />
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {myStall.items.map((entry) => (
@@ -582,19 +585,19 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <AlertTriangle size={16} color="#E8A5AF" strokeWidth={1.6} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#E8A5AF" }}>Pazarının süresi doldu</div>
-                  <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{myStall.items.length} eşya alınmayı bekliyor. Almadan yeni pazar açamazsın.</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#E8A5AF" }}>{t("market.stallExpiredTitle")}</div>
+                  <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("market.stallExpiredDesc", { count: myStall.items.length })}</div>
                 </div>
               </div>
               <button style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, background: "#E8A5AF", color: "#15171E" }} onClick={reclaimStall}>
-                Eşyalarımı Al
+                {t("market.reclaimBtn")}
               </button>
             </div>
           )}
 
-          <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 14, marginBottom: 6, letterSpacing: 1, textTransform: "uppercase" }}>Diğer Pazarlar</div>
+          <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 14, marginBottom: 6, letterSpacing: 1, textTransform: "uppercase" }}>{t("market.otherStallsHeader")}</div>
           {!loading && npcStalls.length === 0 ? (
-            <EmptyState icon={Store} title="Pazar sessiz" subtitle="Şu anda başka tezgah yok. Sonra tekrar bak." />
+            <EmptyState icon={Store} title={t("market.marketQuietTitle")} subtitle={t("market.marketQuietSubtitle")} />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {npcStalls.map((stall) => {
@@ -606,8 +609,10 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                       onClick={() => setExpandedSeller(expanded ? null : stall.sellerName)}
                     >
                       <Tag size={14} color="var(--text-faint)" />
-                      <span style={{ flex: 1, fontSize: 13, textAlign: "left" }}>{possessiveName(stall.sellerName)} Pazarı</span>
-                      <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{stall.items.length} eşya</span>
+                      <span style={{ flex: 1, fontSize: 13, textAlign: "left" }}>
+                        {t("market.stallTitleFor", { name: lang === "tr" ? possessiveName(stall.sellerName) : stall.sellerName })}
+                      </span>
+                      <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{t("market.itemCountLabel", { count: stall.items.length })}</span>
                       {expanded ? <ChevronUp size={14} color="var(--text-faint)" /> : <ChevronDown size={14} color="var(--text-faint)" />}
                     </button>
                     {expanded && (
@@ -622,7 +627,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                               <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{l.item.tier} · {itemStatLabel(l.item)}</div>
                             </div>
                             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(l.price)}g</div>
-                            <button style={styles.tinyBtn} onClick={() => requestBuy(l)}>Al</button>
+                            <button style={styles.tinyBtn} onClick={() => requestBuy(l)}>{t("market.buyShort")}</button>
                           </div>
                         ))}
                       </div>
@@ -645,21 +650,21 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
             <Crown size={32} color={PREMIUM_TIERS.mythic.color} strokeWidth={1.4} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 220 }}>
               {upgradeConfirmStep === 1
-                ? "Zaten bir premium mevcut. Premiumunuzu yükseltmek ister misiniz?"
-                : "Mythic Premium alınsın mı?"}
+                ? t("shop.upgradeConfirmStep1")
+                : t("shop.upgradeConfirmStep2")}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
               <button
                 style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }}
                 onClick={() => (upgradeConfirmStep === 1 ? resolveUpgradeStep1(false) : resolveUpgradeStep2(false))}
               >
-                Hayır
+                {t("shop.no")}
               </button>
               <button
                 style={{ ...styles.tinyBtn, background: PREMIUM_TIERS.mythic.color, color: "#0B0C10" }}
                 onClick={() => (upgradeConfirmStep === 1 ? resolveUpgradeStep1(true) : resolveUpgradeStep2(true))}
               >
-                Evet
+                {t("shop.yes")}
               </button>
             </div>
           </div>
@@ -679,7 +684,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               <div style={{ flex: 1 }} />
               {inspectEntry.source === "npc" && (
                 <button style={styles.tinyBtn} onClick={() => { setInspectEntry(null); requestBuy(inspectEntry); }}>
-                  Al
+                  {t("market.buyShort")}
                 </button>
               )}
               <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} onClick={() => setInspectEntry(null)}>
@@ -697,14 +702,14 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <ShoppingBag size={32} color="#D4AF6A" strokeWidth={1.4} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-              {displayItemName(buyConfirm.item)}'i {formatGold(buyConfirm.price)}g karşılığında almak istediğine emin misin?
+              {t("market.buyConfirmText", { item: displayItemName(buyConfirm.item), gold: formatGold(buyConfirm.price) })}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
               <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setBuyConfirm(null)}>
-                Vazgeç
+                {t("market.cancelBtn")}
               </button>
               <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E" }} onClick={confirmBuy}>
-                Evet, Satın Al
+                {t("market.confirmBuyBtn")}
               </button>
             </div>
           </div>
@@ -718,17 +723,17 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <AlertTriangle size={32} color="#E8A5AF" strokeWidth={1.4} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-              Pazarını kapatmak istediğine emin misin?
+              {t("market.closeConfirmTitle")}
             </div>
             <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)", textAlign: "center", maxWidth: 240 }}>
-              Ödediğin ilan ücreti iade edilmez. İçindeki eşyalar depona geri döner.
+              {t("market.closeConfirmDesc")}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
               <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setCloseConfirm(false)}>
-                Vazgeç
+                {t("market.cancelBtn")}
               </button>
               <button style={{ ...styles.tinyBtn, background: "#E8A5AF", color: "#15171E" }} onClick={confirmCloseStall}>
-                Evet, Kapat
+                {t("market.confirmCloseBtn")}
               </button>
             </div>
           </div>

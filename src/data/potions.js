@@ -7,8 +7,14 @@ export const HP_POTION_TIERS = [90, 180, 360, 720];
 export const MP_POTION_TIERS = [240, 480, 960, 1920];
 
 export const POTION_TIER_NAMES = {
-  hp: ["Küçük Can İksiri", "Can İksiri", "Büyük Can İksiri", "Muazzam Can İksiri"],
-  mp: ["Mana İksiri", "Büyük Mana İksiri", "Muazzam Mana İksiri", "Efsanevi Mana İksiri"],
+  tr: {
+    hp: ["Küçük Can İksiri", "Can İksiri", "Büyük Can İksiri", "Muazzam Can İksiri"],
+    mp: ["Mana İksiri", "Büyük Mana İksiri", "Muazzam Mana İksiri", "Efsanevi Mana İksiri"],
+  },
+  en: {
+    hp: ["Small Health Potion", "Health Potion", "Greater Health Potion", "Superior Health Potion"],
+    mp: ["Mana Potion", "Greater Mana Potion", "Superior Mana Potion", "Legendary Mana Potion"],
+  },
 };
 
 // Şifa/gold oranı her kademede sabit kalacak şekilde fiyat da ikiye katlanıyor.
@@ -25,8 +31,9 @@ export function potionAmount(potionType, tier) {
   return potionTiersFor(potionType)[tier - 1] || 0;
 }
 
-export function potionName(potionType, tier) {
-  return POTION_TIER_NAMES[potionType]?.[tier - 1] || (potionType === "hp" ? "Can İksiri" : "Mana İksiri");
+export function potionName(potionType, tier, lang = "tr") {
+  const names = POTION_TIER_NAMES[lang] || POTION_TIER_NAMES.tr;
+  return names[potionType]?.[tier - 1] || (potionType === "hp" ? names.hp[1] : names.mp[0]);
 }
 
 export function potionPrice(potionType, tier) {

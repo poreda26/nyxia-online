@@ -11,7 +11,10 @@ export const ITEM_TIER_COLORS = {
 
 export function itemTierColor(tierId) { return ITEM_TIER_COLORS[tierId] || "#9CA1B0"; }
 
-export const ITEM_TIER_LABEL = { 1: "Sıradan", 2: "Nadide", 3: "Nadir", 4: "Efsanevi Öncesi", 5: "Efsanevi", 6: "Eşsiz" };
+export const ITEM_TIER_LABEL = {
+  tr: { 1: "Sıradan", 2: "Nadide", 3: "Nadir", 4: "Efsanevi Öncesi", 5: "Efsanevi", 6: "Eşsiz" },
+  en: { 1: "Common", 2: "Uncommon", 3: "Rare", 4: "Pre-Legendary", 5: "Legendary", 6: "Unique" },
+};
 
 export const TIER_PREFIX = {
   1: ["Sisli", "Puslu", "Solgun"],

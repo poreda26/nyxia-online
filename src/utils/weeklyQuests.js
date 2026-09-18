@@ -19,10 +19,10 @@ export function weeklyQuestProgress(player, quest) {
 export function claimWeeklyQuest(player, id) {
   const quest = WEEKLY_QUESTS.find((q) => q.id === id);
   const p = ensureWeeklyQuestsFresh(player);
-  if (!quest) return { player: p, claimed: false, reason: "Geçersiz görev." };
+  if (!quest) return { player: p, claimed: false, reason: "invalidQuest" };
   const progress = weeklyQuestProgress(p, quest);
-  if (progress.claimed) return { player: p, claimed: false, reason: "Ödül zaten alındı." };
-  if (!progress.done) return { player: p, claimed: false, reason: "Görev henüz tamamlanmadı." };
+  if (progress.claimed) return { player: p, claimed: false, reason: "rewardAlreadyClaimed" };
+  if (!progress.done) return { player: p, claimed: false, reason: "questNotDone" };
   let next = { ...p, gold: p.gold + quest.goldReward, xp: p.xp + quest.xpReward, weeklyQuests: { ...p.weeklyQuests, claimed: [...p.weeklyQuests.claimed, id] } };
   if (quest.chest) next = { ...next, chests: [...next.chests, { id: uid(), tier: highestUnlockedMap(next.level).tier }] };
   return { player: next, claimed: true, quest };

@@ -5,6 +5,7 @@ import { ELEMENT_LABELS, ELEMENT_COLORS } from "../data/elements";
 import { WEAPON_TYPE_LABEL } from "../data/warriorWeapons";
 import { itemSubLabel, isConsumable } from "../utils/itemDisplay";
 import { displayItemName, armorLevelBonus, ARMOR_CLASS_BONUS_STAT } from "../utils/player";
+import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import BarTrack from "./shared/BarTrack";
 import ItemIcon from "./ItemIcon";
@@ -15,6 +16,7 @@ import ItemIcon from "./ItemIcon";
 // screenshot for "Clarence's Training Bow". Consumables (potions/scrolls)
 // skip straight to the simple weight line since none of these fields apply.
 export default function ItemTooltip({ item, player, unmetReqs = [] }) {
+  const { t, lang } = useTranslation();
   const tierColor = itemTierColor(item.tier);
   const statReqMet = unmetReqs.length === 0;
   const durabilityPct = item.durability ? (item.currentDurability / item.durability) * 100 : 100;
@@ -27,9 +29,9 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <ItemIcon item={item} size={34} color={tierColor} strokeWidth={1.5} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13 }}>{displayItemName(item)}</div>
+            <div style={{ fontSize: 13 }}>{displayItemName(item, lang)}</div>
             <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
-              {item.tier ? `T${item.tier} · Ağırlık ${item.weight}` : `Ağırlık ${item.weight}`}
+              {item.tier ? t("itemTooltip.weightWithTier", { tier: item.tier, weight: item.weight }) : t("itemTooltip.weightOnly", { weight: item.weight })}
             </div>
           </div>
         </div>
@@ -47,19 +49,19 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
           <ItemIcon item={item} size={48} color={tierColor} strokeWidth={1.5} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: tierColor }}>{displayItemName(item)}</div>
-          <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 1 }}>{itemSubLabel(item)}</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: tierColor }}>{displayItemName(item, lang)}</div>
+          <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 1 }}>{itemSubLabel(item, lang)}</div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: tierColor }}>{ITEM_TIER_LABEL[item.tier] || ""}</div>
+          <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: tierColor }}>{ITEM_TIER_LABEL[lang][item.tier] || ""}</div>
         </div>
       </div>
 
       {item.durability > 0 && (
         <div style={{ marginTop: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
-            <span>Dayanıklılık</span>
-            <span>{item.currentDurability} / {item.durability} (%{Math.round(durabilityPct)})</span>
+            <span>{t("itemTooltip.durability")}</span>
+            <span>{t("itemTooltip.durabilityValue", { cur: item.currentDurability, max: item.durability, pct: Math.round(durabilityPct) })}</span>
           </div>
           <BarTrack pct={durabilityPct} color="#D4AF6A" thin />
         </div>
@@ -67,20 +69,20 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
 
       <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 3 }}>
         {item.atk > 0 && (
-          <StatLine label="Saldırı Gücü" value={item.atk} />
+          <StatLine label={t("itemTooltip.attackPower")} value={item.atk} />
         )}
         {item.def > 0 && (
-          <StatLine label="Zırh" value={item.def} />
+          <StatLine label={t("itemTooltip.armor")} value={item.def} />
         )}
         {isWeapon && item.attackSpeed && (
-          <StatLine label="Saldırı Hızı" value={item.attackSpeed} />
+          <StatLine label={t("itemTooltip.attackSpeed")} value={t(`itemTooltip.speed.${item.attackSpeed}`)} />
         )}
         {isWeapon && item.range != null && (
-          <StatLine label="Menzil" value={item.range.toFixed(2)} />
+          <StatLine label={t("itemTooltip.range")} value={item.range.toFixed(2)} />
         )}
         {item.element && (
           <StatLine
-            label={`${ELEMENT_LABELS[item.element]} Hasarı`}
+            label={t("itemTooltip.elementDamage", { element: ELEMENT_LABELS[lang][item.element] })}
             value={item.elementBonus ? `+${item.elementBonus}` : "—"}
             color={ELEMENT_COLORS[item.element]}
           />
@@ -88,13 +90,13 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
         {item.elements && item.elements.map((e) => (
           <StatLine
             key={e.key}
-            label={`${ELEMENT_LABELS[e.key]} Hasarı`}
+            label={t("itemTooltip.elementDamage", { element: ELEMENT_LABELS[lang][e.key] })}
             value={e.bonus ? `+${e.bonus}` : "—"}
             color={ELEMENT_COLORS[e.key]}
           />
         ))}
-        {item.hp > 0 && <StatLine label="Can Bonusu" value={`+${item.hp}`} />}
-        {item.mp > 0 && <StatLine label="Mana Bonusu" value={`+${item.mp}`} />}
+        {item.hp > 0 && <StatLine label={t("itemTooltip.hpBonus")} value={`+${item.hp}`} />}
+        {item.mp > 0 && <StatLine label={t("itemTooltip.mpBonus")} value={`+${item.mp}`} />}
         {item.statBonus && Object.entries(item.statBonus).filter(([, v]) => v).map(([key, value]) => (
           <StatLine key={key} label={STAT_LABELS[key]} value={`+${value}`} />
         ))}
@@ -118,19 +120,19 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
             diye kullanıcı isteğiyle şimdilik sadece VERİ olarak duruyor) —
             ama oyuncu eşyanın üstünde görebilsin diye tooltip'te gösteriliyor. */}
         {item.attackPowerPct > 0 && (
-          <StatLine label="Saldırı Gücü Bonusu" value={`+%${Math.round(item.attackPowerPct * 100)}`} color="#D4AF6A" />
+          <StatLine label={t("itemTooltip.attackPowerBonus")} value={`+%${Math.round(item.attackPowerPct * 100)}`} color="#D4AF6A" />
         )}
         {item.resistances && Object.entries(item.resistances).filter(([, v]) => v).map(([key, value]) => (
-          <StatLine key={key} label={`${ELEMENT_LABELS[key] || key} Direnci`} value={`+${value}`} color={ELEMENT_COLORS[key]} />
+          <StatLine key={key} label={t("itemTooltip.elementResistance", { element: ELEMENT_LABELS[lang][key] || key })} value={`+${value}`} color={ELEMENT_COLORS[key]} />
         ))}
         {item.defenseAbility && (
           <StatLine
-            label={`Savunma Becerisi (${WEAPON_TYPE_LABEL[item.defenseAbility.vs] || item.defenseAbility.vs})`}
+            label={t("itemTooltip.defenseAbility", { weaponType: WEAPON_TYPE_LABEL[lang][item.defenseAbility.vs] || item.defenseAbility.vs })}
             value={`+${item.defenseAbility.value}`}
           />
         )}
         {item.kind === "accessory" && item.upgradeLocked && (
-          <StatLine label="Yükseltme" value="Kapalı" color="#E8A5AF" />
+          <StatLine label={t("itemTooltip.upgradeLabel")} value={t("settings.off")} color="#E8A5AF" />
         )}
       </div>
 
@@ -138,13 +140,13 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
         <div style={{ fontSize: 10, color: CLASSES[classLock].color, marginTop: 6 }}>
           -{CLASSES[classLock].name}
           {item.kind === "armor" && player && item.class !== player.class && (
-            <span style={{ color: "#E8A5AF" }}> · sende kullanılamaz</span>
+            <span style={{ color: "#E8A5AF" }}> · {t("itemTooltip.notUsableByYou")}</span>
           )}
         </div>
       )}
 
       <div style={{ marginTop: 6 }}>
-        <StatLine label="Ağırlık" value={item.weight} />
+        <StatLine label={t("itemTooltip.weight")} value={item.weight} />
       </div>
 
       {item.reqStats?.length > 0 && (
@@ -154,7 +156,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
             return (
               <StatLine
                 key={r.key}
-                label={`Gerekli ${STAT_LABELS[r.key]}`}
+                label={t("itemTooltip.requiredStat", { stat: STAT_LABELS[r.key] })}
                 value={r.value}
                 color={met ? "#D4AF6A" : "#E8425A"}
               />
@@ -165,7 +167,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
 
       <div style={{ height: 1, background: "var(--border)", margin: "8px 0" }} />
       <div style={{ textAlign: "center", fontSize: 10, fontFamily: "var(--font-mono)", color: tierColor }}>
-        Eşya Derecesi: {ITEM_TIER_LABEL[item.tier] || "Sıradan"}
+        {t("itemTooltip.itemGradeLine", { grade: ITEM_TIER_LABEL[lang][item.tier] || t("itemTooltip.commonGrade") })}
       </div>
 
       {item.lore && (
@@ -176,7 +178,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
 
       {item.noTrade && (
         <div style={{ textAlign: "center", fontSize: 9, color: "#E8425A", marginTop: 8 }}>
-          Takas edilemez, satılamaz ve saklanamaz
+          {t("itemTooltip.noTrade")}
         </div>
       )}
     </div>

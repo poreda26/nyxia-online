@@ -1,6 +1,7 @@
 import { CLASSES } from "../data/classes";
 import { STAT_LABELS, STAT_KEYS, STAT_CAP, POINTS_PER_LEVEL } from "../data/stats";
 import { makePotionStack } from "./inventory";
+import { potionName } from "../data/potions";
 import { MAPS } from "../data/maps";
 import { currentWeekId } from "./week";
 import { STARTING_NATIONAL_POINT } from "./nationalPointConstants";
@@ -301,10 +302,10 @@ export const ALL_EQUIP_KEYS = [
 // olunmayacak (bkz. data/clan.js, components/InventoryTab.jsx).
 export function canChangeJob(player) {
   if (Object.values(player.equipped).some((it) => it != null)) {
-    return { ok: false, reason: "Önce tüm eşyalarını çıkarmalısın." };
+    return { ok: false, reason: "mustUnequipFirst" };
   }
   if (player.clan) {
-    return { ok: false, reason: "Bir klana üyeyken sınıf değiştiremezsin." };
+    return { ok: false, reason: "cannotChangeJobInClan" };
   }
   return { ok: true };
 }
@@ -434,7 +435,7 @@ export function respecCost(player) {
 
 export function canRespecStats(player) {
   const cost = respecCost(player);
-  if (player.gold < cost) return { ok: false, reason: `Yeterli altının yok (gerekiyor: ${cost}g).`, cost };
+  if (player.gold < cost) return { ok: false, reason: "notEnoughGoldCost", reasonVars: { cost }, cost };
   return { ok: true, cost };
 }
 
@@ -443,7 +444,7 @@ export function canRespecStats(player) {
 // böylece statPoints tekrar tam olarak yeniden dağıtılabilir hale gelir.
 export function respecStats(player) {
   const check = canRespecStats(player);
-  if (!check.ok) return { player, reset: false, reason: check.reason };
+  if (!check.ok) return { player, reset: false, reason: check.reason, reasonVars: check.reasonVars };
   const totalPoints = STARTING_STAT_POINTS + POINTS_PER_LEVEL * (player.level - 1);
   return {
     player: { ...player, gold: player.gold - check.cost, stats: { ...CLASSES[player.class].baseStats }, statPoints: totalPoints },
@@ -607,7 +608,7 @@ export function discountedRepairCost(item, discount = 0) {
 export function repairItem(player, item, discount = 0, bank = null) {
   const cost = discountedRepairCost(item, discount);
   if (cost <= 0) return { player, bank, repaired: false, cost: 0 };
-  if (player.gold < cost) return { player, bank, repaired: false, cost, reason: "Yeterli altının yok." };
+  if (player.gold < cost) return { player, bank, repaired: false, cost, reason: "notEnoughGold" };
 
   const patch = (it) => (it && it.id === item.id ? { ...it, currentDurability: it.durability } : it);
   const equipped = {};
@@ -630,7 +631,7 @@ export function totalEquippedRepairCost(player, discount = 0) {
 export function repairAllEquipped(player, discount = 0) {
   const cost = totalEquippedRepairCost(player, discount);
   if (cost <= 0) return { player, repaired: false, cost: 0 };
-  if (player.gold < cost) return { player, repaired: false, cost, reason: "Yeterli altının yok." };
+  if (player.gold < cost) return { player, repaired: false, cost, reason: "notEnoughGold" };
   const equipped = { ...player.equipped };
   ALL_EQUIP_KEYS.forEach((k) => {
     const it = equipped[k];
@@ -650,8 +651,9 @@ export function displayClassName(player) {
   return player.awakened ? `Master ${base}` : base;
 }
 
-export function displayItemName(item) {
-  return item.upgradeLevel ? `${item.name} +${item.upgradeLevel}` : item.name;
+export function displayItemName(item, lang = "tr") {
+  const name = item.kind === "potion" ? potionName(item.potionType, item.tier, lang) : item.name;
+  return item.upgradeLevel ? `${name} +${item.upgradeLevel}` : name;
 }
 
 // Equip an item into the correct slot(s), handling two-handed weapons
@@ -659,12 +661,12 @@ export function displayItemName(item) {
 // armor. Returns { player, blocked } — blocked carries a reason string
 // when the equip was refused so the caller can toast it.
 export function equipItem(player, item) {
-  if (!item || !['weapon','armor','accessory'].includes(item.kind)) return {player,blocked:'Bu eşya kuşanılamaz.'};
+  if (!item || !['weapon','armor','accessory'].includes(item.kind)) return {player,blocked:{type:"notEquippable"}};
   if (player.class === "rogue" && item.kind === "weapon" && !["bow", "crossbow"].includes(item.weaponType)) {
-    return { player, blocked: "Rogue yalnızca yay veya arbalet kuşanabilir." };
+    return { player, blocked: { type: "rogueBowOnly" } };
   }
   if (item.kind === "armor" && item.class !== player.class) {
-    return { player, blocked: `Bu eşya ${CLASSES[item.class].name} sınıfına özel — kuşanamazsın.` };
+    return { player, blocked: { type: "wrongClass", itemKind: "armor", cls: CLASSES[item.class].name } };
   }
   // Silahlar da artık zırh gibi sınıfa özel — her sınıfın kendi silah
   // tablosu var (bkz. data/warriorWeapons.js vb.), gerçek KO'da olduğu
@@ -672,10 +674,10 @@ export function equipItem(player, item) {
   // ayrımdı, kullanıcının "sadece Warrior kullanabilecek" isteğiyle
   // gerçek bir kısıtlamaya dönüştürüldü).
   if (item.kind === "weapon" && item.cls && item.cls !== player.class) {
-    return { player, blocked: `Bu silah ${CLASSES[item.cls].name} sınıfına özel — kuşanamazsın.` };
+    return { player, blocked: { type: "wrongClass", itemKind: "weapon", cls: CLASSES[item.cls].name } };
   }
   if (item.kind === "armor" && item.tier === 5 && !player.awakened) {
-    return { player, blocked: "Bu zırhı kuşanmak için 2. Uyanış (Master) gerekiyor." };
+    return { player, blocked: { type: "needsAwakening" } };
   }
   // reqStats normalde 5 dağıtılabilir statüden birini gösterir, ama bazı
   // eşyalar (bkz. Avedon, "Required Health") HP isteyebiliyor — HP bir
@@ -686,8 +688,8 @@ export function equipItem(player, item) {
   const currentReqValue = (key) => (key === "hp" ? playerMaxHp(player) : key === "level" ? player.level : player.stats[key]);
   const unmet = (item.reqStats || []).filter((r) => currentReqValue(r.key) < r.value);
   if (unmet.length > 0) {
-    const need = unmet.map((r) => `${r.value} ${STAT_LABELS[r.key]} (şu an: ${currentReqValue(r.key)})`).join(" ve ");
-    return { player, blocked: `Bu eşyayı kuşanmak için en az ${need} gerekiyor.` };
+    const need = unmet.map((r) => ({ stat: STAT_LABELS[r.key], value: r.value, current: currentReqValue(r.key) }));
+    return { player, blocked: { type: "unmetStats", need } };
   }
 
   let inv = player.inventory.filter((i) => i.id !== item.id);

@@ -215,7 +215,7 @@ export function depositToBank(player, item, bank, pageIndex) {
       return { player: { ...player, inventory }, bank: nextBank, moved: true };
     }
   }
-  if (page.length >= BANK_PAGE_SLOTS) return { player, bank, moved: false, reason: "depo sayfası dolu." };
+  if (page.length >= BANK_PAGE_SLOTS) return { player, bank, moved: false, reason: "bankPageFull" };
   const inventory = player.inventory.filter((i) => i.id !== item.id);
   const nextBank = bank.map((p, idx) => (idx !== pageIndex ? p : [...p, item]));
   return { player: { ...player, inventory }, bank: nextBank, moved: true };

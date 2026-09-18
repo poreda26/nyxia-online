@@ -84,8 +84,8 @@ export function scheduledEventProgress(player, event, now = Date.now()) {
 
 export function canJoinScheduledEvent(player, event, now = Date.now()) {
   const { phase } = eventPhase(event, now);
-  if (phase !== "preopen" && phase !== "active") return { ok: false, reason: "Etkinlik şu an açık değil." };
-  if (stateFor(player, event, now).joined) return { ok: false, reason: "Zaten katıldın." };
+  if (phase !== "preopen" && phase !== "active") return { ok: false, reason: "notOpen" };
+  if (stateFor(player, event, now).joined) return { ok: false, reason: "alreadyJoined" };
   return { ok: true };
 }
 

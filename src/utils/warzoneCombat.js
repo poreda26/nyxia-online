@@ -73,7 +73,7 @@ export function ghostSelfHeal(ghost, healBlocked) {
 // data/warzone.js#WORLD_BOSS, components/WarzoneTab.jsx).
 export function tickWorldBoss(boss, currentHp, ghosts, damageByGhost) {
   let hp = currentHp;
-  const lines = [];
+  const hits = [];
   const nextDamage = { ...damageByGhost };
   for (const g of ghosts) {
     if (hp <= 0) break;
@@ -81,7 +81,7 @@ export function tickWorldBoss(boss, currentHp, ghosts, damageByGhost) {
     const dmg = Math.max(1, Math.round(mitigate(g.atk * 1.1, boss.def, MONSTER_DEF_K) + rand(-3, 4)));
     hp = Math.max(0, hp - dmg);
     nextDamage[g.id] = (nextDamage[g.id] || 0) + dmg;
-    lines.push(`${g.name} ${boss.name}'a ${dmg} hasar verdi.`);
+    hits.push({ ghostName: g.name, dmg });
   }
-  return { hp, lines, damageByGhost: nextDamage };
+  return { hp, hits, damageByGhost: nextDamage };
 }

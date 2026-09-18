@@ -14,6 +14,7 @@ import { BAG_SLOTS, addItemToInventory, depositToBank, withdrawFromBank } from "
 import { usePotion } from "../utils/potions";
 import { learnFreeSkills } from "../utils/skills";
 import { premiumSellMultiplier, premiumRepairDiscount } from "../utils/premium";
+import { useTranslation, formatReason } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -25,6 +26,7 @@ import BagGrid from "./BagGrid";
 import BankGrid from "./BankGrid";
 
 export default function InventoryTab({ player, setPlayer, bank, setBank, bankGold, setBankGold, pushToast, onChangeRace }) {
+  const { t, lang } = useTranslation();
   const [openingChest, setOpeningChest] = useState(null); // {chest, phase, result}
   const [bulkChestResult, setBulkChestResult] = useState(null); // {items, failed} | null
   const [subtab, setSubtab] = useState("armor");
@@ -42,22 +44,22 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
   // kaybetmiş gibi hissetmesin.
   const depositGold = () => {
     const amount = parseInt(goldAmount, 10);
-    if (!Number.isFinite(amount) || amount <= 0) { pushToast("Geçerli bir miktar gir.", "warn"); return; }
-    if (player.gold < amount) { pushToast("Yeterli altının yok.", "warn"); return; }
-    if (bankGold + amount > MAX_GOLD) { pushToast(`Depoda en fazla ${formatGold(MAX_GOLD)} altın bulunabilir — bu kadarı sığmaz.`, "warn"); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { pushToast(t("inventory.enterValidAmount"), "warn"); return; }
+    if (player.gold < amount) { pushToast(t("inventory.notEnoughGold"), "warn"); return; }
+    if (bankGold + amount > MAX_GOLD) { pushToast(t("inventory.bankGoldCapExceeded", { max: formatGold(MAX_GOLD) }), "warn"); return; }
     setPlayer((p) => ({ ...p, gold: p.gold - amount }));
     setBankGold((g) => g + amount);
-    pushToast(`${formatGold(amount)}g depoya yatırıldı.`, "default");
+    pushToast(t("inventory.goldDeposited", { amount: formatGold(amount) }), "default");
     setGoldAmount("");
   };
   const withdrawGold = () => {
     const amount = parseInt(goldAmount, 10);
-    if (!Number.isFinite(amount) || amount <= 0) { pushToast("Geçerli bir miktar gir.", "warn"); return; }
-    if (bankGold < amount) { pushToast("Depoda yeterli altın yok.", "warn"); return; }
-    if (player.gold + amount > MAX_GOLD) { pushToast(`Üstünde en fazla ${formatGold(MAX_GOLD)} altın bulunabilir — bu kadarı sığmaz.`, "warn"); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { pushToast(t("inventory.enterValidAmount"), "warn"); return; }
+    if (bankGold < amount) { pushToast(t("inventory.notEnoughBankGold"), "warn"); return; }
+    if (player.gold + amount > MAX_GOLD) { pushToast(t("inventory.carryGoldCapExceeded", { max: formatGold(MAX_GOLD) }), "warn"); return; }
     setBankGold((g) => g - amount);
     setPlayer((p) => ({ ...p, gold: p.gold + amount }));
-    pushToast(`${formatGold(amount)}g depodan çekildi.`, "default");
+    pushToast(t("inventory.goldWithdrawn", { amount: formatGold(amount) }), "default");
     setGoldAmount("");
   };
   const [selectedId, setSelectedId] = useState(null);
@@ -104,7 +106,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     }
     setPlayer(p);
     setBank(b);
-    pushToast(moved > 0 ? `${moved} eşya depoya taşındı.` : "Depo sayfası dolu, hiçbiri taşınamadı.", moved > 0 ? "default" : "warn");
+    pushToast(moved > 0 ? t("inventory.bulkDepositMoved", { count: moved }) : t("inventory.bulkDepositFull"), moved > 0 ? "default" : "warn");
     setBulkSelected(new Set());
     setBulkMode(false);
   };
@@ -115,20 +117,33 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     // kaybetmesin diye toplu satıştan bilerek dışlanıyorlar, tıpkı tekli
     // "Sat" düğmesinin zaten yaptığı gibi.
     const sellable = bulkItems.filter((i) => !isConsumable(i) && !i.noTrade);
-    if (sellable.length === 0) { pushToast("Seçilenler arasında satılabilir eşya yok.", "warn"); return; }
+    if (sellable.length === 0) { pushToast(t("inventory.bulkNoneSellable"), "warn"); return; }
     const total = sellable.reduce((sum, i) => sum + Math.round(sellPrice(i) * premiumSellMultiplier(player)), 0);
     const soldIds = new Set(sellable.map((i) => i.id));
     setPlayer((p) => ({ ...p, gold: p.gold + total, inventory: p.inventory.filter((i) => !soldIds.has(i.id)) }));
-    pushToast(`${sellable.length} eşya satıldı: +${formatGold(total)} altın`, "loot");
+    pushToast(t("inventory.bulkSold", { count: sellable.length, gold: formatGold(total) }), "loot");
     setBulkSelected(new Set());
     setBulkMode(false);
   };
 
+  const formatBlocked = (blocked) => {
+    switch (blocked.type) {
+      case "rogueBowOnly": return t("inventory.equipBlockedRogueBow");
+      case "wrongClass": return t(`inventory.equipBlockedClass.${blocked.itemKind}`, { cls: blocked.cls });
+      case "needsAwakening": return t("inventory.equipBlockedAwakening");
+      case "unmetStats": {
+        const need = blocked.need.map((r) => t("inventory.equipReqStat", r)).join(t("inventory.equipReqJoin"));
+        return t("inventory.equipBlockedStats", { need });
+      }
+      default: return t("inventory.equipBlockedGeneric");
+    }
+  };
+
   const equip = (item) => {
     const result = equipItem(player, item);
-    if (result.blocked) { pushToast(result.blocked, "warn"); return; }
+    if (result.blocked) { pushToast(formatBlocked(result.blocked), "warn"); return; }
     setPlayer(result.player);
-    pushToast(`${displayItemName(item)} kuşanıldı.`, "default");
+    pushToast(t("inventory.equipped", { item: displayItemName(item, lang) }), "default");
     setSelectedId(null);
   };
 
@@ -145,63 +160,63 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
   const sellItem = (item) => {
     const price = Math.round(sellPrice(item) * premiumSellMultiplier(player));
     setPlayer((p) => ({ ...p, gold: p.gold + price, inventory: p.inventory.filter((i) => i.id !== item.id) }));
-    pushToast(`Satıldı: +${formatGold(price)} altın`, "loot");
+    pushToast(t("inventory.sold", { gold: formatGold(price) }), "loot");
     setSelectedId(null);
   };
 
   const repair = (item) => {
     const result = repairItem(player, item, premiumRepairDiscount(player), bank);
-    if (!result.repaired) { pushToast(result.reason || "Tamir edilemedi.", "warn"); return; }
+    if (!result.repaired) { pushToast(formatReason(t, result, "inventory.repairFailed"), "warn"); return; }
     setPlayer(result.player);
     if (result.bank) setBank(result.bank);
-    pushToast(`Tamir edildi: -${formatGold(result.cost)} altın`, "default");
+    pushToast(t("inventory.repaired", { gold: formatGold(result.cost) }), "default");
   };
 
   const depositItem = (item) => {
     const result = depositToBank(player, item, bank, bankPage);
-    if (!result.moved) { pushToast(result.reason || "Depoya taşınamadı.", "warn"); return; }
+    if (!result.moved) { pushToast(formatReason(t, result, "inventory.depositFailed"), "warn"); return; }
     setPlayer(result.player);
     setBank(result.bank);
-    pushToast(`${displayItemName(item)} depoya kondu.`, "default");
+    pushToast(t("inventory.itemDeposited", { item: displayItemName(item, lang) }), "default");
     setSelectedId(null);
   };
 
   const withdrawItem = (item) => {
     const result = withdrawFromBank(player, item, bank, bankPage);
-    if (!result.moved) { pushToast(result.reason || "Çantaya alınamadı.", "warn"); return; }
+    if (!result.moved) { pushToast(formatReason(t, result, "inventory.withdrawFailed"), "warn"); return; }
     setPlayer(result.player);
     setBank(result.bank);
-    pushToast(`${displayItemName(item)} çantaya alındı.`, "default");
+    pushToast(t("inventory.itemWithdrawn", { item: displayItemName(item, lang) }), "default");
     setSelectedId(null);
   };
 
   const useRaceScroll = (item, newRace) => {
     if (!onChangeRace) return;
-    if (player.clan) { pushToast("Bir klana üyeyken ırk değiştiremezsin.", "warn"); return; }
+    if (player.clan) { pushToast(t("inventory.clanBlocksRaceChange"), "warn"); return; }
     const inventory = (item.count || 1) <= 1
       ? player.inventory.filter((i) => i.id !== item.id)
       : player.inventory.map((i) => (i.id === item.id ? { ...i, count: i.count - 1 } : i));
     setPlayer((p) => ({ ...p, inventory }));
     onChangeRace(newRace);
-    pushToast(`Irkın değişti: ${RACES[newRace].name}`, "default");
+    pushToast(t("inventory.raceChanged", { race: RACES[newRace].name }), "default");
     setSelectedId(null);
   };
 
   const useJobScroll = (item, newClass) => {
     const check = canChangeJob(player);
-    if (!check.ok) { pushToast(check.reason, "warn"); return; }
+    if (!check.ok) { pushToast(formatReason(t, check), "warn"); return; }
     const inventory = (item.count || 1) <= 1
       ? player.inventory.filter((i) => i.id !== item.id)
       : player.inventory.map((i) => (i.id === item.id ? { ...i, count: i.count - 1 } : i));
     setPlayer((p) => learnFreeSkills(changeJob({ ...p, inventory }, newClass)));
-    pushToast(`Sınıfın değişti: ${CLASSES[newClass].name}`, "default");
+    pushToast(t("inventory.classChanged", { cls: CLASSES[newClass].name }), "default");
     setSelectedId(null);
   };
 
   const handleUsePotion = (item) => {
     const result = usePotion(player, item.potionType, item.tier);
-    if (result.reason) { pushToast(result.reason, "warn"); return; }
-    pushToast(item.potionType === "hp" ? `+${result.healed} can` : `+${result.healed} mana`, "heal");
+    if (result.reason) { pushToast(formatReason(t, result), "warn"); return; }
+    pushToast(item.potionType === "hp" ? t("inventory.healedHp", { amount: result.healed }) : t("inventory.healedMp", { amount: result.healed }), "heal");
     setPlayer(result.player);
     if ((item.count || 1) <= 1) setSelectedId(null);
   };
@@ -215,7 +230,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
         chests: player.chests.filter((c) => c.id !== chest.id),
         milestones: { ...player.milestones, chestsOpened: (player.milestones?.chestsOpened || 0) + 1 },
       };
-      const reportUnlocks = (finalPlayer) => newlyUnlocked(player, finalPlayer).forEach((a) => pushToast(`Başarım açıldı: ${a.name} — "${a.title}" unvanı kazanıldı!`, "level"));
+      const reportUnlocks = (finalPlayer) => newlyUnlocked(player, finalPlayer).forEach((a) => pushToast(t("inventory.achievementUnlocked", { name: a.name, title: a.title }), "level"));
       // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
       // hiçbir eşya yoksa item null gelir, sandığı yine de boşalt ama
       // hiçbir şey eklemeye çalışma.
@@ -229,7 +244,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
       const finalPlayer = addResult.added ? { ...addResult.player, hasNewItemNotice: true } : addResult.player;
       setPlayer(finalPlayer);
       setOpeningChest({ chest, phase: "reveal", result: item });
-      if (!addResult.added) pushToast(`${item.name} kazanıldı ama ${addResult.reason}`, "warn");
+      if (!addResult.added) pushToast(t("inventory.itemWonButReason", { item: item.name, reason: addResult.reason }), "warn");
       reportUnlocks(finalPlayer);
     }, 950);
   };
@@ -257,7 +272,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     if (gained.length > 0) p.hasNewItemNotice = true;
     setPlayer(p);
     setBulkChestResult({ items: gained, failed });
-    newlyUnlocked(player, p).forEach((a) => pushToast(`Başarım açıldı: ${a.name} — "${a.title}" unvanı kazanıldı!`, "level"));
+    newlyUnlocked(player, p).forEach((a) => pushToast(t("inventory.achievementUnlocked", { name: a.name, title: a.title }), "level"));
   };
 
   const selectedItem = subtab === "bank"
@@ -273,9 +288,9 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
 
   const repairAll = () => {
     const result = repairAllEquipped(player, premiumRepairDiscount(player));
-    if (!result.repaired) { pushToast(result.reason || "Tamir edilecek bir şey yok.", "warn"); return; }
+    if (!result.repaired) { pushToast(formatReason(t, result, "inventory.repairAllNothing"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(`Tüm kuşanılmış eşyalar tamir edildi: -${formatGold(result.cost)} altın`, "default");
+    pushToast(t("inventory.repairAllDone", { gold: formatGold(result.cost) }), "default");
   };
 
   const cls = CLASSES[player.class];
@@ -283,7 +298,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
 
   return (
     <div style={styles.panelScroll}>
-      <SectionLabel>Kuşanılmış</SectionLabel>
+      <SectionLabel>{t("inventory.equippedHeader")}</SectionLabel>
       <Paperdoll
         player={player}
         cls={cls}
@@ -304,7 +319,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                 style={{ ...styles.tinyBtn, background: "#C9425A", display: "flex", alignItems: "center", gap: 4 }}
                 onClick={() => unequip(selectedEquipSlot)}
               >
-                <ArrowUpFromLine size={11} style={{ transform: "rotate(180deg)" }} /> Çıkar
+                <ArrowUpFromLine size={11} style={{ transform: "rotate(180deg)" }} /> {t("inventory.unequipBtn")}
               </button>
               <button
                 style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)", marginLeft: "auto" }}
@@ -321,7 +336,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
           repairItem zaten kuşanılı eşyayı yerinde yamıyordu, eksik olan
           sadece çıkarmadan ulaşan bir yoldu. */}
       <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>
-        Kuşanılı eşyaların toplam tamir ücreti: {formatGold(totalRepairAll)}g
+        {t("inventory.totalRepairCost", { cost: formatGold(totalRepairAll) })}
       </div>
       <button
         style={{
@@ -331,18 +346,18 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
         disabled={totalRepairAll <= 0}
         onClick={repairAll}
       >
-        <Wrench size={12} /> Kuşanılmışları Tamir Et
+        <Wrench size={12} /> {t("inventory.repairAllBtn")}
       </button>
 
       <div style={styles.subtabRow}>
         <button onClick={() => { setSubtab("armor"); setSelectedId(null); }} style={{ ...styles.subtabBtn, ...(subtab === "armor" ? styles.subtabBtnActive : {}) }}>
-          Çanta ({bagSlotsFilled}/{BAG_SLOTS})
+          {t("inventory.bagTab", { filled: bagSlotsFilled, max: BAG_SLOTS })}
         </button>
         <button onClick={() => { setSubtab("bank"); setSelectedId(null); }} style={{ ...styles.subtabBtn, ...(subtab === "bank" ? styles.subtabBtnActive : {}) }}>
-          Depo
+          {t("inventory.bankTab")}
         </button>
         <button onClick={() => { setSubtab("chests"); setSelectedId(null); }} style={{ ...styles.subtabBtn, ...(subtab === "chests" ? styles.subtabBtnActive : {}) }}>
-          Sandıklar ({player.chests.length})
+          {t("inventory.chestsTab", { count: player.chests.length })}
         </button>
       </div>
 
@@ -355,26 +370,26 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
               style={{ ...styles.tinyBtn, background: bulkMode ? "#5FA8A0" : "var(--bg-panel-alt)", color: bulkMode ? "#0B0C10" : "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}
               onClick={toggleBulkMode}
             >
-              <ListChecks size={12} /> {bulkMode ? "Toplu Seçimi Kapat" : "Toplu Seç"}
+              <ListChecks size={12} /> {bulkMode ? t("inventory.bulkSelectOff") : t("inventory.bulkSelectOn")}
             </button>
           </div>
 
           {bulkMode && (
             <div style={{ ...styles.itemDetailCard, marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{bulkSelected.size} eşya seçili</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("inventory.bulkSelectedCount", { count: bulkSelected.size })}</span>
               <button
                 style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: bulkSelected.size ? 1 : 0.5, display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}
                 disabled={bulkSelected.size === 0}
                 onClick={bulkDeposit}
               >
-                <Archive size={11} /> Depoya Taşı
+                <Archive size={11} /> {t("inventory.moveToBank")}
               </button>
               <button
                 style={{ ...styles.tinyBtn, opacity: bulkSelected.size ? 1 : 0.5, display: "flex", alignItems: "center", gap: 4 }}
                 disabled={bulkSelected.size === 0}
                 onClick={bulkSell}
               >
-                <Coins size={11} /> Toplu Sat
+                <Coins size={11} /> {t("inventory.bulkSellBtn")}
               </button>
             </div>
           )}
@@ -388,7 +403,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
           />
 
           {bagSlotsFilled === 0 && (
-            <EmptyState icon={Package} title="Çanta boş" subtitle="Canavar avlayarak zırh, silah ve aksesuar toplayabilirsin." />
+            <EmptyState icon={Package} title={t("inventory.bagEmptyTitle")} subtitle={t("inventory.bagEmptySubtitle")} />
           )}
         </>
       )}
@@ -398,22 +413,22 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
           <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <Coins size={16} color="#D4AF6A" strokeWidth={1.6} />
             <div style={{ fontSize: 12 }}>
-              Depo Altını: <span style={{ fontFamily: "var(--font-mono)", color: "#D4AF6A" }}>{formatGold(bankGold)}g</span>
+              {t("inventory.bankGoldLabel")} <span style={{ fontFamily: "var(--font-mono)", color: "#D4AF6A" }}>{formatGold(bankGold)}g</span>
             </div>
             <div style={{ fontSize: 9, color: "var(--text-faint)", width: "100%" }}>
-              Hesaptaki tüm karakterler ortak — biri yatırır, diğeri çekebilir.
+              {t("inventory.bankGoldShared")}
             </div>
             <input
-              type="number" min="1" placeholder="Miktar"
+              type="number" min="1" placeholder={t("inventory.amountPlaceholder")}
               value={goldAmount}
               onChange={(e) => setGoldAmount(e.target.value)}
               style={{ ...styles.numInput, flex: 1, minWidth: 80 }}
             />
             <button style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={depositGold}>
-              <ArrowDownToLine size={11} /> Yatır
+              <ArrowDownToLine size={11} /> {t("inventory.depositBtn")}
             </button>
             <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }} onClick={withdrawGold}>
-              <ArrowUpFromLine size={11} /> Çek
+              <ArrowUpFromLine size={11} /> {t("inventory.withdrawBtn")}
             </button>
           </div>
 
@@ -436,14 +451,14 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
           />
 
           {bank[bankPage].length === 0 && (
-            <EmptyState icon={Archive} title="Bu sayfa boş" subtitle="Çantandan bir eşya seçip depoya koyabilirsin." />
+            <EmptyState icon={Archive} title={t("inventory.bankPageEmptyTitle")} subtitle={t("inventory.bankPageEmptySubtitle")} />
           )}
         </>
       )}
 
       {subtab === "chests" && (
         player.chests.length === 0 ? (
-          <EmptyState icon={Gift} title="Sandık yok" subtitle="Canavarlardan haritaya göre değişen bir ihtimalle sandık düşer." />
+          <EmptyState icon={Gift} title={t("inventory.noChestsTitle")} subtitle={t("inventory.noChestsSubtitle")} />
         ) : (
           <>
             {player.chests.length > 1 && (
@@ -451,7 +466,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                 style={{ ...styles.tinyBtn, width: "100%", marginBottom: 10, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
                 onClick={openAllChests}
               >
-                <Gift size={12} /> Tümünü Aç ({player.chests.length})
+                <Gift size={12} /> {t("inventory.openAllChests", { count: player.chests.length })}
               </button>
             )}
             <div style={styles.chestGrid}>
@@ -462,9 +477,9 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                   <button key={chest.id} onClick={() => openChest(chest)} style={{ ...styles.chestCard, borderColor: `${color}55` }}>
                     <Icon size={22} color={color} strokeWidth={1.6} />
                     <div style={{ fontSize: 11, marginTop: 6, fontFamily: "var(--font-mono)", color, textAlign: "center" }}>
-                      {chest.special ? "Özel Etkinlik Sandığı" : `T${chest.tier} Sandık`}
+                      {chest.special ? t("inventory.specialChestName") : t("inventory.tierChest", { tier: chest.tier })}
                     </div>
-                    <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>Kırmak için dokun</div>
+                    <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>{t("inventory.tapToOpen")}</div>
                   </button>
                 );
               })}
@@ -482,18 +497,18 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
               {subtab === "bank" ? (
                 <>
                   <button style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={() => withdrawItem(selectedItem)}>
-                    <ArrowUpFromLine size={11} /> Çantaya Al
+                    <ArrowUpFromLine size={11} /> {t("inventory.takeToBag")}
                   </button>
                   {repairAmount > 0 && (
                     <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
-                      <Wrench size={11} /> Tamir ({formatGold(repairAmount)}g)
+                      <Wrench size={11} /> {t("inventory.repairFor", { gold: formatGold(repairAmount) })}
                     </button>
                   )}
                 </>
               ) : (
                 <>
                   {selectedItem.kind === "potion" ? (
-                    <button style={styles.tinyBtn} onClick={() => handleUsePotion(selectedItem)}>Kullan</button>
+                    <button style={styles.tinyBtn} onClick={() => handleUsePotion(selectedItem)}>{t("inventory.useBtn")}</button>
                   ) : selectedItem.kind === "scroll" || selectedItem.kind === "bonusScroll" || selectedItem.kind === "accessoryScroll" ? (
                     // Bonus Parşömen'in de tıpkı normal parşömen gibi buradan
                     // hiçbir işlevi yok — sadece Yükselt sekmesindeki forge'a
@@ -502,11 +517,11 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                     // `item.slot` tanımsız olduğu için equipItem onu
                     // `equipped.undefined`'a yazıp envanterden siliyordu
                     // (kullanıcının bildirdiği "kullanılabiliyor" hatası).
-                    <span style={{ fontSize: 10, color: "var(--text-faint)" }}>Yükselt sekmesinden kullanılır.</span>
+                    <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("inventory.usedFromUpgradeTab")}</span>
                   ) : selectedItem.kind === "raceScroll" ? (
                     player.clan ? (
                       <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
-                        <Ban size={11} /> Bir klana üyeyken ırk değiştiremezsin.
+                        <Ban size={11} /> {t("inventory.clanBlocksRaceChange")}
                       </button>
                     ) : (
                       Object.entries(RACES).map(([key, r]) => (
@@ -516,7 +531,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                           disabled={player.race === key}
                           onClick={() => useRaceScroll(selectedItem, key)}
                         >
-                          {r.name} Ol
+                          {t("inventory.becomeRace", { race: r.name })}
                         </button>
                       ))
                     )
@@ -528,28 +543,28 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                     ) : (
                       Object.entries(CLASSES).filter(([key]) => key !== player.class).map(([key, c]) => (
                         <button key={key} style={{ ...styles.tinyBtn, background: c.color }} onClick={() => useJobScroll(selectedItem, key)}>
-                          {c.name} Ol
+                          {t("inventory.becomeClass", { cls: c.name })}
                         </button>
                       ))
                     )
                   ) : selectedItem.kind === "armor" && selectedItem.class !== player.class ? (
                     <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
-                      <Ban size={11} /> Kilitli
+                      <Ban size={11} /> {t("inventory.locked")}
                     </button>
                   ) : selectedItem.kind === "armor" && selectedItem.tier === 5 && !player.awakened ? (
                     <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
-                      <Ban size={11} /> Master gerekiyor
+                      <Ban size={11} /> {t("inventory.masterRequired")}
                     </button>
                   ) : !statReqMet ? (
                     <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
-                      <Ban size={11} /> Yetersiz Statü
+                      <Ban size={11} /> {t("inventory.insufficientStats")}
                     </button>
                   ) : (
-                    <button style={styles.tinyBtn} onClick={() => equip(selectedItem)}>Kuşan</button>
+                    <button style={styles.tinyBtn} onClick={() => equip(selectedItem)}>{t("inventory.equipBtn")}</button>
                   )}
                   {repairAmount > 0 && (
                     <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
-                      <Wrench size={11} /> Tamir ({formatGold(repairAmount)}g)
+                      <Wrench size={11} /> {t("inventory.repairFor", { gold: formatGold(repairAmount) })}
                     </button>
                   )}
                   {/* Kullanıcının bildirdiği bug: bu buton eskiden
@@ -561,11 +576,11 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                       Depoya koymanın herhangi bir eşya türünü engellemesi
                       için bir sebep yok, o yüzden koşul tamamen kaldırıldı. */}
                   <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }} onClick={() => depositItem(selectedItem)}>
-                    <Archive size={11} /> Depoya Koy
+                    <Archive size={11} /> {t("inventory.depositToBankBtn")}
                   </button>
                   {!isConsumable(selectedItem) && !selectedItem.noTrade && (
                     <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => sellItem(selectedItem)}>
-                      Sat ({formatGold(Math.round(sellPrice(selectedItem) * premiumSellMultiplier(player)))}g)
+                      {t("inventory.sellFor", { gold: formatGold(Math.round(sellPrice(selectedItem) * premiumSellMultiplier(player))) })}
                     </button>
                   )}
                 </>

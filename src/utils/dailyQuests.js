@@ -39,9 +39,9 @@ export function claimDailyQuest(player, slotIndex) {
   const p = ensureDailyQuestsFresh(player);
   const dq = p.dailyQuests;
   const slot = DAILY_QUEST_SLOTS[slotIndex];
-  if (!slot) return { player: p, claimed: false, reason: "Geçersiz görev." };
-  if (dq.claimed[slotIndex]) return { player: p, claimed: false, reason: "Ödül zaten alındı." };
-  if (dq.killsToday < slot.target) return { player: p, claimed: false, reason: "Görev henüz tamamlanmadı." };
+  if (!slot) return { player: p, claimed: false, reason: "invalidQuest" };
+  if (dq.claimed[slotIndex]) return { player: p, claimed: false, reason: "rewardAlreadyClaimed" };
+  if (dq.killsToday < slot.target) return { player: p, claimed: false, reason: "questNotDone" };
 
   let next = {
     ...p,

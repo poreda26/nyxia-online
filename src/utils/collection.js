@@ -13,9 +13,9 @@ export function collectionProgress(player, collection) {
 }
 export function claimCollection(player, id) {
   const collection = MAP_COLLECTIONS.find((c) => c.id === id);
-  if (!collection) return { player, claimed: false, reason: "Geçersiz koleksiyon." };
+  if (!collection) return { player, claimed: false, reason: "invalidCollection" };
   const progress = collectionProgress(player, collection);
-  if (progress.claimed) return { player, claimed: false, reason: "Ödül zaten alındı." };
-  if (!progress.done) return { player, claimed: false, reason: "Önce bu haritadaki her canavarı en az bir kez yen." };
+  if (progress.claimed) return { player, claimed: false, reason: "rewardAlreadyClaimed" };
+  if (!progress.done) return { player, claimed: false, reason: "mapNotFullyExplored" };
   return { player: { ...player, gold: player.gold + collection.goldReward, chests: [...player.chests, { id: uid(), tier: collection.chestTier }], claimedCollections: [...(player.claimedCollections || []), id] }, claimed: true, collection };
 }

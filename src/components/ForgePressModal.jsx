@@ -4,6 +4,7 @@ import { itemTierColor } from "../data/itemRarity";
 import { pick } from "../utils/random";
 import { displayItemName } from "../utils/player";
 import { playUpgradeSuccess, playUpgradeFail } from "../audio/sfx";
+import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import ItemIcon from './ItemIcon';
 import RewardReveal from './RewardReveal';
@@ -17,6 +18,7 @@ const PRESS_DURATION = 2600; // ms — suspense window before the reveal
 // (kullanıcı isteği) tam bu reveal anında çalıyor, "Bas"a basıldığı anda
 // değil — görselle senkron olsun diye.
 export default function ForgePressModal({ item, success, bumpedItem, onClose }) {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState("pressing");
   const timerRef = useRef(null);
 
@@ -52,10 +54,10 @@ export default function ForgePressModal({ item, success, bumpedItem, onClose }) 
               <div className="forge-hit"><Hammer size={42} strokeWidth={1.3} /></div>
             </div>
             <div style={{ marginTop: 18, fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
-              Basılıyor...
+              {t("upgrade.forge.pressing")}
             </div>
             <button style={{ ...styles.ghostBtn, marginTop: 16 }} onClick={skip}>
-              Geç <ChevronsRight size={13} />
+              {t("upgrade.forge.skip")} <ChevronsRight size={13} />
             </button>
           </>
         )}
@@ -69,10 +71,10 @@ export default function ForgePressModal({ item, success, bumpedItem, onClose }) 
             </div>
             <RewardReveal item={bumpedItem}/>
             <div style={{ fontSize: 10, color, fontFamily: "var(--font-mono)", marginTop: 6, letterSpacing: 1, textTransform: "uppercase" }}>
-              +{bumpedItem.upgradeLevel} seviyesine yükseldi
+              {t("upgrade.forge.leveledUpTo", { level: bumpedItem.upgradeLevel })}
             </div>
             <button style={{ ...styles.primaryBtn, marginTop: 22, background: color }} onClick={onClose}>
-              Harika! <CheckCircle2 size={15} />
+              {t("upgrade.forge.great")} <CheckCircle2 size={15} />
             </button>
           </div>
         )}
@@ -82,12 +84,12 @@ export default function ForgePressModal({ item, success, bumpedItem, onClose }) 
             <div style={{ color: "#C9425A", filter: "drop-shadow(0 0 18px #C9425A88)" }}>
               <Skull size={52} strokeWidth={1.3} />
             </div>
-            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18, color: "#E8A5AF" }}>Başarısız oldu</div>
+            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18, color: "#E8A5AF" }}>{t("upgrade.forge.failedTitle")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8, maxWidth: 220, textAlign: "center", lineHeight: 1.5 }}>
-              {displayItemName(item)} ve parşömen kayboldu.
+              {t("upgrade.forge.lostMessage", { name: displayItemName(item) })}
             </div>
             <button style={{ ...styles.primaryBtn, marginTop: 22, background: "#C9425A" }} onClick={onClose}>
-              Tamam
+              {t("upgrade.forge.ok")}
             </button>
           </div>
         )}

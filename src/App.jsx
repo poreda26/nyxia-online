@@ -19,7 +19,29 @@ import RaceSelect from "./components/RaceSelect";
 import ClassSelect from "./components/ClassSelect";
 import Hub from "./components/Hub";
 import SettingsModal from "./components/SettingsModal";
-import { LanguageProvider } from "./i18n/LanguageContext";
+import { LanguageProvider, useTranslation, translateWith } from "./i18n/LanguageContext";
+
+// Ayrı bir bileşen olarak tanımlanmasının tek sebebi useTranslation() —
+// App'in kendisi LanguageProvider'ı SARDIĞI için (bir alt bileşeni değil)
+// hook'u doğrudan çağıramaz; bu küçük bileşen Provider'ın altında render
+// edildiği için sorunsuz çalışıyor.
+function FloatingSettingsButton({ onClick }) {
+  const { t } = useTranslation();
+  return (
+    <button
+      onClick={onClick}
+      title={t("settings.title")}
+      style={{
+        position: "absolute", top: 10, right: 10, zIndex: 40,
+        width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(11,12,16,0.55)", border: "1px solid var(--border)",
+        color: "#D4AF6A", cursor: "pointer", padding: 0,
+      }}
+    >
+      <Settings size={14} />
+    </button>
+  );
+}
 
 export default function App() {
   const [screen, setScreen] = useState("login");
@@ -107,7 +129,7 @@ export default function App() {
     if (screen === "hub" && player && activeSlot !== null) {
       if (player.gold > MAX_GOLD) {
         setPlayer((p) => ({ ...p, gold: MAX_GOLD }));
-        pushToast(`Karakterde en fazla ${formatGold(MAX_GOLD)} altın bulunabilir — fazlası silindi.`, "warn");
+        pushToast(translateWith(audioSettings.language, "app.goldCapTrimmedCharacter", { max: formatGold(MAX_GOLD) }), "warn");
         return;
       }
       saveCharacterSlot(username, activeSlot, player);
@@ -135,7 +157,7 @@ export default function App() {
     if (screen === "hub" && typeof account.bankGold === "number") {
       if (account.bankGold > MAX_GOLD) {
         setAccount((a) => ({ ...a, bankGold: MAX_GOLD }));
-        pushToast(`Depoda en fazla ${formatGold(MAX_GOLD)} altın bulunabilir — fazlası silindi.`, "warn");
+        pushToast(translateWith(audioSettings.language, "app.goldCapTrimmedBank", { max: formatGold(MAX_GOLD) }), "warn");
         return;
       }
       saveAccountBankGold(username, account.bankGold);
@@ -184,7 +206,7 @@ export default function App() {
     setTab("battle");
     setScreen("hub");
     if (diamondsAwarded > 0) {
-      pushToast(`Geçen haftaki Savaş Alanı sıralamasında ${rank}. oldun! +${diamondsAwarded} Elmas`, "loot");
+      pushToast(translateWith(audioSettings.language, "app.warzoneRankReward", { rank, diamonds: diamondsAwarded }), "loot");
     }
   };
 
@@ -306,20 +328,7 @@ export default function App() {
           biniyordu (kullanıcının bildirdiği çakışma bug'ı). Diğer ekranlarda
           (login/karakter seçimi/sınıf seçimi) TopBar yok, o yüzden bu yüzen
           buton hâlâ gerekli. */}
-      {screen !== "hub" && (
-        <button
-          onClick={() => setSettingsOpen(true)}
-          title="Ayarlar"
-          style={{
-            position: "absolute", top: 10, right: 10, zIndex: 40,
-            width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(11,12,16,0.55)", border: "1px solid var(--border)",
-            color: "#D4AF6A", cursor: "pointer", padding: 0,
-          }}
-        >
-          <Settings size={14} />
-        </button>
-      )}
+      {screen !== "hub" && <FloatingSettingsButton onClick={() => setSettingsOpen(true)} />}
 
       {settingsOpen && (
         <SettingsModal

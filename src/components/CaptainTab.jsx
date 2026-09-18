@@ -12,6 +12,7 @@ import { findMonster, MAPS } from "../data/maps";
 import { itemTierColor } from "../data/itemRarity";
 import { buyNationalPoint, canBuyNationalPoint } from "../utils/nationalPoint";
 import { NP_RECOVERY_GOLD_COST, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
+import { useTranslation, formatReason } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import BarTrack from "./shared/BarTrack";
@@ -27,47 +28,49 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
   // sayfalama yerine (bkz. ScreenPanel'in kaldırılan versiyonu) bunun
   // yerine InventoryTab'daki gibi tıkla-geç sekmeler kuruldu, sayfalama
   // DEĞİL: her sekme kendi içinde düz kaydırmalı kalıyor.
+  const { t, tm } = useTranslation();
   const [subtab, setSubtab] = useState("quests");
   const claim = (questId) => {
     const result = claimQuest(player, questId);
-    if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
+    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(`Ödül alındı: +${formatGold(result.quest.goldReward)} altın, +${result.quest.xpReward} XP, T${result.quest.tier} Sandık`, "loot");
+    pushToast(t("captain.toast.questClaimed", { gold: formatGold(result.quest.goldReward), xp: result.quest.xpReward, tier: result.quest.tier }), "loot");
   };
 
   const awaken = () => {
     const result = claimAwakening(player);
-    if (!result.claimed) { pushToast(result.reason || "Uyanamadın.", "warn"); return; }
+    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.awakenFailed"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(`2. Uyanış tamamlandı! Artık ${displayClassName(result.player)}sın.`, "loot");
+    pushToast(t("captain.toast.awakenSuccess", { cls: displayClassName(result.player) }), "loot");
   };
 
   const claimDaily = (slotIndex) => {
     const result = claimDailyQuest(player, slotIndex);
-    if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
+    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
     setPlayer(result.player);
-    const extra = result.quest.chest ? ", Sandık" : "";
-    pushToast(`Günlük ödül alındı: +${formatGold(result.quest.goldReward)} altın, +${result.quest.xpReward} XP${extra}`, "loot");
+    const extra = result.quest.chest ? `, ${t("captain.chestWord")}` : "";
+    pushToast(t("captain.toast.dailyClaimed", { gold: formatGold(result.quest.goldReward), xp: result.quest.xpReward, extra }), "loot");
   };
 
   const claimWeekly = (id) => {
     const result = claimWeeklyQuest(player, id);
-    if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
+    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(`Haftalık ödül alındı: +${formatGold(result.quest.goldReward)} altın, +${result.quest.xpReward} XP${result.quest.chest ? ", Sandık" : ""}`, "loot");
+    const extra = result.quest.chest ? `, ${t("captain.chestWord")}` : "";
+    pushToast(t("captain.toast.weeklyClaimed", { gold: formatGold(result.quest.goldReward), xp: result.quest.xpReward, extra }), "loot");
   };
   const claimBook = (id) => {
     const result = claimCollection(player, id);
-    if (!result.claimed) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
+    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(`Canavar Kitabı tamamlandı: +${formatGold(result.collection.goldReward)} altın ve T${result.collection.chestTier} Sandık`, "loot");
+    pushToast(t("captain.toast.bookClaimed", { gold: formatGold(result.collection.goldReward), tier: result.collection.chestTier }), "loot");
   };
 
   const buyNp = () => {
     const result = buyNationalPoint(player);
-    if (!result.bought) { pushToast(result.reason || "Alınamadı.", "warn"); return; }
+    if (!result.bought) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(`+${NP_RECOVERY_NP_AMOUNT} National Point satın alındı.`, "loot");
+    pushToast(t("captain.toast.npBought", { amount: NP_RECOVERY_NP_AMOUNT }), "loot");
   };
 
   const awakening = awakeningProgress(player);
@@ -97,18 +100,18 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
 
   return (
     <div style={styles.panelScroll}>
-      <SectionLabel>Kaptan</SectionLabel>
+      <SectionLabel>{t("captain.title")}</SectionLabel>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <div style={{ flexShrink: 0, borderRadius: "50%", overflow: "hidden" }}>
           <CaptainPortrait size={48} />
         </div>
         <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
-          "Bu topraklarda hayatta kalmak beceri ister, evlat. Canavarları temizle, sana onları öğreteyim."
+          {t("captain.quote")}
         </p>
       </div>
 
       <div style={styles.subtabRow}>
-        {[["quests", "Görevler"], ["daily", "Günlük"], ["weekly", "Haftalık"], ["book", "Canavar Kitabı"]].map(([key, label]) => (
+        {[["quests", t("captain.subtabs.quests")], ["daily", t("captain.subtabs.daily")], ["weekly", t("captain.subtabs.weekly")], ["book", t("captain.subtabs.book")]].map(([key, label]) => (
           <button key={key} onClick={() => setSubtab(key)} style={{ ...styles.subtabBtn, ...(subtab === key ? styles.subtabBtnActive : {}) }}>
             {label}
           </button>
@@ -122,10 +125,10 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
       <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#5FA8A066", background: "#5FA8A00d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
           <CalendarCheck size={16} color="#5FA8A0" strokeWidth={1.6} />
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#5FA8A0" }}>Günlük Görevler</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#5FA8A0" }}>{t("captain.daily.title")}</div>
         </div>
         <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>
-          Her gece sıfırlanır — hangi canavarı öldürdüğün önemli değil, sadece bugünkü toplam sayılıyor.
+          {t("captain.daily.subtitle")}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {DAILY_QUEST_SLOTS.map((slot, i) => {
@@ -133,20 +136,20 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
             return (
               <div key={i}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{target} canavar öldür</span>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("captain.daily.killLine", { target })}</span>
                   <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{current}/{target}</span>
                 </div>
                 <BarTrack pct={(current / target) * 100} color="#5FA8A0" thin />
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                   <div style={{ fontSize: 10, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 4 }}>
-                    <Gift size={11} /> {formatGold(slot.goldReward)}g · {slot.xpReward} XP{slot.chest ? " · Sandık" : ""}
+                    <Gift size={11} /> {formatGold(slot.goldReward)}g · {slot.xpReward} XP{slot.chest ? ` · ${t("captain.chestWord")}` : ""}
                   </div>
                   <button
                     style={{ ...styles.tinyBtn, background: done && !claimed ? "#5FA8A0" : "var(--bg-panel-alt)", color: done && !claimed ? "#0B0C10" : "var(--text-faint)" }}
                     disabled={!done || claimed}
                     onClick={() => claimDaily(i)}
                   >
-                    {claimed ? "Alındı" : done ? "Ödülü Al" : "Devam Ediyor"}
+                    {claimed ? t("captain.status.claimed") : done ? t("captain.status.claim") : t("captain.status.inProgress")}
                   </button>
                 </div>
               </div>
@@ -160,19 +163,19 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
       <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#D4AF6A66", background: "#D4AF6A0d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
           <Trophy size={16} color="#D4AF6A" strokeWidth={1.6} />
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#D4AF6A" }}>Haftalık Görev Zinciri</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#D4AF6A" }}>{t("captain.weekly.title")}</div>
         </div>
-        <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>Her pazartesi yenilenir. Farm yaparak ilerler, boss'larla tamamlanır.</div>
+        <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>{t("captain.weekly.subtitle")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
           {WEEKLY_QUESTS.map((quest) => {
             const progress = weeklyQuestProgress(player, quest);
             return <div key={quest.id}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{quest.name}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
-              <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>{quest.desc}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{t(`captain.weekly.entries.${quest.id}.name`)}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
+              <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>{t(`captain.weekly.entries.${quest.id}.desc`)}</div>
               <BarTrack pct={(progress.current / progress.target) * 100} color="#D4AF6A" thin />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
-                <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {formatGold(quest.goldReward)}g · {quest.xpReward} XP{quest.chest ? " · Sandık" : ""}</span>
-                <button style={{ ...styles.tinyBtn, background: progress.done && !progress.claimed ? "#D4AF6A" : "var(--bg-panel-alt)", color: progress.done && !progress.claimed ? "#0B0C10" : "var(--text-faint)" }} disabled={!progress.done || progress.claimed} onClick={() => claimWeekly(quest.id)}>{progress.claimed ? "Alındı" : progress.done ? "Ödülü Al" : "Devam Ediyor"}</button>
+                <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {formatGold(quest.goldReward)}g · {quest.xpReward} XP{quest.chest ? ` · ${t("captain.chestWord")}` : ""}</span>
+                <button style={{ ...styles.tinyBtn, background: progress.done && !progress.claimed ? "#D4AF6A" : "var(--bg-panel-alt)", color: progress.done && !progress.claimed ? "#0B0C10" : "var(--text-faint)" }} disabled={!progress.done || progress.claimed} onClick={() => claimWeekly(quest.id)}>{progress.claimed ? t("captain.status.claimed") : progress.done ? t("captain.status.claim") : t("captain.status.inProgress")}</button>
               </div>
             </div>;
           })}
@@ -184,18 +187,19 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
       <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#6FD1E066", background: "#6FD1E00d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
           <BookOpen size={16} color="#6FD1E0" strokeWidth={1.6} />
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#6FD1E0" }}>Canavar Kitabı</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#6FD1E0" }}>{t("captain.book.title")}</div>
         </div>
-        <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>Her canavarı en az bir kez yen; harita sayfasını tamamlayıp ödülü al.</div>
+        <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>{t("captain.book.subtitle")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {MAP_COLLECTIONS.filter((c) => player.level >= MAPS.find((m) => m.id === c.mapId).levelMin).map((collection) => {
             const progress = collectionProgress(player, collection);
+            const mapName = MAPS.find((m) => m.id === collection.mapId)?.name || "";
             return <div key={collection.id} style={{ opacity: progress.claimed ? 0.55 : 1 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{collection.name}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{t("captain.book.entryName", { map: mapName })}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
               <BarTrack pct={(progress.current / progress.target) * 100} color="#6FD1E0" thin />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
-                <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {formatGold(collection.goldReward)}g · T{collection.chestTier} Sandık</span>
-                <button style={{ ...styles.tinyBtn, background: progress.done && !progress.claimed ? "#6FD1E0" : "var(--bg-panel-alt)", color: progress.done && !progress.claimed ? "#0B0C10" : "var(--text-faint)" }} disabled={!progress.done || progress.claimed} onClick={() => claimBook(collection.id)}>{progress.claimed ? "Alındı" : progress.done ? "Ödülü Al" : "Keşfet"}</button>
+                <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {formatGold(collection.goldReward)}g · T{collection.chestTier} {t("captain.chestWord")}</span>
+                <button style={{ ...styles.tinyBtn, background: progress.done && !progress.claimed ? "#6FD1E0" : "var(--bg-panel-alt)", color: progress.done && !progress.claimed ? "#0B0C10" : "var(--text-faint)" }} disabled={!progress.done || progress.claimed} onClick={() => claimBook(collection.id)}>{progress.claimed ? t("captain.status.claimed") : progress.done ? t("captain.status.claim") : t("captain.book.btnExplore")}</button>
               </div>
             </div>;
           })}
@@ -209,9 +213,9 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Flag size={16} color="#D4AF6A" strokeWidth={1.6} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13 }}>National Point Takviyesi</div>
+            <div style={{ fontSize: 13 }}>{t("captain.np.title")}</div>
             <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
-              Şu an: {player.nationalPoint} NP{player.nationalPoint > 0 && " — sadece 0 NP'ye düşünce açılır"}
+              {t("captain.np.current", { np: player.nationalPoint })}{player.nationalPoint > 0 && t("captain.np.onlyAtZero")}
             </div>
           </div>
           <button
@@ -228,13 +232,13 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
         <div style={{ ...styles.itemDetailCard, borderColor: "#FF8C4266", background: "#FF8C4212", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Crown size={18} color="#FF8C42" strokeWidth={1.6} />
-            <div style={{ flex: 1, fontFamily: "var(--font-display)", fontSize: 14, color: "#FF8C42" }}>{AWAKENING_QUEST.name}</div>
+            <div style={{ flex: 1, fontFamily: "var(--font-display)", fontSize: 14, color: "#FF8C42" }}>{t("captain.awakening.questName")}</div>
           </div>
           <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
             {awakening.entries.map((e) => (
               <div key={e.monsterId}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
-                  <span>{findMonster(e.monsterId)?.name || e.monsterId}</span>
+                  <span>{tm(findMonster(e.monsterId)) || e.monsterId}</span>
                   <span>{e.current}/{e.target}</span>
                 </div>
                 <BarTrack pct={(e.current / e.target) * 100} color="#FF8C42" thin />
@@ -246,12 +250,12 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
             disabled={!awakening.done}
             onClick={awaken}
           >
-            {awakening.done ? "2. Uyanışı Gerçekleştir" : "Sınav tamamlanmadı"}
+            {awakening.done ? t("captain.awakening.btnAwaken") : t("captain.awakening.btnNotDone")}
           </button>
         </div>
       )}
 
-      <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>Görevler</div>
+      <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>{t("captain.questsHeader")}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {sortedQuests.map((q) => {
           const { current, target, done } = questProgress(player, q);
@@ -262,22 +266,22 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Skull size={16} color={color} strokeWidth={1.6} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13 }}>{q.name}</div>
-                  <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{q.tier} · {findMonster(q.monsterId)?.name || q.monsterId}</div>
+                  <div style={{ fontSize: 13 }}>{t(`captain.quests.${q.id}.name`)}</div>
+                  <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{q.tier} · {tm(findMonster(q.monsterId)) || q.monsterId}</div>
                 </div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{current}/{target}</div>
               </div>
               <BarTrack pct={(current / target) * 100} color={color} thin />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <div style={{ fontSize: 10, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 4 }}>
-                  <Gift size={11} /> {formatGold(q.goldReward)}g · {q.xpReward} XP · T{q.tier} Sandık
+                  <Gift size={11} /> {formatGold(q.goldReward)}g · {q.xpReward} XP · T{q.tier} {t("captain.chestWord")}
                 </div>
                 <button
                   style={{ ...styles.tinyBtn, background: done && !claimed ? color : "var(--bg-panel-alt)", color: done && !claimed ? "#0B0C10" : "var(--text-faint)" }}
                   disabled={!done || claimed}
                   onClick={() => claim(q.id)}
                 >
-                  {claimed ? "Alındı" : done ? "Ödülü Al" : "Devam Ediyor"}
+                  {claimed ? t("captain.status.claimed") : done ? t("captain.status.claim") : t("captain.status.inProgress")}
                 </button>
               </div>
             </div>
@@ -285,7 +289,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
         })}
         {nextUnlockLevel != null && (
           <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", padding: "6px 0" }}>
-            {lockedQuests.length} görev daha kilitli — Lv.{nextUnlockLevel}'de açılır.
+            {t("captain.lockedHint", { count: lockedQuests.length, level: nextUnlockLevel })}
           </div>
         )}
       </div>

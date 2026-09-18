@@ -6,8 +6,10 @@ import * as chatService from "../services/chatService";
 import { parseGmCommand, executeGmCommand } from "../utils/gmCommands";
 import { displayClassName } from "../utils/player";
 import GmItemPanel from "./GmItemPanel";
+import { useTranslation } from "../i18n/LanguageContext";
 
 export default function ChatTab({ player, setPlayer, bank, setBank, pushToast }) {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [showHelp, setShowHelp] = useState(false);
@@ -37,7 +39,7 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
       const { player: nextPlayer, bank: nextBank, resultText } = executeGmCommand(player, parsed.cmd, parsed.args, bank);
       setPlayer(nextPlayer);
       if (nextBank) setBank(nextBank);
-      await chatService.sendMessage("GM Sistemi", resultText, true);
+      await chatService.sendMessage(t("chat.gmSystemAuthor"), resultText, true);
       pushToast(resultText, "loot");
       refresh();
       return;
@@ -50,10 +52,10 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
   return (
     <div style={styles.panelScroll}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <SectionLabel>Sohbet</SectionLabel>
+        <SectionLabel>{t("chat.title")}</SectionLabel>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
           {player.isGM && (
-            <button onClick={() => setShowGmPanel((v) => !v)} style={{ background: "none", border: "none", color: showGmPanel ? "#D4AF6A" : "var(--text-faint)", cursor: "pointer" }} title="GM Eşya Üretici">
+            <button onClick={() => setShowGmPanel((v) => !v)} style={{ background: "none", border: "none", color: showGmPanel ? "#D4AF6A" : "var(--text-faint)", cursor: "pointer" }} title={t("chat.gmItemPanelTitle")}>
               <Wand2 size={16} />
             </button>
           )}
@@ -72,13 +74,13 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
           <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6 }}>
             {player.isGM ? (
               <>
-                <b>GM yetkin var.</b> "/" ile başlayan mesajlar komut olarak çalışır:<br />
+                <b>{t("chat.helpGmBadge")}</b> {t("chat.helpGmIntro")}<br />
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 10 }}>
-                  /altın [miktar] · /zırh [tier] [sınıf] · /silah [tier] · /aksesuar [tier] · /parşömen [tier] · /iksir [hp|mp] [adet] · /sandık [tier] · /skill [id] · /uyan · /yardım
+                  {t("chat.helpGmCommands")}
                 </span>
               </>
             ) : (
-              "Burada diğer oyuncularla sohbet edebilirsin. Özel komutlar sadece Game Moderatör yetkisi olanlar için."
+              t("chat.helpNonGm")
             )}
           </div>
         </div>
@@ -90,12 +92,12 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
             <div style={styles.chatMsgHeader}>
               {m.isGM && <ShieldCheck size={11} color="#D4AF6A" />}
               <span style={{ color: m.isSystem ? "var(--text-faint)" : m.isGM ? "#D4AF6A" : "var(--text-muted)" }}>
-                {m.author}
+                {m.isSystem ? t("chat.systemAuthor") : m.author}
               </span>
               <span>{new Date(m.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
             </div>
             <div style={{ ...styles.chatMsgBubble, ...(m.isSystem ? { background: "transparent", color: "var(--text-faint)", fontStyle: "italic" } : {}) }}>
-              {m.text}
+              {m.isSystem ? t(m.textKey) : m.text}
             </div>
           </div>
         ))}
@@ -107,7 +109,7 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-          placeholder={player.isGM ? "Mesaj yaz ya da /yardım..." : "Mesaj yaz..."}
+          placeholder={player.isGM ? t("chat.inputPlaceholderGm") : t("chat.inputPlaceholderDefault")}
           style={styles.chatInput}
         />
         <button style={styles.tinyBtn} onClick={send}>

@@ -4,6 +4,7 @@ import { itemTierColor } from "../data/itemRarity";
 import { MAX_UPGRADE_LEVEL, upgradeSuccessChance, bumpedStats, applyLevelData } from "../utils/upgrade";
 import { makeScrollStack, makeBonusScrollStack } from "../utils/inventory";
 import { newlyUnlocked } from "../utils/achievements";
+import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import ItemIcon from "./ItemIcon";
@@ -20,6 +21,7 @@ const SCROLL_BOX_COUNT = 9;
 // staging model simple (every staged item always came from — and always
 // returns to — player.inventory, never player.equipped).
 export default function UpgradeTab({ player, setPlayer, pushToast }) {
+  const { t } = useTranslation();
   const [subtab, setSubtab] = useState("forge"); // "forge" | "accessory"
   const [stagedItem, setStagedItem] = useState(null); // item | null
   const [scrollBoxes, setScrollBoxes] = useState(() => Array(SCROLL_BOX_COUNT).fill(null)); // { tier } | null
@@ -81,7 +83,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
     }
     if (item.kind === "scroll") {
       const emptyIndex = scrollBoxes.findIndex((b) => b === null);
-      if (emptyIndex === -1) { pushToast("Parşömen kutuları dolu (9/9).", "warn"); return; }
+      if (emptyIndex === -1) { pushToast(t("upgrade.scrollBoxesFull"), "warn"); return; }
       setPlayer((p) => {
         const stack = p.inventory.find((it) => it.kind === "scroll" && it.tier === item.tier);
         if (!stack || stack.count <= 0) return p;
@@ -94,13 +96,13 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
       return;
     }
     if (item.kind === "bonusScroll") {
-      if (bonusScrollActive) { pushToast("Bonus parşömen kutusu dolu.", "warn"); return; }
+      if (bonusScrollActive) { pushToast(t("upgrade.bonusScrollFull"), "warn"); return; }
       setPlayer((p) => ({ ...p, inventory: p.inventory.filter((it) => it.id !== item.id) }));
       setBonusScrollActive(true);
       return;
     }
     if (item.kind === "potion") {
-      pushToast("Potları Envanter sekmesinden kullanabilirsin.", "default");
+      pushToast(t("upgrade.usePotionsInInventory"), "default");
     }
   };
 
@@ -139,9 +141,9 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
 
   const press = () => {
     if (!stagedItem || pendingReveal) return;
-    if (maxed) { pushToast("Bu eşya zaten maksimum seviyede.", "warn"); return; }
-    if (matchingCount === 0) { pushToast(`T${stagedItem.tier} parşömenin yok.`, "warn"); return; }
-    if (matchingCount >= 2) { pushToast("Failed — aynı tier'dan sadece 1 parşömen olmalı.", "warn"); return; }
+    if (maxed) { pushToast(t("upgrade.alreadyMaxLevel"), "warn"); return; }
+    if (matchingCount === 0) { pushToast(t("upgrade.noScrollForTier", { tier: stagedItem.tier }), "warn"); return; }
+    if (matchingCount >= 2) { pushToast(t("upgrade.onlyOneScrollAllowed"), "warn"); return; }
 
     const consumedBox = matchingIndexes[0];
     const entry = stagedItem;
@@ -173,7 +175,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
         unlocked = newlyUnlocked(p, np);
         return np;
       });
-      unlocked.forEach((a) => pushToast(`Başarım açıldı: ${a.name} — "${a.title}" unvanı kazanıldı!`, "level"));
+      unlocked.forEach((a) => pushToast(t("upgrade.achievementUnlocked", { name: a.name, title: a.title }), "level"));
       setPendingReveal({ item: entry, success: true, bumpedItem: bumped });
     } else {
       setPendingReveal({ item: entry, success: false, bumpedItem: null });
@@ -190,14 +192,14 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
 
   return (
     <div style={styles.panelScroll}>
-      <SectionLabel>Yükselt</SectionLabel>
+      <SectionLabel>{t("upgrade.title")}</SectionLabel>
 
       <div style={styles.subtabRow}>
         <button onClick={() => setSubtab("forge")} style={{ ...styles.subtabBtn, ...(subtab === "forge" ? styles.subtabBtnActive : {}) }}>
-          Silah / Zırh
+          {t("upgrade.subtabWeaponArmor")}
         </button>
         <button onClick={() => setSubtab("accessory")} style={{ ...styles.subtabBtn, ...(subtab === "accessory" ? styles.subtabBtnActive : {}) }}>
-          Takı Yükseltme
+          {t("upgrade.subtabAccessory")}
         </button>
       </div>
 
@@ -206,9 +208,8 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
       ) : (
         <>
       <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: 12, marginBottom: 12 }}>
-        Aşağıdaki çantandan eşyana ve aynı tier'dan tam <b>1</b> parşömene dokunarak kutulara
-        yerleştir, sonra bas. Basmak ücretsizdir ama <b>başarısız olursa eşya ve parşömen kaybolur</b>.
-        Kuşanılı bir eşyayı yükseltmek için önce Envanter'den çıkar, çantana düşsün. Maksimum seviye +{MAX_UPGRADE_LEVEL}.
+        {t("upgrade.instructionsPre")} <b>1</b> {t("upgrade.instructionsMid")} <b>{t("upgrade.instructionsBold")}</b>
+        {t("upgrade.instructionsPost", { max: MAX_UPGRADE_LEVEL })}
       </p>
 
       {/* Sıra: Eşya (basacağımız eşya) → 9 kutuluk parşömen ızgarası → Sonuç,
@@ -222,7 +223,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
       <div style={styles.forgeRow}>
         <div style={styles.forgeCol}>
           <div>
-            <div style={styles.forgeColLabel}>Eşya</div>
+            <div style={styles.forgeColLabel}>{t("upgrade.itemLabel")}</div>
             <button
               style={{ ...styles.forgeItemSlot, ...(stagedItem ? { borderColor: `${itemTierColor(stagedItem.tier)}88`, background: `${itemTierColor(stagedItem.tier)}1c` } : styles.bagSlotEmpty) }}
               onClick={returnStagedItem}
@@ -239,11 +240,11 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
           </div>
 
           <div>
-            <div style={styles.forgeColLabel}>Bonus</div>
+            <div style={styles.forgeColLabel}>{t("upgrade.bonusLabel")}</div>
             <button
               style={{ ...styles.forgeSmallSlot, ...(bonusScrollActive ? { borderColor: "#D4AF6A88", background: "#D4AF6A1c" } : styles.bagSlotEmpty) }}
               onClick={returnBonusScroll}
-              title="Yükseltme şansını artırır"
+              title={t("upgrade.bonusTitle")}
             >
               {bonusScrollActive ? <Star size={16} color="#D4AF6A" strokeWidth={1.6} /> : <Plus size={14} color="var(--text-faint)" strokeWidth={1.6} />}
             </button>
@@ -251,7 +252,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
         </div>
 
         <div style={{ ...styles.forgeCol, flex: 1, minWidth: 0 }}>
-          <div style={styles.forgeColLabel}>Parşömenler</div>
+          <div style={styles.forgeColLabel}>{t("upgrade.scrollsLabel")}</div>
           <div style={styles.forgeScrollGrid}>
             {scrollBoxes.map((box, i) => {
               const isMatch = !!stagedItem && !!box && box.tier === stagedItem.tier;
@@ -275,14 +276,14 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
 
         <div style={styles.forgeCol}>
           <div>
-            <div style={styles.forgeColLabel}>Sonuç</div>
+            <div style={styles.forgeColLabel}>{t("upgrade.resultLabel")}</div>
             <div style={{ ...styles.forgeSmallSlot, ...(outputItem ? { borderColor: `${itemTierColor(outputItem.tier)}88`, background: `${itemTierColor(outputItem.tier)}1c` } : {}) }}>
               {outputItem && <ItemIcon item={outputItem} size={36} color={itemTierColor(outputItem.tier)} strokeWidth={1.4} />}
             </div>
           </div>
 
           <div>
-            <div style={styles.forgeColLabel}>Mağaza</div>
+            <div style={styles.forgeColLabel}>{t("upgrade.shopLabel")}</div>
             <button style={styles.forgeSmallSlot} onClick={() => setShopOpen((v) => !v)}>
               <ScrollText size={18} color="#D4AF6A" strokeWidth={1.6} />
             </button>
@@ -296,22 +297,22 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
           disabled={!canPress}
           onClick={() => setShowPreview((v) => !v)}
         >
-          Dene
+          {t("upgrade.tryButton")}
         </button>
         <button
           style={{ ...styles.primaryBtn, flex: 1, background: canPress ? "#5FA8A0" : "var(--bg-panel-alt)", color: canPress ? "#0B0C10" : "var(--text-faint)" }}
           disabled={!canPress}
           onClick={press}
         >
-          Bas
+          {t("upgrade.pressButton")}
         </button>
       </div>
 
       {showPreview && previewStats && stagedItem && (
         <div style={styles.itemDetailCard}>
           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
-            Başarılı olursa +{(stagedItem.upgradeLevel || 0) + 1}:
-            {bonusScrollActive && <span style={{ color: "#D4AF6A" }}> (Bonus Parşömen aktif)</span>}
+            {t("upgrade.successPreview", { level: (stagedItem.upgradeLevel || 0) + 1 })}
+            {bonusScrollActive && <span style={{ color: "#D4AF6A" }}> {t("upgrade.bonusScrollActiveTag")}</span>}
           </div>
           <div style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
             {[
@@ -335,7 +336,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
         </div>
       )}
 
-      <SectionLabel>Çanta</SectionLabel>
+      <SectionLabel>{t("upgrade.bagLabel")}</SectionLabel>
       <BagGrid player={player} setPlayer={setPlayer} onItemTap={handleBagTap} selectedId={stagedItem?.id} />
 
       {pendingReveal && (

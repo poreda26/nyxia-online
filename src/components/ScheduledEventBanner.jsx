@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { SCHEDULED_EVENTS } from "../data/scheduledEvents";
 import { eventPhase, scheduledEventProgress, creditScheduledEventTicks } from "../utils/scheduledEvents";
 import ScheduledEventModal from "./ScheduledEventModal";
+import { useTranslation } from "../i18n/LanguageContext";
 
 function fmtCountdown(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -19,6 +20,7 @@ function fmtCountdown(ms) {
 // açıkken otomatik işlenmesi için saniyede bir kendini yeniliyor (bkz.
 // ClanTab.jsx'teki aynı "forceTick" deseni, boss geri sayımı için).
 export default function ScheduledEventBanner({ player, setPlayer, pushToast }) {
+  const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
   const [openId, setOpenId] = useState(null);
 
@@ -37,7 +39,9 @@ export default function ScheduledEventBanner({ player, setPlayer, pushToast }) {
       if (!result) continue;
       setPlayer(result.player);
       pushToast(
-        `${event.name}: +${result.xpGain} XP${result.levelsGained > 0 ? ` (Seviye atladın! Lv.${result.player.level})` : ""}`,
+        result.levelsGained > 0
+          ? t("scheduledEvent.tickXpLeveledUp", { event: event.name, xp: result.xpGain, level: result.player.level })
+          : t("scheduledEvent.tickXp", { event: event.name, xp: result.xpGain }),
         result.levelsGained > 0 ? "level" : "loot"
       );
     }
@@ -58,10 +62,10 @@ export default function ScheduledEventBanner({ player, setPlayer, pushToast }) {
             const Icon = event.icon;
             const progress = scheduledEventProgress(player, event);
             const label = phase === "preopen"
-              ? `📢 ${event.name} ${fmtCountdown(start - now)} içinde başlıyor!`
+              ? t("scheduledEvent.bannerPreopen", { event: event.name, countdown: fmtCountdown(start - now) })
               : progress.joined
-                ? `🔥 ${event.name} aktif — ${progress.ticksCredited}/${progress.totalTicks} bonus alındı`
-                : `🔥 ${event.name} aktif — katılmak için dokun!`;
+                ? t("scheduledEvent.bannerActiveJoined", { event: event.name, credited: progress.ticksCredited, total: progress.totalTicks })
+                : t("scheduledEvent.bannerActiveUnjoined", { event: event.name });
             return (
               <button
                 key={event.id}

@@ -28,17 +28,17 @@ export function upgradableAccessoryGroups(player) {
 }
 
 export function canUpgradeAccessory(player, sample) {
-  if (sample.upgradeLocked) return { ok: false, reason: "Bu basit takının yükseltmesi kapalı." };
+  if (sample.upgradeLocked) return { ok: false, reason: "accessoryUpgradeLocked" };
   const level = sample.upgradeLevel || 0;
   if (level >= ACCESSORY_UPGRADE_MAX_LEVEL) {
-    return { ok: false, reason: `+${ACCESSORY_UPGRADE_MAX_LEVEL}'ten sonrası henüz açılmadı.` };
+    return { ok: false, reason: "accessoryMaxLevelLocked", reasonVars: { max: ACCESSORY_UPGRADE_MAX_LEVEL } };
   }
   const matching = player.inventory.filter(
     (it) => it.kind === "accessory" && it.name === sample.name && (it.upgradeLevel || 0) === level
   );
-  if (matching.length < 3) return { ok: false, reason: "Aynı takıdan ve aynı +'dan en az 3 tane gerekiyor." };
+  if (matching.length < 3) return { ok: false, reason: "accessoryNeedThree" };
   if (!player.inventory.some((it) => it.kind === "accessoryScroll" && it.count > 0)) {
-    return { ok: false, reason: "Aksesuar Yükseltme Kağıdın yok." };
+    return { ok: false, reason: "noAccessoryUpgradeScroll" };
   }
   return { ok: true };
 }
@@ -48,9 +48,9 @@ export function canUpgradeAccessory(player, sample) {
 // tanesinin tüketildiği önemli değil, hepsi zaten aynı isim+seviye.
 export function upgradeAccessory(player, sampleId) {
   const sample = player.inventory.find((it) => it.id === sampleId);
-  if (!sample) return { player, upgraded: false, reason: "Eşya bulunamadı." };
+  if (!sample) return { player, upgraded: false, reason: "itemNotFound" };
   const check = canUpgradeAccessory(player, sample);
-  if (!check.ok) return { player, upgraded: false, reason: check.reason };
+  if (!check.ok) return { player, upgraded: false, reason: check.reason, reasonVars: check.reasonVars };
 
   const level = sample.upgradeLevel || 0;
   const matching = player.inventory.filter(

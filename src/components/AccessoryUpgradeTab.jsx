@@ -4,6 +4,7 @@ import ForgePressModal from './ForgePressModal';
 import { itemTierColor } from "../data/itemRarity";
 import { upgradeAccessory, canUpgradeAccessory, ACCESSORY_UPGRADE_MAX_LEVEL } from "../utils/accessoryUpgrade";
 import { displayItemName } from "../utils/player";
+import { useTranslation, formatReason } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import EmptyState from "./shared/EmptyState";
 import ItemIcon from "./ItemIcon";
@@ -13,6 +14,7 @@ import ItemIcon from "./ItemIcon";
 // Aynı isim+seviyeden HER takı grubunu listeler (3'ten az olsa bile, ki
 // oyuncu ilerlemesini görsün), ama sadece 3+ olanlarda buton aktif olur.
 export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
+  const { t } = useTranslation();
   const [reveal,setReveal]=useState(null);
   const groups = new Map();
   for (const it of player.inventory) {
@@ -27,25 +29,25 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
   const handleUpgrade = (sample) => {
     if(reveal)return;
     const result = upgradeAccessory(player, sample.id);
-    if (!result.upgraded) { pushToast(result.reason || "Yükseltilemedi.", "warn"); return; }
+    if (!result.upgraded) { pushToast(formatReason(t, result, "upgrade.accessory.cannotUpgrade"), "warn"); return; }
     setPlayer(result.player);
     setReveal({item:sample,bumpedItem:result.item});
-    pushToast(`${displayItemName(sample)} → +${(sample.upgradeLevel || 0) + 1} oldu!`, "loot");
+    pushToast(t("upgrade.accessory.leveledUp", { name: displayItemName(sample), level: (sample.upgradeLevel || 0) + 1 }), "loot");
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {reveal&&<ForgePressModal {...reveal} success={true} onClose={()=>setReveal(null)}/>}
       <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
-        Aynı takıdan ve aynı +'dan <b>3 tane</b> + <b>1 Aksesuar Yükseltme Kağıdı</b> %100 oranda
-        bir sonraki seviyeye birleşir. +{ACCESSORY_UPGRADE_MAX_LEVEL}'ten sonrası henüz açılmadı.
+        {t("upgrade.accessory.instructionsPre")} <b>{t("upgrade.accessory.instructionsBold1")}</b> {t("upgrade.accessory.instructionsPlus")} <b>{t("upgrade.accessory.instructionsBold2")}</b>{" "}
+        {t("upgrade.accessory.instructionsPost", { max: ACCESSORY_UPGRADE_MAX_LEVEL })}
       </p>
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#5FA8A0" }}>
-        <ScrollText size={13} /> Aksesuar Yükseltme Kağıdı: {scrollCount}
+        <ScrollText size={13} /> {t("upgrade.accessory.scrollLabel", { count: scrollCount })}
       </div>
 
       {rows.length === 0 ? (
-        <EmptyState icon={ScrollText} title="Yükseltilecek takı yok" subtitle="Aynı takıdan en az 3 tane topla." />
+        <EmptyState icon={ScrollText} title={t("upgrade.accessory.emptyTitle")} subtitle={t("upgrade.accessory.emptySubtitle")} />
       ) : (
         rows.map((items) => {
           const sample = items[0];
@@ -59,7 +61,7 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13 }}>{sample.name} +{level}</div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>
-                  {items.length}/3 {items.length >= 3 ? "— hazır" : "toplandı"}
+                  {items.length}/3 {items.length >= 3 ? t("upgrade.accessory.ready") : t("upgrade.accessory.collected")}
                 </div>
               </div>
               <button
@@ -72,7 +74,7 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
                 title={check.ok ? undefined : check.reason}
                 onClick={() => handleUpgrade(sample)}
               >
-                Yükselt (%100)
+                {t("upgrade.accessory.upgradeButton")}
               </button>
             </div>
           );

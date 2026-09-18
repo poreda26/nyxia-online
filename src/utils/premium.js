@@ -38,8 +38,8 @@ export function hasAutoBattleAccess(player) { return !!activePremiumTier(player)
 // returned separately since it no longer lives on the player object.
 export function buyPremium(player, tierId, bank) {
   const tier = PREMIUM_TIERS[tierId];
-  if (!tier) return { player, bank, bought: false, reason: "Geçersiz paket." };
-  if (player.diamonds < tier.price) return { player, bank, bought: false, reason: "Yeterli elmasın yok." };
+  if (!tier) return { player, bank, bought: false, reason: "invalidPackage" };
+  if (player.diamonds < tier.price) return { player, bank, bought: false, reason: "notEnoughDiamonds" };
 
   const now = Date.now();
   const sameTierActive = player.premium?.tier === tierId && activePremiumTier(player);

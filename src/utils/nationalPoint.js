@@ -43,8 +43,8 @@ export function canBuyNationalPoint(player) {
 }
 
 export function buyNationalPoint(player) {
-  if (player.nationalPoint > 0) return { player, bought: false, reason: "National Point'in hâlâ var — bu teklif sadece 0'a düşünce açılır." };
-  if (player.gold < NP_RECOVERY_GOLD_COST) return { player, bought: false, reason: "Yeterli altının yok." };
+  if (player.nationalPoint > 0) return { player, bought: false, reason: "npStillAvailable" };
+  if (player.gold < NP_RECOVERY_GOLD_COST) return { player, bought: false, reason: "notEnoughGold" };
   return {
     player: {
       ...player,

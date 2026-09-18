@@ -24,7 +24,7 @@ function Figure({rect,label,source=actors,size=[1448,1086]}) {
   </svg>;
 }
 export default function BattleScene({player,monster,battle,map,visual}) {
-  const {t}=useTranslation();
+  const {t,tm}=useTranslation();
   const art=battleVisualFor(monster);
   if(!art) return null;
   const rect=art.rect;
@@ -39,11 +39,11 @@ export default function BattleScene({player,monster,battle,map,visual}) {
     <div className="battle-scene-title">{t('battle.sceneTitle')}<span>{map.name}</span></div>
     <div className="battle-hud">
       <div><strong>{player.nickname || t('battle.you')}</strong><meter aria-label={t('battle.yourHp')} min="0" max={playerMaxHp(player)} value={player.hp}/><small>{player.hp} / {playerMaxHp(player)}</small><meter className="mana" aria-label={t('battle.yourMp')} min="0" max={playerMaxMp(player)} value={player.mp}/><small>MP {player.mp} / {playerMaxMp(player)}</small></div>
-      <div><strong>{monster.name}</strong><meter aria-label={t('battle.enemyHp')} min="0" max={battle.monsterMaxHp} value={battle.monsterHp}/><small>{battle.monsterHp} / {battle.monsterMaxHp}</small><small>{monster.isBoss?t('battle.boss'):t('battle.enemy')}</small></div>
+      <div><strong>{tm(monster)}</strong><meter aria-label={t('battle.enemyHp')} min="0" max={battle.monsterMaxHp} value={battle.monsterHp}/><small>{battle.monsterHp} / {battle.monsterMaxHp}</small><small>{monster.isBoss?t('battle.boss'):t('battle.enemy')}</small></div>
     </div>
     <div key={visual.id} className={`battle-cast ${active?'is-active':''} ${support?'is-support':''} ${ranged?'is-ranged':''} ${incoming?'has-counter':''} ${incoming?.hit?'incoming-hit':''} ${battle.monsterHp<=0?'is-victory':''}`}>
       <div className="battle-unit battle-hero"><div className="battle-motion"><CharacterFigure player={player}/></div><span className="battle-unit-name">{player.nickname || t('battle.you')}</span></div>
-      <div className="battle-unit battle-enemy"><div className="battle-motion"><Figure rect={rect} label={monster.name} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name">{monster.name}</span></div>
+      <div className="battle-unit battle-enemy"><div className="battle-motion"><Figure rect={rect} label={tm(monster)} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name">{tm(monster)}</span></div>
       {active&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} />{!support&&<i className="battle-impact" aria-hidden="true"/>}</>}
       {incoming&&<>{incoming.hit&&<><i className="battle-counter" aria-hidden="true"/><i className="incoming-burst" aria-hidden="true"/></>}<span className={`incoming-number ${incoming.hit?'':'incoming-miss'}`}>{incoming.hit?`−${incoming.damage}`:t('battle.missIncoming')}</span></>}
       {outgoing&&<span className={`outgoing-number ${outgoing.hit?(outgoing.crit?'outgoing-crit':''):'outgoing-miss'}`}>{outgoing.hit?`−${outgoing.damage}`:t('battle.missOutgoing')}</span>}

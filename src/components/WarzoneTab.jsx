@@ -23,6 +23,7 @@ import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
 import BarTrack from "./shared/BarTrack";
 import DeathModal from "./DeathModal";
+import { useTranslation } from "../i18n/LanguageContext";
 
 const RESPAWN_TICKS = Math.max(1, Math.round((WORLD_BOSS_RESPAWN_SECONDS * 1000) / WARZONE_TICK_MS));
 const GHOST_REPLACE_TICKS = Math.max(1, Math.round((GHOST_REPLACE_SECONDS * 1000) / WARZONE_TICK_MS));
@@ -42,21 +43,21 @@ function freshWz(player) {
 
 // Boss ölünce en çok hasarı veren tarafı belirler ("player" ya da hayalet
 // adı) — hem gerçek-zamanlı tick'ten hem oyuncunun kendi vuruşundan çağrılır.
-function resolveBossDeath(bossDamage, ghosts) {
+function resolveBossDeath(bossDamage, ghosts, t) {
   const topGhostEntry = Object.entries(bossDamage.ghosts).sort((a, b) => b[1] - a[1])[0];
   const topGhostDmg = topGhostEntry ? topGhostEntry[1] : 0;
-  if (bossDamage.player > 0 && bossDamage.player >= topGhostDmg) return { winner: "player", label: "sen" };
+  if (bossDamage.player > 0 && bossDamage.player >= topGhostDmg) return { winner: "player", label: t("warzone.bossDeathLabelYou") };
   if (topGhostEntry) {
     const g = ghosts.find((gh) => gh.id === topGhostEntry[0]);
-    return { winner: "ghost", label: g?.name || "bir hayalet" };
+    return { winner: "ghost", label: g?.name || t("warzone.bossDeathLabelGhost") };
   }
-  return { winner: null, label: "kimse" };
+  return { winner: null, label: t("warzone.bossDeathLabelNoOne") };
 }
 
 // Bir tick'te: boss respawn sayacı / hayaletlerin boss'a vurması / gitmiş
 // hayaletlerin yenisiyle değişmesi / pusu (ambush) ihtimali. Saf fonksiyon —
 // tüm Math.random() çağrıları burada, side effect (toast/log) yok.
-function warzoneTick(wz, player) {
+function warzoneTick(wz, player, t) {
   let { boss, bossDamage, ghosts } = wz;
   const lines = [];
   let bossDied = null;
@@ -66,7 +67,7 @@ function warzoneTick(wz, player) {
     if (respawnTicks <= 0) {
       boss = { hp: WORLD_BOSS.hp, maxHp: WORLD_BOSS.hp, alive: true, respawnTicks: 0 };
       bossDamage = { player: 0, ghosts: {} };
-      lines.push(`${WORLD_BOSS.name} yeniden belirdi!`);
+      lines.push(t("warzone.log.bossRespawned", { boss: WORLD_BOSS.name }));
     } else {
       boss = { ...boss, respawnTicks };
     }
@@ -76,11 +77,11 @@ function warzoneTick(wz, player) {
       const result = tickWorldBoss(WORLD_BOSS, boss.hp, activeGhosts, bossDamage.ghosts);
       boss = { ...boss, hp: result.hp };
       bossDamage = { ...bossDamage, ghosts: result.damageByGhost };
-      lines.push(...result.lines);
+      lines.push(...result.hits.map((h) => t("warzone.log.ghostHitBoss", { ghost: h.ghostName, boss: WORLD_BOSS.name, dmg: h.dmg })));
       if (result.hp <= 0) {
-        const resolved = resolveBossDeath(bossDamage, ghosts);
+        const resolved = resolveBossDeath(bossDamage, ghosts, t);
         bossDied = resolved;
-        lines.push(resolved.winner === "player" ? `${WORLD_BOSS.name} düştü — drop'u sen aldın!` : `${WORLD_BOSS.name} düştü — drop'u ${resolved.label} aldı.`);
+        lines.push(resolved.winner === "player" ? t("warzone.log.bossDefeatedByYou", { boss: WORLD_BOSS.name }) : t("warzone.log.bossDefeatedByOther", { boss: WORLD_BOSS.name, label: resolved.label }));
         boss = { hp: 0, maxHp: WORLD_BOSS.hp, alive: false, respawnTicks: RESPAWN_TICKS };
       }
     }
@@ -106,14 +107,14 @@ function warzoneTick(wz, player) {
 // Saf fonksiyon: ghostFirstDmg'i player.hp'ye uygulamak (ve gerekiyorsa
 // ölüm kontrolü yapmak) çağıranın işi — bkz. startDuel ve tick effect'teki
 // ambush dalı, ikisi de aynı setPlayer+ölüm-kontrolü desenini kullanıyor.
-function initiateDuel(ghost, def, player) {
+function initiateDuel(ghost, def, player, t) {
   const ghostFirst = Math.random() < 0.5;
-  const log = [`${ghost.name} karşına çıktı.`, ghostFirst ? "Yazı tura: rakip önce saldırıyor!" : "Yazı tura: önce sen saldırıyorsun!"];
+  const log = [t("warzone.log.duelAppeared", { ghost: ghost.name }), ghostFirst ? t("warzone.log.coinFlipGhostFirst") : t("warzone.log.coinFlipPlayerFirst")];
   let ghostFirstDmg = 0;
   if (ghostFirst) {
     const dmg = playerDamageFromGhost(ghost, def, player);
     ghostFirstDmg = dmg ?? 0;
-    log.push(dmg == null ? `${ghost.name} saldırdı ama ıskaladı.` : `${ghost.name} sana ${dmg} hasar verdi.`);
+    log.push(dmg == null ? t("warzone.log.ghostMissedYou", { ghost: ghost.name }) : t("warzone.log.ghostHitYou", { ghost: ghost.name, dmg }));
   }
   const duel = {
     ghost, ghostHp: ghost.hp, log, finished: false,
@@ -123,6 +124,7 @@ function initiateDuel(ghost, def, player) {
 }
 
 export default function WarzoneTab({ player, setPlayer, pushToast }) {
+  const { t } = useTranslation();
   const cls = CLASSES[player.class];
   const atk = totalStats(player).atk;
   const def = playerDef(player);
@@ -179,11 +181,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       // fonksiyonlarını iki kez çağırdığı senaryoyu, ve iki farklı
       // Math.random() sonucunun dışarıdaki closure değişkenleriyle
       // commit edilen state'ten sapma ihtimalini baştan ortadan kaldırır).
-      const result = warzoneTick(wz, player);
+      const result = warzoneTick(wz, player, t);
       let next = { ...wz, boss: result.boss, bossDamage: result.bossDamage, ghosts: result.ghosts, log: [...wz.log, ...result.lines].slice(-24) };
       let ambushFirstDmg = 0;
       if (result.ambushGhost) {
-        const initiated = initiateDuel(result.ambushGhost, def, player);
+        const initiated = initiateDuel(result.ambushGhost, def, player, t);
         ambushFirstDmg = initiated.ghostFirstDmg;
         next = {
           ...next,
@@ -196,7 +198,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         pushToast(result.lines[result.lines.length - 1], result.bossDied.winner === "player" ? "loot" : "default");
       }
       if (result.ambushGhost) {
-        pushToast(`${result.ambushGhost.name} sana pusu kurdu!`, "warn");
+        pushToast(t("warzone.toast.ambush", { ghost: result.ambushGhost.name }), "warn");
         if (ambushFirstDmg > 0) {
           const wouldDie = player.hp - ambushFirstDmg <= 0;
           setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - ambushFirstDmg) }));
@@ -211,11 +213,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   if (locked || npLocked) {
     return (
       <div style={styles.panelScroll}>
-        <SectionLabel>Savaş Alanı</SectionLabel>
+        <SectionLabel>{t("warzone.title")}</SectionLabel>
         {locked ? (
-          <EmptyState icon={Lock} title="Savaş Alanı kilitli" subtitle={`Buraya girmek için Lv.${WARZONE_UNLOCK_LEVEL} olman gerekiyor.`} />
+          <EmptyState icon={Lock} title={t("warzone.lockedTitle")} subtitle={t("warzone.lockedSubtitle", { level: WARZONE_UNLOCK_LEVEL })} />
         ) : (
-          <EmptyState icon={Lock} title="National Point tükendi" subtitle={`Savaş Alanı'na girmek için en az 1 National Point gerekiyor. Kaptan'dan ${NP_RECOVERY_NP_AMOUNT} National Point satın alabilirsin.`} />
+          <EmptyState icon={Lock} title={t("warzone.npLockedTitle")} subtitle={t("warzone.npLockedSubtitle", { amount: NP_RECOVERY_NP_AMOUNT })} />
         )}
       </div>
     );
@@ -228,18 +230,18 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     const canAfford = player.gold >= WARZONE_TELEPORT_COST;
     return (
       <div style={styles.panelScroll}>
-        <SectionLabel>Savaş Alanı</SectionLabel>
+        <SectionLabel>{t("warzone.title")}</SectionLabel>
         <EmptyState
           icon={DoorOpen}
-          title="Savaş Alanı'na ışınlan"
-          subtitle={`Işınlanma ücreti: ${formatGold(WARZONE_TELEPORT_COST)} altın. Şu an ${formatGold(player.gold)} altının var.`}
+          title={t("warzone.enterTitle")}
+          subtitle={t("warzone.enterSubtitle", { cost: formatGold(WARZONE_TELEPORT_COST), have: formatGold(player.gold) })}
         />
         <button
           style={{ ...styles.primaryBtn, width: "100%", marginTop: 4, background: "#C9425A", opacity: canAfford ? 1 : 0.5 }}
           disabled={!canAfford}
           onClick={() => setConfirmingEntry(true)}
         >
-          <DoorOpen size={14} /> Işınlan ({WARZONE_TELEPORT_COST}g)
+          <DoorOpen size={14} /> {t("warzone.teleportBtn", { cost: WARZONE_TELEPORT_COST })}
         </button>
 
         {confirmingEntry && (
@@ -247,20 +249,20 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
             <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
               <DoorOpen size={28} color="#C9425A" strokeWidth={1.4} />
               <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-                Savaş Alanı'na ışınlanmak {formatGold(WARZONE_TELEPORT_COST)} altın tutar. Onaylıyor musun?
+                {t("warzone.teleportConfirm", { cost: formatGold(WARZONE_TELEPORT_COST) })}
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-                <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingEntry(false)}>Hayır</button>
+                <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingEntry(false)}>{t("warzone.no")}</button>
                 <button
                   style={{ ...styles.tinyBtn, background: "#C9425A" }}
                   onClick={() => {
                     setPlayer((p) => ({ ...p, gold: p.gold - WARZONE_TELEPORT_COST }));
-                    pushToast(`Savaş Alanı'na ışınlandın. (-${formatGold(WARZONE_TELEPORT_COST)} altın)`, "default");
+                    pushToast(t("warzone.toast.teleported", { cost: formatGold(WARZONE_TELEPORT_COST) }), "default");
                     setEntered(true);
                     setConfirmingEntry(false);
                   }}
                 >
-                  Evet
+                  {t("warzone.yes")}
                 </button>
               </div>
             </div>
@@ -293,10 +295,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       if (!prev.boss.alive) return prev;
       const hp = Math.max(0, prev.boss.hp - dmg);
       const bossDamage = { ...prev.bossDamage, player: prev.bossDamage.player + dmg };
-      const log = [...prev.log, !playerHitsBoss ? `${WORLD_BOSS.name}'ı ıskaladın.` : isCrit ? `Kritik! ${WORLD_BOSS.name}'a ${dmg} hasar verdin.` : `${WORLD_BOSS.name}'a ${dmg} hasar verdin.`];
+      const log = [...prev.log, !playerHitsBoss ? t("warzone.log.youMissedBoss", { boss: WORLD_BOSS.name }) : isCrit ? t("warzone.log.youCritBoss", { boss: WORLD_BOSS.name, dmg }) : t("warzone.log.youHitBoss", { boss: WORLD_BOSS.name, dmg })];
       if (hp <= 0) {
-        const resolved = resolveBossDeath(bossDamage, prev.ghosts);
-        log.push(resolved.winner === "player" ? `${WORLD_BOSS.name} düştü — drop'u sen aldın!` : `${WORLD_BOSS.name} düştü — drop'u ${resolved.label} aldı.`);
+        const resolved = resolveBossDeath(bossDamage, prev.ghosts, t);
+        log.push(resolved.winner === "player" ? t("warzone.log.bossDefeatedByYou", { boss: WORLD_BOSS.name }) : t("warzone.log.bossDefeatedByOther", { boss: WORLD_BOSS.name, label: resolved.label }));
         toastMsg = resolved.winner === "player" ? { grant: true } : { grant: false, text: log[log.length - 1] };
         return { ...prev, boss: { hp: 0, maxHp: WORLD_BOSS.hp, alive: false, respawnTicks: RESPAWN_TICKS }, bossDamage, log: log.slice(-24) };
       }
@@ -319,7 +321,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         : 0;
       const wouldDie = player.hp - counter <= 0;
       setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - counter) }));
-      setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? `${WORLD_BOSS.name} sana ${counter} hasar verdi.` : `${WORLD_BOSS.name} saldırdı ama ıskaladı.`].slice(-24) }));
+      setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? t("warzone.log.bossHitYou", { boss: WORLD_BOSS.name, dmg: counter }) : t("warzone.log.bossMissedYou", { boss: WORLD_BOSS.name })].slice(-24) }));
       if (wouldDie) {
         // Aynı düzeltme burada da geçerli — bkz. BattleTab.jsx#resolveMonsterTurn:
         // eskiden "canın kısmen yenilendi" diyen toast hiçbir şeyi geri
@@ -338,6 +340,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     setTimeout(() => { lockRef.current = false; }, 320);
   };
 
+  const REASON_KEY = { "ağırlık kapasitesi dolu.": "battle.reason.weightFull", "çanta dolu.": "battle.reason.bagFull" };
+
   const grantBossLoot = () => {
     let drops = [];
     setPlayer((p) => {
@@ -345,7 +349,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       const goldGain = rand(WORLD_BOSS.bonusGoldMin, WORLD_BOSS.bonusGoldMax);
       const goldBefore = np.gold;
       np.gold = clampGold(np.gold + goldGain);
-      drops = [`+${formatGold(np.gold - goldBefore)} altın`];
+      drops = [t("warzone.drop.gold", { amount: formatGold(np.gold - goldBefore) })];
       if (Math.random() < WORLD_BOSS.equipDropChance) {
         const item = rollLoot(WORLD_BOSS.lootTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
@@ -353,18 +357,18 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         if (item) {
           const res = addItemToInventory(np, item);
           np = res.player;
-          drops.push(res.added ? `Eşya düştü: ${item.name}` : `${item.name} düştü ama ${res.reason}`);
+          drops.push(res.added ? t("warzone.drop.itemDropped", { name: item.name }) : t("warzone.drop.itemDropFailed", { name: item.name, reason: t(REASON_KEY[res.reason] || res.reason) }));
         }
       }
       if (Math.random() < WORLD_BOSS.chestDropChance) {
         np.chests.push({ id: uid(), tier: WORLD_BOSS.lootTier });
-        drops.push(`Sandık düştü! (T${WORLD_BOSS.lootTier})`);
+        drops.push(t("warzone.drop.chestDropped", { tier: WORLD_BOSS.lootTier }));
       }
       if (Math.random() < WORLD_BOSS.scrollDropChance) {
         const scroll = makeScrollStack(WORLD_BOSS.lootTier, 1);
         const res = addItemToInventory(np, scroll);
         np = res.player;
-        drops.push(res.added ? `T${WORLD_BOSS.lootTier} Parşömeni düştü!` : `Parşömen düştü ama ${res.reason}`);
+        drops.push(res.added ? t("warzone.drop.scrollDropped", { tier: WORLD_BOSS.lootTier }) : t("warzone.drop.scrollDropFailed", { reason: t(REASON_KEY[res.reason] || res.reason) }));
       }
       // Bir canavarı (Dünya Canavarı da bir canavar) öldürünce can/mana
       // tam yenilenir.
@@ -379,7 +383,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   const startDuel = (ghost) => {
     if (lockRef.current || wz.duel || player.hp <= 0) return;
     lockRef.current = true;
-    const { duel, ghostFirstDmg } = initiateDuel(ghost, def, player);
+    const { duel, ghostFirstDmg } = initiateDuel(ghost, def, player, t);
     setWz((prev) => ({
       ...prev,
       ghosts: prev.ghosts.map((g) => (g.id === ghost.id ? { ...g, dueling: true } : g)),
@@ -424,7 +428,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     // ama hp/mp'yi HER ZAMAN tam dolduruyoruz — eskiden burası da hiç
     // yapmıyordu, "Bayıldın" sonrası can 0'da kalıp kalıyordu.
     setPlayer((p) => ({ ...penalizeNationalPoint(p), hp: playerMaxHp(p), mp: playerMaxMp(p) }));
-    pushToast(`Bayıldın... Kasabaya taşındın. -${loss} National Point kaybettin.`, "warn");
+    pushToast(t("warzone.toast.fainted", { loss }), "warn");
     endDuel(ghostId, false);
     lockRef.current = false;
   };
@@ -437,7 +441,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     const ghostName = wz.duel.ghost.name;
     const loss = actualNpLoss();
     setPlayer((p) => penalizeNationalPoint(p));
-    pushToast(`Savaştan çekildin — ${ghostName} hükmen galip sayıldı. -${loss} National Point kaybettin.`, "warn");
+    pushToast(t("warzone.toast.conceded", { ghost: ghostName, loss }), "warn");
     endDuel(ghostId, false);
     lockRef.current = false;
     setConfirmingRetreat(false);
@@ -455,17 +459,17 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     const skill = (!isPotion && actionType) ? PVP_SKILLS.find((s) => s.id === actionType) : null;
 
     if (skill) {
-      if ((duel.cooldowns[skill.id] || 0) > 0) { pushToast("Bu beceri hâlâ bekleme süresinde.", "warn"); return; }
-      if (player.mp < skill.mpCost) { pushToast("Yeterli manan yok.", "warn"); return; }
+      if ((duel.cooldowns[skill.id] || 0) > 0) { pushToast(t("battle.skillOnCooldown"), "warn"); return; }
+      if (player.mp < skill.mpCost) { pushToast(t("battle.notEnoughMana"), "warn"); return; }
     }
     let potionResult = null;
     let potionTier = null;
     if (isPotion) {
-      if ((duel.potionCooldowns[potionKind] || 0) > 0) { pushToast("Bu pot hâlâ bekleme süresinde.", "warn"); return; }
+      if ((duel.potionCooldowns[potionKind] || 0) > 0) { pushToast(t("battle.potionOnCooldown"), "warn"); return; }
       potionTier = bestAvailablePotionTier(player, potionKind);
-      if (!potionTier) { pushToast("Pot kalmadı.", "warn"); return; }
+      if (!potionTier) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
       potionResult = usePotion(player, potionKind, potionTier);
-      if (potionResult.reason) { pushToast(potionResult.reason, "warn"); return; }
+      if (potionResult.reason) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
     }
     lockRef.current = true;
 
@@ -487,33 +491,33 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       potionCooldowns[potionKind] = POTION_COOLDOWN_TURNS;
       setPlayer(() => potionResult.player);
       currentHp = potionResult.player.hp;
-      log.push(potionKind === "hp" ? `+${potionResult.healed} can kullandın.` : `+${potionResult.healed} mana kullandın.`);
+      log.push(potionKind === "hp" ? t("warzone.log.potionUsedHp", { healed: potionResult.healed }) : t("warzone.log.potionUsedMp", { healed: potionResult.healed }));
     } else if (!skill) {
       const isCrit = Math.random() < cls.crit;
       const dmg = ghostDamageFromPlayer(cls, atk, duel.ghost, isCrit, player);
       if (dmg == null) {
-        log.push(`${duel.ghost.name}'i ıskaladın.`);
+        log.push(t("warzone.log.youMissedGhost", { ghost: duel.ghost.name }));
       } else {
         ghostHp = Math.max(0, ghostHp - dmg);
-        log.push(isCrit ? `Kritik! ${duel.ghost.name}'e ${dmg} hasar verdin.` : `${duel.ghost.name}'e ${dmg} hasar verdin.`);
+        log.push(isCrit ? t("warzone.log.youCritGhost", { ghost: duel.ghost.name, dmg }) : t("warzone.log.youHitGhost", { ghost: duel.ghost.name, dmg }));
       }
     } else if (skill.id === "pvp_stun") {
       mpCost = skill.mpCost;
       ghostStunned = true;
       cooldowns[skill.id] = skill.cooldown;
-      log.push(`${skill.name}! Rakibi sersemlettin.`);
+      log.push(t("warzone.log.stunUsed", { skill: skill.name }));
     } else if (skill.id === "pvp_manaburn") {
       mpCost = skill.mpCost;
       healBlocked = true;
       cooldowns[skill.id] = skill.cooldown;
-      log.push(`${skill.name}! Rakibin bir sonraki iyileşmesi engellendi.`);
+      log.push(t("warzone.log.manaburnUsed", { skill: skill.name }));
     } else if (skill.id === "pvp_flee") {
       cooldowns[skill.id] = skill.cooldown;
       if (Math.random() < skill.effect.chance) {
         fledSuccessfully = true;
-        log.push("Kaçmayı başardın!");
+        log.push(t("warzone.log.fleeSuccess"));
       } else {
-        log.push("Kaçış başarısız oldu!");
+        log.push(t("warzone.log.fleeFail"));
       }
     }
 
@@ -521,7 +525,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
 
     if (ghostHp <= 0) {
       wonDuel = true;
-      log.push(`${duel.ghost.name}'i yendin!`);
+      log.push(t("warzone.log.ghostDefeated", { ghost: duel.ghost.name }));
     }
 
     if (fledSuccessfully) {
@@ -535,8 +539,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       const nextPlayer = { ...result.player, milestones: { ...result.player.milestones, duelsWon: (result.player.milestones?.duelsWon || 0) + 1 } };
       setPlayer(() => nextPlayer);
       setWz((prev) => ({ ...prev, duel: { ...prev.duel, ghostHp: 0, log: log.slice(-24), finished: true } }));
-      pushToast(`${duel.ghost.name}'i yendin! +${result.gain} National Point`, "loot");
-      newlyUnlocked(player, nextPlayer).forEach((a) => pushToast(`Başarım açıldı: ${a.name} — "${a.title}" unvanı kazanıldı!`, "level"));
+      pushToast(t("warzone.toast.duelWon", { ghost: duel.ghost.name, gain: result.gain }), "loot");
+      newlyUnlocked(player, nextPlayer).forEach((a) => pushToast(t("clan.toastAchievement", { name: a.name, title: a.title }), "level"));
       setTimeout(() => { endDuel(duel.ghost.id, true); lockRef.current = false; }, 700);
       return;
     }
@@ -544,20 +548,20 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     // Rakibin turu: sersemlemişse pas, değilse önce iyileşme şansı, yoksa saldırı.
     let playerDied = false;
     if (ghostStunned) {
-      log.push(`${duel.ghost.name} sersemlemiş durumda, hamle yapamadı.`);
+      log.push(t("warzone.log.ghostStunnedSkip", { ghost: duel.ghost.name }));
       ghostStunned = false;
     } else {
       const healedTo = ghostSelfHeal({ ...duel.ghost, hp: ghostHp }, healBlocked);
       if (healedTo != null) {
         ghostHp = healedTo;
-        log.push(`${duel.ghost.name} kendini iyileştirdi.`);
+        log.push(t("warzone.log.ghostSelfHealed", { ghost: duel.ghost.name }));
         healBlocked = false;
       } else {
         const gdmg = playerDamageFromGhost(duel.ghost, def, player);
         if (gdmg == null) {
-          log.push(`${duel.ghost.name} saldırdı ama ıskaladı.`);
+          log.push(t("warzone.log.ghostMissedYou", { ghost: duel.ghost.name }));
         } else {
-          log.push(`${duel.ghost.name} sana ${gdmg} hasar verdi.`);
+          log.push(t("warzone.log.ghostHitYou", { ghost: duel.ghost.name, dmg: gdmg }));
           setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - gdmg) }));
           playerDied = currentHp - gdmg <= 0;
         }
@@ -584,10 +588,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
 
   return (
     <div style={styles.panelScroll}>
-      <SectionLabel>Savaş Alanı</SectionLabel>
+      <SectionLabel>{t("warzone.title")}</SectionLabel>
       <div style={styles.subtabRow}>
-        <button style={{ ...styles.subtabBtn, ...(subtab === "alan" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("alan")}>Alan</button>
-        <button style={{ ...styles.subtabBtn, ...(subtab === "siralama" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("siralama")}>Sıralama</button>
+        <button style={{ ...styles.subtabBtn, ...(subtab === "alan" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("alan")}>{t("warzone.tabArea")}</button>
+        <button style={{ ...styles.subtabBtn, ...(subtab === "siralama" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("siralama")}>{t("warzone.tabRanking")}</button>
       </div>
 
       {subtab === "alan" && !wz.duel && (
@@ -599,28 +603,28 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{WORLD_BOSS.name}</div>
-                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>Güçlü · yüksek drop şansı — en çok hasar veren drop'u alır</div>
+                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("warzone.bossDesc")}</div>
               </div>
             </div>
             {wz.boss.alive ? (
               <>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
                   <span>{wz.boss.hp}/{wz.boss.maxHp}</span>
-                  <span>Senin hasarın: {wz.bossDamage.player}</span>
+                  <span>{t("warzone.yourDamage", { dmg: wz.bossDamage.player })}</span>
                 </div>
                 <BarTrack pct={(wz.boss.hp / wz.boss.maxHp) * 100} color="#C9425A" />
                 <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 10, background: "#C9425A", opacity: playerDead ? 0.5 : 1 }} onClick={attackBoss} disabled={playerDead}>
-                  <Swords size={14} /> Saldır
+                  <Swords size={14} /> {t("warzone.attack")}
                 </button>
               </>
             ) : (
               <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8, textAlign: "center" }}>
-                Yeniden doğuyor... (~{wz.boss.respawnTicks * (WARZONE_TICK_MS / 1000)}s)
+                {t("warzone.bossRespawning", { seconds: wz.boss.respawnTicks * (WARZONE_TICK_MS / 1000) })}
               </div>
             )}
           </div>
 
-          <SectionLabel>Bölgedeki Rakip Oyuncular</SectionLabel>
+          <SectionLabel>{t("warzone.opponentsHeader")}</SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {idleGhosts.map((g) => {
               const GIcon = CLASSES[g.cls].icon;
@@ -634,12 +638,12 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
                     <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{RACES[g.race].name} · {CLASSES[g.cls].name}</div>
                   </div>
                   <button style={{ ...styles.tinyBtn, background: "#C9425A" }} onClick={() => startDuel(g)} disabled={playerDead}>
-                    Meydan Oku
+                    {t("warzone.challenge")}
                   </button>
                 </div>
               );
             })}
-            {idleGhosts.length === 0 && <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", padding: 10 }}>Şu an kimse yok, birazdan biri belirecek.</div>}
+            {idleGhosts.length === 0 && <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", padding: 10 }}>{t("warzone.noOpponents")}</div>}
           </div>
         </>
       )}
@@ -689,7 +693,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
                 >
                   <Icon size={15} color="#C9425A" />
                   <div style={{ fontSize: 8, marginTop: 2, color: "var(--text-faint)" }}>{skill.name}</div>
-                  <div style={{ fontSize: 7, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{cdLeft > 0 ? cdLeft : (skill.mpCost ? `${skill.mpCost}mp` : "ücretsiz")}</div>
+                  <div style={{ fontSize: 7, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{cdLeft > 0 ? cdLeft : (skill.mpCost ? `${skill.mpCost}mp` : t("warzone.free"))}</div>
                 </button>
               );
             })}
@@ -697,7 +701,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
 
           <div style={styles.battleControls}>
             <button style={{ ...styles.primaryBtn, flex: 1, background: cls.color, opacity: (playerDead || wz.duel.finished) ? 0.5 : 1 }} onClick={() => duelAction(null)} disabled={playerDead || wz.duel.finished}>
-              <Swords size={15} /> Saldır
+              <Swords size={15} /> {t("warzone.attack")}
             </button>
             <button
               style={{ ...styles.potionBtn, opacity: (wz.duel.potionCooldowns.hp > 0 || playerDead || wz.duel.finished) ? 0.5 : 1 }}
@@ -715,7 +719,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
             </button>
           </div>
           <button style={styles.ghostBtn} onClick={() => setConfirmingRetreat(true)} disabled={wz.duel.finished}>
-            <LogOut size={13} /> Geri Çekil
+            <LogOut size={13} /> {t("warzone.retreat")}
           </button>
 
           {confirmingRetreat && (
@@ -723,11 +727,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
               <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
                 <LogOut size={28} color="#C9425A" strokeWidth={1.4} />
                 <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-                  Kaçarsan National Point kaybedersin ve rakip hükmen galip sayılır. Emin misin?
+                  {t("warzone.retreatConfirm")}
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingRetreat(false)}>Hayır</button>
-                  <button style={{ ...styles.tinyBtn, background: "#C9425A" }} onClick={concedeDuel}>Evet</button>
+                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingRetreat(false)}>{t("warzone.no")}</button>
+                  <button style={{ ...styles.tinyBtn, background: "#C9425A" }} onClick={concedeDuel}>{t("warzone.yes")}</button>
                 </div>
               </div>
             </div>
@@ -751,21 +755,21 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
           </div>
 
           <div style={styles.subtabRow}>
-            <button style={{ ...styles.subtabBtn, ...(lbSort === "weeklyPoint" ? styles.subtabBtnActive : {}) }} onClick={() => setLbSort("weeklyPoint")}>Haftalık</button>
-            <button style={{ ...styles.subtabBtn, ...(lbSort === "nationalPoint" ? styles.subtabBtnActive : {}) }} onClick={() => setLbSort("nationalPoint")}>Kalıcı</button>
+            <button style={{ ...styles.subtabBtn, ...(lbSort === "weeklyPoint" ? styles.subtabBtnActive : {}) }} onClick={() => setLbSort("weeklyPoint")}>{t("warzone.weekly")}</button>
+            <button style={{ ...styles.subtabBtn, ...(lbSort === "nationalPoint" ? styles.subtabBtnActive : {}) }} onClick={() => setLbSort("nationalPoint")}>{t("warzone.permanent")}</button>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
             {lbEntries.map((e) => (
               <div key={e.rank} style={{ ...styles.itemRow, ...(e.isPlayer ? { borderColor: "#D4AF6A" } : {}) }}>
                 <div style={{ width: 20, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, color: e.rank <= 3 ? "#D4AF6A" : "var(--text-faint)" }}>{e.rank}</div>
-                <div style={{ flex: 1, fontSize: 12, color: e.isPlayer ? "var(--text-primary)" : "var(--text-muted)" }}>{e.name}{e.isPlayer ? " (Sen)" : ""}</div>
+                <div style={{ flex: 1, fontSize: 12, color: e.isPlayer ? "var(--text-primary)" : "var(--text-muted)" }}>{e.name}{e.isPlayer ? t("warzone.youSuffix") : ""}</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)" }}>{lbSort === "weeklyPoint" ? e.weeklyPoint : e.nationalPoint}</div>
               </div>
             ))}
           </div>
           <div style={styles.dropInfoRow}>
-            <span><Gift size={10} style={{ verticalAlign: "middle" }} /> Haftalık ilk 3: 7000 / 4000 / 2000 Elmas</span>
+            <span><Gift size={10} style={{ verticalAlign: "middle" }} /> {t("warzone.weeklyTopReward")}</span>
           </div>
         </>
       )}

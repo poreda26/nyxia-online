@@ -30,19 +30,37 @@ export function learnFreeSkills(player) {
 // claimed at least one Kaptan quest for the skill's questTier (see
 // utils/quests.js#isTierQuestClaimed) — that's the "gold + görev" gate the
 // whole system exists for.
-export function canUnlockSkill(player, skill) {
-  if (isKnown(player, skill.id)) return { ok: false, reason: "Zaten öğrenildi." };
-  if (player.level < skill.unlockLevel) return { ok: false, reason: `Seviye ${skill.unlockLevel} gerekiyor.` };
+//
+// `t` is the i18n translate function from useTranslation() (see
+// i18n/LanguageContext.jsx). It's optional and defaults to a passthrough
+// that renders the Turkish reason text below, so any caller that doesn't
+// pass one keeps the original behavior; CharacterTab.jsx (the only current
+// caller) always passes the real `t` so reasons render in the active
+// language via i18n/sections/character.js's character.skills.reason.* keys.
+function defaultT(key, vars) {
+  const REASONS = {
+    "character.skills.reason.invalidSkill": "Geçersiz beceri.",
+    "character.skills.reason.known": "Zaten öğrenildi.",
+    "character.skills.reason.levelRequired": `Seviye ${vars?.level} gerekiyor.`,
+    "character.skills.reason.questRequired": `Kaptan'ın T${vars?.tier} görevini tamamlamalısın.`,
+    "character.skills.reason.notEnoughGold": "Yeterli altının yok.",
+  };
+  return REASONS[key] ?? key;
+}
+
+export function canUnlockSkill(player, skill, t = defaultT) {
+  if (isKnown(player, skill.id)) return { ok: false, reason: t("character.skills.reason.known") };
+  if (player.level < skill.unlockLevel) return { ok: false, reason: t("character.skills.reason.levelRequired", { level: skill.unlockLevel }) };
   if (skill.tier === "basic") return { ok: true }; // free, granted by learnFreeSkills already
-  if (!isTierQuestClaimed(player, skill.questTier)) return { ok: false, reason: `Kaptan'ın T${skill.questTier} görevini tamamlamalısın.` };
-  if (player.gold < skill.goldCost) return { ok: false, reason: "Yeterli altının yok." };
+  if (!isTierQuestClaimed(player, skill.questTier)) return { ok: false, reason: t("character.skills.reason.questRequired", { tier: skill.questTier }) };
+  if (player.gold < skill.goldCost) return { ok: false, reason: t("character.skills.reason.notEnoughGold") };
   return { ok: true };
 }
 
-export function unlockSkill(player, skillId) {
+export function unlockSkill(player, skillId, t = defaultT) {
   const skill = getSkill(player.class, skillId);
-  if (!skill) return { player, unlocked: false, reason: "Geçersiz beceri." };
-  const check = canUnlockSkill(player, skill);
+  if (!skill) return { player, unlocked: false, reason: t("character.skills.reason.invalidSkill") };
+  const check = canUnlockSkill(player, skill, t);
   if (!check.ok) return { player, unlocked: false, reason: check.reason };
   const goldCost = skill.tier === "advanced" ? skill.goldCost : 0;
   return {
@@ -79,17 +97,35 @@ export function computeSkillHeal(skill, maxHp) {
   return Math.round((skill.effect.pct || 0) * maxHp);
 }
 
-// Human-readable Turkish blurb for a skill's mechanical effect — used by
+// Human-readable blurb for a skill's mechanical effect — used by
 // CharacterTab's Beceriler list and nowhere else, but kept here next to the
-// effect types themselves so the two never drift apart.
-export function describeEffect(effect) {
+// effect types themselves so the two never drift apart. `t` is the i18n
+// translate function from useTranslation(); it's optional and defaults to
+// rendering the original Turkish sentences, so any caller that doesn't pass
+// one keeps the original behavior. CharacterTab.jsx always passes the real
+// `t`, so this renders via i18n/sections/character.js's
+// character.skills.effect.* keys (keyed by effect.type, not by skill id,
+// since the sentence only depends on the mechanical effect + numbers).
+function defaultEffectT(key, vars) {
+  const EFFECTS = {
+    "character.skills.effect.damage": `Normal saldırının ×${vars?.mult} katı hasar verir.`,
+    "character.skills.effect.heal": `Canının %${vars?.pct}'ünü yeniler.`,
+    "character.skills.effect.buffAtk": `${vars?.turns} vuruş boyunca saldırı gücünü ×${vars?.mult} artırır.`,
+    "character.skills.effect.buffDef": `${vars?.turns} vuruş boyunca savunmayı ×${vars?.mult} artırır.`,
+    "character.skills.effect.dot": `${vars?.turns} vuruş boyunca hedefe ek hasar verir.`,
+    "character.skills.effect.execute": `Hedefin canı %${vars?.pct} altındaysa ×${vars?.mult} hasar verir.`,
+  };
+  return EFFECTS[key] ?? "";
+}
+
+export function describeEffect(effect, t = defaultEffectT) {
   switch (effect.type) {
-    case "damage": return `Normal saldırının ×${effect.mult} katı hasar verir.`;
-    case "heal": return `Canının %${Math.round(effect.pct * 100)}'ünü yeniler.`;
-    case "buffAtk": return `${effect.turns} vuruş boyunca saldırı gücünü ×${effect.mult} artırır.`;
-    case "buffDef": return `${effect.turns} vuruş boyunca savunmayı ×${effect.mult} artırır.`;
-    case "dot": return `${effect.turns} vuruş boyunca hedefe ek hasar verir.`;
-    case "execute": return `Hedefin canı %${Math.round(effect.hpPctThreshold * 100)} altındaysa ×${effect.mult} hasar verir.`;
+    case "damage": return t("character.skills.effect.damage", { mult: effect.mult });
+    case "heal": return t("character.skills.effect.heal", { pct: Math.round(effect.pct * 100) });
+    case "buffAtk": return t("character.skills.effect.buffAtk", { turns: effect.turns, mult: effect.mult });
+    case "buffDef": return t("character.skills.effect.buffDef", { turns: effect.turns, mult: effect.mult });
+    case "dot": return t("character.skills.effect.dot", { turns: effect.turns });
+    case "execute": return t("character.skills.effect.execute", { pct: Math.round(effect.hpPctThreshold * 100), mult: effect.mult });
     default: return "";
   }
 }

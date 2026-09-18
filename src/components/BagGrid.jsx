@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Ban, Check } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { BAG_SLOTS, bagWeightCapacity, bagWeightUsed, reconcileBagLayout } from "../utils/inventory";
+import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import BarTrack from "./shared/BarTrack";
 import ItemIcon from "./ItemIcon";
@@ -17,6 +18,7 @@ import ItemIcon from "./ItemIcon";
 // the two — so a player can freely arrange items into whichever specific
 // boxes they want, gaps included.
 export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulkSelectedIds }) {
+  const { t } = useTranslation();
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const dragMovedRef = useRef(false);
@@ -51,8 +53,8 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
   return (
     <>
       <div style={styles.bagMetaRow}>
-        <span>Çanta {player.inventory.length}/{BAG_SLOTS}</span>
-        <span>Ağırlık {usedWeight}/{weightCap}</span>
+        <span>{t("inventory.bagCountLabel", { count: player.inventory.length, max: BAG_SLOTS })}</span>
+        <span>{t("inventory.weightLabel", { used: usedWeight, cap: weightCap })}</span>
       </div>
       <BarTrack pct={(usedWeight / weightCap) * 100} color={usedWeight / weightCap > 0.85 ? "#C9425A" : "#D4AF6A"} thin />
 

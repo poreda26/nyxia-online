@@ -13,12 +13,12 @@ export function unlockedBossStages(clan) {
 }
 
 export function canOpenClanBoss(player, stageId) {
-  if (!player.clan) return { ok: false, reason: "Bir klana üye değilsin." };
-  if (player.clan.role !== "leader" && player.clan.role !== "officer") return { ok: false, reason: "Sadece lider/yardımcı boss açabilir." };
-  if (player.clan.boss && player.clan.boss.lastOpenedDay === todayKey()) return { ok: false, reason: "Boss bugün zaten açıldı." };
+  if (!player.clan) return { ok: false, reason: "notInClan" };
+  if (player.clan.role !== "leader" && player.clan.role !== "officer") return { ok: false, reason: "leaderOfficerOnlyBoss" };
+  if (player.clan.boss && player.clan.boss.lastOpenedDay === todayKey()) return { ok: false, reason: "bossAlreadyOpenedToday" };
   const stage = findBossStage(stageId);
-  if (!stage) return { ok: false, reason: "Geçersiz aşama." };
-  if (!unlockedBossStages(player.clan).some((s) => s.id === stageId)) return { ok: false, reason: "Bu aşama henüz açılamıyor." };
+  if (!stage) return { ok: false, reason: "invalidStage" };
+  if (!unlockedBossStages(player.clan).some((s) => s.id === stageId)) return { ok: false, reason: "stageLocked" };
   return { ok: true, stage };
 }
 
@@ -110,7 +110,7 @@ export function canPlayerAttackBoss(player) {
 // (cls.atk + gearAtk*0.9, monster.def'e karşı mitigate). Kritik şansı da
 // aynı şekilde sınıfının kendi crit'i.
 export function attackClanBoss(player) {
-  if (!canPlayerAttackBoss(player)) return { player, attacked: false, reason: "Şu an saldıramazsın." };
+  if (!canPlayerAttackBoss(player)) return { player, attacked: false, reason: "cannotAttackNow" };
   const stage = findBossStage(player.clan.boss.stageId);
   const cls = CLASSES[player.class];
   const { atk } = totalStats(player);

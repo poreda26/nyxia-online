@@ -108,7 +108,7 @@ export async function fetchMarket(username) {
 export async function openStall(username, sellerName, durationHours) {
   ensureLoaded(username);
   if (myStall) {
-    return { ok: false, reason: isExpired(myStall) ? "Süresi dolmuş pazarını kapatıp eşyalarını almadan yenisini açamazsın." : "Zaten açık bir pazarın var." };
+    return { ok: false, reason: isExpired(myStall) ? "stallExpiredMustClose" : "stallAlreadyOpen" };
   }
   myStall = { id: uid(), sellerName, items: [], listedAt: Date.now(), durationHours };
   persist();
@@ -118,8 +118,8 @@ export async function openStall(username, sellerName, durationHours) {
 // POST /market/items — tezgaha tek bir eşya ekler (en çok 10).
 export async function addItemToStall(username, item, price) {
   ensureLoaded(username);
-  if (!myStall || isExpired(myStall)) return { ok: false, reason: "Açık bir pazarın yok." };
-  if (myStall.items.length >= MARKET_STALL_MAX_ITEMS) return { ok: false, reason: `Pazar dolu (${MARKET_STALL_MAX_ITEMS}/${MARKET_STALL_MAX_ITEMS}).` };
+  if (!myStall || isExpired(myStall)) return { ok: false, reason: "noOpenStall" };
+  if (myStall.items.length >= MARKET_STALL_MAX_ITEMS) return { ok: false, reason: "stallFull", reasonVars: { max: MARKET_STALL_MAX_ITEMS } };
   myStall.items.push({ id: uid(), item, price });
   persist();
   return { ok: true, stall: { ...myStall, active: true } };
@@ -167,7 +167,7 @@ export async function removeReclaimedItems(username, placedItemIds) {
 // kendi tezgahı buradan hiç geçmiyor (kendi kendine alışveriş yok).
 export async function buyListing(listingId) {
   const idx = npcListings.findIndex((l) => l.id === listingId);
-  if (idx === -1) return { ok: false, reason: "Eşya artık mevcut değil." };
+  if (idx === -1) return { ok: false, reason: "marketItemGone" };
   const [listing] = npcListings.splice(idx, 1);
   return { ok: true, listing: { ...listing } };
 }

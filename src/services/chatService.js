@@ -12,8 +12,8 @@ function seedIfNeeded() {
   seeded = true;
   messages.push({
     id: uid(),
-    author: "Sistem",
-    text: "Sohbete hoş geldin! Buradan diğer maceracılarla konuşabilirsin.",
+    author: "system",
+    textKey: "chat.welcomeMessage",
     isSystem: true,
     isGM: false,
     createdAt: Date.now(),

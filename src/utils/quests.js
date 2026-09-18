@@ -16,10 +16,10 @@ export function isQuestClaimed(player, questId) {
 
 export function claimQuest(player, questId) {
   const quest = MONSTER_QUESTS.find((q) => q.id === questId);
-  if (!quest) return { player, claimed: false, reason: "Geçersiz görev." };
-  if (isQuestClaimed(player, questId)) return { player, claimed: false, reason: "Ödül zaten alındı." };
+  if (!quest) return { player, claimed: false, reason: "invalidQuest" };
+  if (isQuestClaimed(player, questId)) return { player, claimed: false, reason: "rewardAlreadyClaimed" };
   const { done } = questProgress(player, quest);
-  if (!done) return { player, claimed: false, reason: "Görev henüz tamamlanmadı." };
+  if (!done) return { player, claimed: false, reason: "questNotDone" };
   // Her görev, kendi haritasının tier'ından bir Sandık da veriyor — Kırma
   // panelinden açılır, aynı rollLoot(tier) havuzunu kullanır (bkz.
   // utils/loot.js, components/ChestModal.jsx).
@@ -56,8 +56,8 @@ export function awakeningProgress(player) {
 }
 
 export function claimAwakening(player) {
-  if (player.awakened) return { player, claimed: false, reason: "Zaten Uyanmışsın." };
-  if (player.level < AWAKENING_QUEST.requiredLevel) return { player, claimed: false, reason: `Seviye ${AWAKENING_QUEST.requiredLevel} gerekiyor.` };
-  if (!awakeningProgress(player).done) return { player, claimed: false, reason: "Sınav henüz tamamlanmadı." };
+  if (player.awakened) return { player, claimed: false, reason: "alreadyAwakened" };
+  if (player.level < AWAKENING_QUEST.requiredLevel) return { player, claimed: false, reason: "levelRequired", reasonVars: { level: AWAKENING_QUEST.requiredLevel } };
+  if (!awakeningProgress(player).done) return { player, claimed: false, reason: "trialNotDone" };
   return { player: { ...player, awakened: true }, claimed: true };
 }

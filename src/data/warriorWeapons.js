@@ -4,8 +4,14 @@
 // C:\Users\akcel\Desktop\RPGMarket\_legacy_items_backup\warriorWeapons.js'te
 // yedekli duruyor, gerekirse referans alınabilir.
 export const WEAPON_TYPE_LABEL = {
-  dagger: "Hançer", sword: "Kılıç", axe: "Balta", mace: "Balyoz", spear: "Mızrak", longspear: "Uzun Mızrak",
-  shield: "Kalkan", bow: "Yay", longbow: "Uzun Yay", staff: "Asa", javelin: "Cirit",
+  tr: {
+    dagger: "Hançer", sword: "Kılıç", axe: "Balta", mace: "Balyoz", spear: "Mızrak", longspear: "Uzun Mızrak",
+    shield: "Kalkan", bow: "Yay", longbow: "Uzun Yay", staff: "Asa", javelin: "Cirit",
+  },
+  en: {
+    dagger: "Dagger", sword: "Sword", axe: "Axe", mace: "Mace", spear: "Spear", longspear: "Long Spear",
+    shield: "Shield", bow: "Bow", longbow: "Longbow", staff: "Staff", javelin: "Javelin",
+  },
 };
 
 export const WEAPON_TYPE_ICON = {

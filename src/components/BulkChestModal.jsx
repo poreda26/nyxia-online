@@ -1,6 +1,7 @@
 import { Gift, X } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { displayItemName } from "../utils/player";
+import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import ItemIcon from "./ItemIcon";
 import {itemStatLabel} from '../utils/itemDisplay';
@@ -10,6 +11,7 @@ import {itemStatLabel} from '../utils/itemDisplay';
 // açmak problem olabiliyor, toplu kutu açabileceğimiz bir çözüm yap." Bu
 // modal hepsini anında çözüp tek bir özet listesi gösteriyor, animasyonsuz.
 export default function BulkChestModal({ result, onClose }) {
+  const { t } = useTranslation();
   const { items, failed } = result;
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
@@ -23,11 +25,11 @@ export default function BulkChestModal({ result, onClose }) {
 
         <Gift size={32} color="#D4AF6A" strokeWidth={1.4} />
         <div style={{ marginTop: 10, fontFamily: "var(--font-display)", fontSize: 16, textAlign: "center" }}>
-          {items.length} eşya kazanıldı!
+          {t("inventory.bulkChestWon", { count: items.length })}
         </div>
         {failed > 0 && (
           <div style={{ fontSize: 10, color: "#E8A5AF", marginTop: 4, textAlign: "center" }}>
-            {failed} eşya çantana sığmadı, kayboldu.
+            {t("inventory.bulkChestLost", { count: failed })}
           </div>
         )}
 
@@ -40,11 +42,11 @@ export default function BulkChestModal({ result, onClose }) {
             </div>
           ))}
           {items.length === 0 && (
-            <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", padding: 10 }}>Hiçbir eşya kazanılmadı.</div>
+            <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", padding: 10 }}>{t("inventory.bulkChestNone")}</div>
           )}
         </div>
 
-        <button style={{ ...styles.primaryBtn, marginTop: 16, width: "100%" }} onClick={onClose}>Tamam</button>
+        <button style={{ ...styles.primaryBtn, marginTop: 16, width: "100%" }} onClick={onClose}>{t("inventory.okBtn")}</button>
       </div>
     </div>
   );

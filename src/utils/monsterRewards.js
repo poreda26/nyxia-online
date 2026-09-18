@@ -17,7 +17,7 @@ import { MAPS } from "../data/maps";
 // Shared by the original panel battles and the real-time world.
 function pickDropTier(tier) { return Math.random() < 0.5 ? tier : Math.max(1, tier - 1); }
 export function grantMonsterReward(p, m, map) {
-  if(m.mapBoss&&!canFightMapBoss(p,map.id).ok)return {player:p,msg:'Bu boss bugün yenildi.',tone:'warn'};
+  if(m.mapBoss&&!canFightMapBoss(p,map.id).ok)return {player:p,drops:null,blockedReasonKey:'battle.bossDefeatedToday',tone:'warn'};
   const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p);
   const dropMult = premiumDropMultiplier(p);
   let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
@@ -36,18 +36,22 @@ export function grantMonsterReward(p, m, map) {
   const actualGoldGain = np.gold - goldBefore;
   np.xp += xpGain;
 
-  let drops = actualGoldGain > 0 ? [`+${formatGold(actualGoldGain)} altın`] : [];
-  if (xpGain > 0) drops.push(`+${xpGain} XP`);
+  // Kullanıcı isteği: "hepsini çevir" — bu fonksiyon React dışı (hook yok),
+  // bu yüzden hazır Türkçe cümle basmak yerine BattleTab.jsx'in t() ile
+  // biçimlendireceği YAPILANDIRILMIŞ (typed) bir drops dizisi döndürüyor.
+  let drops = [];
+  if (actualGoldGain > 0) drops.push({ type: "gold", amount: actualGoldGain });
+  if (xpGain > 0) drops.push({ type: "xp", amount: xpGain });
 
   const relatedQuest = MONSTER_QUESTS.find((q) => q.monsterId === m.id);
   if (relatedQuest && !(p.claimedQuests || []).includes(relatedQuest.id)) {
     const current = np.monsterKills[m.id];
     if (current >= relatedQuest.target) {
       if (killsBefore < relatedQuest.target) {
-        drops.push("Görev tamamlandı! Kaptan'ın yanına uğra.");
+        drops.push({ type: "questComplete" });
       }
     } else {
-      drops.push(`Görev: ${current}/${relatedQuest.target}`);
+      drops.push({ type: "questProgress", current, target: relatedQuest.target });
     }
   }
 
@@ -59,7 +63,7 @@ export function grantMonsterReward(p, m, map) {
     const wasDone = dailyKillsBefore >= slot.target;
     const isDone = np.dailyQuests.killsToday >= slot.target;
     if (isDone && !wasDone) {
-      drops.push(`Günlük görev tamamlandı! (${slot.target} öldürme)`);
+      drops.push({ type: "dailyQuestComplete", target: slot.target });
     }
   });
 
@@ -70,20 +74,21 @@ export function grantMonsterReward(p, m, map) {
       const addResult = addItemToInventory(np, item);
       np = addResult.player;
       if (addResult.added) np.hasNewItemNotice = true;
-      const kindLabel = item.kind === "weapon" ? "Silah" : item.kind === "accessory" ? "Aksesuar" : "Zırh";
-      drops.push(addResult.added ? `${kindLabel} düştü: ${item.name}` : `${item.name} düştü ama ${addResult.reason}`);
+      drops.push(addResult.added
+        ? { type: "itemDropped", kind: item.kind, itemName: item.name }
+        : { type: "itemDropFailed", itemName: item.name, reason: addResult.reason });
     }
   }
   if (Math.random() < map.chestChance * dropMult) {
     const chestTier = pickDropTier(map.tier);
     const chest = { id: uid(), tier: chestTier };
     np.chests.push(chest);
-    drops.push(`Sandık düştü! (T${chestTier})`);
+    drops.push({ type: "chestDropped", tier: chestTier });
   }
   if (m.mapBoss) {
     np = registerMapBossDefeat(np, map.id);
     np.chests.push({ id: uid(), tier: map.tier });
-    drops.push(`Muhafız Sandığı kazandın! (T${map.tier})`);
+    drops.push({ type: "guardChest", tier: map.tier });
   }
 
   const levelBefore = p.level;
@@ -100,7 +105,7 @@ export function grantMonsterReward(p, m, map) {
   np.hp = playerMaxHp(np);
   np.mp = playerMaxMp(np);
   if (leveled) {
-    drops.push(`Seviye atladın! Lv.${np.level} (+${levelsGained * 3} statü puanı)`);
+    drops.push({ type: "levelUpToast", level: np.level, statPoints: levelsGained * 3 });
   }
   np = learnFreeSkills(np);
   // Kullanıcı isteği: "5 Lvl oldun!" tarzında bir widget — bu geçişte hangi
@@ -109,5 +114,5 @@ export function grantMonsterReward(p, m, map) {
   // İLK yeni haritayı buluyoruz — BattleTab'daki widget onu gösterecek.
   const unlockedMap = leveled ? MAPS.find((m) => m.levelMin > levelBefore && m.levelMin <= np.level) : null;
   const levelUp = leveled ? { fromLevel: levelBefore, toLevel: np.level, levelsGained, statPointsGained: levelsGained * 3, unlockedMap } : null;
-  return { player: np, msg: drops.join("  ·  "), tone: leveled ? "level" : "loot", levelUp };
+  return { player: np, drops, blockedReasonKey: null, tone: leveled ? "level" : "loot", levelUp };
 }

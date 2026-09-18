@@ -21,7 +21,7 @@ export function bestAvailablePotionTier(player, potionType) {
 export function usePotion(player, potionType, tier) {
   const stack = player.inventory.find((i) => i.kind === "potion" && i.potionType === potionType && i.tier === tier);
   if (!stack || stack.count <= 0) {
-    return { player, healed: 0, reason: "Pot kalmadı." };
+    return { player, healed: 0, reason: "noPotionsLeft" };
   }
   const maxStat = potionType === "hp" ? playerMaxHp(player) : playerMaxMp(player);
   const healAmt = potionAmount(potionType, tier);

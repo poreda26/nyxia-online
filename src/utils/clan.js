@@ -93,10 +93,10 @@ function freshTreasury() {
 }
 
 export function foundClan(player, name) {
-  if (player.clan) return { player, founded: false, reason: "Zaten bir klana üyesin." };
+  if (player.clan) return { player, founded: false, reason: "alreadyInClan" };
   const trimmed = (name || "").trim();
-  if (!trimmed) return { player, founded: false, reason: "Bir klan adı gir." };
-  if (player.diamonds < CLAN_FOUND_COST_DIAMONDS) return { player, founded: false, reason: "Yeterli elmasın yok." };
+  if (!trimmed) return { player, founded: false, reason: "enterClanName" };
+  if (player.diamonds < CLAN_FOUND_COST_DIAMONDS) return { player, founded: false, reason: "notEnoughDiamonds" };
 
   const memberCount = rand(15, 38);
   const clan = {
@@ -174,8 +174,8 @@ export function clanLeaderboardFor(race, player) {
 }
 
 export function joinClan(player, decoyClan) {
-  if (player.clan) return { player, joined: false, reason: "Zaten bir klana üyesin." };
-  if (decoyClan.members.length + 1 >= CLAN_MAX_MEMBERS) return { player, joined: false, reason: "Klan dolu." };
+  if (player.clan) return { player, joined: false, reason: "alreadyInClan" };
+  if (decoyClan.members.length + 1 >= CLAN_MAX_MEMBERS) return { player, joined: false, reason: "clanFull" };
   const clan = {
     id: decoyClan.id, name: decoyClan.name, color: decoyClan.color,
     role: "member", founded: false, createdAt: Date.now(),
@@ -228,9 +228,9 @@ export { todayKey };
 // leaveClan) — gold/elmas bağışının hiçbir geri ödemesi yok (kullanıcı
 // isteği: sadece NP için %35 iade var).
 export function donateNP(player, amount) {
-  if (!player.clan) return { player, donated: false, reason: "Bir klana üye değilsin." };
-  if (!Number.isFinite(amount) || amount <= 0) return { player, donated: false, reason: "Geçerli bir miktar gir." };
-  if (player.nationalPoint < amount) return { player, donated: false, reason: "Yeterli NP'in yok." };
+  if (!player.clan) return { player, donated: false, reason: "notInClan" };
+  if (!Number.isFinite(amount) || amount <= 0) return { player, donated: false, reason: "enterValidAmount" };
+  if (player.nationalPoint < amount) return { player, donated: false, reason: "notEnoughNP" };
   return {
     player: {
       ...player,
@@ -242,9 +242,9 @@ export function donateNP(player, amount) {
 }
 
 export function donateGold(player, amount) {
-  if (!player.clan) return { player, donated: false, reason: "Bir klana üye değilsin." };
-  if (!Number.isFinite(amount) || amount <= 0) return { player, donated: false, reason: "Geçerli bir miktar gir." };
-  if (player.gold < amount) return { player, donated: false, reason: "Yeterli altının yok." };
+  if (!player.clan) return { player, donated: false, reason: "notInClan" };
+  if (!Number.isFinite(amount) || amount <= 0) return { player, donated: false, reason: "enterValidAmount" };
+  if (player.gold < amount) return { player, donated: false, reason: "notEnoughGold" };
   return {
     player: { ...player, gold: player.gold - amount, clan: { ...player.clan, treasury: { ...player.clan.treasury, gold: player.clan.treasury.gold + amount } } },
     donated: true,
@@ -252,9 +252,9 @@ export function donateGold(player, amount) {
 }
 
 export function donateDiamonds(player, amount) {
-  if (!player.clan) return { player, donated: false, reason: "Bir klana üye değilsin." };
-  if (!Number.isFinite(amount) || amount <= 0) return { player, donated: false, reason: "Geçerli bir miktar gir." };
-  if (player.diamonds < amount) return { player, donated: false, reason: "Yeterli elmasın yok." };
+  if (!player.clan) return { player, donated: false, reason: "notInClan" };
+  if (!Number.isFinite(amount) || amount <= 0) return { player, donated: false, reason: "enterValidAmount" };
+  if (player.diamonds < amount) return { player, donated: false, reason: "notEnoughDiamonds" };
   return {
     player: { ...player, diamonds: player.diamonds - amount, clan: { ...player.clan, treasury: { ...player.clan.treasury, diamonds: player.clan.treasury.diamonds + amount } } },
     donated: true,
@@ -266,19 +266,19 @@ export function donateDiamonds(player, amount) {
 // lider/yardımcı yükseltebilir — Klan Zindanı'nı başlatma yetkisiyle aynı
 // kural (bkz. canStartDungeon).
 export function canUpgradeClanBuilding(player) {
-  if (!player.clan) return { ok: false, reason: "Bir klana üye değilsin." };
-  if (player.clan.role !== "leader" && player.clan.role !== "officer") return { ok: false, reason: "Sadece lider/yardımcı yükseltebilir." };
-  if (player.clan.buildingLevel >= CLAN_BUILDING_MAX_LEVEL) return { ok: false, reason: "Klan Binası zaten en üst seviyede." };
+  if (!player.clan) return { ok: false, reason: "notInClan" };
+  if (player.clan.role !== "leader" && player.clan.role !== "officer") return { ok: false, reason: "leaderOfficerOnlyUpgrade" };
+  if (player.clan.buildingLevel >= CLAN_BUILDING_MAX_LEVEL) return { ok: false, reason: "clanBuildingMaxLevel" };
   const cost = CLAN_BUILDING_UPGRADE_COST[player.clan.buildingLevel + 1];
   if (player.clan.treasury.gold < cost.gold || player.clan.treasury.diamonds < cost.diamonds) {
-    return { ok: false, reason: `Hazinede ${cost.gold}g ve ${cost.diamonds} elmas gerekiyor.` };
+    return { ok: false, reason: "treasuryNeedsCost", reasonVars: { gold: cost.gold, diamonds: cost.diamonds } };
   }
   return { ok: true, cost };
 }
 
 export function upgradeClanBuilding(player) {
   const check = canUpgradeClanBuilding(player);
-  if (!check.ok) return { player, upgraded: false, reason: check.reason };
+  if (!check.ok) return { player, upgraded: false, reason: check.reason, reasonVars: check.reasonVars };
   return {
     player: {
       ...player,
@@ -305,7 +305,7 @@ export function canStartDungeon(player) {
 // İçerik henüz yok (kullanıcı ek bilgi verecek) — bu sadece günlük
 // başlatma/durum iskeleti (bkz. components/ClanTab.jsx).
 export function startDungeon(player) {
-  if (!canStartDungeon(player)) return { player, started: false, reason: "Zindan bugün zaten başlatıldı ya da yetkin yok." };
+  if (!canStartDungeon(player)) return { player, started: false, reason: "clanDungeonUnavailable" };
   return {
     player: { ...player, clan: { ...player.clan, dungeon: { lastStartedDay: todayKey(), startedBy: player.nickname || "Sen" } } },
     started: true,

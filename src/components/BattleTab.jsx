@@ -61,7 +61,7 @@ function pickAutoSkill({ loadout, playerClass, skillCooldowns, mp, monsterHpPct,
 }
 
 export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
-  const { t } = useTranslation();
+  const { t, tm } = useTranslation();
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const latestPlayer = useRef(player);
@@ -108,9 +108,9 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const confirmTeleport = () => {
     const targetMap = pendingMap;
     if (!targetMap) return;
-    if (player.gold < GATE_TELEPORT_COST) { pushToast(`Işınlanmak için ${GATE_TELEPORT_COST} altın gerekiyor.`, "warn"); setPendingMap(null); return; }
+    if (player.gold < GATE_TELEPORT_COST) { pushToast(t("battle.gateNeedsGold", { cost: GATE_TELEPORT_COST }), "warn"); setPendingMap(null); return; }
     setPlayer((p) => ({ ...p, gold: p.gold - GATE_TELEPORT_COST, currentMapId: targetMap.id }));
-    pushToast(`Kapı'dan ${targetMap.name}'e ışınlandın. (-${GATE_TELEPORT_COST} altın)`, "default");
+    pushToast(t("battle.teleported", { map: targetMap.name, cost: GATE_TELEPORT_COST }), "default");
     setPendingMap(null);
   };
 
@@ -122,7 +122,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const enterSoloDungeon = () => {
     if (locked) return;
     const check = canEnterSoloDungeon(player);
-    if (!check.ok) { pushToast(check.reason, "warn"); return; }
+    if (!check.ok) { pushToast(t("battle.dungeonEntriesExhausted"), "warn"); return; }
     const stages = buildSoloDungeonStages(map);
     setPlayer((p) => consumeDungeonEntry(p));
     setDungeonRun({ stages, index: 0 });
@@ -134,7 +134,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     const nextIndex = dungeonChoice.nextIndex;
     setDungeonChoice(null);
     setDungeonRun({ ...dungeonRun, index: nextIndex });
-    pushToast(nextStage.risk ? "Riskli yol seçildi: ödüller arttı." : "Güvenli yol seçildi.", "default");
+    pushToast(nextStage.risk ? t("battle.riskyChosen") : t("battle.safeChosen"), "default");
     startBattle(nextStage, { preserveAutoBattle: true });
   };
 
@@ -163,7 +163,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // bildirdiği bug). Artık nereden geliniyorsa gelinsin (fresh seçim ya da
   // Tekrar Savaş) her yeni savaş dolu can/manayla başlıyor.
   const startBattle = (m, { preserveAutoBattle = false } = {}) => {
-    if(m.mapBoss&&!canFightMapBoss(latestPlayer.current,map.id).ok){pushToast('Bu boss bugün yenildi.', 'warn');return;}
+    if(m.mapBoss&&!canFightMapBoss(latestPlayer.current,map.id).ok){pushToast(t('battle.bossDefeatedToday'), 'warn');return;}
     attackLockRef.current = false;
     setMonster(m);
     setVisual({id:0,type:'',label:''});
@@ -171,7 +171,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       monsterHp: m.hp,
       monsterMaxHp: m.hp,
       finished: false,
-      log: [`${m.name} karşına çıktı.`],
+      log: [t("battle.log.appeared", { monster: tm(m) })],
       ...EMPTY_BATTLE_EFFECTS,
     });
     setPlayer((p) => {
@@ -201,7 +201,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     let log = b.log;
     if (b.dot && b.dot.turnsLeft > 0) {
       monsterHp = Math.max(0, monsterHp - b.dot.dmgPerTurn);
-      log = pushLog(log, `Süregelen etki ${b.dot.dmgPerTurn} hasar verdi.`);
+      log = pushLog(log, t("battle.log.dotDamage", { dmg: b.dot.dmgPerTurn }));
     }
     const dot = b.dot && b.dot.turnsLeft > 1 ? { ...b.dot, turnsLeft: b.dot.turnsLeft - 1 } : null;
     const buffs = b.buffs.map((buf) => ({ ...buf, turnsLeft: buf.turnsLeft - 1 })).filter((buf) => buf.turnsLeft > 0);
@@ -217,12 +217,32 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // kills. Every setPlayer call below is now either a pure updater or the
   // side effects (pushToast) are read from a plain local variable *after*
   // setPlayer returns, never from inside the updater itself.
+  // grantMonsterReward React dışı olduğu için hazır Türkçe cümle yerine
+  // typed bir `drops` dizisi döndürüyor (bkz. utils/monsterRewards.js'in
+  // üstündeki not) — burada, hook'a erişimi olan bileşen tarafında t() ile
+  // biçimlendiriliyor.
+  const REASON_KEY = { "ağırlık kapasitesi dolu.": "battle.reason.weightFull", "çanta dolu.": "battle.reason.bagFull" };
+  const formatDrop = (d) => {
+    switch (d.type) {
+      case "gold": return t("battle.drop.gold", { amount: formatGold(d.amount) });
+      case "xp": return t("battle.drop.xp", { amount: d.amount });
+      case "questComplete": return t("battle.drop.questComplete");
+      case "questProgress": return t("battle.drop.questProgress", { current: d.current, target: d.target });
+      case "dailyQuestComplete": return t("battle.drop.dailyQuestComplete", { target: d.target });
+      case "itemDropped": return t("battle.drop.itemDropped", { kind: t(`battle.kind.${d.kind}`), name: d.itemName });
+      case "itemDropFailed": return t("battle.drop.itemDropFailed", { name: d.itemName, reason: t(REASON_KEY[d.reason] || d.reason) });
+      case "chestDropped": return t("battle.drop.chestDropped", { tier: d.tier });
+      case "guardChest": return t("battle.drop.guardChest", { tier: d.tier });
+      case "levelUpToast": return t("battle.drop.levelUpToast", { level: d.level, statPoints: d.statPoints });
+      default: return "";
+    }
+  };
   const applyLoot = (m) => {
     if (!mountedRef.current) return;
     const result = grantMonsterReward(latestPlayer.current, m, map);
     latestPlayer.current = result.player;
     setPlayer(result.player);
-    pushToast(result.msg, result.tone);
+    pushToast(result.blockedReasonKey ? t(result.blockedReasonKey) : result.drops.map(formatDrop).join("  ·  "), result.tone);
     // Kullanıcı isteği: "Seviye atladığımız zaman 5 Lvl oldun! tarzında bir
     // widget açılsın... buna bir ses ekle." — toast zaten "Seviye atladın!"
     // satırını taşıyor, bu modal/ses üstüne kutlama katmanı ekliyor.
@@ -246,7 +266,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const chest = { id: uid(), tier: map.tier };
       const nextGold = clampGold(p.gold + bonusGold);
       actualGold = nextGold - p.gold;
-      toastMsg = `Zindan tamamlandı! ${boss.name} yenildi. +${formatGold(actualGold)} altın, T${map.tier} Sandık kazandın.`;
+      toastMsg = t("battle.dungeonCompleteToast", { boss: tm(boss), gold: formatGold(actualGold), tier: map.tier });
       return { ...p, gold: nextGold, chests: [...p.chests, chest] };
     });
     pushToast(toastMsg, "level");
@@ -264,7 +284,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // battle (or even show "Bayıldın") on a hit the player actually survived.
   const resolveMonsterTurn = (monsterHp, log, extra, currentHp = player.hp) => {
     if (monsterHp <= 0) {
-      log = pushLog(log, `${monster.name} yenildi.`);
+      log = pushLog(log, t("battle.log.monsterDefeated", { monster: tm(monster) }));
       const wonMonster = monster;
       setBattle({ ...battle, ...extra, monsterHp, log, finished: true });
       // lock stays engaged through this window so extra clicks can't
@@ -292,7 +312,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             setBattle(null);
             if (nextStage.isBoss) {
               setDungeonRun({ ...dungeonRun, index: nextIndex });
-              pushToast("Zindan Efendisi seni bekliyor!", "default");
+              pushToast(t("battle.dungeonBossWaiting"), "default");
               startBattle(nextStage, { preserveAutoBattle: true });
             } else {
               setDungeonChoice({ nextIndex, choices: buildDungeonStageChoices(map, nextIndex) });
@@ -324,7 +344,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       : 0;
     const playerDied = currentHp - mdmg <= 0;
     setVisual(v => ({...v, incoming:{hit:monsterHits,damage:mdmg}}));
-    log = pushLog(log, monsterHits ? `${monster.name} sana ${mdmg} hasar verdi.` : `${monster.name} saldırdı ama ıskaladı.`);
+    log = pushLog(log, monsterHits ? t("battle.log.monsterHit", { monster: tm(monster), dmg: mdmg }) : t("battle.log.monsterMiss", { monster: tm(monster) }));
     if (monsterHits) playHurt(); else playMiss();
 
     // Getting hit wears the armor down — same durability/repair loop as
@@ -384,7 +404,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)))
       : 0;
     const monsterHp = Math.max(0, ticked.monsterHp - dmg);
-    const log = pushLog(ticked.log, !playerHits ? "Vuruşunu ıskaladın." : isCrit ? `Kritik vuruş! ${dmg} hasar verdin.` : `${dmg} hasar verdin.`);
+    const log = pushLog(ticked.log, !playerHits ? t("battle.log.playerMiss") : isCrit ? t("battle.log.criticalHit", { dmg }) : t("battle.log.hit", { dmg }));
     // Kullanıcı isteği: canavarın bize vurunca gösterdiği "−X"/"Iskaladı"
     // uçan yazı sadece o yönde çalışıyordu — bkz. resolveMonsterTurn'daki
     // aynı desenin `incoming` karşılığı, BattleScene.jsx'te render ediliyor.
@@ -410,8 +430,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     if (!battle || battle.finished || player.hp <= 0) return;
     const skill = classSkills(player.class).find((s) => s.id === skillId);
     if (!skill) return;
-    if ((battle.skillCooldowns[skillId] || 0) > 0) { pushToast("Bu beceri hâlâ bekleme süresinde.", "warn"); return; }
-    if (player.mp < skill.mpCost) { pushToast("Yeterli manan yok.", "warn"); return; }
+    if ((battle.skillCooldowns[skillId] || 0) > 0) { pushToast(t("battle.skillOnCooldown"), "warn"); return; }
+    if (player.mp < skill.mpCost) { pushToast(t("battle.notEnoughMana"), "warn"); return; }
     attackLockRef.current = true;
 
     const ticked = tickBattleEffects(battle);
@@ -437,21 +457,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const atkMult = buffMultiplier(ticked.buffs, "atk");
       const dmg = Math.max(1, Math.round(computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct, rand }) * atkMult));
       monsterHp = Math.max(0, ticked.monsterHp - dmg);
-      log = pushLog(log, `${skill.name}! ${dmg} hasar verdin.`);
+      log = pushLog(log, t("battle.log.skillDamage", { skill: skill.name, dmg }));
       setVisual((v) => ({ ...v, outgoing: { hit: true, damage: dmg, crit: false } }));
       playHit({ crit: false });
       setShake("monster");
       setTimeout(() => setShake(null), 260);
     } else if (e.type === "heal") {
       healAmt = computeSkillHeal(skill, maxHp);
-      log = pushLog(log, `${skill.name}! +${healAmt} can.`);
+      log = pushLog(log, t("battle.log.skillHeal", { skill: skill.name, amount: healAmt }));
     } else if (e.type === "buffAtk" || e.type === "buffDef") {
       buffs = [...buffs, { stat: e.type === "buffAtk" ? "atk" : "def", mult: e.mult, turnsLeft: e.turns }];
-      log = pushLog(log, `${skill.name}! Güçlendin.`);
+      log = pushLog(log, t("battle.log.skillBuff", { skill: skill.name }));
     } else if (e.type === "dot") {
       const perTick = computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct: 1, rand: () => 0 });
       dot = { dmgPerTurn: perTick, turnsLeft: e.turns };
-      log = pushLog(log, `${skill.name}! Hedef sürekli hasar almaya başladı.`);
+      log = pushLog(log, t("battle.log.skillDot", { skill: skill.name }));
       playHit({ crit: false });
       setShake("monster");
       setTimeout(() => setShake(null), 260);
@@ -469,11 +489,11 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const handlePotion = (kind) => {
     if (attackLockRef.current) return;
     if (!battle || battle.finished || player.hp <= 0) return;
-    if ((battle.potionCooldowns[kind] || 0) > 0) { pushToast("Bu pot hâlâ bekleme süresinde.", "warn"); return; }
+    if ((battle.potionCooldowns[kind] || 0) > 0) { pushToast(t("battle.potionOnCooldown"), "warn"); return; }
     const tier = bestAvailablePotionTier(player, kind);
-    if (!tier) { pushToast("Pot kalmadı.", "warn"); return; }
+    if (!tier) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
     const result = usePotion(player, kind, tier);
-    if (result.reason) { pushToast(result.reason, "warn"); return; }
+    if (result.reason) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
     attackLockRef.current = true;
     showAction('potion', kind === 'hp' ? t('battle.actionHpPotion') : t('battle.actionMpPotion'));
 
@@ -487,7 +507,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     }
 
     setPlayer(() => result.player);
-    const log = pushLog(ticked.log, kind === "hp" ? `+${result.healed} can kullandın.` : `+${result.healed} mana kullandın.`);
+    const log = pushLog(ticked.log, kind === "hp" ? t("battle.log.usedHpPotion", { n: result.healed }) : t("battle.log.usedMpPotion", { n: result.healed }));
     resolveMonsterTurn(ticked.monsterHp, log, { ...ticked, potionCooldowns }, result.player.hp);
   };
 
@@ -506,7 +526,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const autoBattleOn = !!player.autoBattle?.enabled && autoBattleAccess;
   const AUTO_BATTLE_DEFAULTS = { enabled: false, hpThreshold: 35, mpThreshold: 35, autoSkill: false };
   const toggleAutoBattle = () => {
-    if (!autoBattleAccess) { pushToast("Otomatik Saldırı bir Apex/Mythic Premium özelliğidir.", "warn"); return; }
+    if (!autoBattleAccess) { pushToast(t("battle.autoBattlePremiumOnly"), "warn"); return; }
     setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, enabled: !p.autoBattle?.enabled } }));
   };
   const setHpThreshold = (v) => setPlayer((p) => ({ ...p, autoBattle: { ...AUTO_BATTLE_DEFAULTS, ...p.autoBattle, hpThreshold: v } }));
@@ -608,7 +628,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Trophy size={20} color="#D4AF6A" strokeWidth={1.6} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13 }}>{mapBoss.name}</div>
+                <div style={{ fontSize: 13 }}>{tm(mapBoss)}</div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("battle.mapBossDesc")}</div>
               </div>
               <button
@@ -666,7 +686,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                         <Skull size={18} strokeWidth={1.6} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{m.name}</div>
+                        <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{tm(m)}</div>
                         <div style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", gap: 10, marginTop: 3 }}>
                           <span>HP {m.hp}</span><span>ATK {m.atk}</span><span>DEF {m.def}</span>
                         </div>
@@ -702,7 +722,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           {!hasBattleScene(monster) && <>
           <div className={shake === "monster" ? "shake" : ""} style={{ ...styles.combatant, borderColor: `${map.color}55` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{monster.name}</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{tm(monster)}</span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{battle.monsterHp}/{battle.monsterMaxHp}</span>
             </div>
             <BarTrack pct={(battle.monsterHp / battle.monsterMaxHp) * 100} color={map.color} />
@@ -730,7 +750,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             {battle.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}
           </div></details>
 
-          <div className="battle-skill-dock" aria-label="Beceriler" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, marginBottom: 8 }}>
+          <div className="battle-skill-dock" aria-label={t("battle.skillsAriaLabel")} style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, marginBottom: 8 }}>
             {player.skills.loadout.map((skillId, i) => {
               if (!skillId) {
                 return (
@@ -876,7 +896,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <Trophy size={32} color="#D4AF6A" strokeWidth={1.3} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>{t("battle.rematchTitle")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 220 }}>
-              {t("battle.rematchDesc", { monster: victoryMonster.name })}
+              {t("battle.rematchDesc", { monster: tm(victoryMonster) })}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
               <button

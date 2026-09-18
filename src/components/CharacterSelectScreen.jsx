@@ -20,7 +20,7 @@ export default function CharacterSelectScreen({ username, characters, unlockedSl
     <div style={styles.classSelectRoot}>
       <div style={styles.classSelectHeader}>
         <div style={styles.eyebrow}>{username.toUpperCase()}</div>
-        <h1 style={styles.h1}>Karakterini seç.</h1>
+        <h1 style={styles.h1}>{t("characterSelect.title")}</h1>
         <p style={styles.subtext}>{t("characterSelect.subtitle", { n: unlockedSlots })}</p>
       </div>
 

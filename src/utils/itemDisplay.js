@@ -4,18 +4,35 @@ import { STAT_LABELS } from "../data/stats";
 
 export const ACCESSORY_SLOT_LABEL = { necklace: "Kolye", belt: "Kemer", ring: "Yüzük", earring: "Küpe" };
 
-export function itemSubLabel(item) {
-  if (item.kind === "armor") return SLOTS.find((s) => s.key === item.slot)?.label;
-  if (item.kind === "accessory") return `${ACCESSORY_SLOT_LABEL[item.slot]}${item.upgradeLocked ? " · Yükseltme kapalı" : ""}`;
-  if (item.kind === "potion") return `${item.potionType === "hp" ? "Can" : "Mana"} · T${item.tier}`;
-  if (item.kind === "scroll") return `T${item.tier} Parşömen`;
-  if (item.kind === "raceScroll") return "Irk Değiştirme";
-  if (item.kind === "jobScroll") return "Sınıf Değiştirme";
-  if (item.kind === "bonusScroll") return "Yükseltme Bonusu";
-  if (item.weaponType) return WEAPON_TYPE_LABEL[item.weaponType];
-  if (item.weaponSlot === "twoHand") return "Çift El";
-  if (item.weaponSlot === "mainHand") return "Ana El";
-  return item.isShield ? "Kalkan" : "Yardımcı El";
+// GmItemPanel.jsx'in aksesuar slot seçici dropdown'ı ACCESSORY_SLOT_LABEL'ı
+// (ve armor.js#SLOTS'un kendi .label'ını) hâlâ doğrudan kullanıyor — GM/test
+// aracı olduğu için (bkz. utils/gmCommands.js'in aynı gerekçesi) bilerek
+// Türkçe bırakıldı. Oyuncunun GÖRDÜĞÜ itemSubLabel ise kendi ayrı,
+// dil-farkında etiket setini kullanıyor.
+const ARMOR_SLOT_LABEL = {
+  tr: { head: "Kask", chest: "Göğüslük", legs: "Don/Bacaklık", gauntlets: "Eldiven", boots: "Bot" },
+  en: { head: "Helmet", chest: "Chestplate", legs: "Leggings", gauntlets: "Gauntlets", boots: "Boots" },
+};
+const PLAYER_ACCESSORY_SLOT_LABEL = {
+  tr: ACCESSORY_SLOT_LABEL,
+  en: { necklace: "Necklace", belt: "Belt", ring: "Ring", earring: "Earring" },
+};
+
+export function itemSubLabel(item, lang = "tr") {
+  if (item.kind === "armor") return ARMOR_SLOT_LABEL[lang]?.[item.slot] || SLOTS.find((s) => s.key === item.slot)?.label;
+  if (item.kind === "accessory") {
+    const locked = lang === "en" ? " · Upgrade locked" : " · Yükseltme kapalı";
+    return `${PLAYER_ACCESSORY_SLOT_LABEL[lang][item.slot]}${item.upgradeLocked ? locked : ""}`;
+  }
+  if (item.kind === "potion") return lang === "en" ? `${item.potionType === "hp" ? "Health" : "Mana"} · T${item.tier}` : `${item.potionType === "hp" ? "Can" : "Mana"} · T${item.tier}`;
+  if (item.kind === "scroll") return lang === "en" ? `T${item.tier} Scroll` : `T${item.tier} Parşömen`;
+  if (item.kind === "raceScroll") return lang === "en" ? "Race Change" : "Irk Değiştirme";
+  if (item.kind === "jobScroll") return lang === "en" ? "Class Change" : "Sınıf Değiştirme";
+  if (item.kind === "bonusScroll") return lang === "en" ? "Upgrade Bonus" : "Yükseltme Bonusu";
+  if (item.weaponType) return WEAPON_TYPE_LABEL[lang]?.[item.weaponType];
+  if (item.weaponSlot === "twoHand") return lang === "en" ? "Two-Handed" : "Çift El";
+  if (item.weaponSlot === "mainHand") return lang === "en" ? "Main Hand" : "Ana El";
+  return item.isShield ? (lang === "en" ? "Shield" : "Kalkan") : (lang === "en" ? "Off Hand" : "Yardımcı El");
 }
 
 // Potions and scrolls are pure consumables — no atk/def/hp stats, so the

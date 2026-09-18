@@ -2,10 +2,12 @@ import { Gift, CheckCircle2 } from "lucide-react";
 import { CLASSES } from "../data/classes";
 import { itemTierColor, ITEM_TIER_LABEL } from "../data/itemRarity";
 import { pick } from "../utils/random";
+import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import RewardReveal from './RewardReveal';
 
 export default function ChestModal({ state, onClose, playerClass }) {
+  const { t, lang } = useTranslation();
   const { chest, phase, result } = state;
   const color = itemTierColor(chest.tier);
   const isLocked = result && result.kind === "armor" && result.class !== playerClass;
@@ -18,7 +20,7 @@ export default function ChestModal({ state, onClose, playerClass }) {
               <div className="chest-box"/>
             </div>
             <div style={{ marginTop: 18, fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text-muted)" }}>
-              Sandık açılıyor...
+              {t("inventory.chestOpening")}
             </div>
           </>
         )}
@@ -32,19 +34,19 @@ export default function ChestModal({ state, onClose, playerClass }) {
             <RewardReveal item={result}/>
             {result.kind === "armor" && (
               <span style={{ ...styles.classTag, color: CLASSES[result.class].color, borderColor: `${CLASSES[result.class].color}55`, marginTop: 6 }}>
-                {CLASSES[result.class].name} eşyası
+                {t("inventory.classItemTag", { cls: CLASSES[result.class].name })}
               </span>
             )}
             <div style={{ fontSize: 10, color, fontFamily: "var(--font-mono)", marginTop: 6, letterSpacing: 1, textTransform: "uppercase" }}>
-              {ITEM_TIER_LABEL[result.tier]}
+              {ITEM_TIER_LABEL[lang][result.tier]}
             </div>
             {isLocked && (
               <div style={{ fontSize: 10, color: "#E8A5AF", marginTop: 8, maxWidth: 200, textAlign: "center" }}>
-                Bu sende kullanılamaz — Pazar &gt; Takas'tan değerlendirebilirsin.
+                {t("inventory.chestItemLockedHint")}
               </div>
             )}
             <button style={{ ...styles.primaryBtn, marginTop: 22, background: color }} onClick={onClose}>
-              Tamam <CheckCircle2 size={15} />
+              {t("inventory.okBtn")} <CheckCircle2 size={15} />
             </button>
           </div>
         )}
@@ -61,10 +63,10 @@ export default function ChestModal({ state, onClose, playerClass }) {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <Gift size={40} color="var(--text-faint)" strokeWidth={1.3} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", color: "var(--text-muted)" }}>
-              Sandık boş çıktı.
+              {t("inventory.chestEmptyResult")}
             </div>
             <button style={{ ...styles.primaryBtn, marginTop: 18, background: "var(--bg-panel-alt)", color: "var(--text-primary)" }} onClick={onClose}>
-              Tamam
+              {t("inventory.okBtn")}
             </button>
           </div>
         )}

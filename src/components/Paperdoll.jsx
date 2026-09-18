@@ -4,6 +4,7 @@ import { PAPERDOLL_LAYOUT } from "../data/paperdoll";
 import { displayItemName, ARMOR_SLOTS } from "../utils/player";
 import { styles } from "../styles";
 import ItemIcon from "./ItemIcon";
+import { useTranslation } from "../i18n/LanguageContext";
 
 // Knight Online'ın kendi kuşanma ekranı gibi: portre bir yanda, sabit bir
 // ızgara öbür yanda, ikon üstünde ayrı bir isim etiketi yok — slot adı sadece
@@ -13,11 +14,12 @@ import ItemIcon from "./ItemIcon";
 // (tap = stage for upgrading) — onSlotClick(slotKey, item) lets each caller
 // decide.
 export default function Paperdoll({ player, cls, onSlotClick }) {
+  const { t, lang } = useTranslation();
   return (
     <div className="equipment-layout" style={styles.paperdollRoot}>
       <div
         style={{ ...styles.paperdollPortrait, borderColor: cls ? `${cls.color}55` : "var(--border)", background: cls ? `linear-gradient(180deg, ${cls.color}22, var(--bg-panel))` : "var(--bg-panel)" }}
-        title="Kuşanılan silahla karakter önizlemesi"
+        title={t("common.paperdollPreviewTitle")}
       >
         <div className="paperdoll-character paperdoll-character-equipped"><CharacterFigure player={player} align="xMidYMid meet"/></div>
       </div>
@@ -26,12 +28,13 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
         {PAPERDOLL_LAYOUT.map((slot) => {
           const item = player.equipped[slot.key];
           const color = item ? itemTierColor(item.tier) : null;
+          const label = t(`common.paperdollSlot.${slot.key}`);
           return (
             <div
               key={slot.key}
               style={{ ...styles.equipSlotCard, ...(item ? { background: `${color}1c`, borderColor: `${color}66` } : {}) }}
               onClick={() => onSlotClick(slot.key, item)}
-              title={item ? `${slot.label}: ${displayItemName(item)}` : slot.label}
+              title={item ? `${label}: ${displayItemName(item, lang)}` : label}
             >
               {item ? (
                 <ItemIcon item={item} size={ARMOR_SLOTS.includes(slot.key) ? 48 : 40} color={color} strokeWidth={1.5} />
@@ -47,7 +50,7 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
                 // çok küçük kalmış".
                 <img
                   src={slot.icon}
-                  alt={slot.label}
+                  alt={label}
                   style={{
                     width: ARMOR_SLOTS.includes(slot.key) ? 44 : 34,
                     height: ARMOR_SLOTS.includes(slot.key) ? 44 : 34,

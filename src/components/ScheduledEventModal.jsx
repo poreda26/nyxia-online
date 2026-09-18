@@ -2,6 +2,7 @@ import { CheckCircle2, X } from "lucide-react";
 import { eventPhase, eventTotalTicks, scheduledEventProgress, canJoinScheduledEvent, joinScheduledEvent } from "../utils/scheduledEvents";
 import { styles } from "../styles";
 import BarTrack from "./shared/BarTrack";
+import { useTranslation } from "../i18n/LanguageContext";
 
 function fmtCountdown(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -17,16 +18,19 @@ function fmtCountdown(ms) {
 // işleniyor — bu modal sadece o state'i okuyup gösteriyor, kapatılsa da
 // katılım/ilerleme kaybolmuyor.
 export default function ScheduledEventModal({ event, player, setPlayer, pushToast, now, onClose }) {
+  const { t } = useTranslation();
   const Icon = event.icon;
   const { phase, start, end } = eventPhase(event, now);
   const progress = scheduledEventProgress(player, event);
   const joinCheck = canJoinScheduledEvent(player, event, now);
 
+  const JOIN_FAIL_KEY = { notOpen: "scheduledEvent.notOpen", alreadyJoined: "scheduledEvent.alreadyJoined" };
+
   const handleJoin = () => {
     const result = joinScheduledEvent(player, event, now);
-    if (!result.joined) { pushToast(result.reason || "Katılamadın.", "warn"); return; }
+    if (!result.joined) { pushToast(t(JOIN_FAIL_KEY[result.reason] || "scheduledEvent.couldNotJoin"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(`${event.name}'a katıldın!`, "loot");
+    pushToast(t("scheduledEvent.joined", { event: event.name }), "loot");
   };
 
   return (
@@ -42,20 +46,20 @@ export default function ScheduledEventModal({ event, player, setPlayer, pushToas
         <Icon size={32} color={event.color} strokeWidth={1.4} />
         <div style={{ marginTop: 10, fontFamily: "var(--font-display)", fontSize: 17, textAlign: "center" }}>{event.name}</div>
         <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, textAlign: "center", maxWidth: 240 }}>
-          Katılan oyuncular her {event.tickIntervalMinutes} dakikada bir seviyelerine göre %{event.tickPercent} XP kazanır — toplam %{event.tickPercent * eventTotalTicks(event)} XP.
+          {t("scheduledEvent.description", { interval: event.tickIntervalMinutes, tickPercent: event.tickPercent, totalPercent: event.tickPercent * eventTotalTicks(event) })}
         </div>
 
         <div style={{ marginTop: 16, fontSize: 22, fontFamily: "var(--font-mono)", color: event.color }}>
           {phase === "preopen" ? fmtCountdown(start - now) : fmtCountdown(end - now)}
         </div>
         <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>
-          {phase === "preopen" ? "Başlamasına kalan süre" : "Bitmesine kalan süre"}
+          {phase === "preopen" ? t("scheduledEvent.timeUntilStart") : t("scheduledEvent.timeUntilEnd")}
         </div>
 
         {phase === "active" && progress.joined && (
           <div style={{ width: "100%", marginTop: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-faint)", marginBottom: 4 }}>
-              <span>Alınan bonus</span>
+              <span>{t("scheduledEvent.bonusEarned")}</span>
               <span>{progress.ticksCredited}/{progress.totalTicks}</span>
             </div>
             <BarTrack pct={(progress.ticksCredited / progress.totalTicks) * 100} color={event.color} />
@@ -64,7 +68,7 @@ export default function ScheduledEventModal({ event, player, setPlayer, pushToas
 
         {progress.joined ? (
           <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#5FA8A0" }}>
-            <CheckCircle2 size={14} /> Katıldın
+            <CheckCircle2 size={14} /> {t("scheduledEvent.joinedTag")}
           </div>
         ) : (
           <button
@@ -72,7 +76,7 @@ export default function ScheduledEventModal({ event, player, setPlayer, pushToas
             disabled={!joinCheck.ok}
             onClick={handleJoin}
           >
-            Katıl
+            {t("scheduledEvent.join")}
           </button>
         )}
       </div>
