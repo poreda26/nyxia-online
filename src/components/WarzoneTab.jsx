@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Skull, Swords, CircleSlash, Wind, Droplets, Heart, Zap, Lock, Gift, LogOut, DoorOpen } from "lucide-react";
 import {
-  WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WORLD_BOSS, PVP_SKILLS, WARZONE_TICK_MS,
-  GHOST_POPULATION, WORLD_BOSS_RESPAWN_SECONDS, GHOST_REPLACE_SECONDS, AMBUSH_CHANCE_PER_TICK,
+  WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WARZONE_BOSSES, PVP_SKILLS, WARZONE_TICK_MS,
+  GHOST_POPULATION, GHOST_REPLACE_SECONDS, AMBUSH_CHANCE_PER_TICK,
   WARZONE_HUNT_POWER_MULT, WARZONE_HUNT_GOLD_MULT, WARZONE_HUNT_DROP_MULT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP,
 } from "../data/warzone";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
 import { MAPS } from "../data/maps";
 import { spawnGhost, ghostDamageFromPlayer, playerDamageFromGhost, ghostSelfHeal, tickWorldBoss } from "../utils/warzoneCombat";
+import { bossSchedule, pickWeightedWinner } from "../utils/warzoneBoss";
 import { awardNationalPoint, penalizeNationalPoint } from "../utils/nationalPoint";
 import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
 import { leaderboardFor } from "../utils/leaderboard";
@@ -35,66 +36,64 @@ import { useTranslation } from "../i18n/LanguageContext";
 // canavarlarla karşılaşma" hissi katıyor.
 const CRIMSON_MAP = MAPS.find((m) => m.id === "crimson_battlefront");
 
-const RESPAWN_TICKS = Math.max(1, Math.round((WORLD_BOSS_RESPAWN_SECONDS * 1000) / WARZONE_TICK_MS));
 const GHOST_REPLACE_TICKS = Math.max(1, Math.round((GHOST_REPLACE_SECONDS * 1000) / WARZONE_TICK_MS));
+
+function fmtMmSs(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
 
 const PVP_SKILL_ICON = { pvp_stun: CircleSlash, pvp_flee: Wind, pvp_manaburn: Droplets };
 const POTION_COOLDOWN_TURNS = 2;
 
 function freshWz(player) {
   return {
-    boss: { hp: WORLD_BOSS.hp, maxHp: WORLD_BOSS.hp, alive: true, respawnTicks: 0 },
-    bossDamage: { player: 0, ghosts: {} },
+    bosses: {}, // { [bossId]: { spawnAt, hp, damageByPlayer, damageByGhost, resolved } } — bkz. warzoneTick
     ghosts: Array.from({ length: GHOST_POPULATION }, () => spawnGhost(player)),
     log: [],
     duel: null,
     hunt: null,
+    searching: null,
   };
 }
 
-// Boss ölünce en çok hasarı veren tarafı belirler ("player" ya da hayalet
-// adı) — hem gerçek-zamanlı tick'ten hem oyuncunun kendi vuruşundan çağrılır.
-function resolveBossDeath(bossDamage, ghosts, t) {
-  const topGhostEntry = Object.entries(bossDamage.ghosts).sort((a, b) => b[1] - a[1])[0];
-  const topGhostDmg = topGhostEntry ? topGhostEntry[1] : 0;
-  if (bossDamage.player > 0 && bossDamage.player >= topGhostDmg) return { winner: "player", label: t("warzone.bossDeathLabelYou") };
-  if (topGhostEntry) {
-    const g = ghosts.find((gh) => gh.id === topGhostEntry[0]);
-    return { winner: "ghost", label: g?.name || t("warzone.bossDeathLabelGhost") };
-  }
-  return { winner: null, label: t("warzone.bossDeathLabelNoOne") };
-}
-
-// Bir tick'te: boss respawn sayacı / hayaletlerin boss'a vurması / gitmiş
-// hayaletlerin yenisiyle değişmesi / pusu (ambush) ihtimali. Saf fonksiyon —
-// tüm Math.random() çağrıları burada, side effect (toast/log) yok.
-function warzoneTick(wz, player, t, bossName, huntActive) {
-  let { boss, bossDamage, ghosts } = wz;
+// Bir tick'te: her boss için zamanlamaya bakılıyor (bkz. utils/warzoneBoss.js#
+// bossSchedule) — "active" faza YENİ girmişse taze bir savaş durumu
+// başlatılıyor, hâlâ "active"se hayaletlerin vuruşu işleniyor, "gone"a
+// düşmüşse (öldürülmeden pencere kapanmışsa) hiçbir ödül vermeden
+// sessizce çözülüyor. Öldürülen bosslar `bossResolutions`'a ekleniyor —
+// asıl loot dağıtımı (Math.random tabanlı ağırlıklı çekiliş +
+// setPlayer/pushToast) çağıran tarafta (tick effect'i) yapılıyor, bu
+// fonksiyon PvE hasarı dışında side-effect üretmiyor.
+function warzoneTick(wz, player, t, tm, huntActive, now) {
+  const bosses = { ...wz.bosses };
+  let ghosts = wz.ghosts;
   const lines = [];
-  let bossDied = null;
+  const bossResolutions = [];
 
-  if (!boss.alive) {
-    const respawnTicks = boss.respawnTicks - 1;
-    if (respawnTicks <= 0) {
-      boss = { hp: WORLD_BOSS.hp, maxHp: WORLD_BOSS.hp, alive: true, respawnTicks: 0 };
-      bossDamage = { player: 0, ghosts: {} };
-      lines.push(t("warzone.log.bossRespawned", { boss: bossName }));
-    } else {
-      boss = { ...boss, respawnTicks };
-    }
-  } else {
-    const activeGhosts = ghosts.filter((g) => !g.gone && !g.dueling);
-    if (activeGhosts.length > 0) {
-      const result = tickWorldBoss(WORLD_BOSS, boss.hp, activeGhosts, bossDamage.ghosts);
-      boss = { ...boss, hp: result.hp };
-      bossDamage = { ...bossDamage, ghosts: result.damageByGhost };
-      lines.push(...result.hits.map((h) => t("warzone.log.ghostHitBoss", { ghost: h.ghostName, boss: bossName, dmg: h.dmg })));
-      if (result.hp <= 0) {
-        const resolved = resolveBossDeath(bossDamage, ghosts, t);
-        bossDied = resolved;
-        lines.push(resolved.winner === "player" ? t("warzone.log.bossDefeatedByYou", { boss: bossName }) : t("warzone.log.bossDefeatedByOther", { boss: bossName, label: resolved.label }));
-        boss = { hp: 0, maxHp: WORLD_BOSS.hp, alive: false, respawnTicks: RESPAWN_TICKS };
+  for (const boss of WARZONE_BOSSES) {
+    const sched = bossSchedule(boss, now);
+    let state = bosses[boss.id];
+    if (sched.phase === "active") {
+      if (!state || state.spawnAt !== sched.spawnAt) {
+        state = { spawnAt: sched.spawnAt, hp: boss.hp, damageByPlayer: 0, damageByGhost: {}, resolved: false };
+        lines.push(t("warzone.log.bossSpawned", { boss: tm(boss) }));
       }
+      if (!state.resolved) {
+        const activeGhosts = ghosts.filter((g) => !g.gone && !g.dueling);
+        if (activeGhosts.length > 0) {
+          const result = tickWorldBoss(boss, state.hp, activeGhosts, state.damageByGhost);
+          state = { ...state, hp: result.hp, damageByGhost: result.damageByGhost };
+          lines.push(...result.hits.map((h) => t("warzone.log.ghostHitBoss", { ghost: h.ghostName, boss: tm(boss), dmg: h.dmg })));
+        }
+        if (state.hp <= 0) {
+          state = { ...state, resolved: true };
+          bossResolutions.push({ boss, damageByPlayer: state.damageByPlayer, damageByGhost: state.damageByGhost, ghosts });
+        }
+      }
+      bosses[boss.id] = state;
+    } else if (sched.phase === "gone" && state && !state.resolved) {
+      bosses[boss.id] = { ...state, resolved: true };
     }
   }
 
@@ -110,7 +109,7 @@ function warzoneTick(wz, player, t, bossName, huntActive) {
     ambushGhost = idle[Math.floor(Math.random() * idle.length)];
   }
 
-  return { boss, bossDamage, ghosts, lines, bossDied, ambushGhost };
+  return { bosses, ghosts, lines, bossResolutions, ambushGhost };
 }
 
 // Düello başlar başlamaz yazı-tura atılır — %50 ihtimalle rakip önce
@@ -136,7 +135,6 @@ function initiateDuel(ghost, def, player, t) {
 
 export default function WarzoneTab({ player, setPlayer, pushToast }) {
   const { t, tm } = useTranslation();
-  const bossName = tm(WORLD_BOSS);
   const cls = CLASSES[player.class];
   const atk = totalStats(player).atk;
   const def = playerDef(player);
@@ -155,6 +153,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   const [lbSort, setLbSort] = useState("weeklyPoint");
   const logRef = useRef(null);
   const lockRef = useRef(false);
+  // Boss geri sayımlarının (aktif pencere kalan süresi, bkz. #bossSchedule)
+  // canlı akması için — Hub.jsx#ScheduledEventBanner ile aynı desen.
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const locked = player.level < WARZONE_UNLOCK_LEVEL;
   const npLocked = !locked && player.nationalPoint <= 0;
@@ -199,8 +204,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       // Math.random() sonucunun dışarıdaki closure değişkenleriyle
       // commit edilen state'ten sapma ihtimalini baştan ortadan kaldırır).
       const huntActive = !!wz.hunt;
-      const result = warzoneTick(wz, player, t, bossName, huntActive);
-      let next = { ...wz, boss: result.boss, bossDamage: result.bossDamage, ghosts: result.ghosts, log: [...wz.log, ...result.lines].slice(-24) };
+      const result = warzoneTick(wz, player, t, tm, huntActive, Date.now());
+      let next = { ...wz, bosses: result.bosses, ghosts: result.ghosts, log: [...wz.log, ...result.lines].slice(-24) };
       let ambushFirstDmg = 0;
       if (result.ambushGhost) {
         const initiated = initiateDuel(result.ambushGhost, def, player, t);
@@ -215,9 +220,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         };
       }
       setWz(next);
-      if (result.bossDied) {
-        pushToast(result.lines[result.lines.length - 1], result.bossDied.winner === "player" ? "loot" : "default");
-      }
+      // Hayaletlerin öldürdüğü bosslar için loot dağıtımı (ağırlıklı
+      // çekiliş) — oyuncunun kendi vuruşuyla öldürdüğü boss #attackBoss'un
+      // kendi içinde, aynı resolveBossLoot ile ayrıca çözülüyor.
+      result.bossResolutions.forEach(resolveBossLoot);
       if (result.ambushGhost) {
         pushToast(t("warzone.toast.huntAmbush", { ghost: result.ambushGhost.name }), "warn");
         if (ambushFirstDmg > 0) {
@@ -230,6 +236,33 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wz, player, locked, npLocked, entered]);
+
+  // Kullanıcı isteği: "Canavar Ara" dediğimizde 5-15 saniye arası rastgele
+  // bir "aranıyor" süresi olsun, canavar anında çıkmasın (bkz. aşağıdaki
+  // startHunt). Tüm hook'lar (bu dahil) erken return'lerden ÖNCE olmak
+  // ZORUNDA — Rules of Hooks, aksi halde `entered` false/true'ya göre
+  // farklı sayıda hook çağrılır ve React "Rendered more hooks" hatası atar.
+  useEffect(() => {
+    if (!wz.searching) return;
+    const timer = setTimeout(() => {
+      const template = pick(CRIMSON_MAP.monsters);
+      // Güç çarpanı sadece savaş istatistiklerine (hp/atk/def) uygulanıyor —
+      // xp/goldMin/goldMax bilerek taban (Crimson Battlefront'un kendi)
+      // değerinde kalıyor, ödül ayrı bir çarpanla (bkz. huntAction#grantMonsterReward
+      // çağrısındaki opts) yönetiliyor.
+      const hp = Math.round(template.hp * WARZONE_HUNT_POWER_MULT);
+      const monster = {
+        ...template,
+        hp,
+        maxHp: hp,
+        atk: Math.round(template.atk * WARZONE_HUNT_POWER_MULT),
+        def: Math.round(template.def * WARZONE_HUNT_POWER_MULT),
+      };
+      setWz((prev) => (prev.searching ? { ...prev, searching: null, hunt: { monster, potionCooldowns: { hp: 0, mp: 0 }, log: [t("warzone.log.huntAppeared", { monster: monster.name })] } } : prev));
+    }, wz.searching.durationMs);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wz.searching]);
 
   if (locked || npLocked) {
     return (
@@ -293,56 +326,55 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     );
   }
 
-  // ---- Dünya Canavarı: oyuncunun kendi vuruşu ----
-  const attackBoss = () => {
-    if (lockRef.current || wz.duel || !wz.boss.alive || player.hp <= 0) return;
+  const REASON_KEY = { "ağırlık kapasitesi dolu.": "battle.reason.weightFull", "çanta dolu.": "battle.reason.bagFull" };
+
+  // ---- Boss: oyuncunun kendi vuruşu (bkz. utils/warzoneBoss.js'in üstündeki
+  // not — sadece bossSchedule'ın "active" dediği bosslara saldırılabilir) ----
+  const attackBoss = (bossId) => {
+    const boss = WARZONE_BOSSES.find((b) => b.id === bossId);
+    const activeState = wz.bosses[bossId];
+    if (lockRef.current || wz.duel || !boss || !activeState || activeState.resolved || player.hp <= 0) return;
     lockRef.current = true;
     const isCrit = Math.random() < cls.crit;
     // Gerçek KO'nun DEX→Hit/Evasion Rate mantığı (bkz. utils/combat.js#
     // hitChance, BattleTab.jsx#attack'taki aynı desen) — boss'un gerçek bir
     // DEX'i yok, kendi ATK'si vekil.
-    const playerHitsBoss = rollHit(player.stats.dex, WORLD_BOSS.atk, player.level);
+    const playerHitsBoss = rollHit(player.stats.dex, boss.atk, player.level);
     const dmg = playerHitsBoss
-      ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), WORLD_BOSS.def, MONSTER_DEF_K) + rand(-2, 3)))
+      ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), boss.def, MONSTER_DEF_K) + rand(-2, 3)))
       : 0;
 
-    let toastMsg = null;
+    let resolution = null;
     let bossSurvived = false;
     setWz((prev) => {
       // Bir tick'in (hayaletlerin) bu tıklamayla aynı anda boss'u zaten
-      // öldürmüş olma ihtimaline karşı — `prev` her zaman güncel, `wz`
-      // (dışarıdaki closure) bayat olabilir. Boss zaten ölüyse bu tık no-op:
-      // ikinci kez drop verilmesini / respawn sayacının sıfırlanmasını önler.
-      if (!prev.boss.alive) return prev;
-      const hp = Math.max(0, prev.boss.hp - dmg);
-      const bossDamage = { ...prev.bossDamage, player: prev.bossDamage.player + dmg };
-      const log = [...prev.log, !playerHitsBoss ? t("warzone.log.youMissedBoss", { boss: bossName }) : isCrit ? t("warzone.log.youCritBoss", { boss: bossName, dmg }) : t("warzone.log.youHitBoss", { boss: bossName, dmg })];
+      // öldürmüş/pencereyi kapatmış olma ihtimaline karşı — `prev` her zaman
+      // güncel, `wz` (dışarıdaki closure) bayat olabilir.
+      const prevState = prev.bosses[bossId];
+      if (!prevState || prevState.resolved) return prev;
+      const hp = Math.max(0, prevState.hp - dmg);
+      const damageByPlayer = prevState.damageByPlayer + dmg;
+      const log = [...prev.log, !playerHitsBoss ? t("warzone.log.youMissedBoss", { boss: tm(boss) }) : isCrit ? t("warzone.log.youCritBoss", { boss: tm(boss), dmg }) : t("warzone.log.youHitBoss", { boss: tm(boss), dmg })];
       if (hp <= 0) {
-        const resolved = resolveBossDeath(bossDamage, prev.ghosts, t);
-        log.push(resolved.winner === "player" ? t("warzone.log.bossDefeatedByYou", { boss: bossName }) : t("warzone.log.bossDefeatedByOther", { boss: bossName, label: resolved.label }));
-        toastMsg = resolved.winner === "player" ? { grant: true } : { grant: false, text: log[log.length - 1] };
-        return { ...prev, boss: { hp: 0, maxHp: WORLD_BOSS.hp, alive: false, respawnTicks: RESPAWN_TICKS }, bossDamage, log: log.slice(-24) };
+        resolution = { boss, damageByPlayer, damageByGhost: prevState.damageByGhost, ghosts: prev.ghosts };
+        return { ...prev, bosses: { ...prev.bosses, [bossId]: { ...prevState, hp: 0, damageByPlayer, resolved: true } }, log: log.slice(-24) };
       }
       bossSurvived = true;
-      return { ...prev, boss: { ...prev.boss, hp }, bossDamage, log: log.slice(-24) };
+      return { ...prev, bosses: { ...prev.bosses, [bossId]: { ...prevState, hp, damageByPlayer } }, log: log.slice(-24) };
     });
 
-    if (toastMsg?.grant) {
-      grantBossLoot();
-    } else if (toastMsg) {
-      pushToast(toastMsg.text, "default");
-    }
+    if (resolution) resolveBossLoot(resolution);
 
     if (bossSurvived) {
       // Boss hâlâ ayaktaysa oyuncuya karşılık verir.
       const bossSetReduction = armorSetDamageReduction(player, "monster");
-      const bossHitsPlayer = rollHit(WORLD_BOSS.atk, player.stats.dex, player.level);
+      const bossHitsPlayer = rollHit(boss.atk, player.stats.dex, player.level);
       const counter = bossHitsPlayer
-        ? Math.max(1, Math.round((WORLD_BOSS.atk - def * 0.45) * (1 - bossSetReduction) + rand(-2, 3)))
+        ? Math.max(1, Math.round(mitigate(boss.atk, def, PLAYER_DEF_K) * (1 - bossSetReduction) + rand(-2, 3)))
         : 0;
       const wouldDie = player.hp - counter <= 0;
       setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - counter) }));
-      setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? t("warzone.log.bossHitYou", { boss: bossName, dmg: counter }) : t("warzone.log.bossMissedYou", { boss: bossName })].slice(-24) }));
+      setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? t("warzone.log.bossHitYou", { boss: tm(boss), dmg: counter }) : t("warzone.log.bossMissedYou", { boss: tm(boss) })].slice(-24) }));
       if (wouldDie) {
         // Aynı düzeltme burada da geçerli — bkz. BattleTab.jsx#resolveMonsterTurn:
         // eskiden "canın kısmen yenilendi" diyen toast hiçbir şeyi geri
@@ -361,18 +393,31 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     setTimeout(() => { lockRef.current = false; }, 320);
   };
 
-  const REASON_KEY = { "ağırlık kapasitesi dolu.": "battle.reason.weightFull", "çanta dolu.": "battle.reason.bagFull" };
+  // Kullanıcı isteği: "Düşen drop random olacak. Damage atan kişiler
+  // arasında en yüksek damage'i atan kişi biraz daha şanslı olacak." —
+  // hem oyuncunun kendi vuruşuyla öldürdüğü hem hayaletlerin öldürdüğü
+  // bosslar için TEK ortak çözüm yolu (bkz. utils/warzoneBoss.js#
+  // pickWeightedWinner).
+  const resolveBossLoot = ({ boss, damageByPlayer, damageByGhost, ghosts }) => {
+    const winnerKey = pickWeightedWinner({ ...damageByGhost, player: damageByPlayer });
+    if (winnerKey === "player") {
+      grantBossLoot(boss);
+    } else {
+      const winnerGhost = ghosts.find((g) => g.id === winnerKey);
+      pushToast(t("warzone.log.bossDefeatedByOther", { boss: tm(boss), label: winnerGhost?.name || t("warzone.bossDeathLabelGhost") }), "default");
+    }
+  };
 
-  const grantBossLoot = () => {
+  const grantBossLoot = (boss) => {
     let drops = [];
     setPlayer((p) => {
       let np = { ...p, inventory: [...p.inventory], chests: [...p.chests] };
-      const goldGain = rand(WORLD_BOSS.bonusGoldMin, WORLD_BOSS.bonusGoldMax);
+      const goldGain = rand(boss.bonusGoldMin, boss.bonusGoldMax);
       const goldBefore = np.gold;
       np.gold = clampGold(np.gold + goldGain);
       drops = [t("warzone.drop.gold", { amount: formatGold(np.gold - goldBefore) })];
-      if (Math.random() < WORLD_BOSS.equipDropChance) {
-        const item = rollLoot(WORLD_BOSS.lootTier);
+      if (Math.random() < boss.equipDropChance) {
+        const item = rollLoot(boss.lootTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
         if (item) {
@@ -381,18 +426,17 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
           drops.push(res.added ? t("warzone.drop.itemDropped", { name: item.name }) : t("warzone.drop.itemDropFailed", { name: item.name, reason: t(REASON_KEY[res.reason] || res.reason) }));
         }
       }
-      if (Math.random() < WORLD_BOSS.chestDropChance) {
-        np.chests.push({ id: uid(), tier: WORLD_BOSS.lootTier });
-        drops.push(t("warzone.drop.chestDropped", { tier: WORLD_BOSS.lootTier }));
+      if (Math.random() < boss.chestDropChance) {
+        np.chests.push({ id: uid(), tier: boss.lootTier });
+        drops.push(t("warzone.drop.chestDropped", { tier: boss.lootTier }));
       }
-      if (Math.random() < WORLD_BOSS.scrollDropChance) {
-        const scroll = makeScrollStack(WORLD_BOSS.lootTier, 1);
+      if (Math.random() < boss.scrollDropChance) {
+        const scroll = makeScrollStack(boss.lootTier, 1);
         const res = addItemToInventory(np, scroll);
         np = res.player;
-        drops.push(res.added ? t("warzone.drop.scrollDropped", { tier: WORLD_BOSS.lootTier }) : t("warzone.drop.scrollDropFailed", { reason: t(REASON_KEY[res.reason] || res.reason) }));
+        drops.push(res.added ? t("warzone.drop.scrollDropped", { tier: boss.lootTier }) : t("warzone.drop.scrollDropFailed", { reason: t(REASON_KEY[res.reason] || res.reason) }));
       }
-      // Bir canavarı (Dünya Canavarı da bir canavar) öldürünce can/mana
-      // tam yenilenir.
+      // Bir canavarı (boss da bir canavar) öldürünce can/mana tam yenilenir.
       np.hp = playerMaxHp(np);
       np.mp = playerMaxMp(np);
       return np;
@@ -421,22 +465,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     }
   };
 
+  // Kullanıcı isteği: "Canavar Ara" dediğimizde 5-15 saniye arası rastgele
+  // bir "aranıyor" süresi olsun, canavar anında çıkmasın. Gerçek av
+  // (monster üretimi) bu süre dolunca yukarıdaki useEffect'te (hook sırası
+  // bozulmasın diye tüm hook'lar erken return'lerden ÖNCE olmalı) başlıyor.
   const startHunt = () => {
-    if (lockRef.current || wz.duel || wz.hunt || player.hp <= 0) return;
-    const template = pick(CRIMSON_MAP.monsters);
-    // Güç çarpanı sadece savaş istatistiklerine (hp/atk/def) uygulanıyor —
-    // xp/goldMin/goldMax bilerek taban (Crimson Battlefront'un kendi)
-    // değerinde kalıyor, ödül ayrı bir çarpanla (bkz. huntAction#grantMonsterReward
-    // çağrısındaki opts) yönetiliyor.
-    const hp = Math.round(template.hp * WARZONE_HUNT_POWER_MULT);
-    const monster = {
-      ...template,
-      hp,
-      maxHp: hp,
-      atk: Math.round(template.atk * WARZONE_HUNT_POWER_MULT),
-      def: Math.round(template.def * WARZONE_HUNT_POWER_MULT),
-    };
-    setWz((prev) => ({ ...prev, hunt: { monster, potionCooldowns: { hp: 0, mp: 0 }, log: [t("warzone.log.huntAppeared", { monster: monster.name })] } }));
+    if (lockRef.current || wz.duel || wz.hunt || wz.searching || player.hp <= 0) return;
+    setWz((prev) => ({ ...prev, searching: { durationMs: rand(5, 15) * 1000 } }));
   };
 
   const abandonHunt = () => setWz((prev) => ({ ...prev, hunt: null }));
@@ -747,32 +782,44 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
 
       {subtab === "alan" && !wz.duel && (
         <>
-          <div style={{ ...styles.combatant, marginTop: 12, borderColor: "#C9425A55" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ ...styles.monsterIcon, background: "#C9425A22", color: "#C9425A" }}>
-                <Skull size={20} strokeWidth={1.6} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{bossName}</div>
-                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("warzone.bossDesc")}</div>
-              </div>
-            </div>
-            {wz.boss.alive ? (
-              <>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
-                  <span>{wz.boss.hp}/{wz.boss.maxHp}</span>
-                  <span>{t("warzone.yourDamage", { dmg: wz.bossDamage.player })}</span>
+          <SectionLabel>{t("warzone.bossesHeader")}</SectionLabel>
+          <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 8px" }}>{t("warzone.bossesIntro")}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {WARZONE_BOSSES.map((boss) => {
+              const sched = bossSchedule(boss, now);
+              const state = wz.bosses[boss.id];
+              const active = sched.phase === "active" && state && !state.resolved;
+              return (
+                <div key={boss.id} style={{ ...styles.combatant, borderColor: `${boss.color}55`, opacity: sched.phase === "dormant" ? 0.6 : 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ ...styles.monsterIcon, background: `${boss.color}22`, color: boss.color }}>
+                      <Skull size={20} strokeWidth={1.6} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{sched.phase === "dormant" ? "???" : tm(boss)}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
+                        {sched.phase === "dormant" ? t("warzone.bossDormant") : sched.phase === "gone" ? t("warzone.bossMissed") : t("warzone.bossDesc")}
+                      </div>
+                    </div>
+                  </div>
+                  {active && (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
+                        <span>{state.hp}/{boss.hp}</span>
+                        <span>{t("warzone.yourDamage", { dmg: state.damageByPlayer })}</span>
+                      </div>
+                      <BarTrack pct={(state.hp / boss.hp) * 100} color={boss.color} />
+                      <div style={{ fontSize: 9, color: boss.color, textAlign: "center", marginTop: 4, fontFamily: "var(--font-mono)" }}>
+                        {t("warzone.bossWindowLeft", { time: fmtMmSs(sched.msUntilDespawn) })}
+                      </div>
+                      <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 6, background: boss.color, opacity: playerDead ? 0.5 : 1 }} onClick={() => attackBoss(boss.id)} disabled={playerDead}>
+                        <Swords size={14} /> {t("warzone.attack")}
+                      </button>
+                    </>
+                  )}
                 </div>
-                <BarTrack pct={(wz.boss.hp / wz.boss.maxHp) * 100} color="#C9425A" />
-                <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 10, background: "#C9425A", opacity: playerDead ? 0.5 : 1 }} onClick={attackBoss} disabled={playerDead}>
-                  <Swords size={14} /> {t("warzone.attack")}
-                </button>
-              </>
-            ) : (
-              <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8, textAlign: "center" }}>
-                {t("warzone.bossRespawning", { seconds: wz.boss.respawnTicks * (WARZONE_TICK_MS / 1000) })}
-              </div>
-            )}
+              );
+            })}
           </div>
 
           <SectionLabel>{t("warzone.opponentsHeader")}</SectionLabel>
@@ -890,7 +937,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         </div>
       )}
 
-      {subtab === "av" && !wz.hunt && (
+      {subtab === "av" && !wz.hunt && !wz.searching && (
         <>
           <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: 12 }}>
             {t("warzone.huntIntro")}
@@ -904,6 +951,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
             <Swords size={14} /> {t("warzone.huntBtn")}
           </button>
         </>
+      )}
+
+      {subtab === "av" && wz.searching && (
+        <EmptyState icon={Swords} title={t("warzone.huntSearchingTitle")} subtitle={t("warzone.huntSearchingSubtitle")} />
       )}
 
       {subtab === "av" && wz.hunt && (

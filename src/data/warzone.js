@@ -8,12 +8,22 @@ export const WARZONE_UNLOCK_LEVEL = 50;
 // "entered" onay ekranı) alınan tek seferlik ışınlanma ücreti.
 export const WARZONE_TELEPORT_COST = 50;
 
-// Boss ölünce ~bu kadar saniye sonra yeniden doğar.
-export const WORLD_BOSS_RESPAWN_SECONDS = 30;
-
 // Gerçek-zamanlı tick aralığı — hayaletlerin boss'a vurması / pusu ihtimali
 // bu ritimde değerlendirilir (bkz. utils/warzoneCombat.js).
 export const WARZONE_TICK_MS = 3000;
+
+// Kullanıcı isteği: "Alan kısmındaki canavarlar sadece bosslar olacak,
+// belirli bir süreyle çıkacak, kimse ne zaman çıkacağını bilmeyecek...
+// 3-4 saat aralığında ortaya çıkacak... saldırmak için son 3 dakika."
+// Her boss'un kendi ZAMAN DİLİMİ ("slot") takvimi var — bkz.
+// utils/warzoneBoss.js#bossSchedule. Sabit bir saat yerine, her slot'un
+// İÇİNDE boss'un TAM NE ZAMAN çıkacağı boss id + slot index'ten türeyen
+// bir tohumla (seededRng) belirleniyor — bu yüzden hem "kimse bilmiyor"
+// (her slot farklı bir an) hem de sunucu olmadan bile HERKES (aslında tek
+// oyuncu) sayfayı yenilese/sekme değiştirse bile AYNI takvimi görüyor (saf
+// duvar-saati fonksiyonu, hiçbir yerde saklanmıyor).
+export const WARZONE_BOSS_SLOT_HOURS = 3.5; // ortalama 3-4 saatlik pencere
+export const WARZONE_BOSS_FIGHT_WINDOW_MIN = 3; // aktifken saldırı süresi (dakika)
 
 // Alanda aynı anda kaç hayalet rakip bulunsun, biri düellodan çıkınca (ölüm
 // ya da kaçış) kaç saniye sonra yenisiyle değişsin.
@@ -57,9 +67,7 @@ export const WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP = 500;
 const WORLD_BOSS_ATK_MULT = 3.0;
 const WORLD_BOSS_HP_MULT = 0.25;
 const WORLD_BOSS_DEF_MULT = 3.8;
-export const WORLD_BOSS = {
-  id: "meydan_cellati",
-  name: "Meydan Cellâdı",
+const BASE_BOSS_STATS = {
   hp: Math.round(7360 * WORLD_BOSS_HP_MULT),
   atk: Math.round(81 * WORLD_BOSS_ATK_MULT),
   def: Math.round(68 * WORLD_BOSS_DEF_MULT),
@@ -70,6 +78,21 @@ export const WORLD_BOSS = {
   chestDropChance: 0.15,
   scrollDropChance: 0.18,
 };
+
+// Kullanıcı isteği: "5-6 adet farklı bossumuz olacak" — güç/loot oranları
+// şimdilik hepsinde AYNI (BASE_BOSS_STATS'ten kopyalanıyor, sadece kimlik/
+// renk farklı) çünkü kullanıcı "bosslar ve dropların hepsi için az sonra
+// farklı bir şey isteyeceğim" dedi — asıl ayarlama sonraki turda. name Türkçe
+// kalıyor (monster/quest adlarıyla aynı desen), İngilizcesi i18n/sections/
+// monsters.js'te id'ye göre aranıyor (bkz. LanguageContext.jsx#tm).
+export const WARZONE_BOSSES = [
+  { id: "meydan_cellati", name: "Meydan Cellâdı", color: "#C9425A", ...BASE_BOSS_STATS },
+  { id: "kan_imparatoru", name: "Kan İmparatoru", color: "#8B6FC9", ...BASE_BOSS_STATS },
+  { id: "golge_efendisi", name: "Gölge Efendisi", color: "#4FC3D9", ...BASE_BOSS_STATS },
+  { id: "alev_tanrisi", name: "Alev Tanrısı", color: "#D4AF6A", ...BASE_BOSS_STATS },
+  { id: "buz_krali", name: "Buz Kralı", color: "#5FA8A0", ...BASE_BOSS_STATS },
+  { id: "kaos_avatari", name: "Kaos Avatarı", color: "#E8A5AF", ...BASE_BOSS_STATS },
+];
 
 // Evrensel PvP beceri kiti — sınıf/seviye farketmeksizin Savaş Alanı'na
 // giren herkeste aynı, mevcut data/warriorSkills.js vb. ile aynı

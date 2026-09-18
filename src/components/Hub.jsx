@@ -27,6 +27,7 @@ import TutorialModal from "./TutorialModal";
 import DailyLoginModal from "./DailyLoginModal";
 import DiamondShopModal from "./DiamondShopModal";
 import ScheduledEventBanner from "./ScheduledEventBanner";
+import WarzoneBossBanner from "./WarzoneBossBanner";
 
 export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings, unlockedSlots, onUnlockSlot }) {
   const cls = CLASSES[player.class];
@@ -122,6 +123,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
       />
 
       <ScheduledEventBanner player={player} setPlayer={setPlayer} pushToast={pushToast} />
+      <WarzoneBossBanner onOpenWarzone={() => setTab("warzone")} />
 
       <ScreenPanel key={tab} screen={tab}>
         {tab === "battle" && (

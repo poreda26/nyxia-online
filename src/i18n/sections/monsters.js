@@ -83,8 +83,13 @@ export const monstersSection = {
       dungeon_ruined_sanctuary_boss: "Ruined Sanctuary Dungeon Lord",
       dungeon_abyssal_pit_boss: "Abyssal Pit Dungeon Lord",
       dungeon_crimson_battlefront_boss: "Crimson Battlefront Dungeon Lord",
-      // Warzone world boss (data/warzone.js#WORLD_BOSS)
+      // Warzone bosses (data/warzone.js#WARZONE_BOSSES)
       meydan_cellati: "Arena Executioner",
+      kan_imparatoru: "Blood Emperor",
+      golge_efendisi: "Shadow Lord",
+      alev_tanrisi: "Flame God",
+      buz_krali: "Ice King",
+      kaos_avatari: "Chaos Avatar",
     },
     races: {
       karus: {
