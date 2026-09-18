@@ -13,7 +13,7 @@ const ARMOR_SLOT_LABEL = {
   tr: { head: "Kask", chest: "Göğüslük", legs: "Don/Bacaklık", gauntlets: "Eldiven", boots: "Bot" },
   en: { head: "Helmet", chest: "Chestplate", legs: "Leggings", gauntlets: "Gauntlets", boots: "Boots" },
 };
-const PLAYER_ACCESSORY_SLOT_LABEL = {
+export const PLAYER_ACCESSORY_SLOT_LABEL = {
   tr: ACCESSORY_SLOT_LABEL,
   en: { necklace: "Necklace", belt: "Belt", ring: "Ring", earring: "Earring" },
 };

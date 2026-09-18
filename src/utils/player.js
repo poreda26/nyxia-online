@@ -2,6 +2,8 @@ import { CLASSES } from "../data/classes";
 import { STAT_LABELS, STAT_KEYS, STAT_CAP, POINTS_PER_LEVEL } from "../data/stats";
 import { makePotionStack } from "./inventory";
 import { potionName } from "../data/potions";
+import { WEAPON_NAME_EN, STARTER_ACCESSORY_NAME_EN, ACCESSORY_FAMILY_NAME_EN } from "../data/itemNameTranslations";
+import { PLAYER_ACCESSORY_SLOT_LABEL } from "./itemDisplay";
 import { MAPS } from "../data/maps";
 import { currentWeekId } from "./week";
 import { STARTING_NATIONAL_POINT } from "./nationalPointConstants";
@@ -651,8 +653,23 @@ export function displayClassName(player) {
   return player.awakened ? `Master ${base}` : base;
 }
 
+function translatedItemName(item, lang) {
+  if (item.kind === "potion") return potionName(item.potionType, item.tier, lang);
+  if (lang !== "en") return item.name;
+  if (item.kind === "weapon" && WEAPON_NAME_EN[item.name]) return WEAPON_NAME_EN[item.name];
+  if (item.kind === "accessory") {
+    if (ACCESSORY_FAMILY_NAME_EN[item.family] && item.tier) {
+      const familyName = ACCESSORY_FAMILY_NAME_EN[item.family][item.tier - 1];
+      const slotName = PLAYER_ACCESSORY_SLOT_LABEL.en[item.slot];
+      if (familyName && slotName) return `${familyName} ${slotName}`;
+    }
+    if (STARTER_ACCESSORY_NAME_EN[item.name]) return STARTER_ACCESSORY_NAME_EN[item.name];
+  }
+  return item.name;
+}
+
 export function displayItemName(item, lang = "tr") {
-  const name = item.kind === "potion" ? potionName(item.potionType, item.tier, lang) : item.name;
+  const name = translatedItemName(item, lang);
   return item.upgradeLevel ? `${name} +${item.upgradeLevel}` : name;
 }
 

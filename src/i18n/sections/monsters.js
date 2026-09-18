@@ -4,17 +4,13 @@
 // ve silah/zırh yeniden-adlandırma scriptinin varsayımlarını bozmamak için).
 // Bunun yerine bu dosya, id'ye göre bir görünen-ad çeviri katmanı sağlıyor:
 // LanguageContext.jsx'teki translateMonsterName()/tm() bu sözlüğe DOĞRUDAN
-// bakıyor (t() üzerinden değil), o yüzden translations.js'e henüz merge
-// edilmemiş olsa bile canavar adları hemen çalışıyor. `races` alt-alanı ise
-// normal t() yoluyla okunuyor (bkz. RaceSelect.jsx) — diğer paralel section
-// dosyalarıyla (captain.js, character.js, ...) aynı desen: bu section da
-// şimdilik translations.js'e merge edilmemiş, sonraki bir merge adımını
-// bekliyor; o ana kadar bu anahtar t() içinde bulunamazsa sessizce kendi
-// anahtar-yolunu gösterir (mevcut diğer section'larla aynı geçici durum).
-// (Savaş kaydı/combat-log satırları için ayrı bir battleLog anahtarı
-// GEREKMEDİ — translations.js'te battle.log.* namespace'i zaten bir başka
-// eşzamanlı düzenlemeyle eklenmişti, BattleTab.jsx o mevcut anahtarları
-// {monster: tm(...)} ile yeniden kullanıyor.)
+// bakıyor (t() üzerinden değil). `races` alt-alanı ise normal t() yoluyla
+// okunuyor (bkz. RaceSelect.jsx#t(`races.${key}.desc`)) — translations.js'e
+// `...monstersSection.tr/en` ile spread edildiğinde `monsters` ve `races`
+// İKİSİ DE ayrı, top-level namespace olarak açılıyor (monsters İÇİNDE bir
+// races alt-alanı DEĞİL) — RaceSelect.jsx bir ara `monsters.races.${key}.
+// desc` diye yanlış (iç içe varsayan) bir yoldan okuyordu, bu da ekranda ham
+// anahtar dizesini gösteriyordu; düzeltildi.
 export const monstersSection = {
   tr: {
     // Canavar/boss id -> görünen ad. Türkçe için BOŞ bırakılıyor çünkü
@@ -85,6 +81,8 @@ export const monstersSection = {
       dungeon_ruined_sanctuary_boss: "Ruined Sanctuary Dungeon Lord",
       dungeon_abyssal_pit_boss: "Abyssal Pit Dungeon Lord",
       dungeon_crimson_battlefront_boss: "Crimson Battlefront Dungeon Lord",
+      // Warzone world boss (data/warzone.js#WORLD_BOSS)
+      meydan_cellati: "Arena Executioner",
     },
     races: {
       karus: {

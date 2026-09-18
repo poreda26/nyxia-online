@@ -21,6 +21,11 @@ function fmtCountdown(ms) {
 // ClanTab.jsx'teki aynı "forceTick" deseni, boss geri sayımı için).
 export default function ScheduledEventBanner({ player, setPlayer, pushToast }) {
   const { t } = useTranslation();
+  // data/scheduledEvents.js#SCHEDULED_EVENTS'in `name` alanı Türkçe kalıyor
+  // (id sabit kaynak) — görünen ad translations.js#scheduledEvent.eventName
+  // altında id'ye göre aranıyor (yeni bir etkinlik eklenirse oraya da bir
+  // giriş eklenmesi gerekir, aksi halde ham anahtar yolu görünür).
+  const eventName = (event) => t(`scheduledEvent.eventName.${event.id}`);
   const [now, setNow] = useState(Date.now());
   const [openId, setOpenId] = useState(null);
 
@@ -40,8 +45,8 @@ export default function ScheduledEventBanner({ player, setPlayer, pushToast }) {
       setPlayer(result.player);
       pushToast(
         result.levelsGained > 0
-          ? t("scheduledEvent.tickXpLeveledUp", { event: event.name, xp: result.xpGain, level: result.player.level })
-          : t("scheduledEvent.tickXp", { event: event.name, xp: result.xpGain }),
+          ? t("scheduledEvent.tickXpLeveledUp", { event: eventName(event), xp: result.xpGain, level: result.player.level })
+          : t("scheduledEvent.tickXp", { event: eventName(event), xp: result.xpGain }),
         result.levelsGained > 0 ? "level" : "loot"
       );
     }
@@ -62,10 +67,10 @@ export default function ScheduledEventBanner({ player, setPlayer, pushToast }) {
             const Icon = event.icon;
             const progress = scheduledEventProgress(player, event);
             const label = phase === "preopen"
-              ? t("scheduledEvent.bannerPreopen", { event: event.name, countdown: fmtCountdown(start - now) })
+              ? t("scheduledEvent.bannerPreopen", { event: eventName(event), countdown: fmtCountdown(start - now) })
               : progress.joined
-                ? t("scheduledEvent.bannerActiveJoined", { event: event.name, credited: progress.ticksCredited, total: progress.totalTicks })
-                : t("scheduledEvent.bannerActiveUnjoined", { event: event.name });
+                ? t("scheduledEvent.bannerActiveJoined", { event: eventName(event), credited: progress.ticksCredited, total: progress.totalTicks })
+                : t("scheduledEvent.bannerActiveUnjoined", { event: eventName(event) });
             return (
               <button
                 key={event.id}

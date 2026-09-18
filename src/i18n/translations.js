@@ -92,6 +92,9 @@ const base = {
       bannerPreopen: "📢 {event} {countdown} içinde başlıyor!",
       bannerActiveJoined: "🔥 {event} aktif — {credited}/{total} bonus alındı",
       bannerActiveUnjoined: "🔥 {event} aktif — katılmak için dokun!",
+      eventName: {
+        noon_exp_rush: "Öğlen EXP Rush",
+      },
     },
     nav: {
       battle: "Savaş", inventory: "Envanter", market: "Pazar", upgrade: "Yükselt",
@@ -322,6 +325,9 @@ const base = {
       bannerPreopen: "📢 {event} starts in {countdown}!",
       bannerActiveJoined: "🔥 {event} active — {credited}/{total} bonus earned",
       bannerActiveUnjoined: "🔥 {event} active — tap to join!",
+      eventName: {
+        noon_exp_rush: "Noon EXP Rush",
+      },
     },
     nav: {
       battle: "Battle", inventory: "Inventory", market: "Market", upgrade: "Upgrade",

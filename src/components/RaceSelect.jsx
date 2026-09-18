@@ -37,7 +37,7 @@ export default function RaceSelect({ onChoose }) {
               <Icon size={28} color={r.color} strokeWidth={1.6} />
               <div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 16, letterSpacing: 0.3 }}>{r.name}</div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.5 }}>{t(`monsters.races.${key}.desc`)}</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.5 }}>{t(`races.${key}.desc`)}</div>
               </div>
             </button>
           );

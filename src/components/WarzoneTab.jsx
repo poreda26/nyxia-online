@@ -57,7 +57,7 @@ function resolveBossDeath(bossDamage, ghosts, t) {
 // Bir tick'te: boss respawn sayacı / hayaletlerin boss'a vurması / gitmiş
 // hayaletlerin yenisiyle değişmesi / pusu (ambush) ihtimali. Saf fonksiyon —
 // tüm Math.random() çağrıları burada, side effect (toast/log) yok.
-function warzoneTick(wz, player, t) {
+function warzoneTick(wz, player, t, bossName) {
   let { boss, bossDamage, ghosts } = wz;
   const lines = [];
   let bossDied = null;
@@ -67,7 +67,7 @@ function warzoneTick(wz, player, t) {
     if (respawnTicks <= 0) {
       boss = { hp: WORLD_BOSS.hp, maxHp: WORLD_BOSS.hp, alive: true, respawnTicks: 0 };
       bossDamage = { player: 0, ghosts: {} };
-      lines.push(t("warzone.log.bossRespawned", { boss: WORLD_BOSS.name }));
+      lines.push(t("warzone.log.bossRespawned", { boss: bossName }));
     } else {
       boss = { ...boss, respawnTicks };
     }
@@ -77,11 +77,11 @@ function warzoneTick(wz, player, t) {
       const result = tickWorldBoss(WORLD_BOSS, boss.hp, activeGhosts, bossDamage.ghosts);
       boss = { ...boss, hp: result.hp };
       bossDamage = { ...bossDamage, ghosts: result.damageByGhost };
-      lines.push(...result.hits.map((h) => t("warzone.log.ghostHitBoss", { ghost: h.ghostName, boss: WORLD_BOSS.name, dmg: h.dmg })));
+      lines.push(...result.hits.map((h) => t("warzone.log.ghostHitBoss", { ghost: h.ghostName, boss: bossName, dmg: h.dmg })));
       if (result.hp <= 0) {
         const resolved = resolveBossDeath(bossDamage, ghosts, t);
         bossDied = resolved;
-        lines.push(resolved.winner === "player" ? t("warzone.log.bossDefeatedByYou", { boss: WORLD_BOSS.name }) : t("warzone.log.bossDefeatedByOther", { boss: WORLD_BOSS.name, label: resolved.label }));
+        lines.push(resolved.winner === "player" ? t("warzone.log.bossDefeatedByYou", { boss: bossName }) : t("warzone.log.bossDefeatedByOther", { boss: bossName, label: resolved.label }));
         boss = { hp: 0, maxHp: WORLD_BOSS.hp, alive: false, respawnTicks: RESPAWN_TICKS };
       }
     }
@@ -124,7 +124,8 @@ function initiateDuel(ghost, def, player, t) {
 }
 
 export default function WarzoneTab({ player, setPlayer, pushToast }) {
-  const { t } = useTranslation();
+  const { t, tm } = useTranslation();
+  const bossName = tm(WORLD_BOSS);
   const cls = CLASSES[player.class];
   const atk = totalStats(player).atk;
   const def = playerDef(player);
@@ -181,7 +182,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       // fonksiyonlarını iki kez çağırdığı senaryoyu, ve iki farklı
       // Math.random() sonucunun dışarıdaki closure değişkenleriyle
       // commit edilen state'ten sapma ihtimalini baştan ortadan kaldırır).
-      const result = warzoneTick(wz, player, t);
+      const result = warzoneTick(wz, player, t, bossName);
       let next = { ...wz, boss: result.boss, bossDamage: result.bossDamage, ghosts: result.ghosts, log: [...wz.log, ...result.lines].slice(-24) };
       let ambushFirstDmg = 0;
       if (result.ambushGhost) {
@@ -295,10 +296,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       if (!prev.boss.alive) return prev;
       const hp = Math.max(0, prev.boss.hp - dmg);
       const bossDamage = { ...prev.bossDamage, player: prev.bossDamage.player + dmg };
-      const log = [...prev.log, !playerHitsBoss ? t("warzone.log.youMissedBoss", { boss: WORLD_BOSS.name }) : isCrit ? t("warzone.log.youCritBoss", { boss: WORLD_BOSS.name, dmg }) : t("warzone.log.youHitBoss", { boss: WORLD_BOSS.name, dmg })];
+      const log = [...prev.log, !playerHitsBoss ? t("warzone.log.youMissedBoss", { boss: bossName }) : isCrit ? t("warzone.log.youCritBoss", { boss: bossName, dmg }) : t("warzone.log.youHitBoss", { boss: bossName, dmg })];
       if (hp <= 0) {
         const resolved = resolveBossDeath(bossDamage, prev.ghosts, t);
-        log.push(resolved.winner === "player" ? t("warzone.log.bossDefeatedByYou", { boss: WORLD_BOSS.name }) : t("warzone.log.bossDefeatedByOther", { boss: WORLD_BOSS.name, label: resolved.label }));
+        log.push(resolved.winner === "player" ? t("warzone.log.bossDefeatedByYou", { boss: bossName }) : t("warzone.log.bossDefeatedByOther", { boss: bossName, label: resolved.label }));
         toastMsg = resolved.winner === "player" ? { grant: true } : { grant: false, text: log[log.length - 1] };
         return { ...prev, boss: { hp: 0, maxHp: WORLD_BOSS.hp, alive: false, respawnTicks: RESPAWN_TICKS }, bossDamage, log: log.slice(-24) };
       }
@@ -321,7 +322,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         : 0;
       const wouldDie = player.hp - counter <= 0;
       setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - counter) }));
-      setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? t("warzone.log.bossHitYou", { boss: WORLD_BOSS.name, dmg: counter }) : t("warzone.log.bossMissedYou", { boss: WORLD_BOSS.name })].slice(-24) }));
+      setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? t("warzone.log.bossHitYou", { boss: bossName, dmg: counter }) : t("warzone.log.bossMissedYou", { boss: bossName })].slice(-24) }));
       if (wouldDie) {
         // Aynı düzeltme burada da geçerli — bkz. BattleTab.jsx#resolveMonsterTurn:
         // eskiden "canın kısmen yenilendi" diyen toast hiçbir şeyi geri
@@ -602,7 +603,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
                 <Skull size={20} strokeWidth={1.6} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{WORLD_BOSS.name}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{bossName}</div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("warzone.bossDesc")}</div>
               </div>
             </div>

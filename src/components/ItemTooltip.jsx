@@ -3,6 +3,7 @@ import { itemTierColor, ITEM_TIER_LABEL } from "../data/itemRarity";
 import { STAT_LABELS } from "../data/stats";
 import { ELEMENT_LABELS, ELEMENT_COLORS } from "../data/elements";
 import { WEAPON_TYPE_LABEL } from "../data/warriorWeapons";
+import { WEAPON_LORE_EN } from "../data/itemNameTranslations";
 import { itemSubLabel, isConsumable } from "../utils/itemDisplay";
 import { displayItemName, armorLevelBonus, ARMOR_CLASS_BONUS_STAT } from "../utils/player";
 import { useTranslation } from "../i18n/LanguageContext";
@@ -172,7 +173,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
 
       {item.lore && (
         <div style={{ textAlign: "center", fontSize: 10, fontStyle: "italic", color: "var(--text-faint)", marginTop: 6, lineHeight: 1.5 }}>
-          {item.lore}
+          {lang === "en" ? (WEAPON_LORE_EN[item.name] || item.lore) : item.lore}
         </div>
       )}
 

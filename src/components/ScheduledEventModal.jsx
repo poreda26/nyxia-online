@@ -19,6 +19,7 @@ function fmtCountdown(ms) {
 // katılım/ilerleme kaybolmuyor.
 export default function ScheduledEventModal({ event, player, setPlayer, pushToast, now, onClose }) {
   const { t } = useTranslation();
+  const eventName = t(`scheduledEvent.eventName.${event.id}`);
   const Icon = event.icon;
   const { phase, start, end } = eventPhase(event, now);
   const progress = scheduledEventProgress(player, event);
@@ -30,7 +31,7 @@ export default function ScheduledEventModal({ event, player, setPlayer, pushToas
     const result = joinScheduledEvent(player, event, now);
     if (!result.joined) { pushToast(t(JOIN_FAIL_KEY[result.reason] || "scheduledEvent.couldNotJoin"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(t("scheduledEvent.joined", { event: event.name }), "loot");
+    pushToast(t("scheduledEvent.joined", { event: eventName }), "loot");
   };
 
   return (
@@ -44,7 +45,7 @@ export default function ScheduledEventModal({ event, player, setPlayer, pushToas
         </button>
 
         <Icon size={32} color={event.color} strokeWidth={1.4} />
-        <div style={{ marginTop: 10, fontFamily: "var(--font-display)", fontSize: 17, textAlign: "center" }}>{event.name}</div>
+        <div style={{ marginTop: 10, fontFamily: "var(--font-display)", fontSize: 17, textAlign: "center" }}>{eventName}</div>
         <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, textAlign: "center", maxWidth: 240 }}>
           {t("scheduledEvent.description", { interval: event.tickIntervalMinutes, tickPercent: event.tickPercent, totalPercent: event.tickPercent * eventTotalTicks(event) })}
         </div>
