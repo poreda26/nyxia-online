@@ -63,6 +63,10 @@ export const styles = {
     display: "flex", alignItems: "center", gap: 5, background: "var(--bg-panel)",
     border: "1px solid var(--border)", borderRadius: 8, padding: "5px 9px", fontSize: 12,
   },
+  diamondChip: {
+    display: "flex", alignItems: "center", gap: 5, background: "var(--bg-panel)",
+    border: "1px solid var(--border)", borderRadius: 8, padding: "5px 6px 5px 9px", fontSize: 12, cursor: "pointer",
+  },
   topBarSub: { display: "flex", gap: 8, fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 8, paddingLeft: 40 },
 
   tabContent: { flex: 1, overflowY: "auto", position: "relative" },

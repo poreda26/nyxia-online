@@ -1,11 +1,11 @@
-import { Coins, Crown, Gift, Settings } from "lucide-react";
+import { Coins, Crown, Gem, Gift, Plus, Settings } from "lucide-react";
 import { xpToNext, MAX_LEVEL, formatGold } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { activeTitleInfo } from "../utils/achievements";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 
-export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, onOpenSettings }) {
+export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, onOpenSettings, onOpenDiamondShop }) {
   const { t } = useTranslation();
   const atCap = player.level >= MAX_LEVEL;
   const need = xpToNext(player.level);
@@ -47,6 +47,13 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
           <Coins size={13} color="#D4AF6A" />
           <span style={{ fontFamily: "var(--font-mono)" }}>{formatGold(player.gold)}</span>
         </div>
+        {onOpenDiamondShop && (
+          <button onClick={onOpenDiamondShop} title={t("diamondShop.title")} style={{ ...styles.diamondChip, color: "var(--text-primary)" }}>
+            <Gem size={13} color="#8B6FC9" />
+            <span style={{ fontFamily: "var(--font-mono)" }}>{player.diamonds}</span>
+            <Plus size={12} color="#8B6FC9" />
+          </button>
+        )}
         {onOpenDailyLogin && (
           <button
             onClick={onOpenDailyLogin}

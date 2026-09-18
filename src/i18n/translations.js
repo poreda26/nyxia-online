@@ -9,6 +9,7 @@
 // boş/kırık görünmez, sadece o satır Türkçe kalır.
 import { captainSection } from "./sections/captain";
 import { characterSection } from "./sections/character";
+import { diamondShopSection } from "./sections/diamondShop";
 import { inventorySection } from "./sections/inventory";
 import { monstersSection } from "./sections/monsters";
 import { socialSection } from "./sections/social";
@@ -487,12 +488,12 @@ const base = {
 export const translations = {
   tr: {
     ...base.tr,
-    ...captainSection.tr, ...characterSection.tr, ...inventorySection.tr,
+    ...captainSection.tr, ...characterSection.tr, ...diamondShopSection.tr, ...inventorySection.tr,
     ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr,
   },
   en: {
     ...base.en,
-    ...captainSection.en, ...characterSection.en, ...inventorySection.en,
+    ...captainSection.en, ...characterSection.en, ...diamondShopSection.en, ...inventorySection.en,
     ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en,
   },
 };

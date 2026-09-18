@@ -25,6 +25,7 @@ import WarzoneTab from "./WarzoneTab";
 import ClanTab from "./ClanTab";
 import TutorialModal from "./TutorialModal";
 import DailyLoginModal from "./DailyLoginModal";
+import DiamondShopModal from "./DiamondShopModal";
 import ScheduledEventBanner from "./ScheduledEventBanner";
 
 export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings }) {
@@ -56,6 +57,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   // (dailyLoginOpen zaten true kaldığı için) hemen ardından kendiliğinden çıkar.
   const [dailyLoginOpen, setDailyLoginOpen] = useState(canClaimDailyLogin(player));
   const dailyLoginAvailable = canClaimDailyLogin(player);
+  const [diamondShopOpen, setDiamondShopOpen] = useState(false);
 
   // Alt menü bildirim noktaları (kullanıcı isteği: "yeni bir mesaj geldiği
   // zaman... yeni eşya düştüğü zaman... görev tamamlandığı zaman... verilmeyen
@@ -116,6 +118,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         dailyLoginAvailable={dailyLoginAvailable}
         onOpenDailyLogin={() => setDailyLoginOpen(true)}
         onOpenSettings={onOpenSettings}
+        onOpenDiamondShop={() => setDiamondShopOpen(true)}
       />
 
       <ScheduledEventBanner player={player} setPlayer={setPlayer} pushToast={pushToast} />
@@ -156,6 +159,10 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
 
       {dailyLoginOpen && !tutorialOpen && (
         <DailyLoginModal player={player} setPlayer={setPlayer} pushToast={pushToast} onClose={() => setDailyLoginOpen(false)} />
+      )}
+
+      {diamondShopOpen && (
+        <DiamondShopModal pushToast={pushToast} onClose={() => setDiamondShopOpen(false)} />
       )}
     </div>
   );
