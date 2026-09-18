@@ -247,6 +247,24 @@ export function addItemToAnyBankPage(item, bank) {
   return { bank: nextBank, added: true };
 }
 
+// Kalıcı ekstra depo sayfası — utils/premium.js#buyPremium'ın bankBonusPages
+// için yaptığı aynı büyütme, ama premium'a bağlı değil, doğrudan elmasla
+// tek seferlik satın alınıyor (kullanıcı isteği: "Ekstra Çanta/banka
+// sayfası eklensin", bkz. components/DiamondShopModal.jsx). Sayfalar hiç
+// küçülmüyor (eşya kaybı riski olmasın diye), bu yüzden her satın alma
+// kalıcı. MAX_BANK_PAGES bir üst sınır — sekme satırının anlamsızca uzayıp
+// gitmesini engelliyor.
+export const EXTRA_BANK_PAGE_COST_DIAMONDS = 400;
+export const MAX_BANK_PAGES = 8;
+
+export function buyExtraBankPage(player, bank) {
+  if (bank.length >= MAX_BANK_PAGES) return { player, bank, bought: false, reason: "maxBankPages" };
+  if (player.diamonds < EXTRA_BANK_PAGE_COST_DIAMONDS) return { player, bank, bought: false, reason: "notEnoughDiamonds" };
+  const nextPlayer = { ...player, diamonds: player.diamonds - EXTRA_BANK_PAGE_COST_DIAMONDS };
+  const nextBank = [...bank, []];
+  return { player: nextPlayer, bank: nextBank, bought: true };
+}
+
 export function withdrawFromBank(player, item, bank, pageIndex) {
   const result = addItemToInventory(player, item);
   if (!result.added) return { player, bank, moved: false, reason: result.reason };

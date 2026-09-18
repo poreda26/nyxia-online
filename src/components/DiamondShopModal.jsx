@@ -1,24 +1,53 @@
-import { Gem, X, Star, Sparkles } from "lucide-react";
+import { Gem, X, Star, Sparkles, Castle, Archive, Users } from "lucide-react";
 import { DIAMOND_PACKS } from "../data/diamondPacks";
+import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS, EXTRA_DUNGEON_ENTRIES_PER_PURCHASE } from "../data/soloDungeon";
+import { buyExtraDungeonEntries } from "../utils/soloDungeon";
+import { buyExtraBankPage, EXTRA_BANK_PAGE_COST_DIAMONDS, MAX_BANK_PAGES } from "../utils/inventory";
+import { CHARACTER_SLOTS, THIRD_SLOT_COST_DIAMONDS } from "../utils/storage";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 
 // Kullanıcı isteği: Apple/Google IAP entegrasyonundan önce satın alma
-// menüsünü hazırlayalım. Paketler data/diamondPacks.js'te — buradaki "Satın
-// Al" butonu şimdilik gerçek ödeme almıyor (RevenueCat bağlanana kadar), her
-// tıklama sadece bilgilendirici bir toast gösteriyor. Bkz. memory:
-// project_diamond_iap_plan — gerçek satın alma akışı buraya geldiğinde bu
-// buton store'dan dönen paket + purchase() çağrısına bağlanacak.
-export default function DiamondShopModal({ onClose, pushToast }) {
+// menüsünü hazırlayalım — sonra "Zindana giriş hakkı... Ekstra Çanta/banka
+// sayfası... Karakter slotu genişletme eklensin" (bkz. memory:
+// project_diamond_iap_plan). Üstteki üç "perk" satırı GERÇEK, hemen etkili
+// elmas harcamaları (mevcut oyun içi elmas havuzundan) — sadece alttaki para
+// paketleri (DIAMOND_PACKS) henüz gerçek ödeme almıyor, RevenueCat bağlanana
+// kadar "yakında" toast'ı gösteriyor.
+export default function DiamondShopModal({ player, setPlayer, bank, setBank, unlockedSlots, onUnlockSlot, onClose, pushToast }) {
   const { t } = useTranslation();
 
-  const handleBuy = () => {
+  const handleBuyPack = () => {
     pushToast(t("diamondShop.comingSoonToast"), "default");
+  };
+
+  const handleBuyDungeonEntries = () => {
+    const result = buyExtraDungeonEntries(player);
+    if (!result.bought) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
+    setPlayer(result.player);
+    pushToast(t("battle.dungeonEntriesBought"), "loot");
+  };
+
+  const handleBuyBankPage = () => {
+    const result = buyExtraBankPage(player, bank);
+    if (!result.bought) {
+      pushToast(result.reason === "maxBankPages" ? t("inventory.maxBankPagesReached") : t("shop.notEnoughDiamonds"), "warn");
+      return;
+    }
+    setPlayer(result.player);
+    setBank(result.bank);
+    pushToast(t("inventory.bankPageBought"), "loot");
+  };
+
+  const handleUnlockSlot = () => {
+    const bought = onUnlockSlot();
+    if (!bought) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
+    pushToast(t("diamondShop.slotUnlockedToast"), "loot");
   };
 
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={{ ...styles.modalCard, maxWidth: 360 }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ ...styles.modalCard, maxWidth: 360, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
         <button
           onClick={onClose}
           style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", padding: 4 }}
@@ -32,7 +61,45 @@ export default function DiamondShopModal({ onClose, pushToast }) {
           {t("diamondShop.subtitle")}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16, width: "100%" }}>
+        <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, alignSelf: "flex-start", marginTop: 18 }}>
+          {t("diamondShop.perksTitle")}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, width: "100%" }}>
+          <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
+            <Castle size={18} color="#A34FD9" strokeWidth={1.6} style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, fontSize: 12 }}>{t("battle.dailyDungeon")}</div>
+            <button style={{ ...styles.tinyBtn, flexShrink: 0, background: "var(--bg-panel-alt)", color: "#8B6FC9", display: "flex", alignItems: "center", gap: 4 }} onClick={handleBuyDungeonEntries}>
+              <Gem size={11} /> {EXTRA_DUNGEON_ENTRY_COST_DIAMONDS} (+{EXTRA_DUNGEON_ENTRIES_PER_PURCHASE})
+            </button>
+          </div>
+
+          <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
+            <Archive size={18} color="#5FA8A0" strokeWidth={1.6} style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, fontSize: 12 }}>{t("inventory.bankTab")}</div>
+            {bank.length < MAX_BANK_PAGES ? (
+              <button style={{ ...styles.tinyBtn, flexShrink: 0, background: "var(--bg-panel-alt)", color: "#8B6FC9", display: "flex", alignItems: "center", gap: 4 }} onClick={handleBuyBankPage}>
+                <Gem size={11} /> {EXTRA_BANK_PAGE_COST_DIAMONDS} (+1)
+              </button>
+            ) : (
+              <span style={{ fontSize: 9, color: "var(--text-faint)" }}>{t("inventory.maxBankPagesReached")}</span>
+            )}
+          </div>
+
+          {unlockedSlots < CHARACTER_SLOTS && (
+            <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
+              <Users size={18} color="#D4AF6A" strokeWidth={1.6} style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, fontSize: 12 }}>{t("characterSelect.lockedSlot")}</div>
+              <button style={{ ...styles.tinyBtn, flexShrink: 0, background: "var(--bg-panel-alt)", color: "#8B6FC9", display: "flex", alignItems: "center", gap: 4 }} onClick={handleUnlockSlot}>
+                <Gem size={11} /> {THIRD_SLOT_COST_DIAMONDS}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, alignSelf: "flex-start", marginTop: 18 }}>
+          {t("diamondShop.packsTitle")}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, width: "100%" }}>
           {DIAMOND_PACKS.map((pack) => (
             <div
               key={pack.id}
@@ -62,7 +129,7 @@ export default function DiamondShopModal({ onClose, pushToast }) {
               </div>
               <button
                 style={{ ...styles.tinyBtn, flexShrink: 0, background: "#8B6FC9", color: "#fff" }}
-                onClick={handleBuy}
+                onClick={handleBuyPack}
               >
                 {pack.priceLabel}
               </button>

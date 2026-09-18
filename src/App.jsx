@@ -259,6 +259,22 @@ export default function App() {
     setAccount((a) => ({ ...a, diamonds: nextDiamonds, unlockedSlots: CHARACTER_SLOTS }));
   };
 
+  // handleUnlockSlot'un Hub-içi (oyun oynanırken) versiyonu — o, account.diamonds'a
+  // doğrudan yazıyor, ama Hub açıkken account.diamonds sadece player.diamonds'tan
+  // TEK YÖNLÜ senkronize oluyor (bkz. yukarıdaki useEffect, satır ~128). Burada
+  // account'u da yazarsak, player birazdan başka bir sebeple değişince o effect
+  // account.diamonds'ı eski (daha yüksek) player.diamonds değerine geri döndürüp
+  // bu düşüşü sessizce iptal eder — o yüzden elmas kesintisi player.diamonds
+  // üzerinden yapılıyor, unlockedSlots ise (o effect'in dokunmadığı ayrı bir alan
+  // olduğu için) doğrudan account'a yazılabiliyor.
+  const handleUnlockSlotFromHub = () => {
+    if (player.diamonds < THIRD_SLOT_COST_DIAMONDS) return false;
+    setPlayer((p) => ({ ...p, diamonds: p.diamonds - THIRD_SLOT_COST_DIAMONDS }));
+    saveAccountUnlockedSlots(username, CHARACTER_SLOTS);
+    setAccount((a) => ({ ...a, unlockedSlots: CHARACTER_SLOTS }));
+    return true;
+  };
+
   const handleLogout = () => {
     setPlayer(null);
     setActiveSlot(null);
@@ -315,6 +331,8 @@ export default function App() {
           onChangeCharacter={handleChangeCharacter}
           onChangeRace={handleChangeRace}
           onOpenSettings={() => setSettingsOpen(true)}
+          unlockedSlots={account.unlockedSlots}
+          onUnlockSlot={handleUnlockSlotFromHub}
         />
       )}
       {toast && (

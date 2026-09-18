@@ -11,6 +11,10 @@ export const diamondShopSection = {
       bestValueBadge: "En Avantajlı",
       buyButton: "Satın Al",
       comingSoonToast: "Mağaza yakında açılacak — Apple/Google Play ödeme entegrasyonu tamamlandığında burada gerçek para ile elmas satın alabileceksin.",
+      perksTitle: "Elmasla Neler Alabilirsin",
+      packsTitle: "Elmas Paketleri",
+      slotUnlocked: "3. karakter slotu zaten açık.",
+      slotUnlockedToast: "3. karakter slotu açıldı!",
     },
   },
   en: {
@@ -22,6 +26,10 @@ export const diamondShopSection = {
       bestValueBadge: "Best Value",
       buyButton: "Buy",
       comingSoonToast: "The shop isn't live yet — once Apple/Google Play payments are wired up, you'll be able to buy diamonds with real money here.",
+      perksTitle: "What Diamonds Can Buy",
+      packsTitle: "Diamond Packs",
+      slotUnlocked: "The 3rd character slot is already open.",
+      slotUnlockedToast: "3rd character slot unlocked!",
     },
   },
 };

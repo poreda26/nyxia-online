@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, ArrowDownToLine, X, ListChecks, Coins } from "lucide-react";
+import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, ArrowDownToLine, X, ListChecks, Coins, Gem, Plus } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
@@ -10,7 +10,7 @@ import {
 } from "../utils/player";
 import { isConsumable } from "../utils/itemDisplay";
 import { newlyUnlocked } from "../utils/achievements";
-import { BAG_SLOTS, addItemToInventory, depositToBank, withdrawFromBank } from "../utils/inventory";
+import { BAG_SLOTS, addItemToInventory, depositToBank, withdrawFromBank, buyExtraBankPage, EXTRA_BANK_PAGE_COST_DIAMONDS, MAX_BANK_PAGES } from "../utils/inventory";
 import { usePotion } from "../utils/potions";
 import { learnFreeSkills } from "../utils/skills";
 import { premiumSellMultiplier, premiumRepairDiscount } from "../utils/premium";
@@ -62,6 +62,18 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     pushToast(t("inventory.goldWithdrawn", { amount: formatGold(amount) }), "default");
     setGoldAmount("");
   };
+
+  const handleBuyBankPage = () => {
+    const result = buyExtraBankPage(player, bank);
+    if (!result.bought) {
+      pushToast(result.reason === "maxBankPages" ? t("inventory.maxBankPagesReached") : t("shop.notEnoughDiamonds"), "warn");
+      return;
+    }
+    setPlayer(result.player);
+    setBank(result.bank);
+    pushToast(t("inventory.bankPageBought"), "loot");
+  };
+
   const [selectedId, setSelectedId] = useState(null);
   const [bankPage, setBankPage] = useState(0);
   // Kuşanılmış bir slota dokununca artık direkt çıkarmıyor — kullanıcı
@@ -442,6 +454,15 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                 {i + 1}
               </button>
             ))}
+            {bank.length < MAX_BANK_PAGES && (
+              <button
+                onClick={handleBuyBankPage}
+                title={t("inventory.buyBankPage", { n: EXTRA_BANK_PAGE_COST_DIAMONDS })}
+                style={{ ...styles.subtabBtn, flex: "0 0 auto", padding: "6px 10px", display: "flex", alignItems: "center", gap: 3, color: "#8B6FC9" }}
+              >
+                <Plus size={11} /> <Gem size={11} />
+              </button>
+            )}
           </div>
 
           <BankGrid

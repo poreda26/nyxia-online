@@ -1,7 +1,7 @@
 import BattleScene, {hasBattleScene} from './BattleScene';
 import { grantMonsterReward } from "../utils/monsterRewards";
 import { useState, useEffect, useRef } from "react";
-import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle } from "lucide-react";
+import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle, Gem } from "lucide-react";
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
 import { buildSoloDungeonStages, buildDungeonStageChoices, SOLO_DUNGEON_DAILY_LIMIT } from "../data/soloDungeon";
 import { buildMapBoss } from "../data/mapBosses";
@@ -12,7 +12,8 @@ import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat"
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { hasAutoBattleAccess } from "../utils/premium";
 import { classSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
-import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry } from "../utils/soloDungeon";
+import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry, buyExtraDungeonEntries } from "../utils/soloDungeon";
+import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS } from "../data/soloDungeon";
 import { playHit, playMiss, playHurt, playLevelUp } from "../audio/sfx";
 import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
@@ -132,6 +133,13 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     setPlayer((p) => consumeDungeonEntry(p));
     setDungeonRun({ stages, index: 0 });
     startBattle(stages[0]);
+  };
+
+  const handleBuyDungeonEntries = () => {
+    const result = buyExtraDungeonEntries(player);
+    if (!result.bought) { pushToast(t("battle.notEnoughDiamondsForEntries"), "warn"); return; }
+    setPlayer(result.player);
+    pushToast(t("battle.dungeonEntriesBought"), "loot");
   };
 
   const chooseDungeonPath = (nextStage) => {
@@ -626,6 +634,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                 {t("battle.enterDungeon")}
               </button>
             </div>
+            {dungeonEntriesLeft(player) <= 0 && !locked && (
+              <button
+                style={{ ...styles.tinyBtn, width: "100%", marginTop: 8, background: "var(--bg-panel-alt)", color: "#8B6FC9", border: "1px solid #8B6FC966", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                onClick={handleBuyDungeonEntries}
+              >
+                <Gem size={12} /> {t("battle.buyDungeonEntries", { n: EXTRA_DUNGEON_ENTRY_COST_DIAMONDS })}
+              </button>
+            )}
           </div>
 
           <SectionLabel>{t("battle.mapBoss")}</SectionLabel>

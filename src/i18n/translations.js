@@ -180,6 +180,9 @@ const base = {
       skillOnCooldown: "Bu beceri hâlâ bekleme süresinde.", notEnoughMana: "Yeterli manan yok.",
       potionOnCooldown: "Bu pot hâlâ bekleme süresinde.", noPotionsLeft: "Pot kalmadı.",
       dungeonEntriesExhausted: "Bugünkü zindan giriş hakların bitti — yarın tekrar gel.",
+      buyDungeonEntries: "{n} Elmasla +2 Giriş Hakkı Satın Al",
+      dungeonEntriesBought: "2 ekstra zindan giriş hakkı satın alındı!",
+      notEnoughDiamondsForEntries: "Yeterli elmasın yok.",
       log: {
         appeared: "{monster} karşına çıktı.",
         dotDamage: "Süregelen etki {dmg} hasar verdi.",
@@ -413,6 +416,9 @@ const base = {
       skillOnCooldown: "This skill is still on cooldown.", notEnoughMana: "Not enough mana.",
       potionOnCooldown: "This potion is still on cooldown.", noPotionsLeft: "No potions left.",
       dungeonEntriesExhausted: "You're out of dungeon entries for today — come back tomorrow.",
+      buyDungeonEntries: "Buy +2 Entries for {n} Diamonds",
+      dungeonEntriesBought: "Bought 2 extra dungeon entries!",
+      notEnoughDiamondsForEntries: "You don't have enough diamonds.",
       log: {
         appeared: "{monster} appears before you.",
         dotDamage: "The lingering effect dealt {dmg} damage.",

@@ -28,7 +28,7 @@ import DailyLoginModal from "./DailyLoginModal";
 import DiamondShopModal from "./DiamondShopModal";
 import ScheduledEventBanner from "./ScheduledEventBanner";
 
-export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings }) {
+export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings, unlockedSlots, onUnlockSlot }) {
   const cls = CLASSES[player.class];
   const { atk } = totalStats(player);
   const def = playerDef(player);
@@ -162,7 +162,12 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
       )}
 
       {diamondShopOpen && (
-        <DiamondShopModal pushToast={pushToast} onClose={() => setDiamondShopOpen(false)} />
+        <DiamondShopModal
+          player={player} setPlayer={setPlayer}
+          bank={bank} setBank={setBank}
+          unlockedSlots={unlockedSlots} onUnlockSlot={onUnlockSlot}
+          pushToast={pushToast} onClose={() => setDiamondShopOpen(false)}
+        />
       )}
     </div>
   );

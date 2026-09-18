@@ -12,6 +12,12 @@
 // şimdilik var olan genel loot tablosu + mütevazı bir bonus kullanılıyor.
 export const SOLO_DUNGEON_DAILY_LIMIT = 3;
 
+// Elmasla ekstra zindan girişi — bkz. utils/soloDungeon.js#buyExtraDungeonEntries,
+// components/DiamondShopModal.jsx. Sadece bugün için geçerli, yarın normal
+// SOLO_DUNGEON_DAILY_LIMIT'e döner.
+export const EXTRA_DUNGEON_ENTRIES_PER_PURCHASE = 2;
+export const EXTRA_DUNGEON_ENTRY_COST_DIAMONDS = 150;
+
 // Taban canavara göre HP/ATK/DEF/XP/Altın çarpanı — her aşama bir öncekinden
 // belirgin şekilde daha güçlü, son (boss) aşaması en güçlüsü.
 const REGULAR_STAGE_MULT = [1.0, 1.22, 1.48, 1.8, 2.2];
