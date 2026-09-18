@@ -3,7 +3,7 @@ import { Skull, Swords, CircleSlash, Wind, Droplets, Heart, Zap, Lock, Gift, Log
 import {
   WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WORLD_BOSS, PVP_SKILLS, WARZONE_TICK_MS,
   GHOST_POPULATION, WORLD_BOSS_RESPAWN_SECONDS, GHOST_REPLACE_SECONDS, AMBUSH_CHANCE_PER_TICK,
-  WARZONE_HUNT_GOLD_MULT, WARZONE_HUNT_DROP_MULT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP,
+  WARZONE_HUNT_POWER_MULT, WARZONE_HUNT_GOLD_MULT, WARZONE_HUNT_DROP_MULT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP,
 } from "../data/warzone";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
@@ -424,7 +424,18 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   const startHunt = () => {
     if (lockRef.current || wz.duel || wz.hunt || player.hp <= 0) return;
     const template = pick(CRIMSON_MAP.monsters);
-    const monster = { ...template, maxHp: template.hp };
+    // Güç çarpanı sadece savaş istatistiklerine (hp/atk/def) uygulanıyor —
+    // xp/goldMin/goldMax bilerek taban (Crimson Battlefront'un kendi)
+    // değerinde kalıyor, ödül ayrı bir çarpanla (bkz. huntAction#grantMonsterReward
+    // çağrısındaki opts) yönetiliyor.
+    const hp = Math.round(template.hp * WARZONE_HUNT_POWER_MULT);
+    const monster = {
+      ...template,
+      hp,
+      maxHp: hp,
+      atk: Math.round(template.atk * WARZONE_HUNT_POWER_MULT),
+      def: Math.round(template.def * WARZONE_HUNT_POWER_MULT),
+    };
     setWz((prev) => ({ ...prev, hunt: { monster, potionCooldowns: { hp: 0, mp: 0 }, log: [t("warzone.log.huntAppeared", { monster: monster.name })] } }));
   };
 

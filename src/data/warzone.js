@@ -33,8 +33,15 @@ export const AMBUSH_CHANCE_PER_TICK = 0.10;
 // opts parametresi), normal avlanmadan yüksek altın/drop oranıyla. Pusuya
 // düşüp kaybedersen National Point'e ek olarak ÜSTÜNDEKİ (Depo'daki DEĞİL,
 // player.gold) altının bir kısmını kaybedersin — bu yüzden risk gerçek.
-// Güç/oranlar kullanıcı isteğiyle SONRA ince ayar yapılacak, bunlar ilk
-// (başlangıç) değerleri.
+// Güç/oranlar kullanıcı isteğiyle ince ayar yapılıyor, tek yerden.
+//
+// WARZONE_HUNT_POWER_MULT SADECE canavarın hp/atk/def'ine uygulanıyor
+// (bkz. WarzoneTab.jsx#startHunt) — xp/altın/drop ÖDÜLÜ Crimson
+// Battlefront'un kendi (data/maps.js'teki) taban değerlerinden geliyor,
+// bilerek karıştırılmıyor: "ne kadar güçlü" ile "ne kadar ödül" ayrı ayrı
+// ayarlanabilsin diye. Örn. güç çarpanını artırmak canavarı zorlaştırır
+// ama WARZONE_HUNT_GOLD_MULT'a dokunmadıkça ödülü büyütmez.
+export const WARZONE_HUNT_POWER_MULT = 1.5;
 export const WARZONE_HUNT_GOLD_MULT = 1.5;
 export const WARZONE_HUNT_DROP_MULT = 1.3;
 export const WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT = 0.08;
