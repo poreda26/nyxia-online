@@ -17,11 +17,17 @@ import { MAPS } from "../data/maps";
 // Called exactly once per defeated monster, outside React state updaters.
 // Shared by the original panel battles and the real-time world.
 function pickDropTier(tier) { return Math.random() < 0.5 ? tier : Math.max(1, tier - 1); }
-export function grantMonsterReward(p, m, map) {
+// opts: { goldMult, dropMult } — isteğe bağlı EK çarpanlar (varsayılan 1),
+// premium/boost parşömenlerinin üstüne biniyor. Savaş Alanı'nın "Canavar
+// Ara" riskli farm yolu (bkz. components/WarzoneTab.jsx) bunu normal
+// avlanmadan yüksek altın/drop oranı vermek için kullanıyor — bu fonksiyonun
+// kendisi ne çağrıldığı yeri ne de "warzone" kavramını biliyor, sadece
+// çarpanları alıp uyguluyor.
+export function grantMonsterReward(p, m, map, opts = {}) {
   if(m.mapBoss&&!canFightMapBoss(p,map.id).ok)return {player:p,drops:null,blockedReasonKey:'battle.bossDefeatedToday',tone:'warn'};
   const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p) * boostMultiplier(p, "exp");
-  const dropMult = premiumDropMultiplier(p);
-  const goldMult = boostMultiplier(p, "gold");
+  const dropMult = premiumDropMultiplier(p) * (opts.dropMult ?? 1);
+  const goldMult = boostMultiplier(p, "gold") * (opts.goldMult ?? 1);
   let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
   const killsBefore = np.monsterKills[m.id] || 0;
   np.monsterKills[m.id] = killsBefore + 1;

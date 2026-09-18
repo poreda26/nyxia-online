@@ -3,27 +3,37 @@ import { Skull, Swords, CircleSlash, Wind, Droplets, Heart, Zap, Lock, Gift, Log
 import {
   WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WORLD_BOSS, PVP_SKILLS, WARZONE_TICK_MS,
   GHOST_POPULATION, WORLD_BOSS_RESPAWN_SECONDS, GHOST_REPLACE_SECONDS, AMBUSH_CHANCE_PER_TICK,
+  WARZONE_HUNT_GOLD_MULT, WARZONE_HUNT_DROP_MULT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP,
 } from "../data/warzone";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
+import { MAPS } from "../data/maps";
 import { spawnGhost, ghostDamageFromPlayer, playerDamageFromGhost, ghostSelfHeal, tickWorldBoss } from "../utils/warzoneCombat";
 import { awardNationalPoint, penalizeNationalPoint } from "../utils/nationalPoint";
 import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
 import { leaderboardFor } from "../utils/leaderboard";
 import { rollLoot } from "../utils/loot";
+import { grantMonsterReward } from "../utils/monsterRewards";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty, armorSetDamageReduction, clampGold, formatGold } from "../utils/player";
 import { premiumNpLossReduction } from "../utils/premium";
-import { mitigate, MONSTER_DEF_K, rollHit } from "../utils/combat";
+import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
-import { rand, uid } from "../utils/random";
+import { rand, uid, pick } from "../utils/random";
 import { newlyUnlocked } from "../utils/achievements";
+import { playLevelUp } from "../audio/sfx";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
 import BarTrack from "./shared/BarTrack";
 import DeathModal from "./DeathModal";
+import LevelUpModal from "./LevelUpModal";
 import { useTranslation } from "../i18n/LanguageContext";
+
+// Canavar Ara'nın canavar havuzu — Crimson Battlefront'un mevcut roster'ı
+// (bkz. data/maps.js), yeni içerik üretmeden Savaş Alanı'na "en zorlu
+// canavarlarla karşılaşma" hissi katıyor.
+const CRIMSON_MAP = MAPS.find((m) => m.id === "crimson_battlefront");
 
 const RESPAWN_TICKS = Math.max(1, Math.round((WORLD_BOSS_RESPAWN_SECONDS * 1000) / WARZONE_TICK_MS));
 const GHOST_REPLACE_TICKS = Math.max(1, Math.round((GHOST_REPLACE_SECONDS * 1000) / WARZONE_TICK_MS));
@@ -38,6 +48,7 @@ function freshWz(player) {
     ghosts: Array.from({ length: GHOST_POPULATION }, () => spawnGhost(player)),
     log: [],
     duel: null,
+    hunt: null,
   };
 }
 
@@ -57,7 +68,7 @@ function resolveBossDeath(bossDamage, ghosts, t) {
 // Bir tick'te: boss respawn sayacı / hayaletlerin boss'a vurması / gitmiş
 // hayaletlerin yenisiyle değişmesi / pusu (ambush) ihtimali. Saf fonksiyon —
 // tüm Math.random() çağrıları burada, side effect (toast/log) yok.
-function warzoneTick(wz, player, t, bossName) {
+function warzoneTick(wz, player, t, bossName, huntActive) {
   let { boss, bossDamage, ghosts } = wz;
   const lines = [];
   let bossDied = null;
@@ -95,7 +106,7 @@ function warzoneTick(wz, player, t, bossName) {
 
   let ambushGhost = null;
   const idle = ghosts.filter((g) => !g.gone && !g.dueling);
-  if (idle.length > 0 && Math.random() < AMBUSH_CHANCE_PER_TICK) {
+  if (huntActive && idle.length > 0 && Math.random() < AMBUSH_CHANCE_PER_TICK) {
     ambushGhost = idle[Math.floor(Math.random() * idle.length)];
   }
 
@@ -137,7 +148,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   const [confirmingRetreat, setConfirmingRetreat] = useState(false);
   const [entered, setEntered] = useState(false);
   const [confirmingEntry, setConfirmingEntry] = useState(false);
-  const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal (Dünya Canavarı elinde ölüm)
+  const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal (Dünya Canavarı/Canavar Ara elinde ölüm)
+  const [levelUpInfo, setLevelUpInfo] = useState(null); // Canavar Ara XP verdiği için (düellolar vermiyor) burada da seviye atlanabilir
   const [lbRace, setLbRace] = useState(player.race);
   const [lbCls, setLbCls] = useState(player.class);
   const [lbSort, setLbSort] = useState("weeklyPoint");
@@ -149,7 +161,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [wz.duel?.log?.length]);
+  }, [wz.duel?.log?.length, wz.hunt?.log?.length]);
 
   // Sekmeden ayrılmak (başka bir BottomNav sekmesine geçmek) bu bileşeni
   // tamamen unmount eder — wz ephemeral olduğu için düello dahil her şey
@@ -160,8 +172,12 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   useEffect(() => { wzRef.current = wz; }, [wz]);
   useEffect(() => {
     return () => {
-      if (wzRef.current?.duel && !wzRef.current.duel.finished) {
-        setPlayer((p) => penalizeNationalPoint(p));
+      const duel = wzRef.current?.duel;
+      if (duel && !duel.finished) {
+        setPlayer((p) => {
+          const goldLoss = duel.fromAmbush ? Math.min(WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP, Math.round(p.gold * WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT)) : 0;
+          return { ...penalizeNationalPoint(p), gold: Math.max(0, p.gold - goldLoss) };
+        });
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -182,7 +198,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       // fonksiyonlarını iki kez çağırdığı senaryoyu, ve iki farklı
       // Math.random() sonucunun dışarıdaki closure değişkenleriyle
       // commit edilen state'ten sapma ihtimalini baştan ortadan kaldırır).
-      const result = warzoneTick(wz, player, t, bossName);
+      const huntActive = !!wz.hunt;
+      const result = warzoneTick(wz, player, t, bossName, huntActive);
       let next = { ...wz, boss: result.boss, bossDamage: result.bossDamage, ghosts: result.ghosts, log: [...wz.log, ...result.lines].slice(-24) };
       let ambushFirstDmg = 0;
       if (result.ambushGhost) {
@@ -191,7 +208,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         next = {
           ...next,
           ghosts: next.ghosts.map((g) => (g.id === result.ambushGhost.id ? { ...g, dueling: true } : g)),
-          duel: initiated.duel,
+          duel: { ...initiated.duel, fromAmbush: true },
+          // Kullanıcı isteği: pusu sadece Canavar Ara'yı yarıda kesiyor —
+          // yarım kalan av için hiçbir ödül verilmiyor.
+          hunt: null,
         };
       }
       setWz(next);
@@ -199,7 +219,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         pushToast(result.lines[result.lines.length - 1], result.bossDied.winner === "player" ? "loot" : "default");
       }
       if (result.ambushGhost) {
-        pushToast(t("warzone.toast.ambush", { ghost: result.ambushGhost.name }), "warn");
+        pushToast(t("warzone.toast.huntAmbush", { ghost: result.ambushGhost.name }), "warn");
         if (ambushFirstDmg > 0) {
           const wouldDie = player.hp - ambushFirstDmg <= 0;
           setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - ambushFirstDmg) }));
@@ -380,6 +400,112 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     pushToast(drops.join("  ·  "), "loot");
   };
 
+  // ---- Canavar Ara: riskli farm yolu (bkz. data/warzone.js'in üstündeki
+  // not) — Crimson Battlefront'un canavarlarını avlıyor, normal avlanmadan
+  // yüksek altın/drop oranıyla (bkz. utils/monsterRewards.js'in opts
+  // parametresi). BattleTab.jsx#formatDrop ile aynı tipte drops dizisi
+  // döndüğü için burada da aynı çeviri anahtarları (battle.drop.*) yeniden
+  // kullanılıyor.
+  const formatHuntDrop = (d) => {
+    switch (d.type) {
+      case "gold": return t("battle.drop.gold", { amount: formatGold(d.amount) });
+      case "xp": return t("battle.drop.xp", { amount: d.amount });
+      case "questComplete": return t("battle.drop.questComplete");
+      case "questProgress": return t("battle.drop.questProgress", { current: d.current, target: d.target });
+      case "dailyQuestComplete": return t("battle.drop.dailyQuestComplete", { target: d.target });
+      case "itemDropped": return t("battle.drop.itemDropped", { kind: t(`battle.kind.${d.kind}`), name: d.itemName });
+      case "itemDropFailed": return t("battle.drop.itemDropFailed", { name: d.itemName, reason: t(REASON_KEY[d.reason] || d.reason) });
+      case "chestDropped": return t("battle.drop.chestDropped", { tier: d.tier });
+      case "levelUpToast": return t("battle.drop.levelUpToast", { level: d.level, statPoints: d.statPoints });
+      default: return "";
+    }
+  };
+
+  const startHunt = () => {
+    if (lockRef.current || wz.duel || wz.hunt || player.hp <= 0) return;
+    const template = pick(CRIMSON_MAP.monsters);
+    const monster = { ...template, maxHp: template.hp };
+    setWz((prev) => ({ ...prev, hunt: { monster, potionCooldowns: { hp: 0, mp: 0 }, log: [t("warzone.log.huntAppeared", { monster: monster.name })] } }));
+  };
+
+  const abandonHunt = () => setWz((prev) => ({ ...prev, hunt: null }));
+
+  // actionType: null (düz saldırı) ya da "potion_hp"/"potion_mp" — BattleTab
+  // #attack ile aynı PvE hasar formülü (mitigate + MONSTER_DEF_K/PLAYER_DEF_K),
+  // sadece burada tek tıkla hem oyuncunun hem canavarın vuruşu birlikte
+  // çözülüyor (Dünya Canavarı'nın #attackBoss'uyla aynı ritim).
+  const huntAction = (actionType) => {
+    if (lockRef.current || !wz.hunt || player.hp <= 0) return;
+    const isPotion = actionType === "potion_hp" || actionType === "potion_mp";
+    const potionKind = actionType === "potion_hp" ? "hp" : actionType === "potion_mp" ? "mp" : null;
+    let potionResult = null;
+    let potionTier = null;
+    if (isPotion) {
+      if ((wz.hunt.potionCooldowns[potionKind] || 0) > 0) { pushToast(t("battle.potionOnCooldown"), "warn"); return; }
+      potionTier = bestAvailablePotionTier(player, potionKind);
+      if (!potionTier) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
+      potionResult = usePotion(player, potionKind, potionTier);
+      if (potionResult.reason) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
+    }
+    lockRef.current = true;
+
+    const monster = wz.hunt.monster;
+    const potionCooldowns = Object.fromEntries(Object.entries(wz.hunt.potionCooldowns).map(([k, v]) => [k, Math.max(0, v - 1)]));
+    let log = [...wz.hunt.log];
+    let monsterHp = monster.hp;
+    let currentHp = player.hp;
+
+    if (isPotion) {
+      potionCooldowns[potionKind] = POTION_COOLDOWN_TURNS;
+      setPlayer(() => potionResult.player);
+      currentHp = potionResult.player.hp;
+      log.push(potionKind === "hp" ? t("warzone.log.potionUsedHp", { healed: potionResult.healed }) : t("warzone.log.potionUsedMp", { healed: potionResult.healed }));
+    } else {
+      const isCrit = Math.random() < cls.crit;
+      const playerHits = rollHit(player.stats.dex, monster.atk, player.level);
+      const dmg = playerHits
+        ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)))
+        : 0;
+      monsterHp = Math.max(0, monsterHp - dmg);
+      log.push(!playerHits ? t("warzone.log.huntMissed", { monster: monster.name }) : isCrit ? t("warzone.log.huntCrit", { monster: monster.name, dmg }) : t("warzone.log.huntHit", { monster: monster.name, dmg }));
+    }
+
+    if (monsterHp <= 0) {
+      setWz((prev) => ({ ...prev, hunt: null, log: [...prev.log, t("warzone.log.huntDefeated", { monster: monster.name })].slice(-24) }));
+      const result = grantMonsterReward(player, monster, CRIMSON_MAP, { goldMult: WARZONE_HUNT_GOLD_MULT, dropMult: WARZONE_HUNT_DROP_MULT });
+      setPlayer(result.player);
+      pushToast(result.drops.map(formatHuntDrop).join("  ·  "), result.tone);
+      if (result.levelUp) { setLevelUpInfo(result.levelUp); playLevelUp(); }
+      setTimeout(() => { lockRef.current = false; }, 320);
+      return;
+    }
+
+    const setReduction = armorSetDamageReduction(player, "monster");
+    const monsterHits = rollHit(monster.atk, player.stats.dex, player.level);
+    const mdmg = monsterHits
+      ? Math.max(1, Math.round(mitigate(monster.atk, def, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
+      : 0;
+    const wouldDie = currentHp - mdmg <= 0;
+    log.push(monsterHits ? t("warzone.log.huntHitYou", { monster: monster.name, dmg: mdmg }) : t("warzone.log.huntMissedYou", { monster: monster.name }));
+
+    setPlayer((p) => ({ ...p, hp: Math.max(0, currentHp - mdmg) }));
+    setWz((prev) => ({ ...prev, hunt: { ...prev.hunt, monster: { ...monster, hp: monsterHp }, potionCooldowns, log: log.slice(-24) } }));
+
+    if (wouldDie) {
+      setTimeout(() => {
+        let xpLost = 0;
+        setPlayer((p) => {
+          const result = applyDeathPenalty(p);
+          xpLost = result.xpLost;
+          return result.player;
+        });
+        setWz((prev) => ({ ...prev, hunt: null }));
+        setDeathInfo({ xpLost });
+      }, 400);
+    }
+    setTimeout(() => { lockRef.current = false; }, 320);
+  };
+
   // ---- Düello: oyuncu bir hayaleti seçip meydan okuyor ----
   const startDuel = (ghost) => {
     if (lockRef.current || wz.duel || player.hp <= 0) return;
@@ -424,12 +550,19 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
   // döner (bkz. endDuel'in ghostDefeated:false dalı).
   const finishDuelAsLoss = (ghostId) => {
     const loss = actualNpLoss();
+    const fromAmbush = !!wz.duel?.fromAmbush;
+    let goldLoss = 0;
     // National Point kaybı bu PvP kaybının kendi cezası zaten — burada ayrıca
     // XP kaybettirmiyoruz (BattleTab/Dünya Canavarı ölümlerinden farklı),
     // ama hp/mp'yi HER ZAMAN tam dolduruyoruz — eskiden burası da hiç
-    // yapmıyordu, "Bayıldın" sonrası can 0'da kalıp kalıyordu.
-    setPlayer((p) => ({ ...penalizeNationalPoint(p), hp: playerMaxHp(p), mp: playerMaxMp(p) }));
-    pushToast(t("warzone.toast.fainted", { loss }), "warn");
+    // yapmıyordu, "Bayıldın" sonrası can 0'da kalıp kalıyordu. Kullanıcı
+    // isteği: sadece PUSUDAN (Canavar Ara'yı kesen) kaybedersen altın da
+    // gider — Depo'daki DEĞİL, üstünde taşıdığın player.gold'dan, tavanlı.
+    setPlayer((p) => {
+      goldLoss = fromAmbush ? Math.min(WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP, Math.round(p.gold * WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT)) : 0;
+      return { ...penalizeNationalPoint(p), gold: Math.max(0, p.gold - goldLoss), hp: playerMaxHp(p), mp: playerMaxMp(p) };
+    });
+    pushToast(goldLoss > 0 ? t("warzone.toast.huntAmbushLost", { loss, gold: formatGold(goldLoss) }) : t("warzone.toast.fainted", { loss }), "warn");
     endDuel(ghostId, false);
     lockRef.current = false;
   };
@@ -441,8 +574,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
     const ghostId = wz.duel.ghost.id;
     const ghostName = wz.duel.ghost.name;
     const loss = actualNpLoss();
-    setPlayer((p) => penalizeNationalPoint(p));
-    pushToast(t("warzone.toast.conceded", { ghost: ghostName, loss }), "warn");
+    const fromAmbush = !!wz.duel.fromAmbush;
+    let goldLoss = 0;
+    setPlayer((p) => {
+      goldLoss = fromAmbush ? Math.min(WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP, Math.round(p.gold * WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT)) : 0;
+      return { ...penalizeNationalPoint(p), gold: Math.max(0, p.gold - goldLoss) };
+    });
+    pushToast(goldLoss > 0 ? t("warzone.toast.huntAmbushConceded", { ghost: ghostName, loss, gold: formatGold(goldLoss) }) : t("warzone.toast.conceded", { ghost: ghostName, loss }), "warn");
     endDuel(ghostId, false);
     lockRef.current = false;
     setConfirmingRetreat(false);
@@ -592,6 +730,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       <SectionLabel>{t("warzone.title")}</SectionLabel>
       <div style={styles.subtabRow}>
         <button style={{ ...styles.subtabBtn, ...(subtab === "alan" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("alan")}>{t("warzone.tabArea")}</button>
+        <button style={{ ...styles.subtabBtn, ...(subtab === "av" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("av")}>{t("warzone.tabHunt")}</button>
         <button style={{ ...styles.subtabBtn, ...(subtab === "siralama" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("siralama")}>{t("warzone.tabRanking")}</button>
       </div>
 
@@ -740,6 +879,76 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
         </div>
       )}
 
+      {subtab === "av" && !wz.hunt && (
+        <>
+          <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: 12 }}>
+            {t("warzone.huntIntro")}
+          </p>
+          <EmptyState icon={Swords} title={t("warzone.huntEmptyTitle")} subtitle={t("warzone.huntEmptySubtitle")} />
+          <button
+            style={{ ...styles.primaryBtn, width: "100%", marginTop: 4, background: "#C9425A", opacity: playerDead ? 0.5 : 1 }}
+            disabled={playerDead}
+            onClick={startHunt}
+          >
+            <Swords size={14} /> {t("warzone.huntBtn")}
+          </button>
+        </>
+      )}
+
+      {subtab === "av" && wz.hunt && (
+        <div style={{ ...styles.battleArena, marginTop: 12 }}>
+          <div style={{ ...styles.combatant, borderColor: "#C9425A55" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 14, display: "flex", alignItems: "center", gap: 5 }}>
+                <Swords size={12} color="#C9425A" /> {wz.hunt.monster.name}
+              </span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{wz.hunt.monster.hp}/{wz.hunt.monster.maxHp}</span>
+            </div>
+            <BarTrack pct={(wz.hunt.monster.hp / wz.hunt.monster.maxHp) * 100} color="#C9425A" />
+          </div>
+
+          <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{displayClassName(player)}</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{player.hp}/{maxHp}</span>
+            </div>
+            <BarTrack pct={(player.hp / maxHp) * 100} color="#C9425A" />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 8 }}>
+              <span style={{ fontSize: 10, color: "var(--text-faint)" }}>MP</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>{player.mp}/{maxMp}</span>
+            </div>
+            <BarTrack pct={(player.mp / maxMp) * 100} color="#4FC3D9" thin />
+          </div>
+
+          <div ref={logRef} style={styles.combatLog}>
+            {wz.hunt.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}
+          </div>
+
+          <div style={styles.battleControls}>
+            <button style={{ ...styles.primaryBtn, flex: 1, background: cls.color, opacity: playerDead ? 0.5 : 1 }} onClick={() => huntAction(null)} disabled={playerDead}>
+              <Swords size={15} /> {t("warzone.attack")}
+            </button>
+            <button
+              style={{ ...styles.potionBtn, opacity: (wz.hunt.potionCooldowns.hp > 0 || playerDead) ? 0.5 : 1 }}
+              onClick={() => huntAction("potion_hp")}
+              disabled={wz.hunt.potionCooldowns.hp > 0 || playerDead}
+            >
+              <Heart size={14} color="#C9425A" /> {wz.hunt.potionCooldowns.hp > 0 ? wz.hunt.potionCooldowns.hp : (hpPotion?.count || 0)}
+            </button>
+            <button
+              style={{ ...styles.potionBtn, opacity: (wz.hunt.potionCooldowns.mp > 0 || playerDead) ? 0.5 : 1 }}
+              onClick={() => huntAction("potion_mp")}
+              disabled={wz.hunt.potionCooldowns.mp > 0 || playerDead}
+            >
+              <Zap size={14} color="#4FC3D9" /> {wz.hunt.potionCooldowns.mp > 0 ? wz.hunt.potionCooldowns.mp : (mpPotion?.count || 0)}
+            </button>
+          </div>
+          <button style={styles.ghostBtn} onClick={abandonHunt}>
+            <LogOut size={13} /> {t("warzone.huntAbandon")}
+          </button>
+        </div>
+      )}
+
       {subtab === "siralama" && (
         <>
           <div style={styles.tierScroller}>
@@ -776,6 +985,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       )}
 
       {deathInfo && <DeathModal xpLost={deathInfo.xpLost} onClose={() => setDeathInfo(null)} />}
+      {levelUpInfo && <LevelUpModal levelUp={levelUpInfo} onClose={() => setLevelUpInfo(null)} />}
     </div>
   );
 }

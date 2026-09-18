@@ -20,9 +20,25 @@ export const WARZONE_TICK_MS = 3000;
 export const GHOST_POPULATION = 3;
 export const GHOST_REPLACE_SECONDS = 20;
 
-// Meşgul değilken (ne boss'a vuruyor ne düellodaysa) her tick'te bir
-// hayaletin pusu kurma (Model A "Baskın") ihtimali.
+// Kullanıcı isteği: "Düello ararsa" (kendi seçtiği hayalete meydan okumak)
+// güvenli NP yolu kalsın — Pusu artık SADECE "Canavar Ara" ile aktif
+// avlanırken (bkz. WarzoneTab.jsx'in `hunt` durumu) tetiklenebiliyor,
+// oyuncu boşta gezip rakip seçerken değil. Bu, "hangi rakibe gireceğimi
+// seçip riskten kaçarım" sorununu ortadan kaldırıyor — asıl kazanç (ve
+// asıl risk) avlanmaktan geliyor, seçici düello'dan değil.
 export const AMBUSH_CHANCE_PER_TICK = 0.10;
+
+// Canavar Ara — riskli farm yolu. Crimson Battlefront'un canavar havuzunu
+// kullanıyor (bkz. WarzoneTab.jsx#huntAction, utils/monsterRewards.js'in
+// opts parametresi), normal avlanmadan yüksek altın/drop oranıyla. Pusuya
+// düşüp kaybedersen National Point'e ek olarak ÜSTÜNDEKİ (Depo'daki DEĞİL,
+// player.gold) altının bir kısmını kaybedersin — bu yüzden risk gerçek.
+// Güç/oranlar kullanıcı isteğiyle SONRA ince ayar yapılacak, bunlar ilk
+// (başlangıç) değerleri.
+export const WARZONE_HUNT_GOLD_MULT = 1.5;
+export const WARZONE_HUNT_DROP_MULT = 1.3;
+export const WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT = 0.08;
+export const WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP = 500;
 
 // Normal canavarlara göre ~3 kat drop/sandık/parşömen şansı, artı garanti
 // bonus altın — "güçlü ama drop şansı yüksek" isteğini karşılıyor.
