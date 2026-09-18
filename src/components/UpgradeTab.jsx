@@ -175,7 +175,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
         unlocked = newlyUnlocked(p, np);
         return np;
       });
-      unlocked.forEach((a) => pushToast(t("upgrade.achievementUnlocked", { name: a.name, title: a.title }), "level"));
+      unlocked.forEach((a) => pushToast(t("upgrade.achievementUnlocked", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
       setPendingReveal({ item: entry, success: true, bumpedItem: bumped });
     } else {
       setPendingReveal({ item: entry, success: false, bumpedItem: null });

@@ -18,7 +18,7 @@ const PRESS_DURATION = 2600; // ms — suspense window before the reveal
 // (kullanıcı isteği) tam bu reveal anında çalıyor, "Bas"a basıldığı anda
 // değil — görselle senkron olsun diye.
 export default function ForgePressModal({ item, success, bumpedItem, onClose }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [phase, setPhase] = useState("pressing");
   const timerRef = useRef(null);
 
@@ -86,7 +86,7 @@ export default function ForgePressModal({ item, success, bumpedItem, onClose }) 
             </div>
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18, color: "#E8A5AF" }}>{t("upgrade.forge.failedTitle")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8, maxWidth: 220, textAlign: "center", lineHeight: 1.5 }}>
-              {t("upgrade.forge.lostMessage", { name: displayItemName(item) })}
+              {t("upgrade.forge.lostMessage", { name: displayItemName(item, lang) })}
             </div>
             <button style={{ ...styles.primaryBtn, marginTop: 22, background: "#C9425A" }} onClick={onClose}>
               {t("upgrade.forge.ok")}

@@ -28,7 +28,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
                   yapıyordu — kaldırıldı. */}
               {title && (
                 <span style={{ fontSize: 9, color: title.color, border: `1px solid ${title.color}66`, borderRadius: 4, padding: "1px 4px", flexShrink: 0 }}>
-                  {title.text}
+                  {t(`character.achievements.${title.achId}.title`)}
                 </span>
               )}
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

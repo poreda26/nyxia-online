@@ -19,16 +19,7 @@ export const PREMIUM_TIERS = {
     giftScrolls: 1,
     nationalPointBonus: 25,
     nationalPointLossReduction: 0.10,
-    perks: [
-      "+%100 EXP Bonusu (2x Kazanım)",
-      "+%10 Eşya/Kutu Düşme Bonusu",
-      "+%10 NPC Satış Fiyatı Bonusu",
-      "%50 Tamir İndirimi",
-      "Hediye: 1x Bonus Parşömen",
-      "Depoda +2 sayfa",
-      "Kaybedilen National Point %10 azalır",
-      "Otomatik Saldırı özelliği",
-    ],
+    perks: ["expBonus100", "dropBonus10", "sellBonus10", "repairDiscount50", "giftScroll", "bankPages2", "npLossReduction10", "autoBattle"],
   },
   apex: {
     id: "apex",
@@ -44,14 +35,6 @@ export const PREMIUM_TIERS = {
     giftScrolls: 1,
     nationalPointBonus: 10,
     nationalPointLossReduction: 0.05,
-    perks: [
-      "+%50 EXP Bonusu",
-      "+%3 Eşya/Kutu Düşme Bonusu",
-      "+%5 NPC Satış Fiyatı Bonusu",
-      "%25 Tamir İndirimi",
-      "Hediye: 1x Bonus Parşömen",
-      "Kaybedilen National Point %5 azalır",
-      "Otomatik Saldırı özelliği",
-    ],
+    perks: ["expBonus50", "dropBonus3", "sellBonus5", "repairDiscount25", "giftScroll", "npLossReduction5", "autoBattle"],
   },
 };

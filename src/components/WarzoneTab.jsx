@@ -506,12 +506,12 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       mpCost = skill.mpCost;
       ghostStunned = true;
       cooldowns[skill.id] = skill.cooldown;
-      log.push(t("warzone.log.stunUsed", { skill: skill.name }));
+      log.push(t("warzone.log.stunUsed", { skill: t(`warzone.skill.${skill.id}`) }));
     } else if (skill.id === "pvp_manaburn") {
       mpCost = skill.mpCost;
       healBlocked = true;
       cooldowns[skill.id] = skill.cooldown;
-      log.push(t("warzone.log.manaburnUsed", { skill: skill.name }));
+      log.push(t("warzone.log.manaburnUsed", { skill: t(`warzone.skill.${skill.id}`) }));
     } else if (skill.id === "pvp_flee") {
       cooldowns[skill.id] = skill.cooldown;
       if (Math.random() < skill.effect.chance) {
@@ -541,7 +541,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
       setPlayer(() => nextPlayer);
       setWz((prev) => ({ ...prev, duel: { ...prev.duel, ghostHp: 0, log: log.slice(-24), finished: true } }));
       pushToast(t("warzone.toast.duelWon", { ghost: duel.ghost.name, gain: result.gain }), "loot");
-      newlyUnlocked(player, nextPlayer).forEach((a) => pushToast(t("clan.toastAchievement", { name: a.name, title: a.title }), "level"));
+      newlyUnlocked(player, nextPlayer).forEach((a) => pushToast(t("clan.toastAchievement", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
       setTimeout(() => { endDuel(duel.ghost.id, true); lockRef.current = false; }, 700);
       return;
     }
@@ -690,10 +690,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast }) {
                   style={{ ...styles.equipSlotCard, borderColor: "#C9425A66", background: "#C9425A12", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1 }}
                   onClick={() => duelAction(skill.id)}
                   disabled={disabled}
-                  title={skill.name}
+                  title={t(`warzone.skill.${skill.id}`)}
                 >
                   <Icon size={15} color="#C9425A" />
-                  <div style={{ fontSize: 8, marginTop: 2, color: "var(--text-faint)" }}>{skill.name}</div>
+                  <div style={{ fontSize: 8, marginTop: 2, color: "var(--text-faint)" }}>{t(`warzone.skill.${skill.id}`)}</div>
                   <div style={{ fontSize: 7, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{cdLeft > 0 ? cdLeft : (skill.mpCost ? `${skill.mpCost}mp` : t("warzone.free"))}</div>
                 </button>
               );

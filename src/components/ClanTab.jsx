@@ -57,7 +57,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     if (!result.founded) { pushToast(formatReason(t, result), "warn"); return; }
     setPlayer(result.player);
     pushToast(t("clan.toastFounded", { name: result.player.clan.name }), "loot");
-    newlyUnlocked(player, result.player).forEach((a) => pushToast(t("clan.toastAchievement", { name: a.name, title: a.title }), "level"));
+    newlyUnlocked(player, result.player).forEach((a) => pushToast(t("clan.toastAchievement", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
     setFounding(false);
     setNameInput("");
   };

@@ -11,7 +11,7 @@ import {itemStatLabel} from '../utils/itemDisplay';
 // açmak problem olabiliyor, toplu kutu açabileceğimiz bir çözüm yap." Bu
 // modal hepsini anında çözüp tek bir özet listesi gösteriyor, animasyonsuz.
 export default function BulkChestModal({ result, onClose }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const { items, failed } = result;
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
@@ -37,7 +37,7 @@ export default function BulkChestModal({ result, onClose }) {
           {items.map((item, i) => (
             <div key={item.id || i} style={{ ...styles.itemRow, borderColor: `${itemTierColor(item.tier)}44` }}>
               <ItemIcon item={item} size={48} color={itemTierColor(item.tier)} strokeWidth={1.6} />
-              <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item)}<small style={{display:'block',marginTop:4,color:'var(--text-muted)',lineHeight:1.5}}>{itemStatLabel(item)}</small></span>
+              <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item, lang)}<small style={{display:'block',marginTop:4,color:'var(--text-muted)',lineHeight:1.5}}>{itemStatLabel(item)}</small></span>
               <span style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{item.tier}</span>
             </div>
           ))}

@@ -93,7 +93,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     const sold = await marketService.resolveMyStall(username);
     if (sold.length > 0) {
       setBankGold((g) => g + sold.reduce((sum, entry) => sum + entry.price, 0));
-      sold.forEach((entry) => pushToast(t("market.soldFromStall", { item: entry.item.name, gold: formatGold(entry.price) }), "loot"));
+      sold.forEach((entry) => pushToast(t("market.soldFromStall", { item: displayItemName(entry.item, lang), gold: formatGold(entry.price) }), "loot"));
     }
     const fresh = await marketService.fetchMarket(username);
     setMyStall(fresh.myStall);
@@ -136,7 +136,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   const buyBonusScroll = () => {
     if (player.diamonds < BONUS_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     const result = addItemToInventory({ ...player, diamonds: player.diamonds - BONUS_SCROLL_PRICE }, makeBonusScrollStack());
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
+    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, result) }), "warn"); return; }
     setPlayer(result.player);
     pushToast(t("shop.bonusScrollPurchased"), "loot");
   };
@@ -144,7 +144,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   const buyRaceScroll = () => {
     if (player.diamonds < RACE_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     const result = addItemToInventory({ ...player, diamonds: player.diamonds - RACE_SCROLL_PRICE }, makeRaceScroll(1));
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
+    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, result) }), "warn"); return; }
     setPlayer(result.player);
     pushToast(t("shop.raceScrollPurchased"), "loot");
   };
@@ -152,7 +152,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   const buyJobScroll = () => {
     if (player.diamonds < JOB_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     const result = addItemToInventory({ ...player, diamonds: player.diamonds - JOB_SCROLL_PRICE }, makeJobScroll(1));
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
+    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, result) }), "warn"); return; }
     setPlayer(result.player);
     pushToast(t("shop.jobScrollPurchased"), "loot");
   };
@@ -162,7 +162,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     const price = potionPrice(potionType, tier) * amount;
     if (player.gold < price) { pushToast(t("shop.notEnoughGold"), "warn"); return; }
     const result = addItemToInventory({ ...player, gold: player.gold - price }, makePotionStack(potionType, tier, amount));
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
+    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, result) }), "warn"); return; }
     setPlayer(result.player);
     pushToast(t("shop.potionPurchased", { name: potionName(potionType, tier, lang), qty: amount, gold: formatGold(price) }), "loot");
   };
@@ -207,7 +207,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
       setPlayer((p) => ({ ...p, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
     }
     setMyStall(result.stall);
-    pushToast(t("market.itemAddedToStall", { item: pickedItem.name, gold: formatGold(price) }), "loot");
+    pushToast(t("market.itemAddedToStall", { item: displayItemName(pickedItem, lang), gold: formatGold(price) }), "loot");
     setPickerOpen(false);
     setPickedItem(null);
     setPriceInput("");
@@ -287,11 +287,11 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
       setPlayer((p) => ({ ...p, gold: p.gold - listing.price, chests: [...p.chests, { id: result.listing.item.id, tier: result.listing.item.tier, special: result.listing.item.special }] }));
     } else {
       const addResult = addItemToInventory({ ...player, gold: player.gold - listing.price }, result.listing.item);
-      if (!addResult.added) { pushToast(t("market.boughtButBagFull", { reason: addResult.reason }), "warn"); }
+      if (!addResult.added) { pushToast(t("market.boughtButBagFull", { reason: formatReason(t, addResult) }), "warn"); }
       setPlayer(addResult.player);
     }
     setNpcListings((ls) => ls.filter((l) => l.id !== listing.id));
-    pushToast(t("market.itemPurchased", { item: result.listing.item.name }), "loot");
+    pushToast(t("market.itemPurchased", { item: displayItemName(result.listing.item, lang) }), "loot");
   };
 
   // Kullanıcı isteği: "İtemler tek tek listelenmeyecek." — NPC eşyaları
@@ -353,7 +353,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                   <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 3 }}>
                     {tier.perks.map((perk) => (
                       <div key={perk} style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
-                        <Check size={11} color={tier.color} /> {perk}
+                        <Check size={11} color={tier.color} /> {t(`shop.premiumPerk.${perk}`)}
                       </div>
                     ))}
                   </div>
@@ -531,7 +531,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                       (pickerMode === "chest" ? sellableChests : sellableItems).map((item) => (
                         <button key={item.id} style={styles.pickerRow} onClick={() => pickItem(item)}>
                           <ItemIcon item={item} size={20} color={itemTierColor(item.tier)} strokeWidth={1.6} />
-                          <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item)}</span>
+                          <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item, lang)}</span>
                           <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{item.tier} · {itemStatLabel(item)}</span>
                         </button>
                       ))
@@ -540,7 +540,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <ItemIcon item={pickedItem} size={26} color={itemTierColor(pickedItem.tier)} strokeWidth={1.6} />
-                        <span style={{ fontSize: 12 }}>{displayItemName(pickedItem)}</span>
+                        <span style={{ fontSize: 12 }}>{displayItemName(pickedItem, lang)}</span>
                       </div>
                       <input
                         type="number"
@@ -569,7 +569,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                         <ItemIcon item={entry.item} size={24} color={itemTierColor(entry.item.tier)} strokeWidth={1.6} />
                       </button>
                       <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setInspectEntry({ ...entry, source: "mine" })}>
-                        <div style={{ fontSize: 13 }}>{displayItemName(entry.item)}</div>
+                        <div style={{ fontSize: 13 }}>{displayItemName(entry.item, lang)}</div>
                         <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{entry.item.tier} · {itemStatLabel(entry.item)}</div>
                       </div>
                       <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A" }}>{formatGold(entry.price)}g</div>
@@ -623,7 +623,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                               <ItemIcon item={l.item} size={18} color={itemTierColor(l.item.tier)} strokeWidth={1.6} />
                             </button>
                             <div style={{ flex: 1, minWidth: 110, cursor: "pointer" }} onClick={() => setInspectEntry({ ...l, source: "npc" })}>
-                              <div style={{ fontSize: 13 }}>{displayItemName(l.item)}</div>
+                              <div style={{ fontSize: 13 }}>{displayItemName(l.item, lang)}</div>
                               <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{l.item.tier} · {itemStatLabel(l.item)}</div>
                             </div>
                             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(l.price)}g</div>
@@ -702,7 +702,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
             <ShoppingBag size={32} color="#D4AF6A" strokeWidth={1.4} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
-              {t("market.buyConfirmText", { item: displayItemName(buyConfirm.item), gold: formatGold(buyConfirm.price) })}
+              {t("market.buyConfirmText", { item: displayItemName(buyConfirm.item, lang), gold: formatGold(buyConfirm.price) })}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
               <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setBuyConfirm(null)}>

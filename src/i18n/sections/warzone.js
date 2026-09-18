@@ -51,6 +51,11 @@ export const warzoneSection = {
       bossDeathLabelYou: "sen",
       bossDeathLabelGhost: "bir hayalet",
       bossDeathLabelNoOne: "kimse",
+      skill: {
+        pvp_stun: "Sersemlet",
+        pvp_flee: "Kaç",
+        pvp_manaburn: "Mana Çalma",
+      },
       drop: {
         gold: "+{amount} altın",
         itemDropped: "Eşya düştü: {name}",
@@ -128,6 +133,11 @@ export const warzoneSection = {
       bossDeathLabelYou: "you",
       bossDeathLabelGhost: "a ghost",
       bossDeathLabelNoOne: "no one",
+      skill: {
+        pvp_stun: "Stun",
+        pvp_flee: "Flee",
+        pvp_manaburn: "Mana Drain",
+      },
       drop: {
         gold: "+{amount} gold",
         itemDropped: "Item dropped: {name}",

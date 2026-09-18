@@ -62,6 +62,11 @@ function pickAutoSkill({ loadout, playerClass, skillCooldowns, mp, monsterHpPct,
 
 export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
   const { t, tm } = useTranslation();
+  // data/skills.js'in `name` alanı Türkçe kalıyor (CharacterTab.jsx'in
+  // t(`character.skills.${skill.id}.name`) yoluyla çevirdiği aynı veri) —
+  // savaş ekranındaki beceri kutucukları/loglar da CharacterTab'la tutarlı
+  // olsun diye aynı yoldan geçiyor.
+  const skillName = (skill) => t(`character.skills.${skill.id}.name`);
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const latestPlayer = useRef(player);
@@ -438,7 +443,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     const skillCooldowns = { ...ticked.skillCooldowns, [skillId]: skill.cooldown };
     const maxHp = playerMaxHp(player);
     const e = skill.effect;
-    showAction(e.type,skill.name);
+    showAction(e.type,skillName(skill));
 
     if (ticked.monsterHp <= 0) {
       setPlayer((p) => ({ ...p, mp: p.mp - skill.mpCost }));
@@ -457,21 +462,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const atkMult = buffMultiplier(ticked.buffs, "atk");
       const dmg = Math.max(1, Math.round(computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct, rand }) * atkMult));
       monsterHp = Math.max(0, ticked.monsterHp - dmg);
-      log = pushLog(log, t("battle.log.skillDamage", { skill: skill.name, dmg }));
+      log = pushLog(log, t("battle.log.skillDamage", { skill: skillName(skill), dmg }));
       setVisual((v) => ({ ...v, outgoing: { hit: true, damage: dmg, crit: false } }));
       playHit({ crit: false });
       setShake("monster");
       setTimeout(() => setShake(null), 260);
     } else if (e.type === "heal") {
       healAmt = computeSkillHeal(skill, maxHp);
-      log = pushLog(log, t("battle.log.skillHeal", { skill: skill.name, amount: healAmt }));
+      log = pushLog(log, t("battle.log.skillHeal", { skill: skillName(skill), amount: healAmt }));
     } else if (e.type === "buffAtk" || e.type === "buffDef") {
       buffs = [...buffs, { stat: e.type === "buffAtk" ? "atk" : "def", mult: e.mult, turnsLeft: e.turns }];
-      log = pushLog(log, t("battle.log.skillBuff", { skill: skill.name }));
+      log = pushLog(log, t("battle.log.skillBuff", { skill: skillName(skill) }));
     } else if (e.type === "dot") {
       const perTick = computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct: 1, rand: () => 0 });
       dot = { dmgPerTurn: perTick, turnsLeft: e.turns };
-      log = pushLog(log, t("battle.log.skillDot", { skill: skill.name }));
+      log = pushLog(log, t("battle.log.skillDot", { skill: skillName(skill) }));
       playHit({ crit: false });
       setShake("monster");
       setTimeout(() => setShake(null), 260);
@@ -769,9 +774,9 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                   style={{ ...styles.equipSlotCard, borderColor: `${cls.color}66`, background: `${cls.color}12`, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1 }}
                   onClick={() => useSkill(skillId)}
                   disabled={disabled}
-                  title={`${skill.name} — MP ${skill.mpCost}`}
+                  title={`${skillName(skill)} — MP ${skill.mpCost}`}
                 >
-                  <SkillIcon effectType={skill.effect.type} size={22} color={cls.color} /><span className="battle-slot-label">{skill.name}</span>
+                  <SkillIcon effectType={skill.effect.type} size={22} color={cls.color} /><span className="battle-slot-label">{skillName(skill)}</span>
                   <div style={{ fontSize: 7, marginTop: 2, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
                     {cdLeft > 0 ? cdLeft : `${skill.mpCost}mp`}
                   </div>

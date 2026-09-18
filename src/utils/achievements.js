@@ -45,5 +45,5 @@ export function activeTitleInfo(player) {
   if (!player.activeTitle) return null;
   const ach = ACHIEVEMENTS.find((a) => a.id === player.activeTitle);
   if (!ach || !isAchievementUnlocked(player, ach)) return null;
-  return { text: ach.title, color: ach.color };
+  return { achId: ach.id, color: ach.color };
 }

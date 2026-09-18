@@ -230,7 +230,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
         chests: player.chests.filter((c) => c.id !== chest.id),
         milestones: { ...player.milestones, chestsOpened: (player.milestones?.chestsOpened || 0) + 1 },
       };
-      const reportUnlocks = (finalPlayer) => newlyUnlocked(player, finalPlayer).forEach((a) => pushToast(t("inventory.achievementUnlocked", { name: a.name, title: a.title }), "level"));
+      const reportUnlocks = (finalPlayer) => newlyUnlocked(player, finalPlayer).forEach((a) => pushToast(t("inventory.achievementUnlocked", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
       // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
       // hiçbir eşya yoksa item null gelir, sandığı yine de boşalt ama
       // hiçbir şey eklemeye çalışma.
@@ -244,7 +244,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
       const finalPlayer = addResult.added ? { ...addResult.player, hasNewItemNotice: true } : addResult.player;
       setPlayer(finalPlayer);
       setOpeningChest({ chest, phase: "reveal", result: item });
-      if (!addResult.added) pushToast(t("inventory.itemWonButReason", { item: item.name, reason: addResult.reason }), "warn");
+      if (!addResult.added) pushToast(t("inventory.itemWonButReason", { item: displayItemName(item, lang), reason: formatReason(t, addResult) }), "warn");
       reportUnlocks(finalPlayer);
     }, 950);
   };
@@ -272,7 +272,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     if (gained.length > 0) p.hasNewItemNotice = true;
     setPlayer(p);
     setBulkChestResult({ items: gained, failed });
-    newlyUnlocked(player, p).forEach((a) => pushToast(t("inventory.achievementUnlocked", { name: a.name, title: a.title }), "level"));
+    newlyUnlocked(player, p).forEach((a) => pushToast(t("inventory.achievementUnlocked", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
   };
 
   const selectedItem = subtab === "bank"

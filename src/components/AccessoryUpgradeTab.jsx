@@ -14,7 +14,7 @@ import ItemIcon from "./ItemIcon";
 // Aynı isim+seviyeden HER takı grubunu listeler (3'ten az olsa bile, ki
 // oyuncu ilerlemesini görsün), ama sadece 3+ olanlarda buton aktif olur.
 export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [reveal,setReveal]=useState(null);
   const groups = new Map();
   for (const it of player.inventory) {
@@ -32,7 +32,7 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
     if (!result.upgraded) { pushToast(formatReason(t, result, "upgrade.accessory.cannotUpgrade"), "warn"); return; }
     setPlayer(result.player);
     setReveal({item:sample,bumpedItem:result.item});
-    pushToast(t("upgrade.accessory.leveledUp", { name: displayItemName(sample), level: (sample.upgradeLevel || 0) + 1 }), "loot");
+    pushToast(t("upgrade.accessory.leveledUp", { name: displayItemName({ ...sample, upgradeLevel: 0 }, lang), level: (sample.upgradeLevel || 0) + 1 }), "loot");
   };
 
   return (
@@ -59,7 +59,7 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
                 <ItemIcon item={sample} size={30} color={itemTierColor(sample.tier)} strokeWidth={1.4} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13 }}>{sample.name} +{level}</div>
+                <div style={{ fontSize: 13 }}>{displayItemName({ ...sample, upgradeLevel: 0 }, lang)} +{level}</div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>
                   {items.length}/3 {items.length >= 3 ? t("upgrade.accessory.ready") : t("upgrade.accessory.collected")}
                 </div>
