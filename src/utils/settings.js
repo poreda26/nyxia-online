@@ -7,6 +7,7 @@ const KEYS = {
   sfxVolume: "rpgmarket:sfxVolume",
   sfxMuted: "rpgmarket:sfxMuted",
   language: "rpgmarket:language",
+  theme: "rpgmarket:theme",
 };
 
 function readNum(key, fallback) {
@@ -32,6 +33,9 @@ export function loadSettings() {
     sfxVolume: readNum(KEYS.sfxVolume, 60),
     sfxMuted: readBool(KEYS.sfxMuted, false),
     language: readStr(KEYS.language, "tr"),
+    // Kullanıcı isteği: "Oyunumuz çok Dark temada, daha light bir tema
+    // yapabiliriz" — cihaza bağlı bir tercih, diğerleriyle aynı desen.
+    theme: readStr(KEYS.theme, "dark"),
   };
 }
 

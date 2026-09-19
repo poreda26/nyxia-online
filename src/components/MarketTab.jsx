@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, ShoppingBag, AlertTriangle, ChevronDown, ChevronUp, Package2 } from "lucide-react";
-import { itemTierColor } from "../data/itemRarity";
+import { itemTierColor, tierName } from "../data/itemRarity";
 import { displayItemName, formatGold } from "../utils/player";
 import { itemStatLabel } from "../utils/itemDisplay";
 import { addItemToInventory, addItemToAnyBankPage, makePotionStack, makeRaceScroll, makeJobScroll, makeBonusScrollStack } from "../utils/inventory";
@@ -185,7 +185,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   // ayrı bir havuz olarak sunuluyor.
   const sellableChests = player.chests.map((c) => ({
     id: c.id, kind: "chest", tier: c.tier, special: c.special,
-    name: c.special ? t("market.specialChestName") : t("market.tierChestName", { tier: c.tier }),
+    name: c.special ? t("market.specialChestName") : t("market.tierChestName", { tier: tierName(lang, c.tier) }),
   }));
 
   const openPicker = (mode) => {
@@ -394,14 +394,14 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
             <button style={styles.tinyBtn} onClick={buyJobScroll}>{t("shop.buyShort")}</button>
           </div>
           <div style={{ ...styles.itemRow, borderColor: "#D4AF6A55", marginTop: 8 }}>
-            <Star size={18} color="#D4AF6A" />
+            <Star size={18} color="var(--gold-text)" />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>{t("shop.bonusScrollTitle")}</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
                 {t("shop.bonusScrollDesc")}
               </div>
             </div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8, display: "flex", alignItems: "center", gap: 3 }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)", marginRight: 8, display: "flex", alignItems: "center", gap: 3 }}>
               <Gem size={11} /> {BONUS_SCROLL_PRICE}
             </div>
             <button style={styles.tinyBtn} onClick={buyBonusScroll}>{t("shop.buyShort")}</button>
@@ -425,7 +425,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                     <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("shop.hpRestoreDesc", { amount })}</div>
                   </div>
                   <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(potionPrice("hp", tier) * qty)}g</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)", marginRight: 8 }}>{formatGold(potionPrice("hp", tier) * qty)}g</div>
                   <button style={styles.tinyBtn} onClick={() => buyPotion("hp", tier, qty)}>{t("shop.buyShort")}</button>
                 </div>
               );
@@ -446,7 +446,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                     <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("shop.mpRestoreDesc", { amount })}</div>
                   </div>
                   <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(potionPrice("mp", tier) * qty)}g</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)", marginRight: 8 }}>{formatGold(potionPrice("mp", tier) * qty)}g</div>
                   <button style={styles.tinyBtn} onClick={() => buyPotion("mp", tier, qty)}>{t("shop.buyShort")}</button>
                 </div>
               );
@@ -532,7 +532,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                         <button key={item.id} style={styles.pickerRow} onClick={() => pickItem(item)}>
                           <ItemIcon item={item} size={20} color={itemTierColor(item.tier)} strokeWidth={1.6} />
                           <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item, lang)}</span>
-                          <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{item.tier} · {itemStatLabel(item)}</span>
+                          <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{tierName(lang, item.tier)} · {itemStatLabel(item)}</span>
                         </button>
                       ))
                     )
@@ -570,9 +570,9 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                       </button>
                       <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setInspectEntry({ ...entry, source: "mine" })}>
                         <div style={{ fontSize: 13 }}>{displayItemName(entry.item, lang)}</div>
-                        <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{entry.item.tier} · {itemStatLabel(entry.item)}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{tierName(lang, entry.item.tier)} · {itemStatLabel(entry.item)}</div>
                       </div>
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A" }}>{formatGold(entry.price)}g</div>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)" }}>{formatGold(entry.price)}g</div>
                     </div>
                   ))}
                 </div>
@@ -624,9 +624,9 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                             </button>
                             <div style={{ flex: 1, minWidth: 110, cursor: "pointer" }} onClick={() => setInspectEntry({ ...l, source: "npc" })}>
                               <div style={{ fontSize: 13 }}>{displayItemName(l.item, lang)}</div>
-                              <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{l.item.tier} · {itemStatLabel(l.item)}</div>
+                              <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{tierName(lang, l.item.tier)} · {itemStatLabel(l.item)}</div>
                             </div>
-                            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#D4AF6A", marginRight: 8 }}>{formatGold(l.price)}g</div>
+                            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)", marginRight: 8 }}>{formatGold(l.price)}g</div>
                             <button style={styles.tinyBtn} onClick={() => requestBuy(l)}>{t("market.buyShort")}</button>
                           </div>
                         ))}
@@ -680,7 +680,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
             <div style={styles.itemSheetHandle} />
             <ItemTooltip item={inspectEntry.item} player={player} />
             <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "#D4AF6A" }}>{formatGold(inspectEntry.price)}g</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--gold-text)" }}>{formatGold(inspectEntry.price)}g</div>
               <div style={{ flex: 1 }} />
               {inspectEntry.source === "npc" && (
                 <button style={styles.tinyBtn} onClick={() => { setInspectEntry(null); requestBuy(inspectEntry); }}>
@@ -700,7 +700,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
       {buyConfirm && (
         <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setBuyConfirm(null)}>
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <ShoppingBag size={32} color="#D4AF6A" strokeWidth={1.4} />
+            <ShoppingBag size={32} color="var(--gold-text)" strokeWidth={1.4} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 240 }}>
               {t("market.buyConfirmText", { item: displayItemName(buyConfirm.item, lang), gold: formatGold(buyConfirm.price) })}
             </div>

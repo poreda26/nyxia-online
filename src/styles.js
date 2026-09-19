@@ -10,7 +10,7 @@ export const styles = {
   classSelectRoot: {
     display: "flex", flexDirection: "column", padding: "36px 22px", height: "100%",
     overflowY: "auto", boxSizing: "border-box",
-    background: "radial-gradient(ellipse at top, #171A22 0%, #0B0C10 60%)",
+    background: "radial-gradient(ellipse at top, var(--bg-panel) 0%, var(--bg-void) 60%)",
   },
   classSelectHeader: { textAlign: "center", marginBottom: 26 },
   eyebrow: { fontSize: 10, letterSpacing: 3, color: "var(--text-faint)", fontFamily: "var(--font-mono)" },
@@ -52,7 +52,13 @@ export const styles = {
 
   hubRoot: { display: "flex", flexDirection: "column", height: "100%" },
   topBar: { padding: "16px 16px 10px", borderBottom: "1px solid var(--border)" },
-  topBarRow: { display: "flex", alignItems: "center", gap: 10 },
+  // Kullanıcı isteği: "responsive uyarlaması yap" — 320px gibi en dar
+  // telefonlarda classBadge+isim/XP+altın+elmas+hediye+ayarlar hepsi TEK
+  // satıra sığmıyordu; flexWrap olmadan `justifyContent:space-between`
+  // taşıyan iç isim/XP satırı kendi ebeveynine (flex:1,minWidth:0) sığmayıp
+  // altın rozetinin ÜSTÜNE biniyordu (görsel çakışma, kesme değil). Artık
+  // sığmayan öğeler (genelde hediye/ayarlar ikonları) ikinci satıra geçiyor.
+  topBarRow: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", rowGap: 6 },
   classBadge: {
     width: 30, height: 30, borderRadius: 8, background: "var(--bg-panel)",
     border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center",
@@ -71,6 +77,17 @@ export const styles = {
 
   tabContent: { flex: 1, overflowY: "auto", position: "relative" },
   panelScroll: { padding: "16px 16px 24px" },
+
+  // Kullanıcı isteği: "Savaş Alanı'na ışınlan menüsünü daha güzelleştir.
+  // Sola yapışık saçma sapan duruyor." — kök neden bulundu: bu stil hiç
+  // TANIMLANMAMIŞTI, components/shared/EmptyState.jsx `style={styles.emptyState}`
+  // yani `style={undefined}` ile render ediyordu, o yüzden hizalama/dolgu
+  // hiç yoktu ve genişse bir panelin içinde (Savaş Alanı girişi gibi) düz
+  // sola yapışık kalıyordu. Bundan sonra her EmptyState kullanımı ortalı.
+  emptyState: {
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    padding: "40px 20px", textAlign: "center",
+  },
 
   sectionLabel: {
     fontSize: 10, letterSpacing: 2, color: "var(--text-faint)", fontFamily: "var(--font-mono)",
@@ -254,8 +271,12 @@ export const styles = {
   statsGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 16 },
   statBlock: { background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 12, padding: 12 },
 
+  // Kullanıcı isteği: "Statüler'in altında Dağıtılacak puanın yok yazısı
+  // Statüler kutucuğu ile çakışıyor neredeyse, buna çok hafif mesafe ver."
+  // — marginTop -6 idi, subtabRow'un marginBottom:4'üyle toplamda ekşi bir
+  // boşluk (çakışma) oluşturuyordu. Küçük pozitif bir boşluğa çevrildi.
   statPointsBadge: {
-    fontSize: 10, fontFamily: "var(--font-mono)", color: "#D4AF6A", marginTop: -6, marginBottom: 10, display: "block",
+    fontSize: 10, fontFamily: "var(--font-mono)", color: "#D4AF6A", marginTop: 8, marginBottom: 10, display: "block",
   },
   statAllocList: { display: "flex", flexDirection: "column", gap: 6 },
   statAllocRow: {

@@ -56,7 +56,7 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
         <span>{t("inventory.bagCountLabel", { count: player.inventory.length, max: BAG_SLOTS })}</span>
         <span>{t("inventory.weightLabel", { used: usedWeight, cap: weightCap })}</span>
       </div>
-      <BarTrack pct={(usedWeight / weightCap) * 100} color={usedWeight / weightCap > 0.85 ? "#C9425A" : "#D4AF6A"} thin />
+      <BarTrack pct={(usedWeight / weightCap) * 100} color={usedWeight / weightCap > 0.85 ? "#C9425A" : "var(--gold-text)"} thin />
 
       <div style={styles.bagGrid}>
         {slots.map((item, i) => {

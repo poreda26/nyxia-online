@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, ScrollText, Star, X } from "lucide-react";
-import { itemTierColor } from "../data/itemRarity";
+import { itemTierColor, tierName } from "../data/itemRarity";
 import { MAX_UPGRADE_LEVEL, upgradeSuccessChance, bumpedStats, applyLevelData } from "../utils/upgrade";
 import { makeScrollStack, makeBonusScrollStack } from "../utils/inventory";
 import { newlyUnlocked } from "../utils/achievements";
@@ -21,7 +21,7 @@ const SCROLL_BOX_COUNT = 9;
 // staging model simple (every staged item always came from — and always
 // returns to — player.inventory, never player.equipped).
 export default function UpgradeTab({ player, setPlayer, pushToast }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [subtab, setSubtab] = useState("forge"); // "forge" | "accessory"
   const [stagedItem, setStagedItem] = useState(null); // item | null
   const [scrollBoxes, setScrollBoxes] = useState(() => Array(SCROLL_BOX_COUNT).fill(null)); // { tier } | null
@@ -142,7 +142,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
   const press = () => {
     if (!stagedItem || pendingReveal) return;
     if (maxed) { pushToast(t("upgrade.alreadyMaxLevel"), "warn"); return; }
-    if (matchingCount === 0) { pushToast(t("upgrade.noScrollForTier", { tier: stagedItem.tier }), "warn"); return; }
+    if (matchingCount === 0) { pushToast(t("upgrade.noScrollForTier", { tier: tierName(lang, stagedItem.tier) }), "warn"); return; }
     if (matchingCount >= 2) { pushToast(t("upgrade.onlyOneScrollAllowed"), "warn"); return; }
 
     const consumedBox = matchingIndexes[0];
@@ -246,7 +246,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
               onClick={returnBonusScroll}
               title={t("upgrade.bonusTitle")}
             >
-              {bonusScrollActive ? <Star size={16} color="#D4AF6A" strokeWidth={1.6} /> : <Plus size={14} color="var(--text-faint)" strokeWidth={1.6} />}
+              {bonusScrollActive ? <Star size={16} color="var(--gold-text)" strokeWidth={1.6} /> : <Plus size={14} color="var(--text-faint)" strokeWidth={1.6} />}
             </button>
           </div>
         </div>
@@ -267,7 +267,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
                   onClick={() => returnScroll(i)}
                 >
                   {box && <ScrollText size={15} color={itemTierColor(box.tier)} strokeWidth={1.6} />}
-                  {box && <span style={{ fontSize: 7, color: itemTierColor(box.tier), marginTop: 1 }}>T{box.tier}</span>}
+                  {box && <span style={{ fontSize: 7, color: itemTierColor(box.tier), marginTop: 1 }}>{tierName(lang, box.tier)}</span>}
                 </button>
               );
             })}
@@ -285,7 +285,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
           <div>
             <div style={styles.forgeColLabel}>{t("upgrade.shopLabel")}</div>
             <button style={styles.forgeSmallSlot} onClick={() => setShopOpen((v) => !v)}>
-              <ScrollText size={18} color="#D4AF6A" strokeWidth={1.6} />
+              <ScrollText size={18} color="var(--gold-text)" strokeWidth={1.6} />
             </button>
           </div>
         </div>
@@ -312,7 +312,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
         <div style={styles.itemDetailCard}>
           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
             {t("upgrade.successPreview", { level: (stagedItem.upgradeLevel || 0) + 1 })}
-            {bonusScrollActive && <span style={{ color: "#D4AF6A" }}> {t("upgrade.bonusScrollActiveTag")}</span>}
+            {bonusScrollActive && <span style={{ color: "var(--gold-text)" }}> {t("upgrade.bonusScrollActiveTag")}</span>}
           </div>
           <div style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
             {[

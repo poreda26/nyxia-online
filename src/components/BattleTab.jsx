@@ -12,9 +12,10 @@ import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat"
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { hasAutoBattleAccess } from "../utils/premium";
 import { classSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
-import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry, buyExtraDungeonEntries } from "../utils/soloDungeon";
+import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry, buyExtraDungeonEntries, hasBoughtExtraDungeonEntryToday } from "../utils/soloDungeon";
 import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS } from "../data/soloDungeon";
 import { playHit, playMiss, playHurt, playLevelUp } from "../audio/sfx";
+import { tierName } from "../data/itemRarity";
 import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
@@ -62,7 +63,7 @@ function pickAutoSkill({ loadout, playerClass, skillCooldowns, mp, monsterHpPct,
 }
 
 export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
-  const { t, tm } = useTranslation();
+  const { t, tm, lang } = useTranslation();
   // data/skills.js'in `name` alanı Türkçe kalıyor (CharacterTab.jsx'in
   // t(`character.skills.${skill.id}.name`) yoluyla çevirdiği aynı veri) —
   // savaş ekranındaki beceri kutucukları/loglar da CharacterTab'la tutarlı
@@ -137,7 +138,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
   const handleBuyDungeonEntries = () => {
     const result = buyExtraDungeonEntries(player);
-    if (!result.bought) { pushToast(t("battle.notEnoughDiamondsForEntries"), "warn"); return; }
+    if (!result.bought) {
+      pushToast(t(result.reason === "alreadyBoughtToday" ? "battle.dungeonEntriesAlreadyBoughtToday" : "battle.notEnoughDiamondsForEntries"), "warn");
+      return;
+    }
     setPlayer(result.player);
     pushToast(t("battle.dungeonEntriesBought"), "loot");
   };
@@ -244,8 +248,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       case "dailyQuestComplete": return t("battle.drop.dailyQuestComplete", { target: d.target });
       case "itemDropped": return t("battle.drop.itemDropped", { kind: t(`battle.kind.${d.kind}`), name: d.itemName });
       case "itemDropFailed": return t("battle.drop.itemDropFailed", { name: d.itemName, reason: t(REASON_KEY[d.reason] || d.reason) });
-      case "chestDropped": return t("battle.drop.chestDropped", { tier: d.tier });
-      case "guardChest": return t("battle.drop.guardChest", { tier: d.tier });
+      case "chestDropped": return t("battle.drop.chestDropped", { tier: tierName(lang, d.tier) });
+      case "guardChest": return t("battle.drop.guardChest", { tier: tierName(lang, d.tier) });
       case "levelUpToast": return t("battle.drop.levelUpToast", { level: d.level, statPoints: d.statPoints });
       default: return "";
     }
@@ -279,7 +283,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const chest = { id: uid(), tier: map.tier };
       const nextGold = clampGold(p.gold + bonusGold);
       actualGold = nextGold - p.gold;
-      toastMsg = t("battle.dungeonCompleteToast", { boss: tm(boss), gold: formatGold(actualGold), tier: map.tier });
+      toastMsg = t("battle.dungeonCompleteToast", { boss: tm(boss), gold: formatGold(actualGold), tier: tierName(lang, map.tier) });
       return { ...p, gold: nextGold, chests: [...p.chests, chest] };
     });
     pushToast(toastMsg, "level");
@@ -647,19 +651,25 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               </button>
             </div>
             {dungeonEntriesLeft(player) <= 0 && !locked && (
-              <button
-                style={{ ...styles.tinyBtn, width: "100%", marginTop: 8, background: "var(--bg-panel-alt)", color: "#8B6FC9", border: "1px solid #8B6FC966", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
-                onClick={handleBuyDungeonEntries}
-              >
-                <Gem size={12} /> {t("battle.buyDungeonEntries", { n: EXTRA_DUNGEON_ENTRY_COST_DIAMONDS })}
-              </button>
+              hasBoughtExtraDungeonEntryToday(player) ? (
+                <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "center", marginTop: 8 }}>
+                  {t("battle.dungeonEntriesAlreadyBoughtToday")}
+                </div>
+              ) : (
+                <button
+                  style={{ ...styles.tinyBtn, width: "100%", marginTop: 8, background: "var(--bg-panel-alt)", color: "#8B6FC9", border: "1px solid #8B6FC966", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                  onClick={handleBuyDungeonEntries}
+                >
+                  <Gem size={12} /> {t("battle.buyDungeonEntries", { n: EXTRA_DUNGEON_ENTRY_COST_DIAMONDS })}
+                </button>
+              )
             )}
           </div>
 
           <SectionLabel>{t("battle.mapBoss")}</SectionLabel>
           <div style={{ ...styles.itemDetailCard, borderColor: `${map.color}77`, background: `${map.color}12`, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Trophy size={20} color="#D4AF6A" strokeWidth={1.6} />
+              <Trophy size={20} color="var(--gold-text)" strokeWidth={1.6} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13 }}>{tm(mapBoss)}</div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("battle.mapBossDesc")}</div>
@@ -744,11 +754,11 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               <span style={{ fontSize: 11, color: "#A34FD9", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 5 }}>
                 <Castle size={12} /> {t("battle.dungeonStage", { current: dungeonRun.index + 1, total: dungeonRun.stages.length })}
               </span>
-              {monster.isBoss && <span style={{ fontSize: 10, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>{t("battle.boss")}</span>}
+              {monster.isBoss && <span style={{ fontSize: 10, color: "var(--gold-text)", fontFamily: "var(--font-mono)" }}>{t("battle.boss")}</span>}
             </div>
           )}
           {monster.mapBoss && (
-            <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "#D4AF6A14", border: "1px solid #D4AF6A44", fontSize: 11, color: "#D4AF6A", fontFamily: "var(--font-mono)" }}>
+            <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "#D4AF6A14", border: "1px solid #D4AF6A44", fontSize: 11, color: "var(--gold-text)", fontFamily: "var(--font-mono)" }}>
               <Trophy size={12} style={{ verticalAlign: "-2px", marginRight: 5 }} /> {t("battle.mapBossBanner")}
             </div>
           )}
@@ -926,7 +936,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       {!levelUpInfo && victoryMonster && (
         <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setVictoryMonster(null)}>
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <Trophy size={32} color="#D4AF6A" strokeWidth={1.3} />
+            <Trophy size={32} color="var(--gold-text)" strokeWidth={1.3} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>{t("battle.rematchTitle")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 220 }}>
               {t("battle.rematchDesc", { monster: tm(victoryMonster) })}
@@ -958,7 +968,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <Castle size={32} color="#A34FD9" strokeWidth={1.3} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>{t("battle.dungeonCompleteTitle")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 240 }}>
-              {t("battle.dungeonCompleteDesc", { map: dungeonComplete.mapName, gold: formatGold(dungeonComplete.bonusGold), tier: dungeonComplete.chestTier })}
+              {t("battle.dungeonCompleteDesc", { map: dungeonComplete.mapName, gold: formatGold(dungeonComplete.bonusGold), tier: tierName(lang, dungeonComplete.chestTier) })}
             </div>
             <button style={{ ...styles.tinyBtn, background: "#A34FD9", marginTop: 20 }} onClick={() => setDungeonComplete(null)}>
               {t("battle.great")}

@@ -1,6 +1,6 @@
 import { ScrollText } from "lucide-react";
 import { GEAR_TIERS } from "../data/tiers";
-import { itemTierColor } from "../data/itemRarity";
+import { itemTierColor, tierName } from "../data/itemRarity";
 import { scrollPrice } from "../utils/upgrade";
 import { addItemToInventory, makeScrollStack, makeAccessoryScrollStack } from "../utils/inventory";
 import { formatGold } from "../utils/player";
@@ -14,14 +14,14 @@ import SectionLabel from "./shared/SectionLabel";
 const ACCESSORY_SCROLL_PRICE = 50000;
 
 export default function ScrollShop({ player, setPlayer, pushToast }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const buyScroll = (tierId) => {
     const price = scrollPrice(tierId);
     if (player.gold < price) { pushToast(t("shop.notEnoughGold"), "warn"); return; }
     const result = addItemToInventory({ ...player, gold: player.gold - price }, makeScrollStack(tierId, 1));
     if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
     setPlayer(result.player);
-    pushToast(t("shop.upgradeScrollPurchased", { tier: tierId }), "loot");
+    pushToast(t("shop.upgradeScrollPurchased", { tier: tierName(lang, tierId) }), "loot");
   };
 
   const buyAccessoryScroll = () => {
@@ -42,7 +42,7 @@ export default function ScrollShop({ player, setPlayer, pushToast }) {
         {GEAR_TIERS.map((tierId) => (
           <div key={tierId} style={{ ...styles.scrollBuyCard, borderColor: `${itemTierColor(tierId)}55` }}>
             <ScrollText size={14} color={itemTierColor(tierId)} strokeWidth={1.6} />
-            <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: itemTierColor(tierId), marginTop: 3 }}>T{tierId}</div>
+            <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: itemTierColor(tierId), marginTop: 3 }}>{tierName(lang, tierId)}</div>
             <button style={{ ...styles.tinyBtn, ...styles.scrollBuyBtn, background: "#D4AF6A", color: "#15171E" }} onClick={() => buyScroll(tierId)}>
               {formatGold(scrollPrice(tierId))}g
             </button>

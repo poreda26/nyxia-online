@@ -162,7 +162,7 @@ export default function GmItemPanel({ player, setPlayer, pushToast }) {
           {upgradeLevels.map((lv) => <option key={lv} value={lv}>+{lv}</option>)}
         </select>
         {selectedMaxLevel > MAX_UPGRADE_LEVEL && (
-          <span style={{ fontSize: 9, color: "#D4AF6A" }}>{t("gm.notYetInGame", { max: MAX_UPGRADE_LEVEL })}</span>
+          <span style={{ fontSize: 9, color: "var(--gold-text)" }}>{t("gm.notYetInGame", { max: MAX_UPGRADE_LEVEL })}</span>
         )}
       </div>
 

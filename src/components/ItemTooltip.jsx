@@ -1,5 +1,5 @@
 import { CLASSES } from "../data/classes";
-import { itemTierColor, ITEM_TIER_LABEL } from "../data/itemRarity";
+import { itemTierColor, ITEM_TIER_LABEL, tierName } from "../data/itemRarity";
 import { STAT_LABELS } from "../data/stats";
 import { ELEMENT_LABELS, ELEMENT_COLORS } from "../data/elements";
 import { WEAPON_TYPE_LABEL } from "../data/warriorWeapons";
@@ -32,7 +32,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13 }}>{displayItemName(item, lang)}</div>
             <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
-              {item.tier ? t("itemTooltip.weightWithTier", { tier: item.tier, weight: item.weight }) : t("itemTooltip.weightOnly", { weight: item.weight })}
+              {item.tier ? t("itemTooltip.weightWithTier", { tier: tierName(lang, item.tier), weight: item.weight }) : t("itemTooltip.weightOnly", { weight: item.weight })}
             </div>
           </div>
         </div>
@@ -66,7 +66,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
             <span>{t("itemTooltip.durability")}</span>
             <span>{t("itemTooltip.durabilityValue", { cur: item.currentDurability, max: item.durability, pct: Math.round(durabilityPct) })}</span>
           </div>
-          <BarTrack pct={durabilityPct} color="#D4AF6A" thin />
+          <BarTrack pct={durabilityPct} color="var(--gold-text)" thin />
         </div>
       )}
 
@@ -113,7 +113,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
           <StatLine
             label={STAT_LABELS[ARMOR_CLASS_BONUS_STAT[item.class]]}
             value={`+${armorLevelBonus(item.upgradeLevel)}`}
-            color="#D4AF6A"
+            color="var(--gold-text)"
           />
         )}
         {/* String of Skulls gibi takıların dormant alanları — henüz hiçbir
@@ -123,7 +123,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
             diye kullanıcı isteğiyle şimdilik sadece VERİ olarak duruyor) —
             ama oyuncu eşyanın üstünde görebilsin diye tooltip'te gösteriliyor. */}
         {item.attackPowerPct > 0 && (
-          <StatLine label={t("itemTooltip.attackPowerBonus")} value={`+%${Math.round(item.attackPowerPct * 100)}`} color="#D4AF6A" />
+          <StatLine label={t("itemTooltip.attackPowerBonus")} value={`+%${Math.round(item.attackPowerPct * 100)}`} color="var(--gold-text)" />
         )}
         {item.resistances && Object.entries(item.resistances).filter(([, v]) => v).map(([key, value]) => (
           <StatLine key={key} label={t("itemTooltip.elementResistance", { element: ELEMENT_LABELS[lang][key] || key })} value={`+${value}`} color={ELEMENT_COLORS[key]} />
@@ -161,7 +161,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
                 key={r.key}
                 label={t("itemTooltip.requiredStat", { stat: STAT_LABELS[r.key] })}
                 value={r.value}
-                color={met ? "#D4AF6A" : "#E8425A"}
+                color={met ? "var(--gold-text)" : "#E8425A"}
               />
             );
           })}

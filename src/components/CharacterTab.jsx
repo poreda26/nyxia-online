@@ -10,6 +10,7 @@ import { MAX_LOADOUT_SLOTS } from "../data/skills";
 import { ACHIEVEMENTS } from "../data/achievements";
 import { isAchievementUnlocked, setActiveTitle } from "../utils/achievements";
 import { selectArmorDye } from "../utils/cosmetics";
+import { tierName } from "../data/itemRarity";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import StatBlock from "./shared/StatBlock";
@@ -18,7 +19,7 @@ import CharacterFigure from "./CharacterFigure";
 import { useTranslation, formatReason } from "../i18n/LanguageContext";
 
 export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter, onReplayTutorial }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [subtab, setSubtab] = useState("stats");
   const [confirmingRespec, setConfirmingRespec] = useState(false);
   const addStat = (key) => setPlayer((p) => allocateStat(p, key));
@@ -54,7 +55,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
   useEffect(() => stopHold, []);
 
   const learn = (skillId) => {
-    const result = unlockSkill(player, skillId, t);
+    const result = unlockSkill(player, skillId, t, lang);
     if (!result.unlocked) { pushToast(result.reason || t("character.skills.learnFailedDefault"), "warn"); return; }
     setPlayer(result.player);
     pushToast(t("character.skills.learnSuccessToast"), "loot");
@@ -129,7 +130,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         <StatBlock label={t("character.stats.def")} value={def} color="#4FC3D9" />
         <StatBlock label={t("character.stats.hp")} value={maxHp} color="#5FA8A0" />
         <StatBlock label={t("character.stats.crit")} value={`${Math.round(cls.crit * 100)}%`} color="#8B6FC9" />
-        <StatBlock label={t("character.stats.gold")} value={formatGold(player.gold)} color="#D4AF6A" />
+        <StatBlock label={t("character.stats.gold")} value={formatGold(player.gold)} color="var(--gold-text)" />
         <StatBlock label={t("character.stats.diamond")} value={player.diamonds} color="#8B6FC9" />
       </div>
 
@@ -214,7 +215,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {classSkills(player.class).map((skill) => {
               const known = isKnown(player, skill.id);
-              const check = canUnlockSkill(player, skill, t);
+              const check = canUnlockSkill(player, skill, t, lang);
               const inLoadout = player.skills.loadout.includes(skill.id);
               return (
                 <div key={skill.id} style={{ ...styles.itemDetailCard, ...(known ? { borderColor: `${cls.color}55` } : {}) }}>
@@ -230,7 +231,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
                       <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{describeEffect(skill.effect, t)}</div>
                       <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 2 }}>
                         {t("character.skills.mpCooldown", { mp: skill.mpCost, cd: skill.cooldown })}
-                        {skill.tier === "advanced" && t("character.skills.advancedSuffix", { gold: skill.goldCost, tier: skill.questTier })}
+                        {skill.tier === "advanced" && t("character.skills.advancedSuffix", { gold: skill.goldCost, tier: tierName(lang, skill.questTier) })}
                       </div>
                     </div>
                     {known ? (

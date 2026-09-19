@@ -21,9 +21,50 @@ export default function GlobalStyle() {
         --text-primary: #EDE8DC;
         --text-muted: #9CA1B0;
         --text-faint: #5C6072;
+        --gold-text: #D4AF6A;
         --font-display: 'Cinzel', serif;
         --font-body: 'Manrope', sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
+      }
+
+      /* Kullanıcı isteği: "Oyunumuz çok Dark temada, kullanıcılarımıza
+         daha light bir tema yapabiliriz, yine de bu beyaz olmasın biraz
+         daha aydınlık bir tema olsun." — sadece bu nötr (arkaplan/metin)
+         değişkenler değişiyor; sınıf/harita/rarity gibi anlamlı renkler
+         (kırmızı, mavi, mor vb.) her iki temada da aynı kalıyor. App.jsx
+         bu attribute'u <html> üzerine yazıyor (bkz. utils/settings.js#
+         loadSettings'in "theme" alanı, Ayarlar > Tema). Ilık/parşömen
+         tonlar seçildi ki "beyaz olmasın" isteğine uysun, saf beyaz/gri
+         değil. [data-theme], plain :root'tan daha spesifik olduğu için
+         sırası önemli değil — hep bunu eziyor.
+
+         Kullanıcı isteği (sonraki turda bulunan bug): "Aydınlık mod'da
+         envanterde okunmayan yazılar var" — kök neden iki ayrı kontrast
+         sorunuydu, otomatik bir kontrast tarayıcı script'iyle doğrulandı:
+         1) --text-faint (#948A78) açık zemine karşı sadece ~2.7:1 kontrast
+            veriyordu (WCAG AA eşiği 4.5:1) — koyu temada iyi çalışan bir
+            değer birebir renk-tersine çevrilip açık temaya taşınmıştı,
+            ama parlaklığı açık zeminlere çok yakın kalıyordu.
+         2) Altın vurgu rengi (#D4AF6A) — dark temada neredeyse siyah bir
+            zemine karşı parlak durduğu için hep "sabit, tema-bağımsız"
+            sanılmıştı, ama açık, ılık bir zeminde ~1.9:1'e düşüyordu.
+            Bu yüzden artık ayrı bir --gold-text değişkeni var (yukarıdaki
+            yorumun "her ikisiyle de kontrastı yeten sabit tonlar" iddiası
+            bu yönüyle YANLIŞ çıktı) — dark'ta aynı altın, light'ta daha
+            koyu bir amber/bronz (okunurluk için), ikisi de "altın" hissi
+            veriyor. Butonların SABİT altın ARKA PLANI (background:
+            "#D4AF6A", koyu metinle eşleşen) bu değişikliğin dışında —
+            o zaten kendi kendine yeten bir kontrast çifti, temaya göre
+            değişmesine gerek yok. */
+      :root[data-theme="light"] {
+        --bg-void: #EDE6D8;
+        --bg-panel: #F8F3E8;
+        --bg-panel-alt: #EFE7D5;
+        --border: #D9CEB6;
+        --text-primary: #2B2621;
+        --text-muted: #6B6253;
+        --text-faint: #7A705F;
+        --gold-text: #7A5A10;
       }
 
       .shake { animation: shakeAnim 0.26s ease; }
@@ -113,8 +154,19 @@ export default function GlobalStyle() {
         100% { transform: scale(1); opacity: 1; }
       }
 
-      button { font-family: var(--font-body); cursor: pointer; }
-      input, select { font-family: var(--font-body); }
+      /* Kullanıcı isteği: "Savaş sekmesinde 1-15 yazıyor yanındaki Fallow
+         Valley okunmuyor. Siyah kalıyor... bir kaç yerde bu şekilde
+         okunmama sorunları mevcut." — kök neden: tarayıcının button
+         elemanı için varsayılan metin rengi (ButtonText, genelde siyaha
+         yakın) normal CSS mirasını EZİYOR; bu app'te birçok buton kendi
+         içindeki span'e hiç renk vermeden koyu temaya güveniyordu, o
+         yüzden buton kendi rengini hiç ayarlamayan her yerde siyah/okunmaz
+         kalıyordu. Global reset'e renk eklemek TÜM bu butonları tek
+         seferde düzeltiyor — inline style'dan renk veren butonlar zaten
+         (daha yüksek öncelikli olduğu için) etkilenmiyor, bu sadece hiç
+         renk vermeyenler için bir varsayılan sağlıyor. */
+      button { font-family: var(--font-body); cursor: pointer; color: var(--text-primary); }
+      input, select { font-family: var(--font-body); color: var(--text-primary); }
 
       ::-webkit-scrollbar { width: 6px; }
       ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }

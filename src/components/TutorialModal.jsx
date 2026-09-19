@@ -18,11 +18,11 @@ import { useTranslation } from "../i18n/LanguageContext";
 // sadece title/text taşıyor, ikon/renk çeviriye bağlı değil), üstte SABİT
 // olarak Kaptan'ın portresi duruyor — konuşan hep o.
 const STEP_META = [
-  { icon: Compass, color: "#D4AF6A" },
+  { icon: Compass, color: "var(--gold-text)" },
   { icon: Sword, color: "#C9425A" },
   { icon: Package, color: "#5FA8A0" },
   { icon: Store, color: "#8B6FC9" },
-  { icon: ShieldCheck, color: "#D4AF6A" },
+  { icon: ShieldCheck, color: "var(--gold-text)" },
   { icon: ArrowUpCircle, color: "#4FC3D9" },
   { icon: Shield, color: "#A34FD9" },
 ];
@@ -49,7 +49,7 @@ export default function TutorialModal({ onFinish }) {
         <div style={{ borderRadius: "50%", overflow: "hidden", boxShadow: "0 0 0 2px #D4AF6A66" }}>
           <CaptainPortrait size={56} />
         </div>
-        <div style={{ marginTop: 10, fontSize: 10, color: "#D4AF6A", fontFamily: "var(--font-mono)", letterSpacing: 1, textTransform: "uppercase" }}>
+        <div style={{ marginTop: 10, fontSize: 10, color: "var(--gold-text)", fontFamily: "var(--font-mono)", letterSpacing: 1, textTransform: "uppercase" }}>
           {t("tutorial.badge")}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, color: current.color }}>

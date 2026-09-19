@@ -87,7 +87,7 @@ const RAW_MAPS = [
   },
   {
     id: "abyssal_pit", name: "Abyssal Pit", levelMin: 50, levelMax: 60, tier: 5,
-    color: "#A34FD9", glow: "rgba(163,79,217,0.45)", dropChance: 0.01, chestChance: 0.01,
+    color: "#A34FD9", glow: "rgba(163,79,217,0.45)", dropChance: 0.025, chestChance: 0.015,
     monsters: [
       { id: "ucurum_solucani", name: "Uçurum Solucanı", hp: 1523, atk: 70, def: 63, xp: 349, goldMin: 77, goldMax: 145 },
       { id: "karanlik_cagirici", name: "Karanlık Çağırıcı", hp: 1679, atk: 74, def: 67, xp: 381, goldMin: 84, goldMax: 158 },
@@ -98,7 +98,7 @@ const RAW_MAPS = [
   },
   {
     id: "crimson_battlefront", name: "Crimson Battlefront", levelMin: 60, levelMax: 65, tier: 5,
-    color: "#C9425A", glow: "rgba(201,66,90,0.5)", dropChance: 0.025, chestChance: 0.015,
+    color: "#C9425A", glow: "rgba(201,66,90,0.5)", dropChance: 0.01, chestChance: 0.01,
     monsters: [
       { id: "kizil_muhafiz", name: "Kızıl Muhafız", hp: 2431, atk: 94, def: 84, xp: 535, goldMin: 118, goldMax: 222 },
       { id: "alev_cellati", name: "Alev Celladı", hp: 2583, atk: 98, def: 87, xp: 565, goldMin: 125, goldMax: 235 },

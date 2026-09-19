@@ -42,7 +42,7 @@ export default function DailyLoginModal({ player, setPlayer, onClose, pushToast 
           <X size={16} />
         </button>
 
-        <Gift size={32} color="#D4AF6A" strokeWidth={1.4} />
+        <Gift size={32} color="var(--gold-text)" strokeWidth={1.4} />
         <div style={{ marginTop: 10, fontFamily: "var(--font-display)", fontSize: 17 }}>{t("dailyLogin.title")}</div>
         <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>{t("dailyLogin.streakDay", { n: streak })}</div>
 
@@ -58,7 +58,7 @@ export default function DailyLoginModal({ player, setPlayer, onClose, pushToast 
                   alignItems: "center", justifyContent: "center", fontSize: 8, fontFamily: "var(--font-mono)",
                   border: "1px solid", borderColor: isToday ? "#D4AF6A" : "var(--border)",
                   background: isPast ? "#D4AF6A22" : isToday ? "#D4AF6A11" : "var(--bg-panel-alt)",
-                  color: isPast || isToday ? "#D4AF6A" : "var(--text-faint)",
+                  color: isPast || isToday ? "var(--gold-text)" : "var(--text-faint)",
                 }}
               >
                 <span>{t("dailyLogin.day", { n: r.day })}</span>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, ArrowDownToLine, X, ListChecks, Coins, Gem, Plus } from "lucide-react";
-import { itemTierColor } from "../data/itemRarity";
+import { itemTierColor, tierName } from "../data/itemRarity";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
 import { rollLoot, rollSpecialChestLoot } from "../utils/loot";
@@ -433,9 +433,9 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
       {subtab === "bank" && (
         <>
           <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <Coins size={16} color="#D4AF6A" strokeWidth={1.6} />
+            <Coins size={16} color="var(--gold-text)" strokeWidth={1.6} />
             <div style={{ fontSize: 12 }}>
-              {t("inventory.bankGoldLabel")} <span style={{ fontFamily: "var(--font-mono)", color: "#D4AF6A" }}>{formatGold(bankGold)}g</span>
+              {t("inventory.bankGoldLabel")} <span style={{ fontFamily: "var(--font-mono)", color: "var(--gold-text)" }}>{formatGold(bankGold)}g</span>
             </div>
             <div style={{ fontSize: 9, color: "var(--text-faint)", width: "100%" }}>
               {t("inventory.bankGoldShared")}
@@ -508,7 +508,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                   <button key={chest.id} onClick={() => openChest(chest)} style={{ ...styles.chestCard, borderColor: `${color}55` }}>
                     <Icon size={22} color={color} strokeWidth={1.6} />
                     <div style={{ fontSize: 11, marginTop: 6, fontFamily: "var(--font-mono)", color, textAlign: "center" }}>
-                      {chest.special ? t("inventory.specialChestName") : t("inventory.tierChest", { tier: chest.tier })}
+                      {chest.special ? t("inventory.specialChestName") : t("inventory.tierChest", { tier: tierName(lang, chest.tier) })}
                     </div>
                     <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>{t("inventory.tapToOpen")}</div>
                   </button>

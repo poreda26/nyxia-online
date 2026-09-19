@@ -42,7 +42,7 @@ export default function ItemIcon({ item, size = 16, color = "currentColor", stro
     return <ScrollText size={size} color={color} strokeWidth={strokeWidth} />;
   }
   if (item.kind === "bonusScroll") {
-    return <Star size={size} color="#D4AF6A" strokeWidth={strokeWidth} />;
+    return <Star size={size} color="var(--gold-text)" strokeWidth={strokeWidth} />;
   }
   if (item.kind === "boostScroll") {
     return <ScrollText size={size} color={boostScrollDef(item.boostId)?.color || color} strokeWidth={strokeWidth} />;

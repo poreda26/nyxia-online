@@ -93,6 +93,14 @@ export default function App() {
     else if (key === "sfxMuted") setSfxMuted(value);
   };
 
+  // Kullanıcı isteği: "Oyunumuz çok Dark temada... daha light bir tema
+  // yapabiliriz" — GlobalStyle.jsx'in `:root[data-theme="light"]` CSS
+  // bloğu bu attribute'u dinliyor (bkz. o dosyadaki renk değişkenleri).
+  // <html> üzerine yazıyoruz ki :root seçicisiyle eşleşsin.
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", audioSettings.theme);
+  }, [audioSettings.theme]);
+
   // Kullanıcı: loot bildirimini "yakalamakta zorlanıyorum" — 2.6s özellikle
   // öldürme bildirimi gibi çok parçalı (altın+XP+drop+görev) mesajlar için
   // yetersizdi, 3.6s'ye çıkarıldı (bkz. GlobalStyle.jsx'teki görsel
@@ -360,6 +368,8 @@ export default function App() {
           onToggleSfxMute={() => updateAudioSetting("sfxMuted", !audioSettings.sfxMuted)}
           lang={audioSettings.language}
           onLangChange={(l) => updateAudioSetting("language", l)}
+          theme={audioSettings.theme}
+          onThemeChange={(v) => updateAudioSetting("theme", v)}
           onClose={() => setSettingsOpen(false)}
         />
       )}

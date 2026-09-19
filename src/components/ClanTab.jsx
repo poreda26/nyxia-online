@@ -152,7 +152,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
         {lbEntries.map((e) => (
           <div key={e.rank} style={{ ...styles.itemRow, ...(e.isPlayerClan ? { borderColor: "#D4AF6A" } : {}) }}>
-            <div style={{ width: 20, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, color: e.rank <= 3 ? "#D4AF6A" : "var(--text-faint)" }}>{e.rank}</div>
+            <div style={{ width: 20, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, color: e.rank <= 3 ? "var(--gold-text)" : "var(--text-faint)" }}>{e.rank}</div>
             <div style={{ flex: 1, fontSize: 12, color: e.isPlayerClan ? "var(--text-primary)" : "var(--text-muted)" }}>{e.name}{e.isPlayerClan ? t("clan.yourClanSuffix") : ""}</div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 3 }}>
               <Flag size={10} color="#8B6FC9" /> {fmt(e.nationalPoint)}
@@ -170,7 +170,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         <SectionLabel>{t("clan.title")}</SectionLabel>
         <div style={styles.itemDetailCard}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Shield size={18} color="#D4AF6A" strokeWidth={1.6} />
+            <Shield size={18} color="var(--gold-text)" strokeWidth={1.6} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>{t("clan.foundHeading")}</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("clan.foundDesc", { cost: CLAN_FOUND_COST_DIAMONDS })}</div>
@@ -245,7 +245,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
 
       <div style={styles.itemDetailCard}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Landmark size={18} color="#D4AF6A" strokeWidth={1.6} />
+          <Landmark size={18} color="var(--gold-text)" strokeWidth={1.6} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13 }}>{t("clan.treasuryTitle")}</div>
             <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("clan.buildingLevelLabel", { level: clan.buildingLevel, max: CLAN_BUILDING_MAX_LEVEL })}</div>
@@ -253,7 +253,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Flag size={11} color="#8B6FC9" /> {fmt(clan.treasury.np)} NP</span>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Coins size={11} color="#D4AF6A" /> {fmt(clan.treasury.gold)}g</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Coins size={11} color="var(--gold-text)" /> {fmt(clan.treasury.gold)}g</span>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Gem size={11} color="#8B6FC9" /> {fmt(clan.treasury.diamonds)}</span>
         </div>
 

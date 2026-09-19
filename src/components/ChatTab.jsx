@@ -55,7 +55,7 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
         <SectionLabel>{t("chat.title")}</SectionLabel>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
           {player.isGM && (
-            <button onClick={() => setShowGmPanel((v) => !v)} style={{ background: "none", border: "none", color: showGmPanel ? "#D4AF6A" : "var(--text-faint)", cursor: "pointer" }} title={t("chat.gmItemPanelTitle")}>
+            <button onClick={() => setShowGmPanel((v) => !v)} style={{ background: "none", border: "none", color: showGmPanel ? "var(--gold-text)" : "var(--text-faint)", cursor: "pointer" }} title={t("chat.gmItemPanelTitle")}>
               <Wand2 size={16} />
             </button>
           )}
@@ -90,8 +90,8 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
         {messages.map((m) => (
           <div key={m.id} style={styles.chatMsg}>
             <div style={styles.chatMsgHeader}>
-              {m.isGM && <ShieldCheck size={11} color="#D4AF6A" />}
-              <span style={{ color: m.isSystem ? "var(--text-faint)" : m.isGM ? "#D4AF6A" : "var(--text-muted)" }}>
+              {m.isGM && <ShieldCheck size={11} color="var(--gold-text)" />}
+              <span style={{ color: m.isSystem ? "var(--text-faint)" : m.isGM ? "var(--gold-text)" : "var(--text-muted)" }}>
                 {m.isSystem ? t("chat.systemAuthor") : m.author}
               </span>
               <span>{new Date(m.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>

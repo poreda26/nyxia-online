@@ -39,7 +39,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
         <div style={styles.classBadge}>
           <Icon size={16} color={cls.color} strokeWidth={2} />
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 130, overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
             <span style={{ fontFamily: "var(--font-display)", fontSize: 14, letterSpacing: 0.3, display: "flex", alignItems: "center", gap: 5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {premiumTier && <Crown size={13} color={premiumTier.color} strokeWidth={2} fill={premiumTier.color} style={{ flexShrink: 0 }} />}
@@ -64,7 +64,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
           </div>
         </div>
         <div style={styles.goldChip}>
-          <Coins size={13} color="#D4AF6A" />
+          <Coins size={13} color="var(--gold-text)" />
           <span style={{ fontFamily: "var(--font-mono)" }}>{formatGold(player.gold)}</span>
         </div>
         {onOpenDiamondShop && (
@@ -78,7 +78,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
           <button
             onClick={onOpenDailyLogin}
             title={t("topBar.dailyLogin")}
-            style={{ position: "relative", background: "none", border: "none", color: dailyLoginAvailable ? "#D4AF6A" : "var(--text-faint)", cursor: "pointer", padding: 4, flexShrink: 0 }}
+            style={{ position: "relative", background: "none", border: "none", color: dailyLoginAvailable ? "var(--gold-text)" : "var(--text-faint)", cursor: "pointer", padding: 4, flexShrink: 0 }}
           >
             <Gift size={16} strokeWidth={1.8} />
             {dailyLoginAvailable && <span style={{ ...styles.navNotifDot, top: 0, left: "auto", right: -1, marginLeft: 0 }} />}
@@ -92,7 +92,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
           <button
             onClick={onOpenSettings}
             title={t("settings.title")}
-            style={{ background: "none", border: "none", color: "#D4AF6A", cursor: "pointer", padding: 4, flexShrink: 0 }}
+            style={{ background: "none", border: "none", color: "var(--gold-text)", cursor: "pointer", padding: 4, flexShrink: 0 }}
           >
             <Settings size={16} strokeWidth={1.8} />
           </button>

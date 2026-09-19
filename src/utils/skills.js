@@ -1,6 +1,7 @@
 import { SKILLS_BY_CLASS, MAX_LOADOUT_SLOTS } from "../data/skills";
 import { isTierQuestClaimed } from "./quests";
 import { mitigate, MONSTER_DEF_K } from "./combat";
+import { tierName } from "../data/itemRarity";
 
 export function classSkills(cls) {
   return SKILLS_BY_CLASS[cls] || [];
@@ -42,25 +43,30 @@ function defaultT(key, vars) {
     "character.skills.reason.invalidSkill": "Geçersiz beceri.",
     "character.skills.reason.known": "Zaten öğrenildi.",
     "character.skills.reason.levelRequired": `Seviye ${vars?.level} gerekiyor.`,
-    "character.skills.reason.questRequired": `Kaptan'ın T${vars?.tier} görevini tamamlamalısın.`,
+    "character.skills.reason.questRequired": `Kaptan'ın ${tierName("tr", vars?.tier)} görevini tamamlamalısın.`,
     "character.skills.reason.notEnoughGold": "Yeterli altının yok.",
   };
   return REASONS[key] ?? key;
 }
 
-export function canUnlockSkill(player, skill, t = defaultT) {
+// lang: kullanıcı isteği ("Tier sistemini kaldırmak... farklı isimler") —
+// çeviri metnindeki {tier} artık ham sayı değil, tierName() ile renk adına
+// çevrilmiş halini bekliyor; CharacterTab.jsx zaten kendi `lang`'ını
+// biliyor, buraya iletiyor. `t` varsayılanı (defaultT) zaten Türkçe sabit
+// olduğu için `lang` sadece gerçek i18n `t` ile birlikte anlam kazanıyor.
+export function canUnlockSkill(player, skill, t = defaultT, lang = "tr") {
   if (isKnown(player, skill.id)) return { ok: false, reason: t("character.skills.reason.known") };
   if (player.level < skill.unlockLevel) return { ok: false, reason: t("character.skills.reason.levelRequired", { level: skill.unlockLevel }) };
   if (skill.tier === "basic") return { ok: true }; // free, granted by learnFreeSkills already
-  if (!isTierQuestClaimed(player, skill.questTier)) return { ok: false, reason: t("character.skills.reason.questRequired", { tier: skill.questTier }) };
+  if (!isTierQuestClaimed(player, skill.questTier)) return { ok: false, reason: t("character.skills.reason.questRequired", { tier: tierName(lang, skill.questTier) }) };
   if (player.gold < skill.goldCost) return { ok: false, reason: t("character.skills.reason.notEnoughGold") };
   return { ok: true };
 }
 
-export function unlockSkill(player, skillId, t = defaultT) {
+export function unlockSkill(player, skillId, t = defaultT, lang = "tr") {
   const skill = getSkill(player.class, skillId);
   if (!skill) return { player, unlocked: false, reason: t("character.skills.reason.invalidSkill") };
-  const check = canUnlockSkill(player, skill, t);
+  const check = canUnlockSkill(player, skill, t, lang);
   if (!check.ok) return { player, unlocked: false, reason: check.reason };
   const goldCost = skill.tier === "advanced" ? skill.goldCost : 0;
   return {

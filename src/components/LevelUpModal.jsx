@@ -25,7 +25,7 @@ export default function LevelUpModal({ levelUp, onClose }) {
               />
             ))}
           </div>
-          <div style={{ color: "#D4AF6A", filter: "drop-shadow(0 0 18px #D4AF6Aaa)" }}>
+          <div style={{ color: "var(--gold-text)", filter: "drop-shadow(0 0 18px #D4AF6Aaa)" }}>
             <Sparkles size={56} strokeWidth={1.3} />
           </div>
           <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 22 }}>

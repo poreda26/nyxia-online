@@ -1,4 +1,4 @@
-import { Settings, X, Volume2, VolumeX, Languages } from "lucide-react";
+import { Settings, X, Volume2, VolumeX, Languages, SunMedium } from "lucide-react";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 
@@ -63,10 +63,40 @@ function LanguageRow({ lang, onLangChange, t }) {
   );
 }
 
+// Kullanıcı isteği: "Oyunumuz çok Dark temada, daha light bir tema
+// yapabiliriz" — LanguageRow ile birebir aynı iki-seçenekli desen.
+function ThemeRow({ theme, onThemeChange, t }) {
+  return (
+    <div style={styles.sliderRow}>
+      <div style={styles.sliderLabelRow}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <SunMedium size={14} color="var(--gold-text)" /> {t("settings.theme")}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        {[["dark", t("settings.themeDark")], ["light", t("settings.themeLight")]].map(([code, label]) => (
+          <button
+            key={code}
+            onClick={() => onThemeChange(code)}
+            style={{
+              ...styles.tinyBtn, flex: 1,
+              background: theme === code ? "#D4AF6A" : "var(--bg-panel-alt)",
+              color: theme === code ? "#15171E" : "var(--text-muted)",
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsModal({
   musicVolume, musicMuted, onMusicVolumeChange, onToggleMusicMute,
   sfxVolume, sfxMuted, onSfxVolumeChange, onToggleSfxMute,
   lang, onLangChange,
+  theme, onThemeChange,
   onClose,
 }) {
   const { t } = useTranslation();
@@ -93,6 +123,7 @@ export default function SettingsModal({
             onVolumeChange={onSfxVolumeChange} onToggleMute={onToggleSfxMute} t={t}
           />
           <LanguageRow lang={lang} onLangChange={onLangChange} t={t} />
+          <ThemeRow theme={theme} onThemeChange={onThemeChange} t={t} />
         </div>
       </div>
     </div>

@@ -76,11 +76,18 @@ export const WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP = 500;
 const WORLD_BOSS_ATK_MULT = 3.0;
 const WORLD_BOSS_HP_MULT = 0.25;
 const WORLD_BOSS_DEF_MULT = 3.8;
+// Kullanıcı isteği: "T6 itemler sadece Savaş Alanı Bossları'ndan düşecek."
+// — normal haritalar (Abyssal Pit/Crimson Battlefront) hâlâ tier 5'te
+// tavanlı (bkz. data/maps.js'in üstündeki not), Canavar Ara da Crimson
+// Battlefront'un (tier 5) canavarlarını kullanıyor — bu yüzden lootTier'ı
+// 6'ya çekmek T6'yı GERÇEKTEN sadece bu 6 boss'a özgü kılıyor (GM'in
+// /silah ve Özel Etkinlik Sandığı yolları hariç, onlar zaten oyuncuya
+// açık bir "drop" değil, geliştirme/etkinlik araçları).
 const BASE_BOSS_STATS = {
   hp: Math.round(7360 * WORLD_BOSS_HP_MULT),
   atk: Math.round(81 * WORLD_BOSS_ATK_MULT),
   def: Math.round(68 * WORLD_BOSS_DEF_MULT),
-  lootTier: 5,
+  lootTier: 6,
   bonusGoldMin: 300,
   bonusGoldMax: 550,
   equipDropChance: 0.45,

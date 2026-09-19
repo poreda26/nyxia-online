@@ -1,7 +1,7 @@
 import { Gem, X, Star, Sparkles, Castle, Archive, Users, ScrollText } from "lucide-react";
 import { DIAMOND_PACKS } from "../data/diamondPacks";
 import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS, EXTRA_DUNGEON_ENTRIES_PER_PURCHASE } from "../data/soloDungeon";
-import { buyExtraDungeonEntries } from "../utils/soloDungeon";
+import { buyExtraDungeonEntries, hasBoughtExtraDungeonEntryToday } from "../utils/soloDungeon";
 import { buyExtraBankPage, EXTRA_BANK_PAGE_COST_DIAMONDS, MAX_BANK_PAGES } from "../utils/inventory";
 import { CHARACTER_SLOTS, THIRD_SLOT_COST_DIAMONDS } from "../utils/storage";
 import { BOOST_SCROLLS, BOOST_SCROLL_PACK_SIZE, boostScrollName } from "../data/boostScrolls";
@@ -25,7 +25,10 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
 
   const handleBuyDungeonEntries = () => {
     const result = buyExtraDungeonEntries(player);
-    if (!result.bought) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
+    if (!result.bought) {
+      pushToast(t(result.reason === "alreadyBoughtToday" ? "battle.dungeonEntriesAlreadyBoughtToday" : "shop.notEnoughDiamonds"), "warn");
+      return;
+    }
     setPlayer(result.player);
     pushToast(t("battle.dungeonEntriesBought"), "loot");
   };
@@ -80,9 +83,13 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
           <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
             <Castle size={18} color="#A34FD9" strokeWidth={1.6} style={{ flexShrink: 0 }} />
             <div style={{ flex: 1, fontSize: 12 }}>{t("battle.dailyDungeon")}</div>
-            <button style={{ ...styles.tinyBtn, flexShrink: 0, background: "var(--bg-panel-alt)", color: "#8B6FC9", display: "flex", alignItems: "center", gap: 4 }} onClick={handleBuyDungeonEntries}>
-              <Gem size={11} /> {EXTRA_DUNGEON_ENTRY_COST_DIAMONDS} (+{EXTRA_DUNGEON_ENTRIES_PER_PURCHASE})
-            </button>
+            {hasBoughtExtraDungeonEntryToday(player) ? (
+              <span style={{ fontSize: 9, color: "var(--text-faint)" }}>{t("battle.dungeonEntriesAlreadyBoughtToday")}</span>
+            ) : (
+              <button style={{ ...styles.tinyBtn, flexShrink: 0, background: "var(--bg-panel-alt)", color: "#8B6FC9", display: "flex", alignItems: "center", gap: 4 }} onClick={handleBuyDungeonEntries}>
+                <Gem size={11} /> {EXTRA_DUNGEON_ENTRY_COST_DIAMONDS} (+{EXTRA_DUNGEON_ENTRIES_PER_PURCHASE})
+              </button>
+            )}
           </div>
 
           <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
@@ -99,7 +106,7 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
 
           {unlockedSlots < CHARACTER_SLOTS && (
             <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
-              <Users size={18} color="#D4AF6A" strokeWidth={1.6} style={{ flexShrink: 0 }} />
+              <Users size={18} color="var(--gold-text)" strokeWidth={1.6} style={{ flexShrink: 0 }} />
               <div style={{ flex: 1, fontSize: 12 }}>{t("characterSelect.lockedSlot")}</div>
               <button style={{ ...styles.tinyBtn, flexShrink: 0, background: "var(--bg-panel-alt)", color: "#8B6FC9", display: "flex", alignItems: "center", gap: 4 }} onClick={handleUnlockSlot}>
                 <Gem size={11} /> {THIRD_SLOT_COST_DIAMONDS}
@@ -159,7 +166,7 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
                   )}
                 </div>
                 {(pack.popular || pack.bestValue) && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 9, color: pack.bestValue ? "#D4AF6A" : "#8B6FC9", marginTop: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 9, color: pack.bestValue ? "var(--gold-text)" : "#8B6FC9", marginTop: 2 }}>
                     {pack.bestValue ? <Star size={10} /> : <Sparkles size={10} />}
                     {pack.bestValue ? t("diamondShop.bestValueBadge") : t("diamondShop.popularBadge")}
                   </div>

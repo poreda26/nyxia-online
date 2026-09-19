@@ -78,8 +78,8 @@ export const warzoneSection = {
         gold: "+{amount} altın",
         itemDropped: "Eşya düştü: {name}",
         itemDropFailed: "{name} düştü ama {reason}",
-        chestDropped: "Sandık düştü! (T{tier})",
-        scrollDropped: "T{tier} Parşömeni düştü!",
+        chestDropped: "Sandık düştü! ({tier})",
+        scrollDropped: "{tier} Parşömeni düştü!",
         scrollDropFailed: "Parşömen düştü ama {reason}",
       },
       log: {
@@ -181,8 +181,8 @@ export const warzoneSection = {
         gold: "+{amount} gold",
         itemDropped: "Item dropped: {name}",
         itemDropFailed: "{name} dropped but {reason}",
-        chestDropped: "Chest dropped! (T{tier})",
-        scrollDropped: "T{tier} Scroll dropped!",
+        chestDropped: "Chest dropped! ({tier})",
+        scrollDropped: "{tier} Scroll dropped!",
         scrollDropFailed: "Scroll dropped but {reason}",
       },
       log: {

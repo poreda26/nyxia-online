@@ -25,11 +25,21 @@ export function consumeDungeonEntry(player) {
   return { ...player, soloDungeon: { ...sd, entriesUsed: sd.entriesUsed + 1 } };
 }
 
+// Kullanıcı isteği: "Günlük Solo Zindan hakkı sadece günde 1 kere 150
+// elmasa +1 hak olarak satın alınabilecek" — extraPurchased zaten
+// todaysEntries/freshEntries ile her gün 0'a sıfırlanıyor, o yüzden
+// "bugün zaten satın alındı mı" kontrolü de aynı alana bakmak kadar basit.
+export function hasBoughtExtraDungeonEntryToday(player) {
+  return (todaysEntries(player).extraPurchased || 0) > 0;
+}
+
 // Elmasla ekstra zindan girişi — kullanıcı isteği: "Zindana giriş hakkı
 // eklensin" (bkz. components/DiamondShopModal.jsx). extraPurchased da
 // entriesUsed gibi günlük sıfırlanıyor (todaysEntries/freshEntries) —
-// kalıcı bir yükseltme değil, sadece bugüne özel.
+// kalıcı bir yükseltme değil, sadece bugüne özel. Günde sadece 1 satın
+// alma hakkı var (bkz. hasBoughtExtraDungeonEntryToday yukarıda).
 export function buyExtraDungeonEntries(player) {
+  if (hasBoughtExtraDungeonEntryToday(player)) return { player, bought: false, reason: "alreadyBoughtToday" };
   if (player.diamonds < EXTRA_DUNGEON_ENTRY_COST_DIAMONDS) return { player, bought: false, reason: "notEnoughDiamonds" };
   const sd = todaysEntries(player);
   return {

@@ -32,6 +32,7 @@ import LevelUpModal from "./LevelUpModal";
 import BattleScene, { hasBattleScene } from "./BattleScene";
 import DuelScene from "./DuelScene";
 import { getWarzoneBossConfig, getWarzoneHuntConfig } from "../utils/dropConfig";
+import { tierName } from "../data/itemRarity";
 import { useTranslation } from "../i18n/LanguageContext";
 
 // Canavar Ara'nın canavar havuzu — Crimson Battlefront'un mevcut roster'ı
@@ -149,7 +150,7 @@ function initiateDuel(ghost, def, player, t) {
 }
 
 export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChange }) {
-  const { t, tm } = useTranslation();
+  const { t, tm, lang } = useTranslation();
   const cls = CLASSES[player.class];
   const atk = totalStats(player).atk;
   const def = playerDef(player);
@@ -487,13 +488,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       }
       if (Math.random() < boss.chestDropChance) {
         np.chests.push({ id: uid(), tier: boss.lootTier });
-        drops.push(t("warzone.drop.chestDropped", { tier: boss.lootTier }));
+        drops.push(t("warzone.drop.chestDropped", { tier: tierName(lang, boss.lootTier) }));
       }
       if (Math.random() < boss.scrollDropChance) {
         const scroll = makeScrollStack(boss.lootTier, 1);
         const res = addItemToInventory(np, scroll);
         np = res.player;
-        drops.push(res.added ? t("warzone.drop.scrollDropped", { tier: boss.lootTier }) : t("warzone.drop.scrollDropFailed", { reason: t(REASON_KEY[res.reason] || res.reason) }));
+        drops.push(res.added ? t("warzone.drop.scrollDropped", { tier: tierName(lang, boss.lootTier) }) : t("warzone.drop.scrollDropFailed", { reason: t(REASON_KEY[res.reason] || res.reason) }));
       }
       // Bir canavarı (boss da bir canavar) öldürünce can/mana tam yenilenir.
       np.hp = playerMaxHp(np);
@@ -518,7 +519,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       case "dailyQuestComplete": return t("battle.drop.dailyQuestComplete", { target: d.target });
       case "itemDropped": return t("battle.drop.itemDropped", { kind: t(`battle.kind.${d.kind}`), name: d.itemName });
       case "itemDropFailed": return t("battle.drop.itemDropFailed", { name: d.itemName, reason: t(REASON_KEY[d.reason] || d.reason) });
-      case "chestDropped": return t("battle.drop.chestDropped", { tier: d.tier });
+      case "chestDropped": return t("battle.drop.chestDropped", { tier: tierName(lang, d.tier) });
       case "levelUpToast": return t("battle.drop.levelUpToast", { level: d.level, statPoints: d.statPoints });
       default: return "";
     }
@@ -1103,7 +1104,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
             {lbEntries.map((e) => (
               <div key={e.rank} style={{ ...styles.itemRow, ...(e.isPlayer ? { borderColor: "#D4AF6A" } : {}) }}>
-                <div style={{ width: 20, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, color: e.rank <= 3 ? "#D4AF6A" : "var(--text-faint)" }}>{e.rank}</div>
+                <div style={{ width: 20, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, color: e.rank <= 3 ? "var(--gold-text)" : "var(--text-faint)" }}>{e.rank}</div>
                 <div style={{ flex: 1, fontSize: 12, color: e.isPlayer ? "var(--text-primary)" : "var(--text-muted)" }}>{e.name}{e.isPlayer ? t("warzone.youSuffix") : ""}</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)" }}>{lbSort === "weeklyPoint" ? e.weeklyPoint : e.nationalPoint}</div>
               </div>

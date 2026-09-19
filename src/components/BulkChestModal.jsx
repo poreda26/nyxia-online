@@ -1,5 +1,5 @@
 import { Gift, X } from "lucide-react";
-import { itemTierColor } from "../data/itemRarity";
+import { itemTierColor, tierName } from "../data/itemRarity";
 import { displayItemName } from "../utils/player";
 import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
@@ -23,7 +23,7 @@ export default function BulkChestModal({ result, onClose }) {
           <X size={16} />
         </button>
 
-        <Gift size={32} color="#D4AF6A" strokeWidth={1.4} />
+        <Gift size={32} color="var(--gold-text)" strokeWidth={1.4} />
         <div style={{ marginTop: 10, fontFamily: "var(--font-display)", fontSize: 16, textAlign: "center" }}>
           {t("inventory.bulkChestWon", { count: items.length })}
         </div>
@@ -38,7 +38,7 @@ export default function BulkChestModal({ result, onClose }) {
             <div key={item.id || i} style={{ ...styles.itemRow, borderColor: `${itemTierColor(item.tier)}44` }}>
               <ItemIcon item={item} size={48} color={itemTierColor(item.tier)} strokeWidth={1.6} />
               <span style={{ flex: 1, fontSize: 12 }}>{displayItemName(item, lang)}<small style={{display:'block',marginTop:4,color:'var(--text-muted)',lineHeight:1.5}}>{itemStatLabel(item)}</small></span>
-              <span style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{item.tier}</span>
+              <span style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{tierName(lang, item.tier)}</span>
             </div>
           ))}
           {items.length === 0 && (

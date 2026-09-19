@@ -9,7 +9,7 @@ import { weeklyQuestProgress, claimWeeklyQuest } from "../utils/weeklyQuests";
 import { MAP_COLLECTIONS, collectionProgress, claimCollection } from "../utils/collection";
 import { displayClassName, formatGold } from "../utils/player";
 import { findMonster, MAPS } from "../data/maps";
-import { itemTierColor } from "../data/itemRarity";
+import { itemTierColor, tierName } from "../data/itemRarity";
 import { buyNationalPoint, canBuyNationalPoint } from "../utils/nationalPoint";
 import { NP_RECOVERY_GOLD_COST, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
 import { useTranslation, formatReason } from "../i18n/LanguageContext";
@@ -28,13 +28,13 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
   // sayfalama yerine (bkz. ScreenPanel'in kaldırılan versiyonu) bunun
   // yerine InventoryTab'daki gibi tıkla-geç sekmeler kuruldu, sayfalama
   // DEĞİL: her sekme kendi içinde düz kaydırmalı kalıyor.
-  const { t, tm } = useTranslation();
+  const { t, tm, lang } = useTranslation();
   const [subtab, setSubtab] = useState("quests");
   const claim = (questId) => {
     const result = claimQuest(player, questId);
     if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(t("captain.toast.questClaimed", { gold: formatGold(result.quest.goldReward), xp: result.quest.xpReward, tier: result.quest.tier }), "loot");
+    pushToast(t("captain.toast.questClaimed", { gold: formatGold(result.quest.goldReward), xp: result.quest.xpReward, tier: tierName(lang, result.quest.tier) }), "loot");
   };
 
   const awaken = () => {
@@ -63,7 +63,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
     const result = claimCollection(player, id);
     if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
     setPlayer(result.player);
-    pushToast(t("captain.toast.bookClaimed", { gold: formatGold(result.collection.goldReward), tier: result.collection.chestTier }), "loot");
+    pushToast(t("captain.toast.bookClaimed", { gold: formatGold(result.collection.goldReward), tier: tierName(lang, result.collection.chestTier) }), "loot");
   };
 
   const buyNp = () => {
@@ -162,8 +162,8 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
       {subtab === "weekly" && (
       <div style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#D4AF6A66", background: "#D4AF6A0d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-          <Trophy size={16} color="#D4AF6A" strokeWidth={1.6} />
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#D4AF6A" }}>{t("captain.weekly.title")}</div>
+          <Trophy size={16} color="var(--gold-text)" strokeWidth={1.6} />
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--gold-text)" }}>{t("captain.weekly.title")}</div>
         </div>
         <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>{t("captain.weekly.subtitle")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
@@ -172,7 +172,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
             return <div key={quest.id}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{t(`captain.weekly.entries.${quest.id}.name`)}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
               <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>{t(`captain.weekly.entries.${quest.id}.desc`)}</div>
-              <BarTrack pct={(progress.current / progress.target) * 100} color="#D4AF6A" thin />
+              <BarTrack pct={(progress.current / progress.target) * 100} color="var(--gold-text)" thin />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
                 <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {formatGold(quest.goldReward)}g · {quest.xpReward} XP{quest.chest ? ` · ${t("captain.chestWord")}` : ""}</span>
                 <button style={{ ...styles.tinyBtn, background: progress.done && !progress.claimed ? "#D4AF6A" : "var(--bg-panel-alt)", color: progress.done && !progress.claimed ? "#0B0C10" : "var(--text-faint)" }} disabled={!progress.done || progress.claimed} onClick={() => claimWeekly(quest.id)}>{progress.claimed ? t("captain.status.claimed") : progress.done ? t("captain.status.claim") : t("captain.status.inProgress")}</button>
@@ -198,7 +198,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{t("captain.book.entryName", { map: mapName })}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
               <BarTrack pct={(progress.current / progress.target) * 100} color="#6FD1E0" thin />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
-                <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {formatGold(collection.goldReward)}g · T{collection.chestTier} {t("captain.chestWord")}</span>
+                <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {formatGold(collection.goldReward)}g · {tierName(lang, collection.chestTier)} {t("captain.chestWord")}</span>
                 <button style={{ ...styles.tinyBtn, background: progress.done && !progress.claimed ? "#6FD1E0" : "var(--bg-panel-alt)", color: progress.done && !progress.claimed ? "#0B0C10" : "var(--text-faint)" }} disabled={!progress.done || progress.claimed} onClick={() => claimBook(collection.id)}>{progress.claimed ? t("captain.status.claimed") : progress.done ? t("captain.status.claim") : t("captain.book.btnExplore")}</button>
               </div>
             </div>;
@@ -211,7 +211,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
       <>
       <div style={{ ...styles.itemDetailCard, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Flag size={16} color="#D4AF6A" strokeWidth={1.6} />
+          <Flag size={16} color="var(--gold-text)" strokeWidth={1.6} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13 }}>{t("captain.np.title")}</div>
             <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
@@ -267,14 +267,14 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
                 <Skull size={16} color={color} strokeWidth={1.6} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13 }}>{t(`captain.quests.${q.id}.name`)}</div>
-                  <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>T{q.tier} · {tm(findMonster(q.monsterId)) || q.monsterId}</div>
+                  <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{tierName(lang, q.tier)} · {tm(findMonster(q.monsterId)) || q.monsterId}</div>
                 </div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{current}/{target}</div>
               </div>
               <BarTrack pct={(current / target) * 100} color={color} thin />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <div style={{ fontSize: 10, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 4 }}>
-                  <Gift size={11} /> {formatGold(q.goldReward)}g · {q.xpReward} XP · T{q.tier} {t("captain.chestWord")}
+                  <Gift size={11} /> {formatGold(q.goldReward)}g · {q.xpReward} XP · {tierName(lang, q.tier)} {t("captain.chestWord")}
                 </div>
                 <button
                   style={{ ...styles.tinyBtn, background: done && !claimed ? color : "var(--bg-panel-alt)", color: done && !claimed ? "#0B0C10" : "var(--text-faint)" }}

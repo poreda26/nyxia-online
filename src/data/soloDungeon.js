@@ -14,8 +14,10 @@ export const SOLO_DUNGEON_DAILY_LIMIT = 3;
 
 // Elmasla ekstra zindan girişi — bkz. utils/soloDungeon.js#buyExtraDungeonEntries,
 // components/DiamondShopModal.jsx. Sadece bugün için geçerli, yarın normal
-// SOLO_DUNGEON_DAILY_LIMIT'e döner.
-export const EXTRA_DUNGEON_ENTRIES_PER_PURCHASE = 2;
+// SOLO_DUNGEON_DAILY_LIMIT'e döner. Kullanıcı isteği: "Günlük Solo Zindan
+// hakkı sadece günde 1 kere 150 elmasa +1 hak olarak satın alınabilecek" —
+// önceden sınırsız kere +2 satın alınabiliyordu, artık günde tek seferlik.
+export const EXTRA_DUNGEON_ENTRIES_PER_PURCHASE = 1;
 export const EXTRA_DUNGEON_ENTRY_COST_DIAMONDS = 150;
 
 // Taban canavara göre HP/ATK/DEF/XP/Altın çarpanı — her aşama bir öncekinden
