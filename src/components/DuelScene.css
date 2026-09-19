@@ -1,0 +1,14 @@
+/* Düello sahnesi — BattleScene.css'in paylaşılan sınıflarını (battle-scene,
+   battle-hud, battle-unit, incoming/outgoing-number, vb.) kullanıyor, kendi
+   arka planını ve hayalet aynalamasını burada tanımlıyor. Haritalardaki gibi
+   hazır bir arena görseli yok (bkz. WarzoneTab.jsx'in üstündeki not), bu
+   yüzden Savaş Alanı'nın kendi kırmızı temasıyla uyumlu düz bir gradyan. */
+.duel-scene{background:radial-gradient(120% 100% at 50% 100%,#2a0d14 0%,#120608 65%,#0b0405 100%)}
+
+/* Hayalet oyuncunun aynısı bir CharacterFigure ile çiziliyor (bkz.
+   DuelScene.jsx) ama sağ tarafta olduğu için sola bakması gerekiyor —
+   kahramanın kendi yöne çizilmiş pozu doğal olarak sağa bakıyor. Bütün
+   birimi (isim etiketi dahil) yatayda çeviriyoruz, sonra ismi geri
+   çeviriyoruz ki yazı ters okunmasın. */
+.duel-ghost{transform:scaleX(-1)}
+.duel-ghost .battle-unit-name{transform:scaleX(-1)}

@@ -3,7 +3,7 @@ import { Skull, Swords, Heart, Zap, Lock, Gift, LogOut, DoorOpen, Users, Percent
 import {
   WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WARZONE_BOSSES, WARZONE_TICK_MS,
   GHOST_POPULATION, GHOST_REPLACE_SECONDS, AMBUSH_CHANCE_PER_TICK,
-  WARZONE_HUNT_POWER_MULT, WARZONE_HUNT_GOLD_MULT, WARZONE_HUNT_DROP_MULT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP,
+  WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP,
 } from "../data/warzone";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
@@ -29,12 +29,26 @@ import EmptyState from "./shared/EmptyState";
 import BarTrack from "./shared/BarTrack";
 import DeathModal from "./DeathModal";
 import LevelUpModal from "./LevelUpModal";
+import BattleScene, { hasBattleScene } from "./BattleScene";
+import DuelScene from "./DuelScene";
+import { getWarzoneBossConfig, getWarzoneHuntConfig } from "../utils/dropConfig";
 import { useTranslation } from "../i18n/LanguageContext";
 
 // Canavar Ara'nın canavar havuzu — Crimson Battlefront'un mevcut roster'ı
 // (bkz. data/maps.js), yeni içerik üretmeden Savaş Alanı'na "en zorlu
 // canavarlarla karşılaşma" hissi katıyor.
 const CRIMSON_MAP = MAPS.find((m) => m.id === "crimson_battlefront");
+
+// Kullanıcı isteği: "Tüm dropları düzenleyebileceğim bir sistem" — bir
+// boss'un ham WARZONE_BOSSES girdisine admin.html'de kaydedilmiş bir
+// override varsa (bkz. utils/dropConfig.js#getWarzoneBossConfig) üstüne
+// biniyor, yoksa boss aynen kalıyor. Tüm boss okuma noktaları (roster
+// JSX'i, attackBoss, warzoneTick) bu tek fonksiyondan geçiyor ki hiçbiri
+// ham (override'sız) değerleri unutup kullanmasın.
+function effectiveBoss(boss) {
+  const override = getWarzoneBossConfig(boss.id);
+  return override ? { ...boss, ...override } : boss;
+}
 
 const GHOST_REPLACE_TICKS = Math.max(1, Math.round((GHOST_REPLACE_SECONDS * 1000) / WARZONE_TICK_MS));
 
@@ -44,6 +58,10 @@ function fmtMmSs(ms) {
 }
 
 const POTION_COOLDOWN_TURNS = 2;
+
+// Kullanıcı isteği: "Boss oldukları için diğerlerinden en az 2-3 kat daha
+// büyük olsun" — BattleScene.jsx'in enemyScale prop'una geçiliyor.
+const BOSS_VISUAL_SCALE = 2.4;
 
 function freshWz(player) {
   return {
@@ -70,7 +88,8 @@ function warzoneTick(wz, player, t, tm, huntActive, now) {
   const lines = [];
   const bossResolutions = [];
 
-  for (const boss of WARZONE_BOSSES) {
+  for (const rawBoss of WARZONE_BOSSES) {
+    const boss = effectiveBoss(rawBoss);
     const sched = bossSchedule(boss, now);
     let state = bosses[boss.id];
     if (sched.phase === "active") {
@@ -143,6 +162,15 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   const [entered, setEntered] = useState(false);
   const [confirmingEntry, setConfirmingEntry] = useState(false);
   const [expandedBossId, setExpandedBossId] = useState(null);
+  // Kullanıcı isteği: "Savaş alanında neden karakterimiz ve düşmanımız
+  // karşılıklı gözükmüyor?" — BattleTab.jsx#showAction/setVisual ile aynı
+  // desen, sadece burada üç ayrı savaş türü (boss/av/düello) olduğu için
+  // her biri kendi visual state'ini taşıyor. bossVisuals boss id'ye göre
+  // ayrı tutuluyor çünkü aynı anda birden fazla boss aktif olabiliyor.
+  const [huntVisual, setHuntVisual] = useState({ id: 0, type: "", label: "" });
+  const [bossVisuals, setBossVisuals] = useState({});
+  const [duelVisual, setDuelVisual] = useState({ id: 0, type: "", label: "" });
+  const [duelShake, setDuelShake] = useState(null); // 'player' | 'ghost' | null
   const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal (Dünya Canavarı/Canavar Ara elinde ölüm)
   const [levelUpInfo, setLevelUpInfo] = useState(null); // Canavar Ara XP verdiği için (düellolar vermiyor) burada da seviye atlanabilir
   const [lbRace, setLbRace] = useState(player.race);
@@ -259,14 +287,16 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       // Güç çarpanı sadece savaş istatistiklerine (hp/atk/def) uygulanıyor —
       // xp/goldMin/goldMax bilerek taban (Crimson Battlefront'un kendi)
       // değerinde kalıyor, ödül ayrı bir çarpanla (bkz. huntAction#grantMonsterReward
-      // çağrısındaki opts) yönetiliyor.
-      const hp = Math.round(template.hp * WARZONE_HUNT_POWER_MULT);
+      // çağrısındaki opts) yönetiliyor. Çarpanın kendisi artık admin.html'de
+      // bir override varsa onu kullanıyor (bkz. utils/dropConfig.js#getWarzoneHuntConfig).
+      const huntPowerMult = getWarzoneHuntConfig().powerMult;
+      const hp = Math.round(template.hp * huntPowerMult);
       const monster = {
         ...template,
         hp,
         maxHp: hp,
-        atk: Math.round(template.atk * WARZONE_HUNT_POWER_MULT),
-        def: Math.round(template.def * WARZONE_HUNT_POWER_MULT),
+        atk: Math.round(template.atk * huntPowerMult),
+        def: Math.round(template.def * huntPowerMult),
       };
       setWz((prev) => (prev.searching ? { ...prev, searching: null, hunt: { monster, potionCooldowns: { hp: 0, mp: 0 }, log: [t("warzone.log.huntAppeared", { monster: monster.name })] } } : prev));
     }, wz.searching.durationMs);
@@ -356,10 +386,12 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // ---- Boss: oyuncunun kendi vuruşu (bkz. utils/warzoneBoss.js'in üstündeki
   // not — sadece bossSchedule'ın "active" dediği bosslara saldırılabilir) ----
   const attackBoss = (bossId) => {
-    const boss = WARZONE_BOSSES.find((b) => b.id === bossId);
+    const rawBoss = WARZONE_BOSSES.find((b) => b.id === bossId);
+    const boss = rawBoss && effectiveBoss(rawBoss);
     const activeState = wz.bosses[bossId];
     if (lockRef.current || wz.duel || !boss || !activeState || activeState.resolved || player.hp <= 0) return;
     lockRef.current = true;
+    setBossVisuals((bv) => ({ ...bv, [bossId]: { id: (bv[bossId]?.id || 0) + 1, type: "attack", label: t("battle.actionAttack") } }));
     const isCrit = Math.random() < cls.crit;
     // Gerçek KO'nun DEX→Hit/Evasion Rate mantığı (bkz. utils/combat.js#
     // hitChance, BattleTab.jsx#attack'taki aynı desen) — boss'un gerçek bir
@@ -368,6 +400,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     const dmg = playerHitsBoss
       ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), boss.def, MONSTER_DEF_K) + rand(-2, 3)))
       : 0;
+    setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], outgoing: { hit: playerHitsBoss, damage: dmg, crit: isCrit } } }));
 
     let resolution = null;
     let bossSurvived = false;
@@ -397,6 +430,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       const counter = bossHitsPlayer
         ? Math.max(1, Math.round(mitigate(boss.atk, def, PLAYER_DEF_K) * (1 - bossSetReduction) + rand(-2, 3)))
         : 0;
+      setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], incoming: { hit: bossHitsPlayer, damage: counter } } }));
       const wouldDie = player.hp - counter <= 0;
       setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - counter) }));
       setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? t("warzone.log.bossHitYou", { boss: tm(boss), dmg: counter }) : t("warzone.log.bossMissedYou", { boss: tm(boss) })].slice(-24) }));
@@ -527,6 +561,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       if (potionResult.reason) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
     }
     lockRef.current = true;
+    setHuntVisual((v) => ({ id: v.id + 1, type: isPotion ? "potion" : "attack", label: isPotion ? (potionKind === "hp" ? t("battle.actionHpPotion") : t("battle.actionMpPotion")) : t("battle.actionAttack") }));
 
     const monster = wz.hunt.monster;
     const potionCooldowns = Object.fromEntries(Object.entries(wz.hunt.potionCooldowns).map(([k, v]) => [k, Math.max(0, v - 1)]));
@@ -539,6 +574,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       setPlayer(() => potionResult.player);
       currentHp = potionResult.player.hp;
       log.push(potionKind === "hp" ? t("warzone.log.potionUsedHp", { healed: potionResult.healed }) : t("warzone.log.potionUsedMp", { healed: potionResult.healed }));
+      if (potionKind === "hp" && potionResult.healed > 0) setHuntVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: potionResult.healed } }));
     } else {
       const isCrit = Math.random() < cls.crit;
       const playerHits = rollHit(player.stats.dex, monster.atk, player.level);
@@ -547,11 +583,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
         : 0;
       monsterHp = Math.max(0, monsterHp - dmg);
       log.push(!playerHits ? t("warzone.log.huntMissed", { monster: monster.name }) : isCrit ? t("warzone.log.huntCrit", { monster: monster.name, dmg }) : t("warzone.log.huntHit", { monster: monster.name, dmg }));
+      setHuntVisual((v) => ({ ...v, outgoing: { hit: playerHits, damage: dmg, crit: isCrit } }));
     }
 
     if (monsterHp <= 0) {
       setWz((prev) => ({ ...prev, hunt: null, log: [...prev.log, t("warzone.log.huntDefeated", { monster: monster.name })].slice(-24) }));
-      const result = grantMonsterReward(player, monster, CRIMSON_MAP, { goldMult: WARZONE_HUNT_GOLD_MULT, dropMult: WARZONE_HUNT_DROP_MULT });
+      const huntCfg = getWarzoneHuntConfig();
+      const result = grantMonsterReward(player, monster, CRIMSON_MAP, { goldMult: huntCfg.goldMult, dropMult: huntCfg.dropMult });
       setPlayer(result.player);
       pushToast(result.drops.map(formatHuntDrop).join("  ·  "), result.tone);
       if (result.levelUp) { setLevelUpInfo(result.levelUp); playLevelUp(); }
@@ -564,6 +602,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     const mdmg = monsterHits
       ? Math.max(1, Math.round(mitigate(monster.atk, def, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
       : 0;
+    setHuntVisual((v) => ({ ...v, incoming: { hit: monsterHits, damage: mdmg } }));
     const wouldDie = currentHp - mdmg <= 0;
     log.push(monsterHits ? t("warzone.log.huntHitYou", { monster: monster.name, dmg: mdmg }) : t("warzone.log.huntMissedYou", { monster: monster.name }));
 
@@ -675,6 +714,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   const runDuelTurn = () => {
     if (lockRef.current || !wz.duel || wz.duel.finished || player.hp <= 0) return;
     lockRef.current = true;
+    setDuelVisual((v) => ({ id: v.id + 1, type: "attack", label: t("battle.actionAttack") }));
     const duel = wz.duel;
     let log = [...duel.log];
     let ghostHp = duel.ghostHp;
@@ -690,6 +730,9 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       ghostHp = Math.max(0, ghostHp - dmg);
       log.push(isCrit ? t("warzone.log.youCritGhost", { ghost: duel.ghost.name, dmg }) : t("warzone.log.youHitGhost", { ghost: duel.ghost.name, dmg }));
     }
+    setDuelVisual((v) => ({ ...v, outgoing: { hit: dmg != null, damage: dmg ?? 0, crit: isCrit } }));
+    setDuelShake(dmg != null ? "ghost" : null);
+    if (dmg != null) setTimeout(() => setDuelShake(null), 260);
 
     if (ghostHp <= 0) {
       log.push(t("warzone.log.ghostDefeated", { ghost: duel.ghost.name }));
@@ -711,12 +754,15 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       log.push(t("warzone.log.ghostSelfHealed", { ghost: duel.ghost.name }));
     } else {
       const gdmg = playerDamageFromGhost(duel.ghost, def, player);
+      setDuelVisual((v) => ({ ...v, incoming: { hit: gdmg != null, damage: gdmg ?? 0 } }));
       if (gdmg == null) {
         log.push(t("warzone.log.ghostMissedYou", { ghost: duel.ghost.name }));
       } else {
         log.push(t("warzone.log.ghostHitYou", { ghost: duel.ghost.name, dmg: gdmg }));
         setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - gdmg) }));
         playerDied = currentHp - gdmg <= 0;
+        setDuelShake("player");
+        setTimeout(() => setDuelShake(null), 260);
       }
     }
 
@@ -752,7 +798,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
           <SectionLabel>{t("warzone.bossesHeader")}</SectionLabel>
           <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 8px" }}>{t("warzone.bossesIntro")}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {WARZONE_BOSSES.map((boss) => {
+            {WARZONE_BOSSES.map((rawBoss) => {
+              const boss = effectiveBoss(rawBoss);
               const sched = bossSchedule(boss, now);
               const state = wz.bosses[boss.id];
               const active = sched.phase === "active" && state && !state.resolved;
@@ -807,22 +854,38 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
                   {active && (
                     <>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
-                        <span>{state.hp}/{boss.hp}</span>
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
                         <span>{t("warzone.yourDamage", { dmg: state.damageByPlayer })}</span>
                       </div>
-                      <BarTrack pct={(state.hp / boss.hp) * 100} color={boss.color} />
+                      {hasBattleScene(boss) ? (
+                        <div className="battle-mobile">
+                          <BattleScene
+                            player={player}
+                            monster={{ ...boss, hp: state.hp, maxHp: boss.hp, isBoss: true }}
+                            battle={{ monsterHp: state.hp, monsterMaxHp: boss.hp, log: [], finished: false }}
+                            map={{ name: t("warzone.title") }}
+                            visual={bossVisuals[boss.id] || { id: 0, type: "", label: "" }}
+                            enemyScale={BOSS_VISUAL_SCALE}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
+                            <span>{state.hp}/{boss.hp}</span>
+                          </div>
+                          <BarTrack pct={(state.hp / boss.hp) * 100} color={boss.color} />
+                          <div style={styles.vsRow}><Swords size={14} color="var(--text-faint)" /></div>
+                          <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                              <span style={{ fontFamily: "var(--font-display)", fontSize: 14 }}>{displayClassName(player)}</span>
+                              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{player.hp}/{maxHp}</span>
+                            </div>
+                            <BarTrack pct={(player.hp / maxHp) * 100} color="#C9425A" />
+                          </div>
+                        </>
+                      )}
                       <div style={{ fontSize: 9, color: boss.color, textAlign: "center", marginTop: 4, fontFamily: "var(--font-mono)" }}>
                         {t("warzone.bossWindowLeft", { time: fmtMmSs(sched.msUntilDespawn) })}
-                      </div>
-
-                      <div style={styles.vsRow}><Swords size={14} color="var(--text-faint)" /></div>
-                      <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                          <span style={{ fontFamily: "var(--font-display)", fontSize: 14 }}>{displayClassName(player)}</span>
-                          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{player.hp}/{maxHp}</span>
-                        </div>
-                        <BarTrack pct={(player.hp / maxHp) * 100} color="#C9425A" />
                       </div>
 
                       <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 6, background: boss.color, opacity: playerDead ? 0.5 : 1 }} onClick={() => attackBoss(boss.id)} disabled={playerDead}>
@@ -878,26 +941,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       )}
 
       {subtab === "alan" && wz.duel && (
-        <div style={{ ...styles.battleArena, marginTop: 12 }}>
-          <div style={{ ...styles.combatant, borderColor: "#C9425A55" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 14, display: "flex", alignItems: "center", gap: 5 }}>
-                <Swords size={12} color="#C9425A" /> {wz.duel.ghost.name} <span style={{ fontSize: 9, color: "var(--text-faint)" }}>({CLASSES[wz.duel.ghost.cls].name})</span>
-              </span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{wz.duel.ghostHp}/{wz.duel.ghost.maxHp}</span>
-            </div>
-            <BarTrack pct={(wz.duel.ghostHp / wz.duel.ghost.maxHp) * 100} color="#C9425A" />
-          </div>
-
-          <div style={styles.vsRow}><Swords size={14} color="var(--text-faint)" /></div>
-
-          <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{displayClassName(player)}</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{player.hp}/{maxHp}</span>
-            </div>
-            <BarTrack pct={(player.hp / maxHp) * 100} color="#C9425A" />
-          </div>
+        <div className="battle-mobile" style={{ ...styles.battleArena, marginTop: 12 }}>
+          <DuelScene player={player} ghost={wz.duel.ghost} duel={wz.duel} visual={duelVisual} shake={duelShake} />
 
           <div ref={logRef} style={styles.combatLog}>
             {wz.duel.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}
@@ -968,31 +1013,43 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       )}
 
       {subtab === "av" && wz.hunt && (
-        <div style={{ ...styles.battleArena, marginTop: 12 }}>
-          <div style={{ ...styles.combatant, borderColor: "#C9425A55" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 14, display: "flex", alignItems: "center", gap: 5 }}>
-                <Swords size={12} color="#C9425A" /> {wz.hunt.monster.name}
-              </span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{wz.hunt.monster.hp}/{wz.hunt.monster.maxHp}</span>
-            </div>
-            <BarTrack pct={(wz.hunt.monster.hp / wz.hunt.monster.maxHp) * 100} color="#C9425A" />
-          </div>
+        <div className={hasBattleScene(wz.hunt.monster) ? "battle-mobile" : ""} style={{ ...styles.battleArena, marginTop: 12 }}>
+          {hasBattleScene(wz.hunt.monster) ? (
+            <BattleScene
+              player={player}
+              monster={wz.hunt.monster}
+              battle={{ monsterHp: wz.hunt.monster.hp, monsterMaxHp: wz.hunt.monster.maxHp, log: wz.hunt.log, finished: false }}
+              map={CRIMSON_MAP}
+              visual={huntVisual}
+            />
+          ) : (
+            <>
+              <div style={{ ...styles.combatant, borderColor: "#C9425A55" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: 14, display: "flex", alignItems: "center", gap: 5 }}>
+                    <Swords size={12} color="#C9425A" /> {wz.hunt.monster.name}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{wz.hunt.monster.hp}/{wz.hunt.monster.maxHp}</span>
+                </div>
+                <BarTrack pct={(wz.hunt.monster.hp / wz.hunt.monster.maxHp) * 100} color="#C9425A" />
+              </div>
 
-          <div style={styles.vsRow}><Swords size={14} color="var(--text-faint)" /></div>
+              <div style={styles.vsRow}><Swords size={14} color="var(--text-faint)" /></div>
 
-          <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{displayClassName(player)}</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{player.hp}/{maxHp}</span>
-            </div>
-            <BarTrack pct={(player.hp / maxHp) * 100} color="#C9425A" />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 8 }}>
-              <span style={{ fontSize: 10, color: "var(--text-faint)" }}>MP</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>{player.mp}/{maxMp}</span>
-            </div>
-            <BarTrack pct={(player.mp / maxMp) * 100} color="#4FC3D9" thin />
-          </div>
+              <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{displayClassName(player)}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{player.hp}/{maxHp}</span>
+                </div>
+                <BarTrack pct={(player.hp / maxHp) * 100} color="#C9425A" />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 8 }}>
+                  <span style={{ fontSize: 10, color: "var(--text-faint)" }}>MP</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>{player.mp}/{maxMp}</span>
+                </div>
+                <BarTrack pct={(player.mp / maxMp) * 100} color="#4FC3D9" thin />
+              </div>
+            </>
+          )}
 
           <div ref={logRef} style={styles.combatLog}>
             {wz.hunt.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}

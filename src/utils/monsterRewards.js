@@ -13,6 +13,7 @@ import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
 import { registerWeeklyKill } from "./weeklyQuests";
 import { registerMapBossDefeat, canFightMapBoss } from "./mapBoss";
 import { MAPS } from "../data/maps";
+import { getMonsterRewardConfig } from "./dropConfig";
 
 // Called exactly once per defeated monster, outside React state updaters.
 // Shared by the original panel battles and the real-time world.
@@ -25,15 +26,20 @@ function pickDropTier(tier) { return Math.random() < 0.5 ? tier : Math.max(1, ti
 // çarpanları alıp uyguluyor.
 export function grantMonsterReward(p, m, map, opts = {}) {
   if(m.mapBoss&&!canFightMapBoss(p,map.id).ok)return {player:p,drops:null,blockedReasonKey:'battle.bossDefeatedToday',tone:'warn'};
+  // Kullanıcı isteği: "Tüm dropları düzenleyebileceğim bir sistem" —
+  // altın/xp/eşya-şansı/sandık-şansı artık m/map'in kendi ham alanları
+  // yerine bkz. utils/dropConfig.js'den okunuyor (admin.html'de bir
+  // override yoksa aynen m/map'in ham değerlerine düşüyor, davranış değişmez).
+  const rewardCfg = getMonsterRewardConfig(m, map);
   const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p) * boostMultiplier(p, "exp");
   const dropMult = premiumDropMultiplier(p) * (opts.dropMult ?? 1);
   const goldMult = boostMultiplier(p, "gold") * (opts.goldMult ?? 1);
   let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
   const killsBefore = np.monsterKills[m.id] || 0;
   np.monsterKills[m.id] = killsBefore + 1;
-  const goldGain = Math.round(rand(m.goldMin, m.goldMax) * goldMult);
+  const goldGain = Math.round(rand(rewardCfg.goldMin, rewardCfg.goldMax) * goldMult);
   const levelPenalty = xpLevelPenaltyMultiplier(p.level, map.levelMax);
-  const xpGain = p.level >= MAX_LEVEL ? 0 : Math.round(m.xp * expMult * levelPenalty);
+  const xpGain = p.level >= MAX_LEVEL ? 0 : Math.round(rewardCfg.xp * expMult * levelPenalty);
   // Kullanıcı isteği: "Karakterin üstünde en fazla 2.000.000.000 gold
   // bulunabilir... bu paranın üstüne çıkmaya çalışıldığında sistem buna
   // izin vermesin." — öldürme ödülü gibi otomatik akışlarda "hata" yerine
@@ -75,7 +81,7 @@ export function grantMonsterReward(p, m, map, opts = {}) {
     }
   });
 
-  if (Math.random() < map.dropChance * dropMult) {
+  if (Math.random() < rewardCfg.dropChance * dropMult) {
     const dropTier = pickDropTier(map.tier);
     const item = rollMapLoot(dropTier, map.tier);
     if (item) {
@@ -87,7 +93,7 @@ export function grantMonsterReward(p, m, map, opts = {}) {
         : { type: "itemDropFailed", itemName: item.name, reason: addResult.reason });
     }
   }
-  if (Math.random() < map.chestChance * dropMult) {
+  if (Math.random() < rewardCfg.chestChance * dropMult) {
     const chestTier = pickDropTier(map.tier);
     const chest = { id: uid(), tier: chestTier };
     np.chests.push(chest);

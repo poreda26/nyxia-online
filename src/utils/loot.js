@@ -11,6 +11,7 @@ import { weaponIconKey } from "../data/weaponIcons";
 import { rand, pick, uid } from "./random";
 import { bumpedStats, applyLevelData, MAX_UPGRADE_LEVEL } from "./upgrade";
 import { STARTING_WEAPONS } from "../data/startingWeapons";
+import { getChestConfig } from "./dropConfig";
 
 // Hiçbir eşya +0 doğmuyor — her üretici bu sarmalayıcıdan geçiyor.
 // Gerçek KO ekran görüntüsünden birebir `levels` dizisi taşıyan eşyalar
@@ -235,9 +236,13 @@ export function buildStartingWeapon(cls) {
 // Pazar'ı canlı tutan takas malı. Aksesuar zaten evrensel, hiçbir sınıfa
 // kilitli değil.
 export function rollLoot(tierId) {
+  // Kullanıcı isteği: "Tüm dropları düzenleyebileceğim bir sistem" — silah/
+  // zırh/aksesuar dağılımı artık bkz. utils/dropConfig.js#getChestConfig
+  // üzerinden (admin.html'de override yoksa varsayılan 46%/46%/8% aynen kalır).
+  const { weaponPct, armorPct } = getChestConfig();
   const r = Math.random();
-  const item = r < 0.46 ? rollWeapon(tierId, pick(Object.keys(CLASSES)))
-    : r < 0.92 ? rollArmor(tierId)
+  const item = r < weaponPct ? rollWeapon(tierId, pick(Object.keys(CLASSES)))
+    : r < weaponPct + armorPct ? rollArmor(tierId)
     : rollAccessory(tierId);
   if (item) return item;
   // Kullanıcı isteği: "kutuların içinden boş item çıkmasın" — T6'da zırh ve
@@ -263,10 +268,9 @@ export function rollMapLoot(tierId, mapTier = tierId) {
 // the actual event trigger system comes later), never a monster drop. This
 // is the ONLY path to a Tier 6 "Eşsiz" item outside a GM /silah grant, and
 // even here the odds are deliberately brutal (3%) so a unique stays unique.
-const SPECIAL_CHEST_UNIQUE_CHANCE = 0.03;
-
 export function rollSpecialChestLoot(playerClass) {
-  if (maxWeaponTier(playerClass) >= 6 && Math.random() < SPECIAL_CHEST_UNIQUE_CHANCE) {
+  const { specialUniqueChance } = getChestConfig();
+  if (maxWeaponTier(playerClass) >= 6 && Math.random() < specialUniqueChance) {
     // Katalog eşya-eşya yeniden dolduruluyor — bu sınıfın T6'sı henüz
     // eklenmemişse (rollWeapon null döner) T5 havuzuna düş, hiç düşmemiş
     // gibi davranma.

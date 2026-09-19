@@ -94,13 +94,21 @@ const BASE_BOSS_STATS = {
 // farklı bir şey isteyeceğim" dedi — asıl ayarlama sonraki turda. name Türkçe
 // kalıyor (monster/quest adlarıyla aynı desen), İngilizcesi i18n/sections/
 // monsters.js'te id'ye göre aranıyor (bkz. LanguageContext.jsx#tm).
+//
+// Kullanıcı isteği: "Bosslar'ı da İsmine uygun diğer canavarlarımızın
+// görüntülerinden alabilirsin" — kendi çizilmiş sanatları olmadığı için
+// (haritaların canavar listesinde yoklar) `visualSourceId`, ismine en
+// yakın DÜŞEN gerçek bir haritadaki canavarın ID'sini gösteriyor (bkz.
+// data/battleVisuals.js#battleVisualFor — visualSourceId varsa id yerine
+// onunla eşleşiyor). WarzoneTab.jsx BattleScene'i çağırırken ayrıca
+// "2-3 kat daha büyük" isteğini enemyScale ile karşılıyor.
 export const WARZONE_BOSSES = [
-  { id: "meydan_cellati", name: "Meydan Cellâdı", color: "#C9425A", ...BASE_BOSS_STATS },
-  { id: "kan_imparatoru", name: "Kan İmparatoru", color: "#8B6FC9", ...BASE_BOSS_STATS },
-  { id: "golge_efendisi", name: "Gölge Efendisi", color: "#4FC3D9", ...BASE_BOSS_STATS },
-  { id: "alev_tanrisi", name: "Alev Tanrısı", color: "#D4AF6A", ...BASE_BOSS_STATS },
-  { id: "buz_krali", name: "Buz Kralı", color: "#5FA8A0", ...BASE_BOSS_STATS },
-  { id: "kaos_avatari", name: "Kaos Avatarı", color: "#E8A5AF", ...BASE_BOSS_STATS },
+  { id: "meydan_cellati", name: "Meydan Cellâdı", color: "#C9425A", visualSourceId: "kizil_muhafiz", ...BASE_BOSS_STATS },
+  { id: "kan_imparatoru", name: "Kan İmparatoru", color: "#8B6FC9", visualSourceId: "karanlik_cagirici", ...BASE_BOSS_STATS },
+  { id: "golge_efendisi", name: "Gölge Efendisi", color: "#4FC3D9", visualSourceId: "golge_vaizi", ...BASE_BOSS_STATS },
+  { id: "alev_tanrisi", name: "Alev Tanrısı", color: "#D4AF6A", visualSourceId: "alev_cellati", ...BASE_BOSS_STATS },
+  { id: "buz_krali", name: "Buz Kralı", color: "#5FA8A0", visualSourceId: "don_devi", ...BASE_BOSS_STATS },
+  { id: "kaos_avatari", name: "Kaos Avatarı", color: "#E8A5AF", visualSourceId: "kaos_iblisi", ...BASE_BOSS_STATS },
 ];
 
 // Kullanıcı isteği: "1v1'ler otomatik savaş olacak. Karşılıklı olarak
