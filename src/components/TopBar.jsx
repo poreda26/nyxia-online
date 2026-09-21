@@ -35,11 +35,11 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
   const title = activeTitleInfo(player);
   return (
     <div className="game-topbar" style={styles.topBar}>
-      <div style={styles.topBarRow}>
+      <div className="hud-main" style={styles.topBarRow}>
         <div style={styles.classBadge}>
           <Icon size={26} color={cls.color} strokeWidth={2} />
         </div>
-        <div style={{ flex: 1, minWidth: 130, overflow: "hidden" }}>
+        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
             <span style={{ fontFamily: "var(--font-display)", fontSize: 14, letterSpacing: 0.3, display: "flex", alignItems: "center", gap: 5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {premiumTier && <Crown size={13} color={premiumTier.color} strokeWidth={2} fill={premiumTier.color} style={{ flexShrink: 0 }} />}
@@ -63,17 +63,6 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
             <div style={{ ...styles.xpFill, width: `${pct}%`, background: atCap ? "#D4AF6A" : cls.color }} />
           </div>
         </div>
-        <div style={styles.goldChip}>
-          <Coins size={13} color="var(--gold-text)" />
-          <span style={{ fontFamily: "var(--font-mono)" }}>{formatGold(player.gold)}</span>
-        </div>
-        {onOpenDiamondShop && (
-          <button onClick={onOpenDiamondShop} title={t("diamondShop.title")} style={{ ...styles.diamondChip, color: "var(--text-primary)" }}>
-            <Gem size={13} color="#8B6FC9" />
-            <span style={{ fontFamily: "var(--font-mono)" }}>{player.diamonds}</span>
-            <Plus size={12} color="#8B6FC9" />
-          </button>
-        )}
         {onOpenDailyLogin && (
           <button
             onClick={onOpenDailyLogin}
@@ -98,13 +87,24 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
           </button>
         )}
       </div>
-      <div style={styles.topBarSub}>
+      <div className="hud-lower"><div className="hud-stats" style={styles.topBarSub}>
         <span>ATK {atk}</span>
         <span style={{ color: "var(--border)" }}>|</span>
         <span>DEF {def}</span>
         <span style={{ color: "var(--border)" }}>|</span>
         <span>HP {maxHp}</span>
-      </div>
+      </div><div className="hud-currency">        <div style={styles.goldChip}>
+          <Coins size={13} color="var(--gold-text)" />
+          <span style={{ fontFamily: "var(--font-mono)" }}>{formatGold(player.gold)}</span>
+        </div>
+        {onOpenDiamondShop && (
+          <button onClick={onOpenDiamondShop} title={t("diamondShop.title")} style={{ ...styles.diamondChip, color: "var(--text-primary)" }}>
+            <Gem size={13} color="#8B6FC9" />
+            <span style={{ fontFamily: "var(--font-mono)" }}>{player.diamonds}</span>
+            <Plus size={12} color="#8B6FC9" />
+          </button>
+        )}
+      </div></div>
       {activeBoosts.length > 0 && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
           {activeBoosts.map(({ def: s, msLeft }) => (

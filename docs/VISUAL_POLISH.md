@@ -1,5 +1,15 @@
 # Inventory and reward presentation — September 2026
 
+## Follow-up: stylized Captain and game navigation
+
+The Captain was replaced at the user's request with an intentionally stylized, hand-painted NPC (`src/assets/npc/captain-stylized.webp`). New filled SVG menu emblems sit in a horizontally scrollable metal dock, with active medallions and notification gems. All nine destinations remain available. The HUD places identity/actions above stats/currencies. Section headings and the Captain greeting have matching decorative framing.
+
+Boss/event announcements use `NoticeTicker`: actual measured overflow, endpoint reading pauses, hover/focus/press pause, stable animation during same-width countdown changes, ResizeObserver cleanup, and fully wrapped text when reduced motion is requested. `node scripts/check-game-chrome.mjs` checks the real Hub, navigation reachability and ticker behavior in an isolated browser.
+
+Tool: built-in `image_gen.imagegen`; generated source remains in the Codex generated-images folder; runtime copy is optimized to 512px WebP. Exact new Captain prompt:
+
+Square NPC portrait asset for a stylized dark fantasy mobile RPG, Nyxia Online. A clearly fictional video game character, NOT realistic human photography: heroic stout veteran captain with exaggerated broad shoulders, angular expressive face, large stylized eyebrows, short silver beard, confident friendly smirk, oversized navy steel shoulder armor with chunky gold edges, burgundy cape, blue feather helmet. Hand-painted 3D cartoon game art like a premium fantasy strategy RPG, simplified sculpted facial planes, saturated rich colors, clean bold silhouette, painted gradients, no skin pores, no photographic textures. Chest-up centered close portrait with full helmet and shoulders, warm gold rim light, dark teal fortress shapes softly painted behind. Readable at 56px icon size, strong personality, original design. No text, no UI, no frame, no watermark.
+
 - All 75 T1–T5 class/slot combinations have inventory artwork. 38 missing icons added: Warrior 13, Mage 25. Existing Rogue, Warrior T3 gloves/boots, and Warrior T4/T5 artwork retained.
 - New images follow the materials, colors and progression of worn armor. They are standalone items, without character faces or weapon fragments. Equipment rendering and statistics are unchanged.
 - Class emblems are original SVGs (sword/shield, bow, crystal staff). Captain uses a generated portrait, optimized to 512px WebP.

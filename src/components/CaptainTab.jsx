@@ -101,9 +101,9 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
   return (
     <div style={styles.panelScroll}>
       <SectionLabel>{t("captain.title")}</SectionLabel>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <div style={{ flexShrink: 0, borderRadius: "50%", overflow: "hidden" }}>
-          <CaptainPortrait size={48} />
+      <div className="captain-greeting">
+        <div style={{ flexShrink: 0 }}>
+          <CaptainPortrait size={88} />
         </div>
         <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
           {t("captain.quote")}

@@ -1,5 +1,5 @@
 import { styles } from "../../styles";
 
 export default function SectionLabel({ children }) {
-  return <div style={styles.sectionLabel}>{children}</div>;
+  return <div className="game-section-label" style={styles.sectionLabel}>{children}</div>;
 }

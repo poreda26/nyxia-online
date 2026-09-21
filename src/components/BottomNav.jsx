@@ -1,49 +1,18 @@
-import { Sword, Package, Store, ArrowUpCircle, MessageCircle, User, ShieldCheck, Flag, Shield } from "lucide-react";
-import { styles } from "../styles";
-import { useTranslation } from "../i18n/LanguageContext";
-
-// Kullanıcı isteğiyle "Daha Fazla" sayfası kaldırıldı — 9 sekmenin hepsi
-// tek bir satırda, sağa sola kaydırarak (swipe) ulaşılabiliyor. Her buton
-// sabit bir genişlik taşıyor (styles.navBtn) ki satır gerçekten toplam
-// genişliği aşıp kaydırılabilsin — aksi halde flex:1 hepsini sığdırmaya
-// çalışıp asla taşmazdı. Etiketler artık i18n/translations.js'teki
-// `nav.<key>`'den geliyor (kullanıcı isteği: İngilizce dil seçeneği).
-const TABS = [
-  { key: "battle", icon: Sword },
-  { key: "inventory", icon: Package },
-  { key: "market", icon: Store },
-  { key: "upgrade", icon: ArrowUpCircle },
-  { key: "captain", icon: ShieldCheck },
-  { key: "clan", icon: Shield },
-  { key: "warzone", icon: Flag },
-  { key: "chat", icon: MessageCircle },
-  { key: "character", icon: User },
-];
-
-// notifications: { [tabKey]: boolean } — kullanıcı isteği: "yeni eşya
-// düştüğü zaman, görev tamamlandığı zaman, verilmeyen statü puanı
-// bulunduğu zaman, yeni bir mesaj geldiği zaman menüde bildirim belli
-// olsun." Hub.jsx bu haritayı player state'inden türetip buraya geçiyor —
-// hangi sekmelerin bildirim taşıyabileceğini bilmesi gereken tek yer burası.
-export default function BottomNav({ tab, setTab, notifications = {} }) {
-  const { t } = useTranslation();
-  return (
-    <div className="game-navigation" style={styles.bottomNav}>
-      {TABS.map((it) => {
-        const Icon = it.icon;
-        const active = tab === it.key;
-        const hasNotice = !!notifications[it.key];
-        return (
-          <button className={active?'is-active':''} aria-current={active?'page':undefined} key={it.key} onClick={() => setTab(it.key)} style={styles.navBtn}>
-            <Icon size={17} strokeWidth={active ? 2.25 : 1.6} color={active ? "var(--text-primary)" : "var(--text-faint)"} />
-            {hasNotice && <span style={styles.navNotifDot} />}
-            <span style={{ fontSize: 9, marginTop: 3, color: active ? "var(--text-primary)" : "var(--text-faint)", letterSpacing: 0, whiteSpace: "nowrap" }}>
-              {t(`nav.${it.key}`)}
-            </span>
-            {active && <div style={styles.navActiveDot} />}
-          </button>
-        );
-      })}
-    </div>
-  );
+import {useEffect,useRef} from 'react';
+import {useTranslation} from '../i18n/LanguageContext';
+import MenuEmblem from './icons/MenuEmblem';
+import './GameChrome.css';
+const TABS=['battle','inventory','market','upgrade','captain','clan','warzone','chat','character'];
+export default function BottomNav({tab,setTab,notifications={}}){
+ const {t}=useTranslation(),rail=useRef(null);
+ useEffect(()=>{const active=rail.current?.querySelector('[aria-current="page"]');if(!active)return;const parent=rail.current;const left=active.offsetLeft-(parent.clientWidth-active.offsetWidth)/2;parent.scrollTo({left,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});},[tab]);
+ return <nav className="fantasy-dock">
+  <div className="dock-rail" ref={rail}>
+   {TABS.map(key=><button type="button" key={key} className={`dock-button ${tab===key?'is-active':''}`} aria-current={tab===key?'page':undefined} onClick={()=>setTab(key)}>
+    <span className="dock-medallion"><MenuEmblem name={key}/>{notifications[key]&&<i className="dock-notification"/>}</span>
+    <span className="dock-label">{t(`nav.${key}`)}</span>
+   </button>)}
+  </div>
+  <div className="dock-gems" aria-hidden="true">{TABS.map(key=><i key={key} className={tab===key?'is-active':''}/>)}</div>
+ </nav>;
 }

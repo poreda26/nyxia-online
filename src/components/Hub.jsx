@@ -145,7 +145,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   const notifications = { captain: captainNotice, character: characterNotice, inventory: inventoryNotice, chat: chatNotice };
 
   return (
-    <div style={styles.hubRoot}>
+    <div className="game-hub" style={styles.hubRoot}>
       <TopBar
         player={player} cls={cls} maxHp={maxHp} def={def} atk={atk}
         dailyLoginAvailable={dailyLoginAvailable}

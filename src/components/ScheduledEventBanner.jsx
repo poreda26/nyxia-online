@@ -3,6 +3,7 @@ import { SCHEDULED_EVENTS } from "../data/scheduledEvents";
 import { eventPhase, scheduledEventProgress, creditScheduledEventTicks } from "../utils/scheduledEvents";
 import ScheduledEventModal from "./ScheduledEventModal";
 import { useTranslation } from "../i18n/LanguageContext";
+import NoticeTicker from './NoticeTicker';
 
 function fmtCountdown(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -73,6 +74,7 @@ export default function ScheduledEventBanner({ player, setPlayer, pushToast }) {
                 : t("scheduledEvent.bannerActiveUnjoined", { event: eventName(event) });
             return (
               <button
+                className="game-notice"
                 key={event.id}
                 onClick={() => setOpenId(event.id)}
                 style={{
@@ -82,9 +84,9 @@ export default function ScheduledEventBanner({ player, setPlayer, pushToast }) {
                 }}
               >
                 <Icon size={16} color={event.color} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-                <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: event.color, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <NoticeTicker>
                   {label}
-                </span>
+                </NoticeTicker>
                 <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", flexShrink: 0 }}>
                   {phase === "preopen" ? fmtCountdown(start - now) : fmtCountdown(end - now)}
                 </span>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Skull, Users } from "lucide-react";
 import { noticeBossEntries } from "../utils/warzoneBoss";
 import { useTranslation } from "../i18n/LanguageContext";
+import NoticeTicker from './NoticeTicker';
 
 function fmtCountdown(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -38,6 +39,7 @@ export default function WarzoneBossBanner({ onOpenWarzone }) {
         const Icon = isActive ? Skull : Users;
         return (
           <button
+            className="game-notice"
             key={boss.id}
             onClick={onOpenWarzone}
             style={{
@@ -47,9 +49,9 @@ export default function WarzoneBossBanner({ onOpenWarzone }) {
             }}
           >
             <Icon size={16} color={boss.color} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: boss.color, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <NoticeTicker>
               {isActive ? t("warzone.log.bossSpawned", { boss: tm(boss) }) : t("warzone.log.bossGatheringNotice", { boss: tm(boss) })}
-            </span>
+            </NoticeTicker>
             <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", flexShrink: 0 }}>
               {fmtCountdown(isActive ? msUntilDespawn : msUntilSpawn)}
             </span>
