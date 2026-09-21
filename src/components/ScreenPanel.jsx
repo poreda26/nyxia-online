@@ -1,4 +1,5 @@
 import {styles} from '../styles';
+import ScreenCrest from './shared/ScreenCrest';
 
 // Kullanıcı isteği: "Tüm oyunda önceki sonraki diye sayfalar olmayacak.
 // Tamamen kaydırmalı sistem yap." — önceki "sayfa sayfa ilerle" mantığı
@@ -11,7 +12,7 @@ import {styles} from '../styles';
 export default function ScreenPanel({children,screen}) {
  return <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
   <div data-screen={screen} style={{...styles.tabContent,minHeight:0,overflowX:'hidden',overflowY:'auto',containerType:'size'}}>
-   <div>{children}</div>
+   <div>{screen!=='battle'&&<ScreenCrest screen={screen}/>} {children}</div>
   </div>
  </div>;
 }

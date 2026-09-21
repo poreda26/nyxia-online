@@ -54,7 +54,7 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
           const level = sample.upgradeLevel || 0;
           const check = canUpgradeAccessory(player, sample);
           return (
-            <div key={`${sample.name}:${level}`} style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
+            <div key={`${sample.name}:${level}`} className="rpg-card" style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <ItemIcon item={sample} size={30} color={itemTierColor(sample.tier)} strokeWidth={1.4} />
               </div>
@@ -65,7 +65,7 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
                 </div>
               </div>
               <button
-                style={{
+                className="rpg-action" style={{
                   ...styles.tinyBtn, flexShrink: 0,
                   background: check.ok ? "#5FA8A0" : "var(--bg-panel-alt)",
                   color: check.ok ? "#0B0C10" : "var(--text-faint)",

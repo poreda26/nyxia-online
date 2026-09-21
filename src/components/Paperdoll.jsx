@@ -32,7 +32,7 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
           return (
             <div
               key={slot.key}
-              style={{ ...styles.equipSlotCard, ...(item ? { background: `${color}1c`, borderColor: `${color}66` } : {}) }}
+              className="rpg-slot" style={{ ...styles.equipSlotCard, ...(item ? { background: `${color}1c`, borderColor: `${color}66` } : {}) }}
               onClick={() => onSlotClick(slot.key, item)}
               title={item ? `${label}: ${displayItemName(item, lang)}` : label}
             >

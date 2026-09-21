@@ -58,7 +58,7 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
       </div>
       <BarTrack pct={(usedWeight / weightCap) * 100} color={usedWeight / weightCap > 0.85 ? "#C9425A" : "var(--gold-text)"} thin />
 
-      <div style={styles.bagGrid}>
+      <div className="rpg-bag-grid" style={styles.bagGrid}>
         {slots.map((item, i) => {
           const isBulkSelected = !!item && !!bulkSelectedIds && bulkSelectedIds.has(item.id);
           const isSelected = isBulkSelected || (!!item && item.id === selectedId);
@@ -66,7 +66,7 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
           const isDragSource = dragIndex === i;
           const isDragTarget = dragOverIndex === i && dragIndex !== null && dragIndex !== i;
           return (
-            <button
+            <button className="rpg-slot"
               key={item ? item.id : `empty-${i}`}
               onPointerDown={() => { if (item) { setDragIndex(i); dragMovedRef.current = false; } }}
               onPointerEnter={() => {

@@ -1,3 +1,4 @@
+import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useCallback } from "react";
 import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, ShoppingBag, AlertTriangle, ChevronDown, ChevronUp, Package2 } from "lucide-react";
 import { itemTierColor, tierName } from "../data/itemRarity";
@@ -309,7 +310,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
 
   return (
     <div style={styles.panelScroll}>
-      <div style={styles.subtabRow}>
+      <div className="rpg-tabs" style={styles.subtabRow}>
         <button onClick={() => setSubtab("market")} style={{ ...styles.subtabBtn, ...(subtab === "market" ? styles.subtabBtnActive : {}) }}>
           {t("market.tabMarket")}
         </button>
@@ -339,7 +340,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               const isThisActive = active?.id === tier.id;
               const daysLeft = isThisActive ? premiumDaysLeft(player) : 0;
               return (
-                <div key={tier.id} style={{ ...styles.itemDetailCard, borderColor: `${tier.color}66`, background: `${tier.color}0d` }}>
+                <div key={tier.id} className="rpg-card" style={{ ...styles.itemDetailCard, borderColor: `${tier.color}66`, background: `${tier.color}0d` }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Crown size={18} color={tier.color} strokeWidth={1.6} />
                     <div style={{ flex: 1 }}>
@@ -358,7 +359,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                     ))}
                   </div>
                   <button
-                    style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, background: tier.color, color: "#0B0C10" }}
+                    className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, background: tier.color, color: "#0B0C10" }}
                     onClick={() => handlePremiumClick(tier.id)}
                   >
                     {isThisActive ? t("shop.premiumActive", { days: daysLeft }) : t("shop.buyBtn")}
@@ -369,7 +370,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
           </div>
 
           <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>{t("shop.scrollsHeader")}</div>
-          <div style={{ ...styles.itemRow, borderColor: "#8B6FC955" }}>
+          <div className="rpg-row" style={{ ...styles.itemRow, borderColor: "#8B6FC955" }}>
             <ScrollText size={18} color="#8B6FC9" />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>{t("shop.raceScrollTitle")}</div>
@@ -378,9 +379,9 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#8B6FC9", marginRight: 8, display: "flex", alignItems: "center", gap: 3 }}>
               <Gem size={11} /> {RACE_SCROLL_PRICE}
             </div>
-            <button style={styles.tinyBtn} onClick={buyRaceScroll}>{t("shop.buyShort")}</button>
+            <button className="rpg-action" style={styles.tinyBtn} onClick={buyRaceScroll}>{t("shop.buyShort")}</button>
           </div>
-          <div style={{ ...styles.itemRow, borderColor: "#5FA8A055", marginTop: 8 }}>
+          <div className="rpg-row" style={{ ...styles.itemRow, borderColor: "#5FA8A055", marginTop: 8 }}>
             <Shuffle size={18} color="#5FA8A0" />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>{t("shop.jobScrollTitle")}</div>
@@ -391,9 +392,9 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#5FA8A0", marginRight: 8, display: "flex", alignItems: "center", gap: 3 }}>
               <Gem size={11} /> {JOB_SCROLL_PRICE}
             </div>
-            <button style={styles.tinyBtn} onClick={buyJobScroll}>{t("shop.buyShort")}</button>
+            <button className="rpg-action" style={styles.tinyBtn} onClick={buyJobScroll}>{t("shop.buyShort")}</button>
           </div>
-          <div style={{ ...styles.itemRow, borderColor: "#D4AF6A55", marginTop: 8 }}>
+          <div className="rpg-row" style={{ ...styles.itemRow, borderColor: "#D4AF6A55", marginTop: 8 }}>
             <Star size={18} color="var(--gold-text)" />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>{t("shop.bonusScrollTitle")}</div>
@@ -404,7 +405,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)", marginRight: 8, display: "flex", alignItems: "center", gap: 3 }}>
               <Gem size={11} /> {BONUS_SCROLL_PRICE}
             </div>
-            <button style={styles.tinyBtn} onClick={buyBonusScroll}>{t("shop.buyShort")}</button>
+            <button className="rpg-action" style={styles.tinyBtn} onClick={buyBonusScroll}>{t("shop.buyShort")}</button>
           </div>
         </>
       )}
@@ -418,7 +419,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               const key = `hp:${tier}`;
               const qty = qtyFor(key);
               return (
-                <div key={tier} style={{ ...styles.itemRow, borderColor: "#C9425A44", flexWrap: "wrap" }}>
+                <div key={tier} className="rpg-row" style={{ ...styles.itemRow, borderColor: "#C9425A44", flexWrap: "wrap" }}>
                   <FlaskConical size={18} color="#C9425A" />
                   <div style={{ flex: 1, minWidth: 90 }}>
                     <div style={{ fontSize: 13 }}>{potionName("hp", tier, lang)}</div>
@@ -426,7 +427,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                   </div>
                   <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)", marginRight: 8 }}>{formatGold(potionPrice("hp", tier) * qty)}g</div>
-                  <button style={styles.tinyBtn} onClick={() => buyPotion("hp", tier, qty)}>{t("shop.buyShort")}</button>
+                  <button className="rpg-action" style={styles.tinyBtn} onClick={() => buyPotion("hp", tier, qty)}>{t("shop.buyShort")}</button>
                 </div>
               );
             })}
@@ -439,7 +440,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               const key = `mp:${tier}`;
               const qty = qtyFor(key);
               return (
-                <div key={tier} style={{ ...styles.itemRow, borderColor: "#4FC3D944", flexWrap: "wrap" }}>
+                <div key={tier} className="rpg-row" style={{ ...styles.itemRow, borderColor: "#4FC3D944", flexWrap: "wrap" }}>
                   <FlaskConical size={18} color="#4FC3D9" />
                   <div style={{ flex: 1, minWidth: 90 }}>
                     <div style={{ fontSize: 13 }}>{potionName("mp", tier, lang)}</div>
@@ -447,7 +448,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                   </div>
                   <PotionQtyStepper qty={qty} onChange={(v) => setQty(key, v)} />
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)", marginRight: 8 }}>{formatGold(potionPrice("mp", tier) * qty)}g</div>
-                  <button style={styles.tinyBtn} onClick={() => buyPotion("mp", tier, qty)}>{t("shop.buyShort")}</button>
+                  <button className="rpg-action" style={styles.tinyBtn} onClick={() => buyPotion("mp", tier, qty)}>{t("shop.buyShort")}</button>
                 </div>
               );
             })}
@@ -478,7 +479,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                   </button>
                 ))}
               </div>
-              <button style={{ ...styles.smallBtn, background: "#5FA8A0", width: "100%" }} onClick={() => openStall(openDuration)}>
+              <button className="rpg-action" style={{ ...styles.smallBtn, background: "#5FA8A0", width: "100%" }} onClick={() => openStall(openDuration)}>
                 <Store size={14} /> {t("market.openStallBtn", { fee: formatGold(stallFee) })}
               </button>
             </>
@@ -486,7 +487,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
 
           {myStall && myStall.active && (
             <>
-              <div style={{ ...styles.itemDetailCard, marginBottom: 12, borderColor: "#5FA8A066", background: "#5FA8A00d" }}>
+              <div className="rpg-card" style={{ ...styles.itemDetailCard, marginBottom: 12, borderColor: "#5FA8A066", background: "#5FA8A00d" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Store size={16} color="#5FA8A0" strokeWidth={1.6} />
                   <div style={{ flex: 1 }}>
@@ -500,13 +501,13 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <button style={{ ...styles.tinyBtn, background: "#5FA8A0", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }} onClick={() => openPicker("item")}>
+                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#5FA8A0", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }} onClick={() => openPicker("item")}>
                     <Plus size={12} /> {t("market.addItemBtn")}
                   </button>
-                  <button style={{ ...styles.tinyBtn, background: "#D4AF6A", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }} onClick={() => openPicker("chest")}>
+                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#D4AF6A", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }} onClick={() => openPicker("chest")}>
                     <Plus size={12} /> {t("market.addChestBtn")}
                   </button>
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => setCloseConfirm(true)}>
+                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => setCloseConfirm(true)}>
                     {t("market.closeStallBtn")}
                   </button>
                 </div>
@@ -551,8 +552,8 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                         style={styles.numInput}
                       />
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPickedItem(null)}>{t("market.backBtn")}</button>
-                        <button style={styles.tinyBtn} onClick={confirmAddToStall}>{t("market.addToStallBtn")}</button>
+                        <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setPickedItem(null)}>{t("market.backBtn")}</button>
+                        <button className="rpg-action" style={styles.tinyBtn} onClick={confirmAddToStall}>{t("market.addToStallBtn")}</button>
                       </div>
                     </div>
                   )}
@@ -564,7 +565,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {myStall.items.map((entry) => (
-                    <div key={entry.id} style={{ ...styles.itemRow, borderColor: `${itemTierColor(entry.item.tier)}44` }}>
+                    <div key={entry.id} className="rpg-row" style={{ ...styles.itemRow, borderColor: `${itemTierColor(entry.item.tier)}44` }}>
                       <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex" }} onClick={() => setInspectEntry({ ...entry, source: "mine" })}>
                         <ItemIcon item={entry.item} size={24} color={itemTierColor(entry.item.tier)} strokeWidth={1.6} />
                       </button>
@@ -581,7 +582,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
           )}
 
           {myStall && !myStall.active && (
-            <div style={{ ...styles.itemDetailCard, marginBottom: 12, borderColor: "#E8A5AF66", background: "#E8A5AF0d" }}>
+            <div className="rpg-card" style={{ ...styles.itemDetailCard, marginBottom: 12, borderColor: "#E8A5AF66", background: "#E8A5AF0d" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <AlertTriangle size={16} color="#E8A5AF" strokeWidth={1.6} />
                 <div style={{ flex: 1 }}>
@@ -589,7 +590,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                   <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("market.stallExpiredDesc", { count: myStall.items.length })}</div>
                 </div>
               </div>
-              <button style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, background: "#E8A5AF", color: "#15171E" }} onClick={reclaimStall}>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, background: "#E8A5AF", color: "#15171E" }} onClick={reclaimStall}>
                 {t("market.reclaimBtn")}
               </button>
             </div>
@@ -603,12 +604,12 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               {npcStalls.map((stall) => {
                 const expanded = expandedSeller === stall.sellerName;
                 return (
-                  <div key={stall.sellerName} style={{ ...styles.itemDetailCard, padding: 0, overflow: "hidden" }}>
+                  <div key={stall.sellerName} className="rpg-card" style={{ ...styles.itemDetailCard, padding: 0, overflow: "hidden" }}>
                     <button
                       style={{ width: "100%", background: "none", border: "none", padding: 12, display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--text-primary)" }}
                       onClick={() => setExpandedSeller(expanded ? null : stall.sellerName)}
                     >
-                      <Tag size={14} color="var(--text-faint)" />
+                      <MenuEmblem name="market" size={32}/>
                       <span style={{ flex: 1, fontSize: 13, textAlign: "left" }}>
                         {t("market.stallTitleFor", { name: lang === "tr" ? possessiveName(stall.sellerName) : stall.sellerName })}
                       </span>
@@ -618,7 +619,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                     {expanded && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 10px 10px" }}>
                         {stall.items.map((l) => (
-                          <div key={l.id} style={{ ...styles.itemRow, borderColor: `${itemTierColor(l.item.tier)}44`, flexWrap: "wrap" }}>
+                          <div key={l.id} className="rpg-row" style={{ ...styles.itemRow, borderColor: `${itemTierColor(l.item.tier)}44`, flexWrap: "wrap" }}>
                             <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex" }} onClick={() => setInspectEntry({ ...l, source: "npc" })}>
                               <ItemIcon item={l.item} size={18} color={itemTierColor(l.item.tier)} strokeWidth={1.6} />
                             </button>
@@ -627,7 +628,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                               <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{tierName(lang, l.item.tier)} · {itemStatLabel(l.item)}</div>
                             </div>
                             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)", marginRight: 8 }}>{formatGold(l.price)}g</div>
-                            <button style={styles.tinyBtn} onClick={() => requestBuy(l)}>{t("market.buyShort")}</button>
+                            <button className="rpg-action" style={styles.tinyBtn} onClick={() => requestBuy(l)}>{t("market.buyShort")}</button>
                           </div>
                         ))}
                       </div>
@@ -655,13 +656,13 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
               <button
-                style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }}
+                className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }}
                 onClick={() => (upgradeConfirmStep === 1 ? resolveUpgradeStep1(false) : resolveUpgradeStep2(false))}
               >
                 {t("shop.no")}
               </button>
               <button
-                style={{ ...styles.tinyBtn, background: PREMIUM_TIERS.mythic.color, color: "#0B0C10" }}
+                className="rpg-action" style={{ ...styles.tinyBtn, background: PREMIUM_TIERS.mythic.color, color: "#0B0C10" }}
                 onClick={() => (upgradeConfirmStep === 1 ? resolveUpgradeStep1(true) : resolveUpgradeStep2(true))}
               >
                 {t("shop.yes")}
@@ -683,11 +684,11 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--gold-text)" }}>{formatGold(inspectEntry.price)}g</div>
               <div style={{ flex: 1 }} />
               {inspectEntry.source === "npc" && (
-                <button style={styles.tinyBtn} onClick={() => { setInspectEntry(null); requestBuy(inspectEntry); }}>
+                <button className="rpg-action" style={styles.tinyBtn} onClick={() => { setInspectEntry(null); requestBuy(inspectEntry); }}>
                   {t("market.buyShort")}
                 </button>
               )}
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} onClick={() => setInspectEntry(null)}>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} onClick={() => setInspectEntry(null)}>
                 <X size={11} />
               </button>
             </div>
@@ -705,10 +706,10 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               {t("market.buyConfirmText", { item: displayItemName(buyConfirm.item, lang), gold: formatGold(buyConfirm.price) })}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setBuyConfirm(null)}>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setBuyConfirm(null)}>
                 {t("market.cancelBtn")}
               </button>
-              <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E" }} onClick={confirmBuy}>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E" }} onClick={confirmBuy}>
                 {t("market.confirmBuyBtn")}
               </button>
             </div>
@@ -729,10 +730,10 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
               {t("market.closeConfirmDesc")}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setCloseConfirm(false)}>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setCloseConfirm(false)}>
                 {t("market.cancelBtn")}
               </button>
-              <button style={{ ...styles.tinyBtn, background: "#E8A5AF", color: "#15171E" }} onClick={confirmCloseStall}>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#E8A5AF", color: "#15171E" }} onClick={confirmCloseStall}>
                 {t("market.confirmCloseBtn")}
               </button>
             </div>

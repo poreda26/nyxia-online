@@ -1,3 +1,4 @@
+import RewardChest from './icons/RewardChest';
 import { useState } from "react";
 import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, ArrowDownToLine, X, ListChecks, Coins, Gem, Plus } from "lucide-react";
 import { itemTierColor, tierName } from "../data/itemRarity";
@@ -338,13 +339,13 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
             <ItemTooltip item={equippedSelectedItem} player={player} />
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
               <button
-                style={{ ...styles.tinyBtn, background: "#C9425A", display: "flex", alignItems: "center", gap: 4 }}
+                className="rpg-action" style={{ ...styles.tinyBtn, background: "#C9425A", display: "flex", alignItems: "center", gap: 4 }}
                 onClick={() => unequip(selectedEquipSlot)}
               >
                 <ArrowUpFromLine size={11} style={{ transform: "rotate(180deg)" }} /> {t("inventory.unequipBtn")}
               </button>
               <button
-                style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)", marginLeft: "auto" }}
+                className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)", marginLeft: "auto" }}
                 onClick={() => setSelectedEquipSlot(null)}
               >
                 <X size={11} />
@@ -361,7 +362,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
         {t("inventory.totalRepairCost", { cost: formatGold(totalRepairAll) })}
       </div>
       <button
-        style={{
+        className="rpg-action" style={{
           ...styles.tinyBtn, width: "100%", marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
           ...(totalRepairAll > 0 ? { background: "#D4AF6A", color: "#15171E" } : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }),
         }}
@@ -371,7 +372,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
         <Wrench size={12} /> {t("inventory.repairAllBtn")}
       </button>
 
-      <div style={styles.subtabRow}>
+      <div className="rpg-tabs" style={styles.subtabRow}>
         <button onClick={() => { setSubtab("armor"); setSelectedId(null); }} style={{ ...styles.subtabBtn, ...(subtab === "armor" ? styles.subtabBtnActive : {}) }}>
           {t("inventory.bagTab", { filled: bagSlotsFilled, max: BAG_SLOTS })}
         </button>
@@ -389,7 +390,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
               (kullanıcı isteği), tekli detay sayfasının yerini alıyor. */}
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
             <button
-              style={{ ...styles.tinyBtn, background: bulkMode ? "#5FA8A0" : "var(--bg-panel-alt)", color: bulkMode ? "#0B0C10" : "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}
+              className="rpg-action" style={{ ...styles.tinyBtn, background: bulkMode ? "#5FA8A0" : "var(--bg-panel-alt)", color: bulkMode ? "#0B0C10" : "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}
               onClick={toggleBulkMode}
             >
               <ListChecks size={12} /> {bulkMode ? t("inventory.bulkSelectOff") : t("inventory.bulkSelectOn")}
@@ -397,17 +398,17 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
           </div>
 
           {bulkMode && (
-            <div style={{ ...styles.itemDetailCard, marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div className="rpg-card" style={{ ...styles.itemDetailCard, marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("inventory.bulkSelectedCount", { count: bulkSelected.size })}</span>
               <button
-                style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: bulkSelected.size ? 1 : 0.5, display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}
+                className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: bulkSelected.size ? 1 : 0.5, display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}
                 disabled={bulkSelected.size === 0}
                 onClick={bulkDeposit}
               >
                 <Archive size={11} /> {t("inventory.moveToBank")}
               </button>
               <button
-                style={{ ...styles.tinyBtn, opacity: bulkSelected.size ? 1 : 0.5, display: "flex", alignItems: "center", gap: 4 }}
+                className="rpg-action" style={{ ...styles.tinyBtn, opacity: bulkSelected.size ? 1 : 0.5, display: "flex", alignItems: "center", gap: 4 }}
                 disabled={bulkSelected.size === 0}
                 onClick={bulkSell}
               >
@@ -432,7 +433,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
 
       {subtab === "bank" && (
         <>
-          <div style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div className="rpg-card" style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <Coins size={16} color="var(--gold-text)" strokeWidth={1.6} />
             <div style={{ fontSize: 12 }}>
               {t("inventory.bankGoldLabel")} <span style={{ fontFamily: "var(--font-mono)", color: "var(--gold-text)" }}>{formatGold(bankGold)}g</span>
@@ -446,15 +447,15 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
               onChange={(e) => setGoldAmount(e.target.value)}
               style={{ ...styles.numInput, flex: 1, minWidth: 80 }}
             />
-            <button style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={depositGold}>
+            <button className="rpg-action" style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={depositGold}>
               <ArrowDownToLine size={11} /> {t("inventory.depositBtn")}
             </button>
-            <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }} onClick={withdrawGold}>
+            <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }} onClick={withdrawGold}>
               <ArrowUpFromLine size={11} /> {t("inventory.withdrawBtn")}
             </button>
           </div>
 
-          <div style={styles.subtabRow}>
+          <div className="rpg-tabs" style={styles.subtabRow}>
             {Array.from({ length: bank.length }, (_, i) => (
               <button
                 key={i}
@@ -494,7 +495,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
           <>
             {player.chests.length > 1 && (
               <button
-                style={{ ...styles.tinyBtn, width: "100%", marginBottom: 10, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginBottom: 10, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
                 onClick={openAllChests}
               >
                 <Gift size={12} /> {t("inventory.openAllChests", { count: player.chests.length })}
@@ -503,10 +504,10 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
             <div style={styles.chestGrid}>
               {player.chests.map((chest) => {
                 const color = chest.special ? "#D4AF6A" : itemTierColor(chest.tier);
-                const Icon = chest.special ? Sparkles : Gift;
+
                 return (
-                  <button key={chest.id} onClick={() => openChest(chest)} style={{ ...styles.chestCard, borderColor: `${color}55` }}>
-                    <Icon size={22} color={color} strokeWidth={1.6} />
+                  <button className="rpg-card" key={chest.id} onClick={() => openChest(chest)} style={{ ...styles.chestCard, borderColor: `${color}55` }}>
+                    <RewardChest size={48}/>
                     <div style={{ fontSize: 11, marginTop: 6, fontFamily: "var(--font-mono)", color, textAlign: "center" }}>
                       {chest.special ? t("inventory.specialChestName") : t("inventory.tierChest", { tier: tierName(lang, chest.tier) })}
                     </div>
@@ -527,11 +528,11 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
             <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
               {subtab === "bank" ? (
                 <>
-                  <button style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={() => withdrawItem(selectedItem)}>
+                  <button className="rpg-action" style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={() => withdrawItem(selectedItem)}>
                     <ArrowUpFromLine size={11} /> {t("inventory.takeToBag")}
                   </button>
                   {repairAmount > 0 && (
-                    <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
                       <Wrench size={11} /> {t("inventory.repairFor", { gold: formatGold(repairAmount) })}
                     </button>
                   )}
@@ -539,9 +540,9 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
               ) : (
                 <>
                   {selectedItem.kind === "potion" ? (
-                    <button style={styles.tinyBtn} onClick={() => handleUsePotion(selectedItem)}>{t("inventory.useBtn")}</button>
+                    <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleUsePotion(selectedItem)}>{t("inventory.useBtn")}</button>
                   ) : selectedItem.kind === "boostScroll" ? (
-                    <button style={{ ...styles.tinyBtn, background: boostScrollDef(selectedItem.boostId)?.color }} onClick={() => handleUseBoostScroll(selectedItem)}>{t("boosts.useBtn")}</button>
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: boostScrollDef(selectedItem.boostId)?.color }} onClick={() => handleUseBoostScroll(selectedItem)}>{t("boosts.useBtn")}</button>
                   ) : selectedItem.kind === "scroll" || selectedItem.kind === "bonusScroll" || selectedItem.kind === "accessoryScroll" ? (
                     // Bonus Parşömen'in de tıpkı normal parşömen gibi buradan
                     // hiçbir işlevi yok — sadece Yükselt sekmesindeki forge'a
@@ -553,14 +554,14 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                     <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("inventory.usedFromUpgradeTab")}</span>
                   ) : selectedItem.kind === "raceScroll" ? (
                     player.clan ? (
-                      <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                      <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
                         <Ban size={11} /> {t("inventory.clanBlocksRaceChange")}
                       </button>
                     ) : (
                       Object.entries(RACES).map(([key, r]) => (
                         <button
                           key={key}
-                          style={{ ...styles.tinyBtn, background: r.color, opacity: player.race === key ? 0.4 : 1 }}
+                          className="rpg-action" style={{ ...styles.tinyBtn, background: r.color, opacity: player.race === key ? 0.4 : 1 }}
                           disabled={player.race === key}
                           onClick={() => useRaceScroll(selectedItem, key)}
                         >
@@ -570,33 +571,33 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                     )
                   ) : selectedItem.kind === "jobScroll" ? (
                     !canChangeJob(player).ok ? (
-                      <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                      <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
                         <Ban size={11} /> {canChangeJob(player).reason}
                       </button>
                     ) : (
                       Object.entries(CLASSES).filter(([key]) => key !== player.class).map(([key, c]) => (
-                        <button key={key} style={{ ...styles.tinyBtn, background: c.color }} onClick={() => useJobScroll(selectedItem, key)}>
+                        <button key={key} className="rpg-action" style={{ ...styles.tinyBtn, background: c.color }} onClick={() => useJobScroll(selectedItem, key)}>
                           {t("inventory.becomeClass", { cls: c.name })}
                         </button>
                       ))
                     )
                   ) : selectedItem.kind === "armor" && selectedItem.class !== player.class ? (
-                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
                       <Ban size={11} /> {t("inventory.locked")}
                     </button>
                   ) : selectedItem.kind === "armor" && selectedItem.tier === 5 && !player.awakened ? (
-                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
                       <Ban size={11} /> {t("inventory.masterRequired")}
                     </button>
                   ) : !statReqMet ? (
-                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
                       <Ban size={11} /> {t("inventory.insufficientStats")}
                     </button>
                   ) : (
-                    <button style={styles.tinyBtn} onClick={() => equip(selectedItem)}>{t("inventory.equipBtn")}</button>
+                    <button className="rpg-action" style={styles.tinyBtn} onClick={() => equip(selectedItem)}>{t("inventory.equipBtn")}</button>
                   )}
                   {repairAmount > 0 && (
-                    <button style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>
                       <Wrench size={11} /> {t("inventory.repairFor", { gold: formatGold(repairAmount) })}
                     </button>
                   )}
@@ -608,17 +609,17 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                       yoktu, sorun sadece bu düğmenin görünürlüğündeydi.
                       Depoya koymanın herhangi bir eşya türünü engellemesi
                       için bir sebep yok, o yüzden koşul tamamen kaldırıldı. */}
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }} onClick={() => depositItem(selectedItem)}>
+                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }} onClick={() => depositItem(selectedItem)}>
                     <Archive size={11} /> {t("inventory.depositToBankBtn")}
                   </button>
                   {!isConsumable(selectedItem) && !selectedItem.noTrade && (
-                    <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => sellItem(selectedItem)}>
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => sellItem(selectedItem)}>
                       {t("inventory.sellFor", { gold: formatGold(Math.round(sellPrice(selectedItem) * premiumSellMultiplier(player))) })}
                     </button>
                   )}
                 </>
               )}
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)", marginLeft: "auto" }} onClick={() => setSelectedId(null)}>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)", marginLeft: "auto" }} onClick={() => setSelectedId(null)}>
                 <X size={11} />
               </button>
             </div>

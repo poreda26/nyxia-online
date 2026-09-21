@@ -1,3 +1,4 @@
+import MenuEmblem from './icons/MenuEmblem';
 import BattleScene, {hasBattleScene} from './BattleScene';
 import { grantMonsterReward } from "../utils/monsterRewards";
 import { useState, useEffect, useRef } from "react";
@@ -624,9 +625,9 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       {!monster && (
         <>
           <SectionLabel>{t("battle.dailyDungeon")}</SectionLabel>
-          <div style={{ ...styles.itemDetailCard, borderColor: "#A34FD966", background: "#A34FD90d", marginBottom: 14 }}>
+          <div className="rpg-card rpg-dungeon-card" style={{ ...styles.itemDetailCard, borderColor: "#A34FD966", background: "#A34FD90d", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Castle size={20} color="#A34FD9" strokeWidth={1.6} />
+              <MenuEmblem name="dungeon" size={44}/>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13 }}>{t("battle.dungeonName", { map: map.name })}</div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
@@ -668,7 +669,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           </div>
 
           <SectionLabel>{t("battle.mapBoss")}</SectionLabel>
-          <div style={{ ...styles.itemDetailCard, borderColor: `${map.color}77`, background: `${map.color}12`, marginBottom: 14 }}>
+          <div className="rpg-card" style={{ ...styles.itemDetailCard, borderColor: `${map.color}77`, background: `${map.color}12`, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div className="monster-mini-portrait"><MonsterPortrait monster={mapBoss} label={tm(mapBoss)}/></div>
               <div style={{ flex: 1 }}>
@@ -797,7 +798,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             {player.skills.loadout.map((skillId, i) => {
               if (!skillId) {
                 return (
-                  <div key={i} style={{ ...styles.equipSlotCard, opacity: 0.4 }}>
+                  <div key={i} className="rpg-slot" style={{ ...styles.equipSlotCard, opacity: 0.4 }}>
                     <Plus size={12} color="var(--text-faint)" /><span className="battle-slot-label">{t("battle.empty")}</span>
                   </div>
                 );
@@ -809,7 +810,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               return (
                 <button
                   key={i}
-                  style={{ ...styles.equipSlotCard, borderColor: `${cls.color}66`, background: `${cls.color}12`, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1 }}
+                  className="rpg-slot" style={{ ...styles.equipSlotCard, borderColor: `${cls.color}66`, background: `${cls.color}12`, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1 }}
                   onClick={() => useSkill(skillId)}
                   disabled={disabled}
                   title={`${skillName(skill)} — MP ${skill.mpCost}`}
@@ -965,7 +966,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       {!levelUpInfo && dungeonComplete && (
         <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setDungeonComplete(null)}>
           <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <Castle size={32} color="#A34FD9" strokeWidth={1.3} />
+            <MenuEmblem name="dungeon" size={44}/>
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>{t("battle.dungeonCompleteTitle")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 240 }}>
               {t("battle.dungeonCompleteDesc", { map: dungeonComplete.mapName, gold: formatGold(dungeonComplete.bonusGold), tier: tierName(lang, dungeonComplete.chestTier) })}
@@ -980,7 +981,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       {dungeonChoice && (
         <div style={{ ...styles.modalOverlay, position: "fixed" }}>
           <div style={styles.modalCard}>
-            <Castle size={30} color="#A34FD9" strokeWidth={1.3} />
+            <MenuEmblem name="dungeon" size={44}/>
             <div style={{ marginTop: 12, fontFamily: "var(--font-display)", fontSize: 17 }}>{t("battle.choosePath")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center" }}>{t("battle.choosePathDesc")}</div>
             <div style={{ display: "flex", gap: 8, marginTop: 18, width: "100%" }}>

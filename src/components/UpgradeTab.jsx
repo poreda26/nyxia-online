@@ -193,9 +193,9 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
 
   return (
     <div style={styles.panelScroll}>
-      <SectionLabel>{t("upgrade.title")}</SectionLabel>
 
-      <div style={styles.subtabRow}>
+
+      <div className="rpg-tabs" style={styles.subtabRow}>
         <button onClick={() => setSubtab("forge")} style={{ ...styles.subtabBtn, ...(subtab === "forge" ? styles.subtabBtnActive : {}) }}>
           {t("upgrade.subtabWeaponArmor")}
         </button>
@@ -221,7 +221,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
           (ikisi de forge'a "girdi" olarak konan şeyler); Mağaza da Sonuç'un
           altına (yardımcı eylemler) yerleştirildi — satır artık dört ayrı
           sütun yerine üç dengeli sütun. */}
-      <div style={styles.forgeRow}>
+      <div className="rpg-forge" style={styles.forgeRow}>
         <div style={styles.forgeCol}>
           <div>
             <div style={styles.forgeColLabel}>{t("upgrade.itemLabel")}</div>
@@ -294,14 +294,14 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
 
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <button
-          style={{ ...styles.tinyBtn, background: canPress ? "#8B6FC9" : "var(--bg-panel-alt)", color: canPress ? "#fff" : "var(--text-faint)" }}
+          className="rpg-action" style={{ ...styles.tinyBtn, background: canPress ? "#8B6FC9" : "var(--bg-panel-alt)", color: canPress ? "#fff" : "var(--text-faint)" }}
           disabled={!canPress}
           onClick={() => setShowPreview((v) => !v)}
         >
           {t("upgrade.tryButton")}
         </button>
         <button
-          style={{ ...styles.primaryBtn, flex: 1, background: canPress ? "#5FA8A0" : "var(--bg-panel-alt)", color: canPress ? "#0B0C10" : "var(--text-faint)" }}
+          className="rpg-action" style={{ ...styles.primaryBtn, flex: 1, background: canPress ? "#5FA8A0" : "var(--bg-panel-alt)", color: canPress ? "#0B0C10" : "var(--text-faint)" }}
           disabled={!canPress}
           onClick={press}
         >
@@ -310,7 +310,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
       </div>
 
       {showPreview && previewStats && stagedItem && (
-        <div style={styles.itemDetailCard}>
+        <div className="rpg-card" style={styles.itemDetailCard}>
           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
             {t("upgrade.successPreview", { level: (stagedItem.upgradeLevel || 0) + 1 })}
             {bonusScrollActive && <span style={{ color: "var(--gold-text)" }}> {t("upgrade.bonusScrollActiveTag")}</span>}

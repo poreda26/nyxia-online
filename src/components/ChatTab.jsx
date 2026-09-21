@@ -52,7 +52,7 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
   return (
     <div style={styles.panelScroll}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <SectionLabel>{t("chat.title")}</SectionLabel>
+
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
           {player.isGM && (
             <button onClick={() => setShowGmPanel((v) => !v)} style={{ background: "none", border: "none", color: showGmPanel ? "var(--gold-text)" : "var(--text-faint)", cursor: "pointer" }} title={t("chat.gmItemPanelTitle")}>
@@ -70,7 +70,7 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
       )}
 
       {showHelp && (
-        <div style={styles.itemDetailCard}>
+        <div className="rpg-card" style={styles.itemDetailCard}>
           <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6 }}>
             {player.isGM ? (
               <>
@@ -86,9 +86,9 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
         </div>
       )}
 
-      <div ref={logRef} style={styles.chatLog}>
+      <div ref={logRef} className="rpg-chat-log" style={styles.chatLog}>
         {messages.map((m) => (
-          <div key={m.id} style={styles.chatMsg}>
+          <div key={m.id} className="rpg-chat-msg" style={styles.chatMsg}>
             <div style={styles.chatMsgHeader}>
               {m.isGM && <ShieldCheck size={11} color="var(--gold-text)" />}
               <span style={{ color: m.isSystem ? "var(--text-faint)" : m.isGM ? "var(--gold-text)" : "var(--text-muted)" }}>
@@ -96,14 +96,14 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
               </span>
               <span>{new Date(m.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
             </div>
-            <div style={{ ...styles.chatMsgBubble, ...(m.isSystem ? { background: "transparent", color: "var(--text-faint)", fontStyle: "italic" } : {}) }}>
+            <div className="rpg-chat-bubble" style={{ ...styles.chatMsgBubble, ...(m.isSystem ? { background: "transparent", color: "var(--text-faint)", fontStyle: "italic" } : {}) }}>
               {m.isSystem ? t(m.textKey) : m.text}
             </div>
           </div>
         ))}
       </div>
 
-      <div style={styles.chatInputRow}>
+      <div className="rpg-chat-compose" style={styles.chatInputRow}>
         <input
           type="text"
           value={input}
@@ -112,7 +112,7 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
           placeholder={player.isGM ? t("chat.inputPlaceholderGm") : t("chat.inputPlaceholderDefault")}
           style={styles.chatInput}
         />
-        <button style={styles.tinyBtn} onClick={send}>
+        <button className="rpg-action" style={styles.tinyBtn} onClick={send}>
           <Send size={13} />
         </button>
       </div>

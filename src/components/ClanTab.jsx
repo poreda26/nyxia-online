@@ -1,3 +1,5 @@
+import RankBadge from './shared/RankBadge';
+import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect } from "react";
 import { Shield, LogOut, Plus, ChevronUp, ChevronDown, Swords, Coins, Gem, Flag, Landmark, Skull, Lock, Clock } from "lucide-react";
 import { CLASSES } from "../data/classes";
@@ -137,7 +139,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   const lbEntries = clanLeaderboardFor(lbRace, player);
   const leaderboardSection = (
     <>
-      <SectionLabel>{t("clan.leaderboardTitle")}</SectionLabel>
+      <SectionLabel><MenuEmblem name="ranking" size={26}/>{t("clan.leaderboardTitle")}</SectionLabel>
       <div style={styles.tierScroller}>
         {Object.entries(RACES).map(([key, r]) => (
           <button
@@ -151,8 +153,8 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
         {lbEntries.map((e) => (
-          <div key={e.rank} style={{ ...styles.itemRow, ...(e.isPlayerClan ? { borderColor: "#D4AF6A" } : {}) }}>
-            <div style={{ width: 20, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, color: e.rank <= 3 ? "var(--gold-text)" : "var(--text-faint)" }}>{e.rank}</div>
+          <div key={e.rank} className="rpg-row rpg-ranking-row" style={{ ...styles.itemRow, ...(e.isPlayerClan ? { borderColor: "#D4AF6A" } : {}) }}>
+            <RankBadge rank={e.rank}/>
             <div style={{ flex: 1, fontSize: 12, color: e.isPlayerClan ? "var(--text-primary)" : "var(--text-muted)" }}>{e.name}{e.isPlayerClan ? t("clan.yourClanSuffix") : ""}</div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 3 }}>
               <Flag size={10} color="#8B6FC9" /> {fmt(e.nationalPoint)}
@@ -167,10 +169,10 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     const decoyClans = generateDecoyClans(player);
     return (
       <div style={styles.panelScroll}>
-        <SectionLabel>{t("clan.title")}</SectionLabel>
-        <div style={styles.itemDetailCard}>
+
+        <div className="rpg-card" style={styles.itemDetailCard}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Shield size={18} color="var(--gold-text)" strokeWidth={1.6} />
+            <MenuEmblem name="clan" size={34}/>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>{t("clan.foundHeading")}</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("clan.foundDesc", { cost: CLAN_FOUND_COST_DIAMONDS })}</div>
@@ -182,10 +184,10 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
                 type="text" value={nameInput} onChange={(e) => setNameInput(e.target.value)}
                 placeholder={t("clan.foundNamePlaceholder")} style={styles.selectInput} maxLength={24}
               />
-              <button style={styles.tinyBtn} onClick={handleFound}>{t("clan.foundBtn")}</button>
+              <button className="rpg-action" style={styles.tinyBtn} onClick={handleFound}>{t("clan.foundBtn")}</button>
             </div>
           ) : (
-            <button style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => setFounding(true)}>
+            <button className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => setFounding(true)}>
               <Plus size={12} /> {t("clan.foundCta")}
             </button>
           )}
@@ -194,15 +196,15 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         <SectionLabel>{t("clan.existingClans")}</SectionLabel>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {decoyClans.map((c) => (
-            <div key={c.id} style={{ ...styles.itemRow, borderColor: `${c.color}44` }}>
+            <div key={c.id} className="rpg-row" style={{ ...styles.itemRow, borderColor: `${c.color}44` }}>
               <div style={{ ...styles.monsterIcon, width: 32, height: 32, background: `${c.color}22`, color: c.color }}>
-                <Shield size={16} strokeWidth={1.6} />
+                <MenuEmblem name="clan" size={34}/>
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13 }}>{c.name}</div>
                 <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{t("clan.memberCountShort", { count: c.members.length + 1, max: CLAN_MAX_MEMBERS })}</div>
               </div>
-              <button style={{ ...styles.tinyBtn, background: c.color }} onClick={() => handleJoin(c)}>{t("clan.joinBtn")}</button>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: c.color }} onClick={() => handleJoin(c)}>{t("clan.joinBtn")}</button>
             </div>
           ))}
         </div>
@@ -228,10 +230,10 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
 
   return (
     <div style={styles.panelScroll}>
-      <SectionLabel>{t("clan.title")}</SectionLabel>
-      <div style={{ ...styles.itemDetailCard, borderColor: `${clan.color}66`, background: `${clan.color}0d` }}>
+
+      <div className="rpg-card" style={{ ...styles.itemDetailCard, borderColor: `${clan.color}66`, background: `${clan.color}0d` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Shield size={22} color={clan.color} strokeWidth={1.6} />
+          <MenuEmblem name="clan" size={34}/>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 16, color: clan.color }}>{clan.name}</div>
             <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{roleLabel(clan.role)} · {t("clan.memberCountShort", { count: clan.members.length + 1, max: CLAN_MAX_MEMBERS })}</div>
@@ -243,7 +245,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         </div>
       </div>
 
-      <div style={styles.itemDetailCard}>
+      <div className="rpg-card" style={styles.itemDetailCard}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Landmark size={18} color="var(--gold-text)" strokeWidth={1.6} />
           <div style={{ flex: 1 }}>
@@ -260,7 +262,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         {canManageDungeon && (
           nextBuildingCost ? (
             <button
-              style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(!buildingCheck.ok ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }}
+              className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(!buildingCheck.ok ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }}
               disabled={!buildingCheck.ok}
               onClick={handleUpgradeBuilding}
               title={!buildingCheck.ok ? buildingCheck.reason : undefined}
@@ -275,15 +277,15 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
           <div style={{ display: "flex", gap: 6 }}>
             <input type="number" min="1" placeholder={t("clan.donateNpPlaceholder")} value={donateNpInput} onChange={(e) => setDonateNpInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
-            <button style={styles.tinyBtn} onClick={handleDonateNP}>{t("clan.donateBtn")}</button>
+            <button className="rpg-action" style={styles.tinyBtn} onClick={handleDonateNP}>{t("clan.donateBtn")}</button>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <input type="number" min="1" placeholder={t("clan.donateGoldPlaceholder")} value={donateGoldInput} onChange={(e) => setDonateGoldInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
-            <button style={styles.tinyBtn} onClick={handleDonateGold}>{t("clan.donateBtn")}</button>
+            <button className="rpg-action" style={styles.tinyBtn} onClick={handleDonateGold}>{t("clan.donateBtn")}</button>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <input type="number" min="1" placeholder={t("clan.donateDiamondPlaceholder")} value={donateDiamondInput} onChange={(e) => setDonateDiamondInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
-            <button style={styles.tinyBtn} onClick={handleDonateDiamonds}>{t("clan.donateBtn")}</button>
+            <button className="rpg-action" style={styles.tinyBtn} onClick={handleDonateDiamonds}>{t("clan.donateBtn")}</button>
           </div>
         </div>
         <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.5 }}>
@@ -291,9 +293,9 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         </div>
       </div>
 
-      <div style={styles.itemDetailCard}>
+      <div className="rpg-card" style={styles.itemDetailCard}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Skull size={18} color="#A34FD9" strokeWidth={1.6} />
+          <MenuEmblem name="dungeon" size={42}/>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13 }}>{t("clan.bossTitle")}</div>
             <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("clan.bossDesc")}</div>
@@ -323,7 +325,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             </div>
             {bossActive && (
               <button
-                style={{ ...styles.tinyBtn, width: "100%", marginTop: 8, ...(!canPlayerAttackBoss(player) ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : { background: activeStage?.color }) }}
+                className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 8, ...(!canPlayerAttackBoss(player) ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : { background: activeStage?.color }) }}
                 disabled={!canPlayerAttackBoss(player)}
                 onClick={handleAttackBoss}
               >
@@ -336,7 +338,8 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             {CLAN_BOSS_STAGES.map((stage) => {
               const isUnlocked = unlocked.some((s) => s.id === stage.id);
               return (
-                <div key={stage.id} style={{ ...styles.itemRow, opacity: isUnlocked ? 1 : 0.5, borderColor: `${stage.color}44` }}>
+                <div key={stage.id} className="rpg-row rpg-dungeon-card" style={{ ...styles.itemRow, opacity: isUnlocked ? 1 : 0.5, borderColor: `${stage.color}44` }}>
+                  <MenuEmblem name="dungeon" size={32}/>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, color: stage.color }}>{stageName(stage)}</div>
                     <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
@@ -345,7 +348,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
                   </div>
                   {canManageDungeon ? (
                     <button
-                      style={{ ...styles.tinyBtn, background: isUnlocked ? stage.color : "var(--bg-panel-alt)", color: isUnlocked ? "#0B0C10" : "var(--text-faint)" }}
+                      className="rpg-action" style={{ ...styles.tinyBtn, background: isUnlocked ? stage.color : "var(--bg-panel-alt)", color: isUnlocked ? "#0B0C10" : "var(--text-faint)" }}
                       disabled={!isUnlocked}
                       onClick={() => handleOpenBoss(stage.id)}
                     >
@@ -361,7 +364,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         )}
       </div>
 
-      <div style={styles.itemDetailCard}>
+      <div className="rpg-card" style={styles.itemDetailCard}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Swords size={18} color="#C9425A" strokeWidth={1.6} />
           <div style={{ flex: 1 }}>
@@ -373,14 +376,14 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         </div>
         {canManageDungeon ? (
           <button
-            style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(!dungeonReady ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }}
+            className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(!dungeonReady ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }}
             disabled={!dungeonReady}
             onClick={handleStartDungeon}
           >
             {dungeonReady ? t("clan.dungeonStartBtn") : t("clan.dungeonAlreadyStarted")}
           </button>
         ) : (
-          <button style={{ ...styles.tinyBtn, width: "100%", marginTop: 10 }} onClick={() => pushToast(t("clan.toastDungeonComingSoon"), "default")}>
+          <button className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10 }} onClick={() => pushToast(t("clan.toastDungeonComingSoon"), "default")}>
             {t("clan.dungeonJoinBtn")}
           </button>
         )}
@@ -391,7 +394,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         {clan.members.map((m) => {
           const MIcon = CLASSES[m.cls].icon;
           return (
-            <div key={m.id} style={styles.itemRow}>
+            <div key={m.id} className="rpg-row" style={styles.itemRow}>
               <div style={{ ...styles.monsterIcon, width: 28, height: 28, background: `${CLASSES[m.cls].color}22`, color: CLASSES[m.cls].color }}>
                 <MIcon size={13} strokeWidth={1.6} />
               </div>
@@ -401,12 +404,12 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
               </div>
               {isLeader && m.role !== "leader" && (
                 m.role === "officer" ? (
-                  <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDemote(m.id)} title={t("clan.demoteTitle")}>
+                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDemote(m.id)} title={t("clan.demoteTitle")}>
                     <ChevronDown size={11} />
                   </button>
                 ) : (
                   <button
-                    style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: officerCount >= CLAN_MAX_OFFICERS ? 0.4 : 1 }}
+                    className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: officerCount >= CLAN_MAX_OFFICERS ? 0.4 : 1 }}
                     disabled={officerCount >= CLAN_MAX_OFFICERS}
                     onClick={() => handlePromote(m.id)}
                     title={t("clan.promoteTitle")}
@@ -434,8 +437,8 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
               {t("clan.leaveConfirmText", { name: clan.name })}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingLeave(false)}>{t("clan.cancel")}</button>
-              <button style={{ ...styles.tinyBtn, background: "#C9425A" }} onClick={handleLeave}>{t("clan.confirmLeaveBtn")}</button>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingLeave(false)}>{t("clan.cancel")}</button>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#C9425A" }} onClick={handleLeave}>{t("clan.confirmLeaveBtn")}</button>
             </div>
           </div>
         </div>

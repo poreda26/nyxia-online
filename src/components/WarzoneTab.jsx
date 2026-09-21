@@ -1,3 +1,5 @@
+import RankBadge from './shared/RankBadge';
+import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useRef } from "react";
 import MonsterPortrait from './MonsterPortrait';
 import { Skull, Swords, Heart, Zap, Lock, Gift, LogOut, DoorOpen, Users, Percent, Loader2, X } from "lucide-react";
@@ -324,7 +326,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   if (locked || npLocked) {
     return (
       <div style={styles.panelScroll}>
-        <SectionLabel>{t("warzone.title")}</SectionLabel>
+
         {locked ? (
           <EmptyState icon={Lock} title={t("warzone.lockedTitle")} subtitle={t("warzone.lockedSubtitle", { level: WARZONE_UNLOCK_LEVEL })} />
         ) : (
@@ -341,7 +343,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     const canAfford = player.gold >= WARZONE_TELEPORT_COST;
     return (
       <div style={styles.panelScroll}>
-        <SectionLabel>{t("warzone.title")}</SectionLabel>
+
         <EmptyState
           icon={DoorOpen}
           title={t("warzone.enterTitle")}
@@ -788,11 +790,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
   return (
     <div style={styles.panelScroll}>
-      <SectionLabel>{t("warzone.title")}</SectionLabel>
-      <div style={styles.subtabRow}>
-        <button style={{ ...styles.subtabBtn, ...(subtab === "alan" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("alan")}>{t("warzone.tabArea")}</button>
-        <button style={{ ...styles.subtabBtn, ...(subtab === "av" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("av")}>{t("warzone.tabHunt")}</button>
-        <button style={{ ...styles.subtabBtn, ...(subtab === "siralama" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("siralama")}>{t("warzone.tabRanking")}</button>
+
+      <div className="rpg-tabs" style={styles.subtabRow}>
+        <button aria-selected={subtab === "alan"} style={{ ...styles.subtabBtn, ...(subtab === "alan" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("alan")}>{t("warzone.tabArea")}</button>
+        <button aria-selected={subtab === "av"} style={{ ...styles.subtabBtn, ...(subtab === "av" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("av")}>{t("warzone.tabHunt")}</button>
+        <button aria-selected={subtab === "siralama"} style={{ ...styles.subtabBtn, ...(subtab === "siralama" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("siralama")}>{t("warzone.tabRanking")}</button>
       </div>
 
       {subtab === "alan" && !wz.duel && (
@@ -923,7 +925,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
             {idleGhosts.map((g) => {
               const GIcon = CLASSES[g.cls].icon;
               return (
-                <div key={g.id} style={styles.itemRow}>
+                <div key={g.id} className="rpg-row" style={styles.itemRow}>
                   <div style={{ ...styles.monsterIcon, width: 30, height: 30, background: `${RACES[g.race].color}22`, color: RACES[g.race].color }}>
                     <GIcon size={14} strokeWidth={1.6} />
                   </div>
@@ -1084,6 +1086,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
       {subtab === "siralama" && (
         <>
+          <SectionLabel><MenuEmblem name="ranking" size={28}/>{t("warzone.tabRanking")}</SectionLabel>
           <div style={styles.tierScroller}>
             {Object.entries(RACES).map(([key, r]) => (
               <button key={key} onClick={() => setLbRace(key)} style={{ ...styles.tierChip, borderColor: lbRace === key ? r.color : "var(--border)", background: lbRace === key ? `${r.color}1A` : "var(--bg-panel)" }}>
@@ -1097,15 +1100,15 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
             ))}
           </div>
 
-          <div style={styles.subtabRow}>
+          <div className="rpg-tabs" style={styles.subtabRow}>
             <button style={{ ...styles.subtabBtn, ...(lbSort === "weeklyPoint" ? styles.subtabBtnActive : {}) }} onClick={() => setLbSort("weeklyPoint")}>{t("warzone.weekly")}</button>
             <button style={{ ...styles.subtabBtn, ...(lbSort === "nationalPoint" ? styles.subtabBtnActive : {}) }} onClick={() => setLbSort("nationalPoint")}>{t("warzone.permanent")}</button>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
             {lbEntries.map((e) => (
-              <div key={e.rank} style={{ ...styles.itemRow, ...(e.isPlayer ? { borderColor: "#D4AF6A" } : {}) }}>
-                <div style={{ width: 20, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, color: e.rank <= 3 ? "var(--gold-text)" : "var(--text-faint)" }}>{e.rank}</div>
+              <div key={e.rank} className="rpg-row rpg-ranking-row" style={{ ...styles.itemRow, ...(e.isPlayer ? { borderColor: "#D4AF6A" } : {}) }}>
+                <RankBadge rank={e.rank}/>
                 <div style={{ flex: 1, fontSize: 12, color: e.isPlayer ? "var(--text-primary)" : "var(--text-muted)" }}>{e.name}{e.isPlayer ? t("warzone.youSuffix") : ""}</div>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)" }}>{lbSort === "weeklyPoint" ? e.weeklyPoint : e.nationalPoint}</div>
               </div>

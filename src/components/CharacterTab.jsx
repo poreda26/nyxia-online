@@ -86,8 +86,8 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
 
   return (
     <div style={styles.panelScroll}>
-      <SectionLabel>{t("character.header")}</SectionLabel>
-      <div style={styles.charSummary}>
+
+      <div className="rpg-character-summary" style={styles.charSummary}>
         <div style={{ ...styles.charAvatar, borderColor: cls.color }}>
           <cls.icon size={28} color={cls.color} strokeWidth={1.6} />
         </div>
@@ -99,7 +99,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         </div>
         {onChangeCharacter && (
           <button
-            style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}
+            className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}
             onClick={onChangeCharacter}
           >
             <Repeat size={11} /> {t("character.changeCharacter")}
@@ -109,7 +109,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
 
       {onReplayTutorial && (
         <button
-          style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginBottom: 12 }}
+          className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginBottom: 12 }}
           onClick={onReplayTutorial}
         >
           <BookOpen size={12} /> {t("character.replayTutorial")}
@@ -134,7 +134,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         <StatBlock label={t("character.stats.diamond")} value={player.diamonds} color="#8B6FC9" />
       </div>
 
-      <div style={styles.subtabRow}>
+      <div className="rpg-tabs" style={styles.subtabRow}>
         <button onClick={() => setSubtab("stats")} style={{ ...styles.subtabBtn, ...(subtab === "stats" ? styles.subtabBtnActive : {}) }}>
           {t("character.tabs.stats")}
         </button>
@@ -187,7 +187,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
           </div>
 
           <button
-            style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginTop: 12 }}
+            className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginTop: 12 }}
             onClick={() => setConfirmingRespec(true)}
           >
             <RotateCcw size={12} /> {t("character.stats.respecButton", { gold: formatGold(respecCost(player)) })}
@@ -204,7 +204,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
             {player.skills.loadout.map((skillId, i) => {
               const skill = skillId ? classSkills(player.class).find((s) => s.id === skillId) : null;
               return (
-                <div key={i} style={{ ...styles.equipSlotCard, ...(skill ? { borderColor: `${cls.color}66`, background: `${cls.color}1c` } : {}) }}>
+                <div key={i} className="rpg-slot" style={{ ...styles.equipSlotCard, ...(skill ? { borderColor: `${cls.color}66`, background: `${cls.color}1c` } : {}) }}>
                   {skill ? <SkillIcon effectType={skill.effect.type} size={18} color={cls.color} /> : <Plus size={14} color="var(--text-faint)" />}
                   <div style={{ fontSize: 7, color: "var(--text-faint)", marginTop: 2, textAlign: "center" }}>{skill ? t(`character.skills.${skill.id}.name`) : t("character.skills.emptySlot")}</div>
                 </div>
@@ -218,7 +218,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
               const check = canUnlockSkill(player, skill, t, lang);
               const inLoadout = player.skills.loadout.includes(skill.id);
               return (
-                <div key={skill.id} style={{ ...styles.itemDetailCard, ...(known ? { borderColor: `${cls.color}55` } : {}) }}>
+                <div key={skill.id} className="rpg-card" style={{ ...styles.itemDetailCard, ...(known ? { borderColor: `${cls.color}55` } : {}) }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <SkillIcon effectType={skill.effect.type} size={17} color={known ? cls.color : "var(--text-faint)"} />
@@ -236,13 +236,13 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
                     </div>
                     {known ? (
                       <button
-                        style={{ ...styles.tinyBtn, background: inLoadout ? cls.color : "var(--bg-panel-alt)", color: inLoadout ? "#0B0C10" : "var(--text-muted)", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
+                        className="rpg-action" style={{ ...styles.tinyBtn, background: inLoadout ? cls.color : "var(--bg-panel-alt)", color: inLoadout ? "#0B0C10" : "var(--text-muted)", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
                         onClick={() => toggleLoadout(skill.id)}
                       >
                         {inLoadout ? <><X size={11} /> {t("character.skills.remove")}</> : <><Check size={11} /> {t("character.skills.add")}</>}
                       </button>
                     ) : check.ok ? (
-                      <button style={{ ...styles.tinyBtn, flexShrink: 0 }} onClick={() => learn(skill.id)}>{t("character.skills.learn")}</button>
+                      <button className="rpg-action" style={{ ...styles.tinyBtn, flexShrink: 0 }} onClick={() => learn(skill.id)}>{t("character.skills.learn")}</button>
                     ) : (
                       <div style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 4, flexShrink: 0, cursor: "default" }}>
                         <Lock size={11} /> {check.reason}
@@ -260,7 +260,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {player.activeTitle && (
             <button
-              style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+              className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
               onClick={() => pickTitle(null)}
             >
               <X size={11} /> {t("character.achievements.removeTitleBtn")}
@@ -271,7 +271,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
             const active = player.activeTitle === a.id;
             const AIcon = a.icon;
             return (
-              <div key={a.id} style={{ ...styles.itemDetailCard, opacity: unlocked ? 1 : 0.55, ...(active ? { borderColor: `${a.color}88` } : {}) }}>
+              <div key={a.id} className="rpg-card" style={{ ...styles.itemDetailCard, opacity: unlocked ? 1 : 0.55, ...(active ? { borderColor: `${a.color}88` } : {}) }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 34, height: 34, borderRadius: 8, background: unlocked ? `${a.color}22` : "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     {unlocked ? <AIcon size={17} color={a.color} strokeWidth={1.6} /> : <Lock size={15} color="var(--text-faint)" />}
@@ -285,7 +285,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
                   </div>
                   {unlocked && (
                     <button
-                      style={{ ...styles.tinyBtn, flexShrink: 0, ...(active ? { background: a.color, color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-muted)" }) }}
+                      className="rpg-action" style={{ ...styles.tinyBtn, flexShrink: 0, ...(active ? { background: a.color, color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-muted)" }) }}
                       disabled={active}
                       onClick={() => pickTitle(a.id)}
                     >
@@ -359,9 +359,9 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
               <div style={{ marginTop: 8, fontSize: 11, color: "#E8A5AF", textAlign: "center" }}>{respecCheck.reason}</div>
             )}
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingRespec(false)}>{t("character.stats.respec.cancel")}</button>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingRespec(false)}>{t("character.stats.respec.cancel")}</button>
               <button
-                style={{ ...styles.tinyBtn, background: "#8B6FC9", ...(!respecCheck.ok ? { opacity: 0.5 } : {}) }}
+                className="rpg-action" style={{ ...styles.tinyBtn, background: "#8B6FC9", ...(!respecCheck.ok ? { opacity: 0.5 } : {}) }}
                 disabled={!respecCheck.ok}
                 onClick={handleRespec}
               >
