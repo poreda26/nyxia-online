@@ -1,7 +1,8 @@
 import BattleScene, {hasBattleScene} from './BattleScene';
 import { grantMonsterReward } from "../utils/monsterRewards";
 import { useState, useEffect, useRef } from "react";
-import { Lock, Skull, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle, Gem } from "lucide-react";
+import { Lock, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle, Gem } from "lucide-react";
+import MonsterPortrait from './MonsterPortrait';
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
 import { buildSoloDungeonStages, buildDungeonStageChoices, SOLO_DUNGEON_DAILY_LIMIT } from "../data/soloDungeon";
 import { buildMapBoss } from "../data/mapBosses";
@@ -669,7 +670,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
           <SectionLabel>{t("battle.mapBoss")}</SectionLabel>
           <div style={{ ...styles.itemDetailCard, borderColor: `${map.color}77`, background: `${map.color}12`, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Trophy size={20} color="var(--gold-text)" strokeWidth={1.6} />
+              <div className="monster-mini-portrait"><MonsterPortrait monster={mapBoss} label={tm(mapBoss)}/></div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13 }}>{tm(mapBoss)}</div>
                 <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("battle.mapBossDesc")}</div>
@@ -723,21 +724,20 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               <SectionLabel>{t("battle.monstersHeader", { map: map.name })}</SectionLabel>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {map.monsters.map((m) => (
-                  <div key={m.id} style={{ ...styles.monsterCard, borderColor: `${map.color}44` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ ...styles.monsterIcon, background: `${map.color}22`, color: map.color }}>
-                        <Skull size={18} strokeWidth={1.6} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{tm(m)}</div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", gap: 10, marginTop: 3 }}>
-                          <span>HP {m.hp}</span><span>ATK {m.atk}</span><span>DEF {m.def}</span>
+                    <div key={m.id} className="monster-hunt-card" style={{'--monster-accent':map.color}}>
+                        <div className="monster-face-frame">
+                          <MonsterPortrait monster={m} label={tm(m)}/>
                         </div>
-                      </div>
-                    </div>
-                    <button style={{ ...styles.smallBtn, background: map.color }} onClick={() => startBattle(m)}>
-                      {t("battle.startBattle")}
-                    </button>
+                        <div className="monster-card-body">
+                          <div className="monster-card-name">{tm(m)}</div>
+                          <div className="monster-card-stats">
+                            <span>HP <b>{m.hp}</b></span><span>ATK <b>{m.atk}</b></span><span>DEF <b>{m.def}</b></span>
+                          </div>
+                      <button className="monster-attack" onClick={() => startBattle(m)}>
+                        <Sword size={13}/>
+                        {t("battle.startBattle")}
+                      </button>
+                        </div>
                   </div>
                 ))}
               </div>

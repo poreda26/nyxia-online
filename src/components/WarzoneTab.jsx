@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import MonsterPortrait from './MonsterPortrait';
 import { Skull, Swords, Heart, Zap, Lock, Gift, LogOut, DoorOpen, Users, Percent, Loader2, X } from "lucide-react";
 import {
   WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WARZONE_BOSSES, WARZONE_TICK_MS,
@@ -822,8 +823,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
               return (
                 <div key={boss.id} style={{ ...styles.combatant, borderColor: `${boss.color}55`, opacity: sched.phase === "dormant" ? 0.6 : 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ ...styles.monsterIcon, background: `${boss.color}22`, color: boss.color }}>
-                      <Skull size={20} strokeWidth={1.6} />
+                    <div className="monster-mini-portrait" style={{borderColor:boss.color}}>
+                      {sched.phase==='dormant'?<Skull size={20} style={{margin:13}}/>:<MonsterPortrait monster={boss} label={tm(boss)}/>}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{sched.phase === "dormant" ? "???" : tm(boss)}</div>

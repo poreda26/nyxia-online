@@ -1,0 +1,11 @@
+.monster-hunt-card{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;padding:11px;border:1px solid color-mix(in srgb,var(--monster-accent) 35%,var(--border));border-radius:14px;background:linear-gradient(120deg,color-mix(in srgb,var(--monster-accent) 10%,transparent),transparent 65%),var(--bg-panel);box-shadow:inset 0 1px #ffffff08,0 3px 12px #0002}
+.monster-face-frame{align-self:stretch;min-height:92px;position:relative;border:1px solid color-mix(in srgb,var(--monster-accent) 45%,#555);border-radius:10px;overflow:hidden;background:radial-gradient(ellipse at center,#3e4650,#10141d);box-shadow:inset 0 0 12px #0008}
+.monster-portrait{display:block;width:100%;height:100%;aspect-ratio:1;overflow:hidden;filter:drop-shadow(0 2px 3px #0006)}
+.monster-face-frame:after{content:'';position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 14px #0004;border-radius:inherit}
+.monster-mini-portrait{width:48px;height:48px;flex-shrink:0;overflow:hidden;border:1px solid #b79a5c80;border-radius:9px;background:#19202b}
+.monster-card-body{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:9px}.monster-card-name{font-family:var(--font-display);font-size:14px;color:var(--text-primary);line-height:1.3;overflow-wrap:anywhere}
+.monster-card-stats{display:flex;flex-wrap:wrap;gap:5px 10px;font-size:10px;color:var(--text-muted);font-variant-numeric:tabular-nums}.monster-card-stats b{font-weight:600;color:var(--text-primary)}
+.monster-hunt-card .monster-attack{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:34px;border-radius:8px;border:1px solid color-mix(in srgb,var(--monster-accent) 60%,#c7af79);background:linear-gradient(180deg,color-mix(in srgb,var(--monster-accent) 32%,#30303a),color-mix(in srgb,var(--monster-accent) 16%,#191e29));color:#fff0d2;font-family:var(--font-body);font-size:11px;font-weight:700;cursor:pointer;box-shadow:inset 0 1px #ffffff17;transition:filter .15s,transform .15s}
+.monster-attack:hover{filter:brightness(1.18)}.monster-attack:active{transform:scale(.98)}
+@media(max-width:340px){.monster-hunt-card{grid-template-columns:76px minmax(0,1fr);gap:9px;padding:9px}.monster-card-name{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.monster-hunt-card .monster-attack{transition:none}}
