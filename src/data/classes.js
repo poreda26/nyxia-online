@@ -1,4 +1,4 @@
-import { Sword, Crosshair, Sparkles } from "lucide-react";
+import { WarriorEmblem as Sword, RogueEmblem as Crosshair, MageEmblem as Sparkles } from "../components/icons/ClassEmblems.jsx";
 
 // baseStats: fixed starting values for the 5 allocatable stats — STR/STA/
 // DEX/INT/Magic Power — granted automatically at character creation,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, Gift } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { hasClaimedFirstPurchaseBonus } from "../utils/firstPurchaseBonus";
 import { useTranslation } from "../i18n/LanguageContext";
 import ScreenPanel from './ScreenPanel';
@@ -30,6 +30,7 @@ import TutorialModal from "./TutorialModal";
 import DailyLoginModal from "./DailyLoginModal";
 import DiamondShopModal from "./DiamondShopModal";
 import FirstPurchaseOfferModal from "./FirstPurchaseOfferModal";
+import RewardChest from './icons/RewardChest';
 import ScheduledEventBanner from "./ScheduledEventBanner";
 import WarzoneBossBanner from "./WarzoneBossBanner";
 
@@ -158,7 +159,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
 
       {!firstPurchaseClaimed && (
         <button
-          className="forge-glow"
+          className="offer-launcher"
           onClick={() => setFirstPurchaseOfferOpen(true)}
           title={t("diamondShop.firstPurchaseIconTitle")}
           style={{
@@ -168,7 +169,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
             color: "var(--gold-text)", cursor: "pointer", padding: 0,
           }}
         >
-          <Gift size={14} />
+          <RewardChest size={36}/>
         </button>
       )}
 

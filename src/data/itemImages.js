@@ -139,9 +139,8 @@ export const ITEM_IMAGE_BY_NAME = {
   "Totem Topuzu": totamicClub,
   "Gökkuşağı Asası": prismaticTriadStaff,
   "Kadim Asa": ronsStaff,
-  // Warrior'ın zırh seti — T1/T2 henüz yüklenmedi (Görseller/Warrior
-  // Zırh/T1,T2 klasörleri var ama boş), T3'te de sadece Gauntlet/Boots
-  // yüklendi (Helmet/Pads/Pauldron bekleniyor). T4/T5 tam.
+  // Legacy name mappings. armorIconImages.js covers all T1–T5 slots,
+  // including new Warrior T1/T2/T3 and Mage inventory artwork.
   "Plate Armor Gauntlet": warriorT3Gauntlets,
   "Plate Armor Boots": warriorT3Boots,
   "Carapace Armor Helmet": warriorT4Head,

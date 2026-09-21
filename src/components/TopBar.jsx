@@ -34,10 +34,10 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
   const premiumTier = activePremiumTier(player);
   const title = activeTitleInfo(player);
   return (
-    <div style={styles.topBar}>
+    <div className="game-topbar" style={styles.topBar}>
       <div style={styles.topBarRow}>
         <div style={styles.classBadge}>
-          <Icon size={16} color={cls.color} strokeWidth={2} />
+          <Icon size={26} color={cls.color} strokeWidth={2} />
         </div>
         <div style={{ flex: 1, minWidth: 130, overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>

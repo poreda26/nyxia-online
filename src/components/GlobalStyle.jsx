@@ -1,3 +1,4 @@
+import './RewardPanels.css';
 export default function GlobalStyle() {
   return (
     <style>{`

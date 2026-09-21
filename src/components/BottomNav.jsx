@@ -28,13 +28,13 @@ const TABS = [
 export default function BottomNav({ tab, setTab, notifications = {} }) {
   const { t } = useTranslation();
   return (
-    <div style={styles.bottomNav}>
+    <div className="game-navigation" style={styles.bottomNav}>
       {TABS.map((it) => {
         const Icon = it.icon;
         const active = tab === it.key;
         const hasNotice = !!notifications[it.key];
         return (
-          <button key={it.key} onClick={() => setTab(it.key)} style={styles.navBtn}>
+          <button className={active?'is-active':''} aria-current={active?'page':undefined} key={it.key} onClick={() => setTab(it.key)} style={styles.navBtn}>
             <Icon size={17} strokeWidth={active ? 2.25 : 1.6} color={active ? "var(--text-primary)" : "var(--text-faint)"} />
             {hasNotice && <span style={styles.navNotifDot} />}
             <span style={{ fontSize: 9, marginTop: 3, color: active ? "var(--text-primary)" : "var(--text-faint)", letterSpacing: 0, whiteSpace: "nowrap" }}>

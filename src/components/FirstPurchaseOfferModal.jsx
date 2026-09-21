@@ -1,5 +1,6 @@
-import { Gift, Flame } from "lucide-react";
-import { pick } from "../utils/random";
+import { Flame } from "lucide-react";
+import RewardChest from './icons/RewardChest';
+import './RewardPanels.css';
 import { FIRST_PURCHASE_BONUS_PRICE_LABEL } from "../utils/firstPurchaseBonus";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
@@ -17,24 +18,24 @@ export default function FirstPurchaseOfferModal({ player, onBuy, onClose }) {
   const { t } = useTranslation();
   return (
     <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={onClose}>
-      <div style={{ ...styles.modalCard, maxWidth: 320, borderColor: "var(--gold-text)", boxShadow: "0 0 40px -10px #D4AF6A88" }} onClick={(e) => e.stopPropagation()}>
+      <div className="reward-panel offer-panel" role="dialog" aria-modal="true" aria-label={t('diamondShop.firstPurchaseOfferTitle')} onClick={(e) => e.stopPropagation()}>
         <div className="chest-reveal">
           <div className="confetti-wrap">
             {Array.from({ length: 18 }).map((_, i) => (
               <span
                 key={i}
                 className="confetti-bit"
-                style={{ background: pick(["#D4AF6A", "#EDE8DC", "#C9425A", "#8B6FC9"]), left: `${(i * 5.6) % 100}%`, animationDelay: `${(i % 6) * 0.06}s` }}
+                style={{ background: ["#D4AF6A", "#EDE8DC", "#C9425A", "#8B6FC9"][i%4], left: `${(i * 5.6) % 100}%`, animationDelay: `${(i % 6) * 0.06}s` }}
               />
             ))}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, letterSpacing: 1.5, color: "#C9425A", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>
+          <div className="offer-kicker">
             <Flame size={11} /> {t("diamondShop.firstPurchaseOfferKicker")}
           </div>
 
-          <div className="forge-glow" style={{ marginTop: 10, borderRadius: "50%", padding: 14, color: "var(--gold-text)" }}>
-            <Gift size={48} strokeWidth={1.3} />
+          <div className="reward-hero">
+            <RewardChest size={100}/>
           </div>
 
           <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 19, textAlign: "center", lineHeight: 1.3 }}>
@@ -44,7 +45,7 @@ export default function FirstPurchaseOfferModal({ player, onBuy, onClose }) {
             {t("diamondShop.firstPurchaseOfferSubtitle")}
           </div>
 
-          <div style={{ ...styles.itemDetailCard, width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8, background: "var(--bg-panel-alt)" }}>
+          <div className="offer-loot">
             <FirstPurchaseBonusPreview player={player} />
             <div style={{ fontSize: 9, color: "var(--text-faint)" }}>
               {t("diamondShop.firstPurchaseGearNote")}
@@ -52,6 +53,7 @@ export default function FirstPurchaseOfferModal({ player, onBuy, onClose }) {
           </div>
 
           <button
+            className="reward-cta"
             style={{ ...styles.primaryBtn, marginTop: 20, width: "100%", background: "var(--gold-text)", color: "#15171E", fontSize: 15 }}
             onClick={onBuy}
           >

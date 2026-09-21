@@ -36,12 +36,12 @@ export default function FirstPurchaseBonusPreview({ player }) {
 
   return (
     <>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <div className="bonus-preview-row" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {scrolls.map((s) => (
           <ItemCell key={s.id} item={s} badge={`×${s.count}`} onTap={setPreviewItem} />
         ))}
       </div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+      <div className="bonus-preview-row" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
         {gear.map((g) => (
           <ItemCell key={g.id} item={g} badge={`+${g.upgradeLevel}`} onTap={setPreviewItem} />
         ))}
