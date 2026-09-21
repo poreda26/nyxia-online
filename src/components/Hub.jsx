@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, Gift } from "lucide-react";
+import { hasClaimedFirstPurchaseBonus } from "../utils/firstPurchaseBonus";
 import { useTranslation } from "../i18n/LanguageContext";
 import ScreenPanel from './ScreenPanel';
 import { CLASSES } from "../data/classes";
@@ -28,6 +29,7 @@ import ClanTab from "./ClanTab";
 import TutorialModal from "./TutorialModal";
 import DailyLoginModal from "./DailyLoginModal";
 import DiamondShopModal from "./DiamondShopModal";
+import FirstPurchaseOfferModal from "./FirstPurchaseOfferModal";
 import ScheduledEventBanner from "./ScheduledEventBanner";
 import WarzoneBossBanner from "./WarzoneBossBanner";
 
@@ -62,6 +64,18 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   const [dailyLoginOpen, setDailyLoginOpen] = useState(canClaimDailyLogin(player));
   const dailyLoginAvailable = canClaimDailyLogin(player);
   const [diamondShopOpen, setDiamondShopOpen] = useState(false);
+
+  // Kullanıcı isteği: "İlk ödeme ödülü almayan kişilere oyuna ilk girişte
+  // güzel bir widget açılsın... Fırsat Kaçmaz tarzında" — dailyLoginOpen ile
+  // aynı desen: Hub her mount olduğunda (oturum başına) bonus henüz
+  // alınmadıysa otomatik açılır, tutorial/günlük giriş modalının ardından
+  // sıraya girer ki üç modal üst üste binmesin. Kapatılırsa sol üstteki
+  // yüzen ikondan (aşağıda) istediği an tekrar açılabilir.
+  const firstPurchaseClaimed = hasClaimedFirstPurchaseBonus(player);
+  const [firstPurchaseOfferOpen, setFirstPurchaseOfferOpen] = useState(!firstPurchaseClaimed);
+  const handleBuyFirstPurchaseOffer = () => {
+    pushToast(t("diamondShop.comingSoonToast"), "default");
+  };
 
   // Kullanıcı isteği: "Savaş Alanından çıkmak istediğinde emin misin? diye
   // sor." — WarzoneTab, ışınlandıktan sonra (entered=true) bu bayrağı
@@ -142,6 +156,22 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
       <ScheduledEventBanner player={player} setPlayer={setPlayer} pushToast={pushToast} />
       <WarzoneBossBanner onOpenWarzone={() => setTab("warzone")} />
 
+      {!firstPurchaseClaimed && (
+        <button
+          className="forge-glow"
+          onClick={() => setFirstPurchaseOfferOpen(true)}
+          title={t("diamondShop.firstPurchaseIconTitle")}
+          style={{
+            position: "absolute", top: 84, left: 8, zIndex: 45,
+            width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(11,12,16,0.7)", border: "1px solid var(--gold-text)",
+            color: "var(--gold-text)", cursor: "pointer", padding: 0,
+          }}
+        >
+          <Gift size={14} />
+        </button>
+      )}
+
       <ScreenPanel key={tab} screen={tab}>
         {tab === "battle" && (
           <BattleTab player={player} setPlayer={setPlayer} cls={cls} def={def} atk={atk} pushToast={pushToast} />
@@ -193,6 +223,10 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
 
       {dailyLoginOpen && !tutorialOpen && (
         <DailyLoginModal player={player} setPlayer={setPlayer} pushToast={pushToast} onClose={() => setDailyLoginOpen(false)} />
+      )}
+
+      {firstPurchaseOfferOpen && !tutorialOpen && !dailyLoginOpen && !firstPurchaseClaimed && (
+        <FirstPurchaseOfferModal player={player} onBuy={handleBuyFirstPurchaseOffer} onClose={() => setFirstPurchaseOfferOpen(false)} />
       )}
 
       {diamondShopOpen && (

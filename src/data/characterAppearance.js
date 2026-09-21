@@ -5,7 +5,7 @@ import atlasFrames from './characterAtlasFrames.json';
 // Equipment still owns every gameplay stat; this registry is presentation only.
 export const CHARACTER_LOOKS = {base:{manifest,frames:atlasFrames}};
 export const CHARACTER_IDENTITIES = Object.freeze(['human-warrior','karus-warrior','human-rogue','karus-rogue','human-mage','karus-mage']);
-const aliases={warrior:{'Short Blade':'Paslı Kılıç'},mage:{'Wood Staff':'Tahta Asa'}};
+const aliases={warrior:{'Short Blade':'Paslı Kılıç'},rogue:{'Bow':'Avcı Yayı'},mage:{'Wood Staff':'Tahta Asa'}};
 export function characterArmorLook(){return 'base';}
 
 export function characterAppearance(player,looks=CHARACTER_LOOKS){

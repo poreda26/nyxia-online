@@ -4,6 +4,7 @@ import WeaponIcon from "./icons/WeaponIcon";
 import ArmorIcon from "./icons/ArmorIcon";
 import AccessoryIcon from "./icons/AccessoryIcon";
 import { itemImageFor, potionImageFor } from "../data/itemImages";
+import { armorIconImage } from "../data/armorIconImages";
 import StarterWeaponIcon from './StarterWeaponIcon';
 import {weaponIconArt} from '../data/starterWeaponArt';
 
@@ -30,6 +31,10 @@ export default function ItemIcon({ item, size = 16, color = "currentColor", stro
     return <WeaponIcon iconKey={item.icon} size={size} color={color} strokeWidth={strokeWidth} />;
   }
   if (item.kind === "armor") {
+    const armorImage = armorIconImage(item.class, item.slot, item.tier);
+    if (armorImage) {
+      return <img src={armorImage} alt={item.name} style={{ width: size, height: size, objectFit: "contain" }} />;
+    }
     return <ArmorIcon slot={item.slot} cls={item.class} size={size} color={color} strokeWidth={strokeWidth} />;
   }
   if (item.kind === "accessory") {

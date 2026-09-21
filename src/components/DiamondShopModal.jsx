@@ -1,5 +1,7 @@
-import { Gem, X, Star, Sparkles, Castle, Archive, Users, ScrollText } from "lucide-react";
+import { Gem, X, Star, Sparkles, Castle, Archive, Users, ScrollText, Gift, Check } from "lucide-react";
 import { DIAMOND_PACKS } from "../data/diamondPacks";
+import { FIRST_PURCHASE_BONUS_PRICE_LABEL, hasClaimedFirstPurchaseBonus } from "../utils/firstPurchaseBonus";
+import FirstPurchaseBonusPreview from "./FirstPurchaseBonusPreview";
 import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS, EXTRA_DUNGEON_ENTRIES_PER_PURCHASE } from "../data/soloDungeon";
 import { buyExtraDungeonEntries, hasBoughtExtraDungeonEntryToday } from "../utils/soloDungeon";
 import { buyExtraBankPage, EXTRA_BANK_PAGE_COST_DIAMONDS, MAX_BANK_PAGES } from "../utils/inventory";
@@ -74,6 +76,29 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
         <div style={{ marginTop: 10, fontFamily: "var(--font-display)", fontSize: 17 }}>{t("diamondShop.title")}</div>
         <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4, textAlign: "center", lineHeight: 1.5 }}>
           {t("diamondShop.subtitle")}
+        </div>
+
+        <div style={{ ...styles.itemDetailCard, width: "100%", marginTop: 16, borderColor: "var(--gold-text)", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Gift size={18} color="var(--gold-text)" strokeWidth={1.6} style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, fontSize: 13, fontFamily: "var(--font-display)" }}>{t("diamondShop.firstPurchaseTitle")}</div>
+            <span style={{ fontSize: 9, color: "var(--gold-text)", border: "1px solid var(--gold-text)", borderRadius: 4, padding: "1px 4px", flexShrink: 0 }}>
+              {t("diamondShop.firstPurchaseBadge")}
+            </span>
+          </div>
+          <FirstPurchaseBonusPreview player={player} />
+          <div style={{ fontSize: 9, color: "var(--text-faint)" }}>
+            {t("diamondShop.firstPurchaseGearNote")}
+          </div>
+          {hasClaimedFirstPurchaseBonus(player) ? (
+            <div style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+              <Check size={12} /> {t("diamondShop.firstPurchaseClaimed")}
+            </div>
+          ) : (
+            <button style={{ ...styles.tinyBtn, background: "var(--gold-text)", color: "#15171E" }} onClick={handleBuyPack}>
+              {FIRST_PURCHASE_BONUS_PRICE_LABEL}
+            </button>
+          )}
         </div>
 
         <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, alignSelf: "flex-start", marginTop: 18 }}>

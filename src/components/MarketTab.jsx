@@ -179,7 +179,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     pushToast(t("market.stallOpened", { duration: DURATION_LABEL[durationHours], fee: formatGold(fee) }), "loot");
   };
 
-  const sellableItems = player.inventory.filter((i) => i.kind === "armor" || i.kind === "weapon" || i.kind === "accessory");
+  const sellableItems = player.inventory.filter((i) => (i.kind === "armor" || i.kind === "weapon" || i.kind === "accessory") && !i.noTrade);
   // Sandıklar player.chests'te yaşıyor, player.inventory'de değil (bkz.
   // InventoryTab'ın ayrı "Sandıklar" alt sekmesi) — tezgaha eklerken de
   // ayrı bir havuz olarak sunuluyor.
