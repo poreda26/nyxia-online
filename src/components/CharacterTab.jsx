@@ -1,3 +1,4 @@
+import {equippedStatBonus} from '../utils/player';
 import './ProgressionPanels.css';
 import { useState, useRef, useEffect } from "react";
 import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award, Gem } from "lucide-react";
@@ -169,7 +170,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
                     {isMain && <span style={styles.mainStatTag}>{t("character.stats.mainStatTag")}</span>}
                   </div>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, minWidth: 26, textAlign: "right" }}>
-                    {player.stats[key]}
+                    {player.stats[key]} {equippedStatBonus(player)[key]>0&&<small style={{color:"#73caa4",fontSize:10}}>+{equippedStatBonus(player)[key]}</small>}
                   </div>
                   <button
                     style={{ ...styles.statAllocBtn, ...(disabled ? styles.statAllocBtnDisabled : {}) }}

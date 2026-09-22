@@ -1,6 +1,6 @@
 import { CLASSES } from "../data/classes";
 import { STAT_LABELS, STAT_KEYS, STAT_CAP, POINTS_PER_LEVEL } from "../data/stats";
-import { makePotionStack } from "./inventory";
+import { makePotionStack, addItemToInventory } from "./inventory";
 import { potionName } from "../data/potions";
 import { WEAPON_NAME_EN, STARTER_ACCESSORY_NAME_EN, ACCESSORY_FAMILY_NAME_EN } from "../data/itemNameTranslations";
 import { PLAYER_ACCESSORY_SLOT_LABEL } from "./itemDisplay";
@@ -8,6 +8,7 @@ import { MAPS } from "../data/maps";
 import { currentWeekId } from "./week";
 import { STARTING_NATIONAL_POINT } from "./nationalPointConstants";
 import { buildStartingWeapon } from "./loot";
+import {wingMultiplier,wingDefinition} from '../data/wings';
 import {rebalanceSavedWeapon} from '../data/balancedWeapons';
 import { boostMultiplier, boostFlatBonus } from "./boosts";
 import { boostScrollName } from "../data/boostScrolls";
@@ -100,7 +101,7 @@ export function initialPlayer(cls, race, nickname) {
     mp: base.maxMp,
     equipped: {
       head: null, chest: null, legs: null, gauntlets: null, boots: null,
-      mainHand: null,
+      mainHand: null, wings: null,
       necklace: null, belt: null, ring1: null, ring2: null, earring1: null, earring2: null,
     },
     inventory: [makePotionStack("hp", 1, 3), makePotionStack("mp", 1, 2)],
@@ -225,7 +226,7 @@ export function migratePlayer(player) {
   // çantaya geri koyuyoruz.
   const asArcherWeapon = (item) => player.class === "rogue" && item?.kind === "weapon" && item.weaponType === "dagger"
     ? { ...item, name: "Bow", weaponType: "bow" } : item;
-  const equipped = Object.fromEntries(Object.entries(player.equipped).map(([key,item])=>[key,asArcherWeapon(item)]));
+  const equipped = {wings: null, ...Object.fromEntries(Object.entries(player.equipped).map(([key,item])=>[key,asArcherWeapon(item)]))};
   const inventory = player.inventory.map(asArcherWeapon).map(rebalanceSavedWeapon);
   for(const key of Object.keys(equipped)) equipped[key]=rebalanceSavedWeapon(equipped[key]);
   if (equipped.offHand) {
@@ -309,6 +310,7 @@ export function migratePlayer(player) {
 }
 
 export const ALL_EQUIP_KEYS = [
+  "wings",
   "head", "chest", "legs", "gauntlets", "boots", "mainHand",
   "necklace", "belt", "ring1", "ring2", "earring1", "earring2",
 ];
@@ -364,7 +366,7 @@ export const ARMOR_CLASS_BONUS_STAT = { warrior: "str", rogue: "dex", mage: "mp"
 // equipped, on top of the player's own allocated points — kept separate
 // from player.stats itself so equip requirements (which check player.stats
 // directly) can't be bootstrapped by the gear that needs them.
-function equippedStatBonus(player) {
+export function equippedStatBonus(player) {
   const bonus = { str: 0, sta: 0, dex: 0, int: 0, mag: 0 };
   ALL_EQUIP_KEYS.forEach((k) => {
     const it = player.equipped[k];
@@ -426,7 +428,7 @@ export function totalStats(player) {
   const damageStat = CLASS_DAMAGE_STAT[player.class];
   const statVal = s[damageStat] + bonus[damageStat] + (player.class==='mage'?Math.max(0,s.int-70):0);
   const scaling = ATK_SCALE_C1 * (statVal + ATK_SCALE_OFFSET) + ATK_SCALE_C2 * player.level * statVal;
-  const atk = Math.round(weaponAtk * scaling * boostMultiplier(player, "atk"));
+  const atk = Math.round(weaponAtk * scaling * boostMultiplier(player, "atk") * wingMultiplier(player, "atk"));
   return { hp, def, atk, mp };
 }
 
@@ -561,7 +563,7 @@ export function playerDef(player) {
 }
 
 export function clampPlayerHp(player) {
-  return { ...player, hp: Math.min(player.hp, playerMaxHp(player)) };
+  return { ...player, hp: Math.min(player.hp, playerMaxHp(player)), mp: Math.min(player.mp, playerMaxMp(player)) };
 }
 
 // Ölünce (canavar/Dünya Canavarı tarafından) uygulanan ceza — mevcut
@@ -669,6 +671,7 @@ export function displayClassName(player) {
 }
 
 function translatedItemName(item, lang) {
+  if(item.kind === "wings") return (lang === "en" ? wingDefinition(item.wingId)?.nameEn : wingDefinition(item.wingId)?.name) || item.name;
   if (item.kind === "potion") return potionName(item.potionType, item.tier, lang);
   if (item.kind === "boostScroll") return boostScrollName(item.boostId, lang);
   if (lang !== "en") return item.name;
@@ -694,7 +697,7 @@ export function displayItemName(item, lang = "tr") {
 // armor. Returns { player, blocked } — blocked carries a reason string
 // when the equip was refused so the caller can toast it.
 export function equipItem(player, item) {
-  if (!item || !['weapon','armor','accessory'].includes(item.kind)) return {player,blocked:{type:"notEquippable"}};
+  if (!item || !['weapon','armor','accessory','wings'].includes(item.kind)) return {player,blocked:{type:"notEquippable"}};
   if (player.class === "rogue" && item.kind === "weapon" && !["bow", "crossbow"].includes(item.weaponType)) {
     return { player, blocked: { type: "rogueBowOnly" } };
   }
@@ -751,4 +754,14 @@ export function equipItem(player, item) {
 
   const nextPlayer = clampPlayerHp({ ...player, inventory: inv, equipped });
   return { player: nextPlayer, blocked: null };
+}
+
+// Preserve the item and all bonuses if the bag cannot accept the unequipped piece.
+export function unequipItem(player,slot) {
+ const item=player.equipped[slot];
+ if(!item)return {player,removed:false};
+ const next={...player,equipped:{...player.equipped,[slot]:null}};
+ const result=addItemToInventory(next,item);
+ if(!result.added)return {player,removed:false,reason:result.reason};
+ return {player:clampPlayerHp(result.player),removed:true};
 }

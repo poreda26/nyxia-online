@@ -1,3 +1,4 @@
+import WingArt from './WingArt';
 import CharacterFigure from './CharacterFigure';
 import { itemTierColor } from "../data/itemRarity";
 import { PAPERDOLL_LAYOUT } from "../data/paperdoll";
@@ -25,6 +26,9 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
       </div>
 
       <div style={styles.paperdollGrid}>
+        <button className="rpg-slot wing-slot" title={player.equipped.wings ? displayItemName(player.equipped.wings,lang) : (lang==='tr'?'Kanat':'Wings')} onClick={()=>onSlotClick('wings',player.equipped.wings)}>
+          <WingArt wingId={player.equipped.wings?.wingId||'dawn'} size={44}/><span>{lang==='tr'?'Kanat':'Wings'}</span>
+        </button>
         {PAPERDOLL_LAYOUT.map((slot) => {
           const item = player.equipped[slot.key];
           const color = item ? itemTierColor(item.tier) : null;

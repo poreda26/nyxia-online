@@ -6,7 +6,7 @@ import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
 import { rollLoot, rollSpecialChestLoot } from "../utils/loot";
 import {
-  equipItem, sellPrice, displayItemName, clampPlayerHp, discountedRepairCost, repairItem, canChangeJob, changeJob,
+  equipItem, unequipItem, sellPrice, displayItemName, clampPlayerHp, discountedRepairCost, repairItem, canChangeJob, changeJob,
   totalEquippedRepairCost, repairAllEquipped, MAX_GOLD, formatGold,
 } from "../utils/player";
 import { isConsumable } from "../utils/itemDisplay";
@@ -163,12 +163,9 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
   };
 
   const unequip = (slotKey) => {
-    setPlayer((p) => {
-      const item = p.equipped[slotKey];
-      if (!item) return p;
-      const next = { ...p, equipped: { ...p.equipped, [slotKey]: null }, inventory: [...p.inventory, item] };
-      return clampPlayerHp(next);
-    });
+    const result=unequipItem(player,slotKey);
+    if(!result.removed){if(result.reason)pushToast(formatReason(t,result),'warn');return;}
+    setPlayer(result.player);
     setSelectedEquipSlot(null);
   };
 

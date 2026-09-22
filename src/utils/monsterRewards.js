@@ -1,3 +1,4 @@
+import { wingMultiplier } from '../data/wings';
 import { rand, uid } from "./random";
 import { rollMapLoot } from "./loot";
 import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, clampGold, formatGold } from "./player";
@@ -31,8 +32,8 @@ export function grantMonsterReward(p, m, map, opts = {}) {
   // yerine bkz. utils/dropConfig.js'den okunuyor (admin.html'de bir
   // override yoksa aynen m/map'in ham değerlerine düşüyor, davranış değişmez).
   const rewardCfg = getMonsterRewardConfig(m, map);
-  const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p) * boostMultiplier(p, "exp");
-  const dropMult = premiumDropMultiplier(p) * (opts.dropMult ?? 1);
+  const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p) * boostMultiplier(p, "exp") * wingMultiplier(p, "exp");
+  const dropMult = premiumDropMultiplier(p) * (opts.dropMult ?? 1) * wingMultiplier(p, "drop");
   const goldMult = boostMultiplier(p, "gold") * (opts.goldMult ?? 1);
   let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
   const killsBefore = np.monsterKills[m.id] || 0;

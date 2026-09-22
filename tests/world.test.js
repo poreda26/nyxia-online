@@ -1,3 +1,7 @@
+import {MAPS} from '../src/data/maps';
+import {WINGS,wingMultiplier} from '../src/data/wings';
+import {makeWings,buyWings} from '../src/utils/wings';
+import {equippedStatBonus,totalStats,playerMaxMp,unequipItem} from '../src/utils/player';
 import { heroFrame, ATTACK_DURATION } from '../src/world/animation';
 import { warriorFrame, warriorWeaponUrl, weaponLight, drawWarrior, armorVariant } from '../src/world/warriorVisuals';
 import test from 'node:test';
@@ -312,4 +316,52 @@ test('collection and weekly quest progress survive in player state',()=>{
   const claimed=claimCollection(p,collection.id);assert.equal(claimed.claimed,true);
   p={...claimed.player,weeklyQuests:{...claimed.player.weeklyQuests,kills:WEEKLY_QUESTS[0].target}};
   assert.equal(weeklyQuestProgress(p,WEEKLY_QUESTS[0]).done,true);
+});
+
+
+test('wings: purchase is atomic, both races and every class equip/swap/save with exact bonuses',()=>{
+ for(const cls of ['warrior','rogue','mage'])for(const race of ['human','karus']){
+  const start={...initialPlayer(cls,race,'Wings'),diamonds:10000,level:40};
+  let p=start;
+  for(const design of WINGS){
+   const bought=buyWings(p,design.id);assert.equal(bought.bought,true);assert.equal(bought.player.diamonds,p.diamonds-2000);
+   const item=bought.player.inventory.at(-1),result=equipItem(bought.player,item);assert.equal(result.blocked,null);
+   p=result.player;assert.equal(p.equipped.wings.id,item.id);
+   assert.deepEqual(equippedStatBonus(p),{str:3,sta:3,dex:3,int:3,mag:3});
+   assert.equal(wingMultiplier(p,'exp'),1.05);assert.equal(wingMultiplier(p,'drop'),1.05);assert.equal(wingMultiplier(p,'atk'),1.03);
+   const copy=migratePlayer(JSON.parse(JSON.stringify(p)));assert.deepEqual(copy.equipped.wings,p.equipped.wings);
+   assert.ok(playerMaxHp(p)>playerMaxHp(start));assert.ok(playerMaxMp(p)>playerMaxMp(start));
+  }
+  assert.equal(p.inventory.filter(i=>i.kind==='wings').length,4);
+  const naked={...p,equipped:{...p.equipped,wings:null}};
+  assert.equal(wingMultiplier(naked,'atk'),1);assert.equal(playerMaxHp(naked),playerMaxHp(start));
+ }
+ const poor=initialPlayer('warrior','human','Poor');assert.equal(buyWings(poor,'dawn').player,poor);assert.equal(buyWings(poor,'dawn').bought,false);
+ const full={...poor,diamonds:2000,inventory:Array.from({length:32},(_,i)=>({id:String(i),kind:'weapon',weight:0}))};
+ assert.equal(buyWings(full,'dawn').player,full);assert.equal(buyWings(full,'dawn').bought,false);
+});
+
+test('wing attack bonus and monster EXP/drop rewards activate only while equipped',()=>{
+ const base={...initialPlayer('warrior','human','WingMath'),level:10,inventory:[]};
+ base.equipped.mainHand={id:'test',kind:'weapon',atk:100};
+ const wing=makeWings('dawn'),wearing={...base,equipped:{...base.equipped,wings:wing}};
+ const statsOnly={...base,equipped:{...base.equipped,necklace:{kind:'accessory',statBonus:wing.statBonus}}};
+ assert.ok(Math.abs(totalStats(wearing).atk-totalStats(statsOnly).atk*1.03)<=1);
+ assert.ok(Math.abs(pvpSnapshot(wearing).atk-pvpSnapshot(statsOnly).atk*1.03)<1e-8);
+ const random=Math.random;Math.random=()=>.99;
+ try {
+  const map=MAPS[0],monster=map.monsters[0];
+  const normal=grantMonsterReward(base,monster,map).drops.find(d=>d.type==='xp').amount;
+  const boosted=grantMonsterReward(wearing,monster,map).drops.find(d=>d.type==='xp').amount;
+  assert.ok(Math.abs(boosted-normal*1.05)<=1);
+  Math.random=()=>map.chestChance*1.025;
+  assert.equal(grantMonsterReward(base,monster,map).drops.some(d=>d.type==='chestDropped'),false);
+  assert.equal(grantMonsterReward(wearing,monster,map).drops.some(d=>d.type==='chestDropped'),true);
+  const full={...wearing,inventory:Array.from({length:32},(_,i)=>({id:String(i),weight:0}))};
+  assert.equal(unequipItem(full,'wings').player,full);
+  const removed=unequipItem({...wearing,hp:playerMaxHp(wearing),mp:playerMaxMp(wearing)},'wings');
+  assert.equal(removed.removed,true);assert.equal(removed.player.equipped.wings,null);
+  assert.equal(removed.player.hp,playerMaxHp(base));assert.equal(removed.player.mp,playerMaxMp(base));
+  assert.equal(removed.player.inventory.at(-1).id,wing.id);
+ }finally{Math.random=random;}
 });

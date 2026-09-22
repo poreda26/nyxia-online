@@ -1,3 +1,7 @@
+import {useState} from 'react';
+import WingsShop from './WingsShop';
+import PremiumShop from './PremiumShop';
+import './DiamondStore.css';
 import { Gem, X, Star, Sparkles, Castle, Archive, Users, ScrollText, Gift, Check } from "lucide-react";
 import { DIAMOND_PACKS } from "../data/diamondPacks";
 import { FIRST_PURCHASE_BONUS_PRICE_LABEL, hasClaimedFirstPurchaseBonus } from "../utils/firstPurchaseBonus";
@@ -20,6 +24,7 @@ import { useTranslation } from "../i18n/LanguageContext";
 // kadar "yakında" toast'ı gösteriyor.
 export default function DiamondShopModal({ player, setPlayer, bank, setBank, unlockedSlots, onUnlockSlot, onClose, pushToast }) {
   const { t, lang } = useTranslation();
+  const [category,setCategory]=useState("wings");
 
   const handleBuyPack = () => {
     pushToast(t("diamondShop.comingSoonToast"), "default");
@@ -63,21 +68,21 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
   };
 
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={{ ...styles.modalCard, maxWidth: 360, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+    <div className="diamond-store-overlay" style={styles.modalOverlay} onClick={onClose}>
+      <div className="diamond-store" role="dialog" aria-modal="true" aria-label={lang==='tr'?'Elmas Mağazası':'Diamond Store'} style={{ ...styles.modalCard, maxWidth: 440, maxHeight: "90dvh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
         <button
-          onClick={onClose}
+          onClick={onClose} aria-label={lang==='tr'?'Kapat':'Close'}
           style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", padding: 4 }}
         >
           <X size={16} />
         </button>
 
-        <Gem size={32} color="#8B6FC9" strokeWidth={1.4} />
-        <div style={{ marginTop: 10, fontFamily: "var(--font-display)", fontSize: 17 }}>{t("diamondShop.title")}</div>
-        <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4, textAlign: "center", lineHeight: 1.5 }}>
-          {t("diamondShop.subtitle")}
-        </div>
-
+        <header className="diamond-store-header"><Gem size={30}/><div><small>NYXIA BOUTIQUE</small><h2>{lang==='tr'?'Elmas Mağazası':'Diamond Store'}</h2></div><b>♦ {player.diamonds.toLocaleString()}</b></header>
+        <nav className="diamond-store-tabs">{[['wings','Kanatlar','Wings'],['premium','Premium','Premium'],['services','Destekler','Services'],['diamonds','Elmas Al','Diamonds']].map(([key,tr,en])=><button key={key} aria-pressed={category===key} onClick={e=>{setCategory(key);e.currentTarget.closest(".diamond-store").scrollTop=0;}}>{lang==='tr'?tr:en}</button>)}</nav>
+        {category==='wings'&&<WingsShop player={player} setPlayer={setPlayer} pushToast={pushToast}/>}
+        {category==='premium'&&<PremiumShop player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast}/>}
+        {category==='diamonds'&&<>
+        <p className="store-payment-note">{lang==='tr'?'Gerçek para ile ödeme yakında açılacak. Elmas paketleri şu an satın alınamaz.':'Real-money payments are coming soon. Diamond packs cannot be purchased yet.'}</p>
         <div style={{ ...styles.itemDetailCard, width: "100%", marginTop: 16, borderColor: "var(--gold-text)", display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Gift size={18} color="var(--gold-text)" strokeWidth={1.6} style={{ flexShrink: 0 }} />
@@ -101,6 +106,8 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
           )}
         </div>
 
+        </>}
+        {category==='services'&&<>
         <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, alignSelf: "flex-start", marginTop: 18 }}>
           {t("diamondShop.perksTitle")}
         </div>
@@ -166,6 +173,8 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
           ))}
         </div>
 
+        </>}
+        {category==='diamonds'&&<>
         <div style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.5, alignSelf: "flex-start", marginTop: 18 }}>
           {t("diamondShop.packsTitle")}
         </div>
@@ -206,6 +215,7 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
             </div>
           ))}
         </div>
+        </>}
       </div>
     </div>
   );

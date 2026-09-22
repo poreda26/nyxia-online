@@ -98,6 +98,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
             color={ELEMENT_COLORS[e.key]}
           />
         ))}
+        {item.kind === 'wings' && <><StatLine label={lang === 'tr' ? 'Deneyim bonusu' : 'EXP bonus'} value="+%5"/><StatLine label={lang === 'tr' ? 'Eşya düşme oranı' : 'Drop rate'} value="+%5"/></>}
         {item.hp > 0 && <StatLine label={t("itemTooltip.hpBonus")} value={`+${item.hp}`} />}
         {item.mp > 0 && <StatLine label={t("itemTooltip.mpBonus")} value={`+${item.mp}`} />}
         {item.statBonus && Object.entries(item.statBonus).filter(([, v]) => v).map(([key, value]) => (

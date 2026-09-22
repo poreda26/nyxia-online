@@ -1,3 +1,4 @@
+import {wingMultiplier} from '../data/wings';
 import RankBadge from './shared/RankBadge';
 import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useRef } from "react";
@@ -479,7 +480,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       const goldBefore = np.gold;
       np.gold = clampGold(np.gold + goldGain);
       drops = [t("warzone.drop.gold", { amount: formatGold(np.gold - goldBefore) })];
-      if (Math.random() < boss.equipDropChance) {
+      if (Math.random() < boss.equipDropChance * wingMultiplier(p, "drop")) {
         const item = rollLoot(boss.lootTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
@@ -489,11 +490,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
           drops.push(res.added ? t("warzone.drop.itemDropped", { name: item.name }) : t("warzone.drop.itemDropFailed", { name: item.name, reason: t(REASON_KEY[res.reason] || res.reason) }));
         }
       }
-      if (Math.random() < boss.chestDropChance) {
+      if (Math.random() < boss.chestDropChance * wingMultiplier(p, "drop")) {
         np.chests.push({ id: uid(), tier: boss.lootTier });
         drops.push(t("warzone.drop.chestDropped", { tier: tierName(lang, boss.lootTier) }));
       }
-      if (Math.random() < boss.scrollDropChance) {
+      if (Math.random() < boss.scrollDropChance * wingMultiplier(p, "drop")) {
         const scroll = makeScrollStack(boss.lootTier, 1);
         const res = addItemToInventory(np, scroll);
         np = res.player;

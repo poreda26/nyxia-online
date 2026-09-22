@@ -1,3 +1,5 @@
+import WingArt from './WingArt';
+import {equippedWing} from '../data/wings';
 import {useId} from 'react';
 import {characterAppearance} from '../data/characterAppearance';
 import frames from '../data/characterAtlasFrames.json';
@@ -58,6 +60,7 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
   {layers.filter(l=>l.effect).map(l=><filter key={l.name} id={`${id}-armor-${l.name}`} x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB"><ArmorEffectFilter effect={l.effect}/></filter>)}
   {dye&&<filter id={`${id}-dye`} colorInterpolationFilters="sRGB"><feColorMatrix type="hueRotate" values={dye.hue}/><feColorMatrix type="saturate" values={dye.sat}/></filter>}
  </defs>
+ {equippedWing(player)&&<g data-equipped-wings={player.equipped.wings.wingId} transform={rig.transform}><svg x="-65" y="55" width="520" height="400" overflow="visible"><WingArt wingId={player.equipped.wings.wingId}/></svg></g>}
  <g transform={rig.transform}>
   <svg width="418" height="627" viewBox={`${si%3*418} ${Math.floor(si/3)*627} 418 627`} overflow="visible">
    {layers.map(layer=><image key={layer.name} data-armor-layer={layer.name} data-armor-tier={tiers[layer.name]||0} href={url(layer.key)} width="1254" height="1254" clipPath={`url(#${id}-${layer.name}-clip)`} mask={`url(#${id}-${layer.name}-mask)`} filter={layer.name!=='cloth'?dyeFilter:undefined}/>)}

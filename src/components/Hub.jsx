@@ -181,7 +181,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
           <InventoryTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} pushToast={pushToast} onChangeRace={onChangeRace} />
         )}
         {tab === "market" && (
-          <MarketTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} username={username} pushToast={pushToast} />
+          <MarketTab onOpenDiamondShop={() => setDiamondShopOpen(true)} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} username={username} pushToast={pushToast} />
         )}
         {tab === "upgrade" && (
           <UpgradeTab player={player} setPlayer={setPlayer} pushToast={pushToast} />

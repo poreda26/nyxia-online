@@ -19,6 +19,7 @@ export const PLAYER_ACCESSORY_SLOT_LABEL = {
 };
 
 export function itemSubLabel(item, lang = "tr") {
+  if(item.kind === "wings") return lang === "en" ? "Wings · All classes" : "Kanat · Tüm sınıflar";
   if (item.kind === "armor") return ARMOR_SLOT_LABEL[lang]?.[item.slot] || SLOTS.find((s) => s.key === item.slot)?.label;
   if (item.kind === "accessory") {
     const locked = lang === "en" ? " · Upgrade locked" : " · Yükseltme kapalı";

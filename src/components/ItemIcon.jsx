@@ -1,3 +1,4 @@
+import WingArt from './WingArt';
 import { FlaskConical, ScrollText, Star, Gift, Sparkles } from "lucide-react";
 import { boostScrollDef } from "../data/boostScrolls";
 import WeaponIcon from "./icons/WeaponIcon";
@@ -9,6 +10,7 @@ import StarterWeaponIcon from './StarterWeaponIcon';
 import {weaponIconArt} from '../data/starterWeaponArt';
 
 export default function ItemIcon({ item, size = 16, color = "currentColor", strokeWidth = 1.6 }) {
+  if(item.kind==='wings')return <WingArt wingId={item.wingId} size={size}/>;
   if(item.kind==='weapon' && weaponIconArt(item.name))return <StarterWeaponIcon item={item} size={size}/>;
   const customImage = item.kind === "potion" ? potionImageFor(item.potionType, item.tier) : itemImageFor(item.name, item.upgradeLevel);
   if (customImage) {
