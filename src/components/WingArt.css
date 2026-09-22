@@ -1,0 +1,12 @@
+.wing-art .wing-flight{transform-origin:300px 260px}
+.wing-radiance{opacity:.45}.wing-edge-light{opacity:.75}.wing-mote{opacity:.7}
+/* Animate only equipped/try-on wings. Small inventory icons remain easy to read. */
+[data-equipped-wings] .wing-flight{animation:wing-flight var(--wing-cycle,4.8s) ease-in-out infinite;will-change:transform}
+[data-equipped-wings] .wing-radiance{animation:wing-radiance 3.2s ease-in-out infinite}
+[data-equipped-wings] .wing-mote{animation:wing-motes 3.8s ease-in-out infinite}
+[data-equipped-wings] .wing-edge-light{stroke-dasharray:90 250;animation:wing-edge 4s linear infinite}
+@keyframes wing-flight{0%,100%{transform:rotate(-1deg) scaleX(.96) scaleY(1)}45%{transform:rotate(3deg) scaleX(.83) scaleY(.975)}70%{transform:rotate(.5deg) scaleX(.94) scaleY(1.01)}}
+@keyframes wing-radiance{0%,100%{opacity:.25}50%{opacity:.75}}
+@keyframes wing-motes{0%{opacity:0;transform:translate(0,9px) scale(.4)}25%{opacity:.95}65%{opacity:.65}100%{opacity:0;transform:translate(-12px,-22px) scale(.8)}}
+@keyframes wing-edge{from{stroke-dashoffset:340}to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){[data-equipped-wings] .wing-flight,[data-equipped-wings] .wing-radiance,[data-equipped-wings] .wing-mote,[data-equipped-wings] .wing-edge-light{animation:none;will-change:auto}.wing-mote{opacity:.55}}

@@ -32,6 +32,15 @@ try{
 
  await page.locator('.diamond-store-entry').click();
  await page.locator('.wings-shop').waitFor();
+ const flight=page.locator('.wing-preview .wing-flight').first();
+ const before=await flight.evaluate(e=>getComputedStyle(e).transform);
+ await page.waitForTimeout(350);
+ assert.notEqual(await flight.evaluate(e=>getComputedStyle(e).transform),before);
+ assert.equal(await page.locator('.wing-choices .wing-flight').first().evaluate(e=>getComputedStyle(e).animationName),'none');
+ await page.emulateMedia({reducedMotion:'reduce'});
+ assert.equal(await flight.evaluate(e=>getComputedStyle(e).animationName),'none');
+ await page.emulateMedia({reducedMotion:'no-preference'});
+
  for(const width of [360,320]){
   await page.setViewportSize({width,height:740});
   await page.screenshot({path:`output/wings-store-${width}.png`});
