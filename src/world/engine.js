@@ -1,3 +1,4 @@
+import {wingDexBonus} from '../data/wings';
 import { ATTACK_DURATION } from './animation';
 import { MAPS } from '../data/maps';
 import { CLASSES } from '../data/classes';
@@ -144,7 +145,7 @@ export function command(world, player, action, random = Math.random) {
   world.actor.back = target.y < world.actor.y-15;
   target.state = 'chase'; world.lastCombat = world.time;
   const crit = !skill && random() < CLASSES[next.class].crit;
-  const hit = skill || random() < hitChance(next.stats.dex, target.template.atk, next.level);
+  const hit = skill || random() < hitChance((next.stats.dex+wingDexBonus(next)), target.template.atk, next.level);
   const atk = totalStats(next).atk * buffMult(world,'atk');
   const dmg = !hit ? 0 : skill
     ? computeSkillDamage(skill, { clsAtk: CLASSES[next.class].atk, atk, monsterDef: target.template.def, monsterHpPct: target.hp/target.template.hp, rand: (a,b) => Math.floor(random()*(b-a+1))+a })
@@ -205,7 +206,7 @@ export function stepWorld(world, player, input, delta, random = Math.random) {
     m.cooldown-=dt;
     if (d<=64 && m.cooldown<=0 && clearPath(m,world.actor)) {
       m.cooldown=1.5;
-      const hits=random()<hitChance(m.template.atk,next.stats.dex,WORLD.map.levelMax);
+      const hits=random()<hitChance(m.template.atk,(next.stats.dex+wingDexBonus(next)),WORLD.map.levelMax);
       const dmg=hits?Math.max(1,Math.round(mitigate(m.template.atk,playerDef(next)*buffMult(world,'def'),PLAYER_DEF_K)*(1-armorSetDamageReduction(next,'monster')))):0;
       next={ ...(hits?damageEquippedDurability(next,ARMOR_SLOTS):next),hp:Math.max(0,next.hp-dmg) };
       effect(world,world.actor,hits?`−${dmg}`:'SIYRILDIN', '#ff9b9b');

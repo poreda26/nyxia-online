@@ -1,4 +1,4 @@
-import {wingMultiplier} from '../data/wings';
+import {wingMultiplier,wingStaminaBonus} from '../data/wings';
 import {CLASSES} from '../data/classes';
 import {initialPlayer,totalStats,playerMaxHp,playerDef,armorSetDamageReduction,equipItem,isBroken,armorLevelBonus} from './player';
 import {gmWeaponTemplates,gmBuildWeaponById,gmBuildArmor} from './loot';
@@ -21,7 +21,7 @@ export function pvpSnapshot(p) {
  const defense=(armor.reduce((n,i)=>n+(i.def||0),0)+accessories.reduce((n,i)=>n+(i.def||0),0))*({warrior:1,rogue:1.44,mage:1.67}[p.class]);
  // Keep world HP in UI and storage. Convert normalized duel damage back
  // to the defender's HP scale, preserving healing and potion behavior.
- const duelHp=200+p.level*12+Math.max(0,p.stats.sta-base.baseStats.sta)*4+items.reduce((n,i)=>n+(i.hp||0),0);
+ const duelHp=200+p.level*12+wingStaminaBonus(p)*4+Math.max(0,p.stats.sta-base.baseStats.sta)*4+items.reduce((n,i)=>n+(i.hp||0),0);
  return {cls:p.class,level:p.level,dex:p.stats.dex+(bonusStats.dex||0),hp:playerMaxHp(p),maxHp:playerMaxHp(p),duelHp,
   atk:power*wingMultiplier(p, "atk"),def:defense*.65+p.level,crit:base.crit,
   reduction:armorSetDamageReduction(p,'pvp')};

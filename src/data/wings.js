@@ -9,3 +9,6 @@ export const WINGS = [
 export const wingDefinition = id => WINGS.find(w => w.id === id);
 export const equippedWing = player => player?.equipped?.wings?.kind === 'wings' ? wingDefinition(player.equipped.wings.wingId) : null;
 export const wingMultiplier = (player, bonus) => equippedWing(player) ? ({exp:1.05,drop:1.05,atk:1.03}[bonus] || 1) : 1;
+
+export const wingDexBonus = player => equippedWing(player) ? 3 : 0;
+export const wingStaminaBonus = player => equippedWing(player) ? 3 : 0;

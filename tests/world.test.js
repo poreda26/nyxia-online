@@ -1,5 +1,5 @@
 import {MAPS} from '../src/data/maps';
-import {WINGS,wingMultiplier} from '../src/data/wings';
+import {WINGS,wingMultiplier,wingDexBonus} from '../src/data/wings';
 import {makeWings,buyWings} from '../src/utils/wings';
 import {equippedStatBonus,totalStats,playerMaxMp,unequipItem} from '../src/utils/player';
 import { heroFrame, ATTACK_DURATION } from '../src/world/animation';
@@ -328,7 +328,7 @@ test('wings: purchase is atomic, both races and every class equip/swap/save with
    const item=bought.player.inventory.at(-1),result=equipItem(bought.player,item);assert.equal(result.blocked,null);
    p=result.player;assert.equal(p.equipped.wings.id,item.id);
    assert.deepEqual(equippedStatBonus(p),{str:3,sta:3,dex:3,int:3,mag:3});
-   assert.equal(wingMultiplier(p,'exp'),1.05);assert.equal(wingMultiplier(p,'drop'),1.05);assert.equal(wingMultiplier(p,'atk'),1.03);
+   assert.equal(wingMultiplier(p,'exp'),1.05);assert.equal(wingMultiplier(p,'drop'),1.05);assert.equal(wingMultiplier(p,'atk'),1.03);assert.equal(wingDexBonus(p),3);
    const copy=migratePlayer(JSON.parse(JSON.stringify(p)));assert.deepEqual(copy.equipped.wings,p.equipped.wings);
    assert.ok(playerMaxHp(p)>playerMaxHp(start));assert.ok(playerMaxMp(p)>playerMaxMp(start));
   }
@@ -348,6 +348,7 @@ test('wing attack bonus and monster EXP/drop rewards activate only while equippe
  const statsOnly={...base,equipped:{...base.equipped,necklace:{kind:'accessory',statBonus:wing.statBonus}}};
  assert.ok(Math.abs(totalStats(wearing).atk-totalStats(statsOnly).atk*1.03)<=1);
  assert.ok(Math.abs(pvpSnapshot(wearing).atk-pvpSnapshot(statsOnly).atk*1.03)<1e-8);
+ assert.equal(pvpSnapshot(wearing).duelHp,pvpSnapshot(base).duelHp+12);
  const random=Math.random;Math.random=()=>.99;
  try {
   const map=MAPS[0],monster=map.monsters[0];

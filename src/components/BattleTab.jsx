@@ -1,3 +1,4 @@
+import {wingDexBonus} from '../data/wings';
 import MenuEmblem from './icons/MenuEmblem';
 import BattleScene, {hasBattleScene} from './BattleScene';
 import { grantMonsterReward } from "../utils/monsterRewards";
@@ -357,7 +358,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     // hitChance) — canavarın gerçek bir DEX'i yok, kendi ATK'sini bir
     // "çeviklik" vekili olarak kullanıyoruz. Iskalarsa hasar 0, zırh
     // yıpranmıyor, ama canavarın vuruşu yine de bir tur harcıyor.
-    const monsterHits = rollHit(monster.atk, player.stats.dex, map.levelMax);
+    const monsterHits = rollHit(monster.atk, (player.stats.dex+wingDexBonus(player)), map.levelMax);
     const mdmg = monsterHits
       ? Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
       : 0;
@@ -418,7 +419,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     // Aynı DEX→Hit Rate/Evasion Rate mekaniği (bkz. resolveMonsterTurn'daki
     // aynı not) — oyuncu da ıskalayabiliyor artık, canavarın ATK'si yine
     // onun "çeviklik" vekili.
-    const playerHits = rollHit(player.stats.dex, monster.atk, player.level);
+    const playerHits = rollHit((player.stats.dex+wingDexBonus(player)), monster.atk, player.level);
     const dmg = playerHits
       ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)))
       : 0;
