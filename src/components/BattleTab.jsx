@@ -815,7 +815,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
                   disabled={disabled}
                   title={`${skillName(skill)} — MP ${skill.mpCost}`}
                 >
-                  <SkillIcon effectType={skill.effect.type} size={22} color={cls.color} /><span className="battle-slot-label">{skillName(skill)}</span>
+                  <SkillIcon skill={skill} effectType={skill.effect.type} size={22} color={cls.color} /><span className="battle-slot-label">{skillName(skill)}</span>
                   <div style={{ fontSize: 7, marginTop: 2, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
                     {cdLeft > 0 ? cdLeft : `${skill.mpCost}mp`}
                   </div>

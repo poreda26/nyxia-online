@@ -1,3 +1,5 @@
+import './ProgressionPanels.css';
+import MenuEmblem from './icons/MenuEmblem';
 import MonsterPortrait from './MonsterPortrait';
 import { useState } from "react";
 import { Gift, Crown, Skull, Flag, CalendarCheck, BookOpen, Trophy } from "lucide-react";
@@ -113,7 +115,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
 
       <div className="rpg-tabs" style={styles.subtabRow}>
         {[["quests", t("captain.subtabs.quests")], ["daily", t("captain.subtabs.daily")], ["weekly", t("captain.subtabs.weekly")], ["book", t("captain.subtabs.book")]].map(([key, label]) => (
-          <button key={key} onClick={() => setSubtab(key)} style={{ ...styles.subtabBtn, ...(subtab === key ? styles.subtabBtnActive : {}) }}>
+          <button key={key} aria-selected={subtab===key} onClick={() => setSubtab(key)} style={{ ...styles.subtabBtn, ...(subtab === key ? styles.subtabBtnActive : {}) }}>
             {label}
           </button>
         ))}
@@ -125,7 +127,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
       {subtab === "daily" && (
       <div className="rpg-card" style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#5FA8A066", background: "#5FA8A00d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-          <CalendarCheck size={16} color="#5FA8A0" strokeWidth={1.6} />
+          <MenuEmblem name="battle" size={34}/>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#5FA8A0" }}>{t("captain.daily.title")}</div>
         </div>
         <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>
@@ -135,7 +137,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
           {DAILY_QUEST_SLOTS.map((slot, i) => {
             const { current, target, done, claimed } = dailyQuestProgress(player, i);
             return (
-              <div key={i}>
+              <div key={i} className={`journal-step ${claimed?"is-claimed":done?"is-ready":""}`}><span className="journal-step-index">{i+1}</span>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                   <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("captain.daily.killLine", { target })}</span>
                   <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{current}/{target}</span>
@@ -163,14 +165,14 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
       {subtab === "weekly" && (
       <div className="rpg-card" style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#D4AF6A66", background: "#D4AF6A0d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-          <Trophy size={16} color="var(--gold-text)" strokeWidth={1.6} />
+          <MenuEmblem name="ranking" size={34}/>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "var(--gold-text)" }}>{t("captain.weekly.title")}</div>
         </div>
         <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>{t("captain.weekly.subtitle")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
           {WEEKLY_QUESTS.map((quest) => {
             const progress = weeklyQuestProgress(player, quest);
-            return <div key={quest.id}>
+            return <div key={quest.id} className={`journal-step weekly-step ${progress.claimed?"is-claimed":progress.done?"is-ready":""}`}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{t(`captain.weekly.entries.${quest.id}.name`)}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
               <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 2 }}>{t(`captain.weekly.entries.${quest.id}.desc`)}</div>
               <BarTrack pct={(progress.current / progress.target) * 100} color="var(--gold-text)" thin />
@@ -187,7 +189,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
       {subtab === "book" && (
       <div className="rpg-card" style={{ ...styles.itemDetailCard, marginBottom: 14, borderColor: "#6FD1E066", background: "#6FD1E00d" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-          <BookOpen size={16} color="#6FD1E0" strokeWidth={1.6} />
+          <MenuEmblem name="chat" size={34}/>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 14, color: "#6FD1E0" }}>{t("captain.book.title")}</div>
         </div>
         <div style={{ fontSize: 9, color: "var(--text-faint)", marginBottom: 10 }}>{t("captain.book.subtitle")}</div>
@@ -195,8 +197,9 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
           {MAP_COLLECTIONS.filter((c) => player.level >= MAPS.find((m) => m.id === c.mapId).levelMin).map((collection) => {
             const progress = collectionProgress(player, collection);
             const mapName = MAPS.find((m) => m.id === collection.mapId)?.name || "";
-            return <div key={collection.id} style={{ opacity: progress.claimed ? 0.55 : 1 }}>
+            return <div key={collection.id} className="collection-entry" style={{ opacity: progress.claimed ? 0.8 : 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}><span>{t("captain.book.entryName", { map: mapName })}</span><span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{progress.current}/{progress.target}</span></div>
+              <div className="collection-monsters">{MAPS.find(m=>m.id===collection.mapId).monsters.map(m=><div key={m.id} className={(player.monsterKills?.[m.id]||0)>0?'is-discovered':''} title={tm(m)}><MonsterPortrait monster={m} label={tm(m)}/><span>{tm(m)}</span><b>{(player.monsterKills?.[m.id]||0)>0?'✓':'—'}</b></div>)}</div>
               <BarTrack pct={(progress.current / progress.target) * 100} color="#6FD1E0" thin />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 5 }}>
                 <span style={{ fontSize: 9, color: "var(--text-faint)" }}><Gift size={10} /> {formatGold(collection.goldReward)}g · {tierName(lang, collection.chestTier)} {t("captain.chestWord")}</span>

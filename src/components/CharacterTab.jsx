@@ -1,3 +1,4 @@
+import './ProgressionPanels.css';
 import { useState, useRef, useEffect } from "react";
 import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award, Gem } from "lucide-react";
 import { STAT_KEYS, STAT_COLORS, STAT_CAP } from "../data/stats";
@@ -21,6 +22,8 @@ import { useTranslation, formatReason } from "../i18n/LanguageContext";
 export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter, onReplayTutorial }) {
   const { t, lang } = useTranslation();
   const [subtab, setSubtab] = useState("stats");
+  const [skillFilter,setSkillFilter]=useState("all");
+  const [previewDye,setPreviewDye]=useState(player.armorDye||null);
   const [confirmingRespec, setConfirmingRespec] = useState(false);
   const addStat = (key) => setPlayer((p) => allocateStat(p, key));
   const race = RACES[player.race];
@@ -135,16 +138,16 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
       </div>
 
       <div className="rpg-tabs" style={styles.subtabRow}>
-        <button onClick={() => setSubtab("stats")} style={{ ...styles.subtabBtn, ...(subtab === "stats" ? styles.subtabBtnActive : {}) }}>
+        <button aria-selected={subtab==='stats'} onClick={() => setSubtab("stats")} style={{ ...styles.subtabBtn, ...(subtab === "stats" ? styles.subtabBtnActive : {}) }}>
           {t("character.tabs.stats")}
         </button>
-        <button onClick={() => setSubtab("skills")} style={{ ...styles.subtabBtn, ...(subtab === "skills" ? styles.subtabBtnActive : {}) }}>
+        <button aria-selected={subtab==='skills'} onClick={() => setSubtab("skills")} style={{ ...styles.subtabBtn, ...(subtab === "skills" ? styles.subtabBtnActive : {}) }}>
           {t("character.tabs.skills", { n: player.skills.known.length })}
         </button>
-        <button onClick={() => setSubtab("achievements")} style={{ ...styles.subtabBtn, ...(subtab === "achievements" ? styles.subtabBtnActive : {}) }}>
+        <button aria-selected={subtab==='achievements'} onClick={() => setSubtab("achievements")} style={{ ...styles.subtabBtn, ...(subtab === "achievements" ? styles.subtabBtnActive : {}) }}>
           {t("character.tabs.achievements", { unlocked: unlockedCount, total: ACHIEVEMENTS.length })}
         </button>
-        <button onClick={() => setSubtab("cosmetics")} style={{ ...styles.subtabBtn, ...(subtab === "cosmetics" ? styles.subtabBtnActive : {}) }}>
+        <button aria-selected={subtab==='cosmetics'} onClick={() => setSubtab("cosmetics")} style={{ ...styles.subtabBtn, ...(subtab === "cosmetics" ? styles.subtabBtnActive : {}) }}>
           {t("character.tabs.cosmetics")}
         </button>
       </div>
@@ -205,7 +208,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
               const skill = skillId ? classSkills(player.class).find((s) => s.id === skillId) : null;
               return (
                 <div key={i} className="rpg-slot" style={{ ...styles.equipSlotCard, ...(skill ? { borderColor: `${cls.color}66`, background: `${cls.color}1c` } : {}) }}>
-                  {skill ? <SkillIcon effectType={skill.effect.type} size={18} color={cls.color} /> : <Plus size={14} color="var(--text-faint)" />}
+                  {skill ? <SkillIcon skill={skill} effectType={skill.effect.type} size={32} color={cls.color} /> : <Plus size={14} color="var(--text-faint)" />}
                   <div style={{ fontSize: 7, color: "var(--text-faint)", marginTop: 2, textAlign: "center" }}>{skill ? t(`character.skills.${skill.id}.name`) : t("character.skills.emptySlot")}</div>
                 </div>
               );
@@ -213,15 +216,17 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {classSkills(player.class).map((skill) => {
+            <div className="progression-filter"><button aria-pressed={skillFilter==='all'} onClick={()=>setSkillFilter('all')}>{lang==='tr'?'Tüm beceriler':'All skills'}</button><button aria-pressed={skillFilter==='known'} onClick={()=>setSkillFilter('known')}>{lang==='tr'?'Öğrenilenler':'Learned'}</button></div>
+            {skillFilter==='known'&&!player.skills.known.length&&<p style={{fontSize:12,color:'var(--text-muted)',padding:12}}>{lang==='tr'?'Henüz öğrenilmiş becerin yok. Tüm becerilerden öğrenebilirsin.':'No learned skills yet. Open all skills to learn one.'}</p>}
+            {classSkills(player.class).filter(s=>skillFilter!=='known'||isKnown(player,s.id)).map((skill) => {
               const known = isKnown(player, skill.id);
               const check = canUnlockSkill(player, skill, t, lang);
               const inLoadout = player.skills.loadout.includes(skill.id);
               return (
-                <div key={skill.id} className="rpg-card" style={{ ...styles.itemDetailCard, ...(known ? { borderColor: `${cls.color}55` } : {}) }}>
+                <div key={skill.id} className={`rpg-card skill-card ${inLoadout?"is-equipped":""} ${known?"is-known":"is-locked"}`} style={{ ...styles.itemDetailCard, ...(known ? { borderColor: `${cls.color}55` } : {}) }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <SkillIcon effectType={skill.effect.type} size={17} color={known ? cls.color : "var(--text-faint)"} />
+                      <SkillIcon skill={skill} effectType={skill.effect.type} size={48} color={known ? cls.color : "var(--text-faint)"} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
@@ -270,15 +275,17 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
             const unlocked = isAchievementUnlocked(player, a);
             const active = player.activeTitle === a.id;
             const AIcon = a.icon;
+            const goal=a.target||1;
+            const value=a.type==="kills"?Object.values(player.monsterKills||{}).reduce((sum,n)=>sum+n,0):a.type==="level"?player.level:a.type==="counter"?(player.milestones?.[a.counter]||0):unlocked?1:0;
             return (
-              <div key={a.id} className="rpg-card" style={{ ...styles.itemDetailCard, opacity: unlocked ? 1 : 0.55, ...(active ? { borderColor: `${a.color}88` } : {}) }}>
+              <div key={a.id} className={`rpg-card achievement-card ${active?"is-active":""}`} style={{ ...styles.itemDetailCard, opacity: unlocked ? 1 : 0.85, ...(active ? { borderColor: `${a.color}88` } : {}) }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 34, height: 34, borderRadius: 8, background: unlocked ? `${a.color}22` : "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {unlocked ? <AIcon size={17} color={a.color} strokeWidth={1.6} /> : <Lock size={15} color="var(--text-faint)" />}
+                    <AIcon size={27} color={a.color} strokeWidth={1.6}/>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, color: unlocked ? "var(--text-primary)" : "var(--text-faint)" }}>{t(`character.achievements.${a.id}.name`)}</div>
-                    <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{t(`character.achievements.${a.id}.desc`)}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{t(`character.achievements.${a.id}.desc`)}</div><div className="achievement-progress"><meter min="0" max={goal} value={Math.min(value,goal)}/><span>{Math.min(value,goal)} / {goal} {!unlocked&&<Lock size={10}/>}</span></div>
                     {unlocked && (
                       <div style={{ fontSize: 9, color: a.color, fontFamily: "var(--font-mono)", marginTop: 3 }}>{t("character.achievements.titleLabel", { title: t(`character.achievements.${a.id}.title`) })}</div>
                     )}
@@ -304,14 +311,15 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
           <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 10px" }}>
             {t("character.cosmetics.intro")}
           </p>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div className="dye-preview-stage">
             <div style={{ width: 140, height: 210 }}>
-              <CharacterFigure player={player} />
+              <CharacterFigure player={{...player,armorDye:previewDye}} />
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          <div className="dye-preview-actions"><span>{lang==='tr'?'Renk önizlemesi':'Color preview'}</span><button disabled={(player.armorDye||null)===previewDye} onClick={()=>pickDye(previewDye)}>{(player.armorDye||null)===previewDye?(lang==='tr'?'Kullanılıyor':'Equipped'):previewDye&&!player.ownedDyes?.includes(previewDye)?((lang==='tr'?'Satın al ve uygula':'Buy & apply')+' · '+ARMOR_DYES.find(d=>d.id===previewDye).cost+' ♦'):(lang==='tr'?'Uygula':'Apply')}</button></div>
+          <div className="dye-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
             <button
-              onClick={() => pickDye(null)}
+              className="dye-tile" aria-pressed={previewDye===null} onClick={() => setPreviewDye(null)}
               style={{
                 ...styles.itemDetailCard, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 6px",
                 borderColor: !player.armorDye ? "#D4AF6A" : "var(--border)",
@@ -326,7 +334,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
               return (
                 <button
                   key={dye.id}
-                  onClick={() => pickDye(dye.id)}
+                  className="dye-tile" aria-pressed={previewDye===dye.id} onClick={() => setPreviewDye(dye.id)}
                   style={{
                     ...styles.itemDetailCard, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 6px",
                     borderColor: active ? "#D4AF6A" : "var(--border)",
