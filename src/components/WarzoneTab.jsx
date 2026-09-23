@@ -26,7 +26,7 @@ import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat"
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { rand, uid, pick } from "../utils/random";
 import { newlyUnlocked } from "../utils/achievements";
-import { playLevelUp } from "../audio/sfx";
+import { playLevelUp, playHit, playMiss, playHurt, playPotion } from "../audio/sfx";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -406,6 +406,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), boss.def, MONSTER_DEF_K) + rand(-2, 3)))
       : 0;
     setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], outgoing: { hit: playerHitsBoss, damage: dmg, crit: isCrit } } }));
+    if(playerHitsBoss)playHit({crit:isCrit,cls:player.class});else playMiss();
 
     let resolution = null;
     let bossSurvived = false;
@@ -436,6 +437,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
         ? Math.max(1, Math.round(mitigate(boss.atk, def, PLAYER_DEF_K) * (1 - bossSetReduction) + rand(-2, 3)))
         : 0;
       setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], incoming: { hit: bossHitsPlayer, damage: counter } } }));
+      if(bossHitsPlayer)playHurt();else playMiss();
       const wouldDie = player.hp - counter <= 0;
       setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - counter) }));
       setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? t("warzone.log.bossHitYou", { boss: tm(boss), dmg: counter }) : t("warzone.log.bossMissedYou", { boss: tm(boss) })].slice(-24) }));
@@ -567,6 +569,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     }
     lockRef.current = true;
     setHuntVisual((v) => ({ id: v.id + 1, type: isPotion ? "potion" : "attack", label: isPotion ? (potionKind === "hp" ? t("battle.actionHpPotion") : t("battle.actionMpPotion")) : t("battle.actionAttack") }));
+    if(isPotion)playPotion();
 
     const monster = wz.hunt.monster;
     const potionCooldowns = Object.fromEntries(Object.entries(wz.hunt.potionCooldowns).map(([k, v]) => [k, Math.max(0, v - 1)]));
@@ -589,6 +592,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       monsterHp = Math.max(0, monsterHp - dmg);
       log.push(!playerHits ? t("warzone.log.huntMissed", { monster: monster.name }) : isCrit ? t("warzone.log.huntCrit", { monster: monster.name, dmg }) : t("warzone.log.huntHit", { monster: monster.name, dmg }));
       setHuntVisual((v) => ({ ...v, outgoing: { hit: playerHits, damage: dmg, crit: isCrit } }));
+      if(playerHits)playHit({crit:isCrit,cls:player.class});else playMiss();
     }
 
     if (monsterHp <= 0) {
@@ -608,6 +612,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       ? Math.max(1, Math.round(mitigate(monster.atk, def, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
       : 0;
     setHuntVisual((v) => ({ ...v, incoming: { hit: monsterHits, damage: mdmg } }));
+    if(monsterHits)playHurt();else playMiss();
     const wouldDie = currentHp - mdmg <= 0;
     log.push(monsterHits ? t("warzone.log.huntHitYou", { monster: monster.name, dmg: mdmg }) : t("warzone.log.huntMissedYou", { monster: monster.name }));
 
@@ -736,6 +741,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       log.push(isCrit ? t("warzone.log.youCritGhost", { ghost: duel.ghost.name, dmg }) : t("warzone.log.youHitGhost", { ghost: duel.ghost.name, dmg }));
     }
     setDuelVisual((v) => ({ ...v, outgoing: { hit: dmg != null, damage: dmg ?? 0, crit: isCrit } }));
+    if(dmg!=null)playHit({crit:isCrit,cls:player.class});else playMiss();
     setDuelShake(dmg != null ? "ghost" : null);
     if (dmg != null) setTimeout(() => setDuelShake(null), 260);
 
@@ -760,6 +766,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     } else {
       const gdmg = playerDamageFromGhost(duel.ghost, def, player);
       setDuelVisual((v) => ({ ...v, incoming: { hit: gdmg != null, damage: gdmg ?? 0 } }));
+      if(gdmg!=null)playHurt();else playMiss();
       if (gdmg == null) {
         log.push(t("warzone.log.ghostMissedYou", { ghost: duel.ghost.name }));
       } else {

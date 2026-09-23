@@ -1,210 +1,64 @@
-// Savaş efekt sesleri — vuruş, ıskalama, hasar alma — ve kısa bildirim
-// sesleri (yükseltme başarılı/başarısız gibi). bgMusic.js ile aynı
-// paylaşılan AudioContext'i kullanır (bkz. audioContext.js) ama kendi
-// bağımsız ses seviyesi/mute durumuna sahip — Ayarlar'da Müzik ve Efekt
-// sesleri ayrı ayrı kısılıp açılabiliyor. Sahnesi olmayan, tamamen kod ile
-// sentezlenen kısa perküsif sesler (osilatör + gürültü buffer), hiçbir ses
-// dosyası yok. Bildirim sesleri kullanıcı isteğiyle bilinçli olarak kısa
-// tutuldu ("insanların kafasını yormadan") — hiçbiri yarım saniyeyi geçmiyor.
-import { getAudioContext, ensureAudioStarted, getNoiseBuffer } from "./audioContext";
-import { hapticHit, hapticHurt, hapticSuccess, hapticError, hapticLevelUp } from "../utils/haptics";
-
-let master = null;
-let volume = 0.6;
-let muted = false;
-
-function bus() {
-  const ctx = ensureAudioStarted();
-  if(!ctx)return null;
-  if (!master) {
-    master = ctx.createGain();
-    master.gain.value = muted ? 0 : volume;
-    master.connect(ctx.destination);
-  }
-  return ctx;
+// Original, short layered Foley and magic. No downloaded sound samples.
+import {getAudioContext,ensureAudioStarted,getNoiseBuffer} from './audioContext';
+import {hapticHit,hapticHurt,hapticSuccess,hapticError,hapticLevelUp} from '../utils/haptics';
+let master=null, volume=.6, muted=false;
+const last=new Map();
+function bus(key){
+ if(muted||volume<=0)return null;
+ const ctx=ensureAudioStarted();if(!ctx)return null;
+ if(ctx.currentTime-(last.get(key)??-10)<.055)return null;
+ last.set(key,ctx.currentTime);
+ if(!master){
+  master=ctx.createGain();master.gain.value=volume;
+  const limiter=ctx.createDynamicsCompressor();limiter.threshold.value=-14;limiter.knee.value=12;limiter.ratio.value=5;limiter.attack.value=.003;limiter.release.value=.12;
+  master.connect(limiter);limiter.connect(ctx.destination);
+ }
+ return ctx;
 }
-
-export function setSfxVolume(v) {
-  volume = Math.max(0, Math.min(1, v));
-  if (master) master.gain.setTargetAtTime(muted ? 0 : volume, getAudioContext().currentTime, 0.05);
+function envelope(ctx,time,dur,level,attack=.008){
+ const g=ctx.createGain();g.gain.setValueAtTime(0,time);g.gain.linearRampToValueAtTime(level,time+attack);g.gain.exponentialRampToValueAtTime(.0001,time+dur);g.gain.linearRampToValueAtTime(0,time+dur+.012);g.connect(master);return g;
 }
-
-export function setSfxMuted(m) {
-  muted = m;
-  if (master) master.gain.setTargetAtTime(muted ? 0 : volume, getAudioContext().currentTime, 0.05);
+function tone(ctx,time,freq,end,dur,level,type='sine'){
+ const osc=ctx.createOscillator(),g=envelope(ctx,time,dur,level);osc.type=type;osc.frequency.setValueAtTime(freq,time);osc.frequency.exponentialRampToValueAtTime(Math.max(20,end),time+dur);osc.connect(g);osc.onended=()=>{osc.disconnect();g.disconnect();};osc.start(time);osc.stop(time+dur+.015);
 }
-
-// Oyuncunun ya da canavarın vuruşu — kritik vuruşlarda daha keskin/yüksek
-// bir metalik çınlama + ekstra "ring" katmanı eklenir.
-export function playHit({ crit = false } = {}) {
-  hapticHit(crit);
-  const ctx = bus();
-  if(!ctx)return;
-  const now = ctx.currentTime;
-
-  const src = ctx.createBufferSource();
-  src.buffer = getNoiseBuffer();
-  const bp = ctx.createBiquadFilter();
-  bp.type = "bandpass";
-  bp.frequency.value = crit ? 2600 : 1800;
-  bp.Q.value = crit ? 3.5 : 2.2;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(crit ? 0.65 : 0.42, now);
-  g.gain.exponentialRampToValueAtTime(0.001, now + (crit ? 0.22 : 0.14));
-  src.connect(bp); bp.connect(g); g.connect(master);
-  src.start(now); src.stop(now + 0.3);
-
-  const osc = ctx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(crit ? 180 : 140, now);
-  osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
-  const og = ctx.createGain();
-  og.gain.setValueAtTime(crit ? 0.5 : 0.3, now);
-  og.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-  osc.connect(og); og.connect(master);
-  osc.start(now); osc.stop(now + 0.2);
-
-  if (crit) {
-    const ring = ctx.createOscillator();
-    ring.type = "triangle";
-    ring.frequency.value = 1200;
-    const rg = ctx.createGain();
-    rg.gain.setValueAtTime(0.18, now);
-    rg.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-    ring.connect(rg); rg.connect(master);
-    ring.start(now); ring.stop(now + 0.32);
-  }
+function noise(ctx,time,freq,end,dur,level,q=.7){
+ const src=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),g=envelope(ctx,time,dur,level,.012);src.buffer=getNoiseBuffer();filter.type='bandpass';filter.Q.value=q;filter.frequency.setValueAtTime(freq,time);filter.frequency.exponentialRampToValueAtTime(end,time+dur);src.connect(filter);filter.connect(g);src.onended=()=>{src.disconnect();filter.disconnect();g.disconnect();};src.start(time,Math.random()*.4);src.stop(time+dur+.015);
 }
-
-// Iskalama — hafif bir "hoş" rüzgar sesi, darbe yok.
-export function playMiss() {
-  const ctx = bus();
-  if(!ctx)return;
-  const now = ctx.currentTime;
-  const src = ctx.createBufferSource();
-  src.buffer = getNoiseBuffer();
-  const hp = ctx.createBiquadFilter();
-  hp.type = "highpass"; hp.frequency.value = 900;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, now);
-  g.gain.exponentialRampToValueAtTime(0.18, now + 0.05);
-  g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-  src.connect(hp); hp.connect(g); g.connect(master);
-  src.start(now); src.stop(now + 0.25);
+function chime(ctx,time,notes,level=.09,step=.085){
+ notes.forEach((f,i)=>{tone(ctx,time+i*step,f,f,.42,level);tone(ctx,time+i*step,f*2.006,f*2,.19,level*.16);});
 }
-
-// Oyuncu hasar aldığında — playHit'ten daha donuk/alçak, "vurulmak" hissi.
-export function playHurt() {
-  hapticHurt();
-  const ctx = bus();
-  if(!ctx)return;
-  const now = ctx.currentTime;
-  const src = ctx.createBufferSource();
-  src.buffer = getNoiseBuffer();
-  const lp = ctx.createBiquadFilter();
-  lp.type = "lowpass"; lp.frequency.value = 900; lp.Q.value = 0.6;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.4, now);
-  g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-  src.connect(lp); lp.connect(g); g.connect(master);
-  src.start(now); src.stop(now + 0.25);
-
-  const osc = ctx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(110, now);
-  osc.frequency.exponentialRampToValueAtTime(45, now + 0.15);
-  const og = ctx.createGain();
-  og.gain.setValueAtTime(0.35, now);
-  og.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-  osc.connect(og); og.connect(master);
-  osc.start(now); osc.stop(now + 0.25);
+export function setSfxVolume(v){volume=Number.isFinite(v)?Math.max(0,Math.min(1,v)):0;if(master)master.gain.setTargetAtTime(muted?0:volume,getAudioContext().currentTime,.035);}
+export function setSfxMuted(v){muted=!!v;if(master)master.gain.setTargetAtTime(muted?0:volume,getAudioContext().currentTime,.025);}
+export function playHit({crit=false,cls='warrior'}={}){
+ hapticHit(crit);const ctx=bus('hit');if(!ctx)return;const t=ctx.currentTime,v=crit?1.18:1,j=.97+Math.random()*.06;
+ if(cls==='rogue'){
+  tone(ctx,t,185*j,100,.12,.13,'triangle');noise(ctx,t+.015,2400,850,.17,.14);tone(ctx,t+.1,155,68,.13,.16);
+ }else if(cls==='mage'){
+  tone(ctx,t,390*j,780,.17,.07);tone(ctx,t+.05,590,290,.25,.09);noise(ctx,t+.07,1700,600,.22,.1);
+ }else{
+  noise(ctx,t,1700,500,.14,.19*v);tone(ctx,t+.045,172*j,62,.15,.2*v);
+  [610,987,1423].forEach((f,i)=>tone(ctx,t+.05,f*j,f*j,.14+i*.045,.055*v/(i+1)));
+ }
+ if(crit)chime(ctx,t+.1,[740,988],.045,.025);
 }
-
-// Yükseltme başarılı — parlak, kısa bir majör arpej (çan gibi triangle
-// dalgası). Toplam ~350ms, tek seferlik — döngüsüz.
-export function playUpgradeSuccess() {
-  hapticSuccess();
-  const ctx = bus();
-  if(!ctx)return;
-  const now = ctx.currentTime;
-  [523.25, 659.25, 783.99].forEach((freq, i) => {
-    const t = now + i * 0.07;
-    const osc = ctx.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(freq, t);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.3, t + 0.015);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-    osc.connect(g); g.connect(master);
-    osc.start(t); osc.stop(t + 0.4);
-  });
+export function playMiss(){const ctx=bus('miss');if(ctx)noise(ctx,ctx.currentTime,1200,360,.21,.1);}
+export function playHurt(){hapticHurt();const ctx=bus('hurt');if(!ctx)return;const t=ctx.currentTime+.18;noise(ctx,t,620,180,.17,.19);tone(ctx,t,125,46,.22,.2);}
+export function playSkill(skill,cls){
+ if(!skill)return;const type=skill.effect.type;
+ if(type==='heal'){const ctx=bus('heal');if(ctx)chime(ctx,ctx.currentTime,[392,494,587],.08,.09);return;}
+ if(type==='buffAtk'||type==='buffDef'){const ctx=bus('buff');if(ctx){const t=ctx.currentTime;noise(ctx,t,400,1300,.3,.09);chime(ctx,t,[196,294,392],.07,.065);}return;}
+ if(cls==='warrior'){playHit({cls,crit:skill.effect.type==='execute'});return;}
+ if(cls==='rogue'){playHit({cls});if(skill.effect.type==='dot'){const ctx=bus('poison');if(ctx)tone(ctx,ctx.currentTime+.08,360,190,.27,.045);}return;}
+ hapticHit(false);const ctx=bus('spell');if(!ctx)return;const t=ctx.currentTime,n=Number(skill.id.slice(1));
+ if([3,6,9].includes(n)){noise(ctx,t,600,1800,.23,.17);noise(ctx,t+.09,1100,160,.31,.2);tone(ctx,t+.1,115,47,.25,.15);}
+ else if(n===5){[0,.055,.12].forEach((dt,i)=>{noise(ctx,t+dt,2400,850,.075,.16);tone(ctx,t+dt,900-i*140,310,.06,.065,'triangle');});}
+ else if(n===7){chime(ctx,t,[784,1047,1319],.055,.045);noise(ctx,t,2900,1500,.24,.07);}
+ else{tone(ctx,t,294,588,.2,.085);tone(ctx,t+.075,440,220,.32,.08);chime(ctx,t+.1,[587,880],.04,.06);}
 }
-
-// Yükseltme başarısız — donuk, alçalan iki nota. Bir alarm gibi uzamıyor,
-// kısa ve net bir "olmadı" hissi (kullanıcı isteği: rahatsız etmesin).
-export function playUpgradeFail() {
-  hapticError();
-  const ctx = bus();
-  if(!ctx)return;
-  const now = ctx.currentTime;
-  const filter = ctx.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.value = 900;
-  filter.connect(master);
-  [233.08, 174.61].forEach((freq, i) => {
-    const t = now + i * 0.11;
-    const osc = ctx.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(freq, t);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.32, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    osc.connect(g); g.connect(filter);
-    osc.start(t); osc.stop(t + 0.28);
-  });
-}
-
-// Seviye atlama — savaştaki en büyük an, o yüzden yükseltmeden daha
-// gösterişli: kısa bir "boom" (gravitas) + 5 notalık yükselen bir fanfar
-// (D-F#-A-D-F# — parlak majör), son nota hafif vibratoyla sürüyor.
-// Toplam ~800ms, hâlâ kısa/tek seferlik.
-export function playLevelUp() {
-  hapticLevelUp();
-  const ctx = bus();
-  if(!ctx)return;
-  const now = ctx.currentTime;
-
-  const boom = ctx.createOscillator();
-  boom.type = "sine";
-  boom.frequency.setValueAtTime(160, now);
-  boom.frequency.exponentialRampToValueAtTime(55, now + 0.22);
-  const boomGain = ctx.createGain();
-  boomGain.gain.setValueAtTime(0.55, now);
-  boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-  boom.connect(boomGain); boomGain.connect(master);
-  boom.start(now); boom.stop(now + 0.4);
-
-  const notes = [293.66, 369.99, 440.0, 587.33, 739.99]; // D4 F#4 A4 D5 F#5
-  notes.forEach((freq, i) => {
-    const t = now + 0.08 + i * 0.09;
-    const dur = i === notes.length - 1 ? 0.55 : 0.16;
-    const osc = ctx.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(freq, t);
-    if (i === notes.length - 1) {
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = 6;
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 4;
-      lfo.connect(lfoGain); lfoGain.connect(osc.detune);
-      lfo.start(t); lfo.stop(t + dur + 0.05);
-    }
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(i === notes.length - 1 ? 0.38 : 0.3, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    osc.connect(g); g.connect(master);
-    osc.start(t); osc.stop(t + dur + 0.05);
-  });
-}
+export function playUpgradeSuccess(){hapticSuccess();const ctx=bus('upgrade');if(ctx)chime(ctx,ctx.currentTime,[392,494,587,784],.12,.075);}
+export function playUpgradeFail(){hapticError();const ctx=bus('fail');if(ctx){tone(ctx,ctx.currentTime,220,164,.28,.13,'triangle');noise(ctx,ctx.currentTime,450,180,.23,.12);}}
+export function playLevelUp(){hapticLevelUp();const ctx=bus('level');if(ctx){chime(ctx,ctx.currentTime,[294,392,494,587,784],.12,.105);tone(ctx,ctx.currentTime,98,98,.6,.12);}}
+export function playUi(){const ctx=bus('ui');if(ctx){tone(ctx,ctx.currentTime,520,390,.055,.045);noise(ctx,ctx.currentTime,1400,900,.045,.025);}}
+export function playChest(reveal=false){const ctx=bus(reveal?'treasure':'chest');if(!ctx)return;const t=ctx.currentTime;if(reveal)chime(ctx,t,[330,440,554,660],.1,.07);else{noise(ctx,t,320,750,.32,.14);tone(ctx,t,145,85,.18,.11,'triangle');}}
+export function playForge(){const ctx=bus('forge');if(ctx){const t=ctx.currentTime;tone(ctx,t,420,405,.28,.09);tone(ctx,t,733,710,.18,.055);noise(ctx,t,1300,500,.12,.13);}}
+export function playPotion(){const ctx=bus('potion');if(ctx){tone(ctx,ctx.currentTime,260,520,.12,.065);tone(ctx,ctx.currentTime+.09,340,680,.16,.055);}}

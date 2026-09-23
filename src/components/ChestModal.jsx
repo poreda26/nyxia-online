@@ -1,3 +1,5 @@
+import {useEffect} from 'react';
+import {playChest} from '../audio/sfx';
 import RewardChest from './icons/RewardChest';
 import { Gift, CheckCircle2 } from "lucide-react";
 import { CLASSES } from "../data/classes";
@@ -10,6 +12,7 @@ import RewardReveal from './RewardReveal';
 export default function ChestModal({ state, onClose, playerClass }) {
   const { t, lang } = useTranslation();
   const { chest, phase, result } = state;
+  useEffect(()=>{playChest(phase==='reveal');},[phase]);
   const color = itemTierColor(chest.tier);
   const isLocked = result && result.kind === "armor" && result.class !== playerClass;
   return (

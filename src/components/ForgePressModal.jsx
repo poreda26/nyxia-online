@@ -3,7 +3,7 @@ import { Hammer, Skull, CheckCircle2, ChevronsRight } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { pick } from "../utils/random";
 import { displayItemName } from "../utils/player";
-import { playUpgradeSuccess, playUpgradeFail } from "../audio/sfx";
+import { playUpgradeSuccess, playUpgradeFail, playForge } from "../audio/sfx";
 import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import ItemIcon from './ItemIcon';
@@ -32,6 +32,8 @@ export default function ForgePressModal({ item, success, bumpedItem, onClose }) 
     return () => clearTimeout(timerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [success]);
+
+  useEffect(()=>{if(phase!=='pressing')return;playForge();const pulse=setInterval(playForge,700);return ()=>clearInterval(pulse);},[phase]);
 
   const skip = () => {
     clearTimeout(timerRef.current);

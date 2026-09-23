@@ -18,7 +18,7 @@ import { hasAutoBattleAccess } from "../utils/premium";
 import { classSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
 import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry, buyExtraDungeonEntries, hasBoughtExtraDungeonEntryToday } from "../utils/soloDungeon";
 import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS } from "../data/soloDungeon";
-import { playHit, playMiss, playHurt, playLevelUp } from "../audio/sfx";
+import { playHit, playMiss, playHurt, playLevelUp, playSkill, playPotion } from "../audio/sfx";
 import { tierName } from "../data/itemRarity";
 import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
@@ -430,7 +430,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     // uçan yazı sadece o yönde çalışıyordu — bkz. resolveMonsterTurn'daki
     // aynı desenin `incoming` karşılığı, BattleScene.jsx'te render ediliyor.
     setVisual((v) => ({ ...v, outgoing: { hit: playerHits, damage: dmg, crit: isCrit } }));
-    if (playerHits) playHit({ crit: isCrit }); else playMiss();
+    if (playerHits) playHit({ crit: isCrit, cls: player.class }); else playMiss();
 
     // Every swing wears the weapon down a little — see utils/player.js's
     // repair system, the intended gold sink for this (misses don't wear it).
@@ -467,6 +467,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       return;
     }
 
+    playSkill(skill, player.class);
     let monsterHp = ticked.monsterHp;
     let log = ticked.log;
     let buffs = ticked.buffs;
@@ -480,7 +481,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       monsterHp = Math.max(0, ticked.monsterHp - dmg);
       log = pushLog(log, t("battle.log.skillDamage", { skill: skillName(skill), dmg }));
       setVisual((v) => ({ ...v, outgoing: { hit: true, damage: dmg, crit: false } }));
-      playHit({ crit: false });
       setShake("monster");
       setTimeout(() => setShake(null), 260);
     } else if (e.type === "heal") {
@@ -500,7 +500,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const perTick = computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct: 1, rand: () => 0 });
       dot = { dmgPerTurn: Math.max(1, Math.round(perTick * buffMultiplier(ticked.buffs, "atk"))), turnsLeft: e.turns };
       log = pushLog(log, t("battle.log.skillDot", { skill: skillName(skill) }));
-      playHit({ crit: false });
       setShake("monster");
       setTimeout(() => setShake(null), 260);
     }
@@ -535,6 +534,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     }
 
     setPlayer(() => result.player);
+    playPotion();
     // Can potu da bir "can çekme" aksiyonu — beceri heal'iyle aynı "+X"
     // uçan yazısı burada da görünsün (bkz. useSkill'in heal dalı). Mana
     // potu "can" değil, o yüzden kapsam dışı. Can zaten doluysa (result.healed

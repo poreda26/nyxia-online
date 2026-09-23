@@ -53,16 +53,8 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
-  // Arka plan müziği + savaş efektleri — kullanıcı isteği: "knight online
-  // fon müziğine benzeyen efsane bir arka plan müziği" ve ardından "ses
-  // kısıp yükseltme seçeneğimiz olsun... savaştayken vuruş animasyon sesi
-  // istiyorum". Müzik Web Audio API ile canlı sentezleniyor (bkz.
-  // audio/bgMusic.js), efektler de aynı şekilde (bkz. audio/sfx.js) — hiçbir
-  // ses dosyası yok. Ses seviyesi/mute tercihleri hesaba değil cihaza bağlı
-  // (localStorage, bkz. utils/settings.js). Tarayıcılar sesi ancak bir
-  // kullanıcı jestinden sonra başlatmaya izin verdiği için motor ilk
-  // pointerdown'da başlatılıyor; müzik login'den Hub'a kadar aralıksız
-  // çalıyor, efektler BattleTab.jsx'ten doğrudan audio/sfx.js'i çağırıyor.
+  // Original streamed music and procedural SFX; independent device settings.
+  // Keep gesture retries for autoplay/interruption recovery on mobile browsers.
   const musicRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioSettings, setAudioSettings] = useState(loadSettings);
@@ -74,11 +66,12 @@ export default function App() {
     setSfxMuted(audioSettings.sfxMuted);
     const startOnGesture = () => {
       musicRef.current.start();
-      window.removeEventListener("pointerdown", startOnGesture);
     };
     window.addEventListener("pointerdown", startOnGesture);
+    window.addEventListener("keydown", startOnGesture);
     return () => {
       window.removeEventListener("pointerdown", startOnGesture);
+      window.removeEventListener("keydown", startOnGesture);
       musicRef.current?.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
