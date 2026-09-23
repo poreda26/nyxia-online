@@ -1,3 +1,4 @@
+import ScrollArt from './icons/ScrollArt';
 import { useState, useRef, useEffect } from "react";
 import { Plus, ScrollText, Star, X } from "lucide-react";
 import { itemTierColor, tierName } from "../data/itemRarity";
@@ -247,7 +248,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
               onClick={returnBonusScroll}
               title={t("upgrade.bonusTitle")}
             >
-              {bonusScrollActive ? <Star size={16} color="var(--gold-text)" strokeWidth={1.6} /> : <Plus size={14} color="var(--text-faint)" strokeWidth={1.6} />}
+              {bonusScrollActive ? <ScrollArt item={{kind:"bonusScroll"}} size={32}/> : <Plus size={14} color="var(--text-faint)" strokeWidth={1.6} />}
             </button>
           </div>
         </div>
@@ -267,7 +268,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
                   }}
                   onClick={() => returnScroll(i)}
                 >
-                  {box && <ScrollText size={15} color={itemTierColor(box.tier)} strokeWidth={1.6} />}
+                  {box && <ScrollArt item={box} size={32}/>}
                   {box && <span style={{ fontSize: 7, color: itemTierColor(box.tier), marginTop: 1 }}>{tierName(lang, box.tier)}</span>}
                 </button>
               );
@@ -286,7 +287,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
           <div>
             <div style={styles.forgeColLabel}>{t("upgrade.shopLabel")}</div>
             <button style={styles.forgeSmallSlot} onClick={() => setShopOpen((v) => !v)}>
-              <ScrollText size={18} color="var(--gold-text)" strokeWidth={1.6} />
+              <ScrollArt item={{kind:"scroll",tier:1}} size={32}/>
             </button>
           </div>
         </div>

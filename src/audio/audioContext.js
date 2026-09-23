@@ -6,13 +6,17 @@ let ctx = null;
 let noiseBuffer = null;
 
 export function getAudioContext() {
-  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!ctx) {
+    const Audio=window.AudioContext||window.webkitAudioContext;
+    if(!Audio)return null;
+    try {ctx=new Audio();} catch {return null;}
+  }
   return ctx;
 }
 
 export function ensureAudioStarted() {
   const c = getAudioContext();
-  if (c.state === "suspended") c.resume();
+  if (c && (c.state === "suspended" || c.state === "interrupted")) c.resume().catch(()=>{});
   return c;
 }
 
@@ -20,6 +24,7 @@ export function ensureAudioStarted() {
 // — her efekt kendi buffer'ını basmak yerine bunu yeniden kullanıyor.
 export function getNoiseBuffer() {
   const c = getAudioContext();
+  if (!c) return null;
   if (!noiseBuffer) {
     const length = c.sampleRate;
     noiseBuffer = c.createBuffer(1, length, c.sampleRate);

@@ -1,4 +1,4 @@
-import { ScrollText } from "lucide-react";
+import ScrollArt from './icons/ScrollArt';
 import { GEAR_TIERS } from "../data/tiers";
 import { itemTierColor, tierName } from "../data/itemRarity";
 import { scrollPrice } from "../utils/upgrade";
@@ -41,7 +41,7 @@ export default function ScrollShop({ player, setPlayer, pushToast }) {
       <div style={styles.scrollShopGrid}>
         {GEAR_TIERS.map((tierId) => (
           <div key={tierId} style={{ ...styles.scrollBuyCard, borderColor: `${itemTierColor(tierId)}55` }}>
-            <ScrollText size={14} color={itemTierColor(tierId)} strokeWidth={1.6} />
+            <ScrollArt item={{kind:"scroll",tier:tierId}} size={40}/>
             <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: itemTierColor(tierId), marginTop: 3 }}>{tierName(lang, tierId)}</div>
             <button style={{ ...styles.tinyBtn, ...styles.scrollBuyBtn, background: "#D4AF6A", color: "#15171E" }} onClick={() => buyScroll(tierId)}>
               {formatGold(scrollPrice(tierId))}g
@@ -49,7 +49,7 @@ export default function ScrollShop({ player, setPlayer, pushToast }) {
           </div>
         ))}
         <div style={{ ...styles.scrollBuyCard, borderColor: "#5FA8A055" }}>
-          <ScrollText size={14} color="#5FA8A0" strokeWidth={1.6} />
+          <ScrollArt item={{kind:"accessoryScroll"}} size={40}/>
           <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: "#5FA8A0", marginTop: 3 }}>{t("shop.accessoryLabel")}</div>
           <button style={{ ...styles.tinyBtn, ...styles.scrollBuyBtn, background: "#5FA8A0", color: "#15171E" }} onClick={buyAccessoryScroll}>
             {formatGold(ACCESSORY_SCROLL_PRICE)}g

@@ -57,7 +57,7 @@
 
 
 .battle-mobile .battle-slash,.battle-mobile .battle-projectile,.battle-mobile .battle-counter{top:60%}.battle-mobile .battle-aura{top:40%;height:35%}.battle-mobile .battle-slot-label{font-size:9px}
-[data-screen] .battle-mobile .battle-scene{height:clamp(190px,calc(100cqh - 280px),360px)}
+[data-screen] .battle-mobile .battle-scene{height:clamp(190px,calc(var(--app-height,100dvh) - 420px),360px)}
 [data-screen="battle"]>div>div:has(.battle-mobile){padding:8px!important}
 [data-screen] .battle-mobile{gap:5px!important}
 @media(max-height:740px){[data-screen] .battle-mobile .battle-scene-title{top:7px;font-size:16px}[data-screen] .battle-mobile .battle-hud{top:45px}[data-screen] .battle-mobile .battle-unit{height:43%;bottom:12%}[data-screen] .battle-mobile .battle-scene-caption{bottom:7px}[data-screen] .battle-skill-dock>button,[data-screen] .battle-skill-dock>div{min-height:44px!important;padding:3px!important}}

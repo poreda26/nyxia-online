@@ -62,6 +62,7 @@ export function createBgMusicEngine() {
   function init() {
     if (ctx) return;
     ctx = getAudioContext();
+    if(!ctx)return;
     master = ctx.createGain();
     master.gain.value = muted ? 0 : volume;
     master.connect(ctx.destination);
@@ -207,6 +208,7 @@ export function createBgMusicEngine() {
     // her seferinde yeniden ısınmasın.
     start() {
       init();
+      if(!ctx)return;
       ensureAudioStarted();
       if (scheduling) return;
       scheduling = true;

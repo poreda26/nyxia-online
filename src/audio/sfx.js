@@ -15,6 +15,7 @@ let muted = false;
 
 function bus() {
   const ctx = ensureAudioStarted();
+  if(!ctx)return null;
   if (!master) {
     master = ctx.createGain();
     master.gain.value = muted ? 0 : volume;
@@ -38,6 +39,7 @@ export function setSfxMuted(m) {
 export function playHit({ crit = false } = {}) {
   hapticHit(crit);
   const ctx = bus();
+  if(!ctx)return;
   const now = ctx.currentTime;
 
   const src = ctx.createBufferSource();
@@ -77,6 +79,7 @@ export function playHit({ crit = false } = {}) {
 // Iskalama — hafif bir "hoş" rüzgar sesi, darbe yok.
 export function playMiss() {
   const ctx = bus();
+  if(!ctx)return;
   const now = ctx.currentTime;
   const src = ctx.createBufferSource();
   src.buffer = getNoiseBuffer();
@@ -94,6 +97,7 @@ export function playMiss() {
 export function playHurt() {
   hapticHurt();
   const ctx = bus();
+  if(!ctx)return;
   const now = ctx.currentTime;
   const src = ctx.createBufferSource();
   src.buffer = getNoiseBuffer();
@@ -121,6 +125,7 @@ export function playHurt() {
 export function playUpgradeSuccess() {
   hapticSuccess();
   const ctx = bus();
+  if(!ctx)return;
   const now = ctx.currentTime;
   [523.25, 659.25, 783.99].forEach((freq, i) => {
     const t = now + i * 0.07;
@@ -141,6 +146,7 @@ export function playUpgradeSuccess() {
 export function playUpgradeFail() {
   hapticError();
   const ctx = bus();
+  if(!ctx)return;
   const now = ctx.currentTime;
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
@@ -166,6 +172,7 @@ export function playUpgradeFail() {
 export function playLevelUp() {
   hapticLevelUp();
   const ctx = bus();
+  if(!ctx)return;
   const now = ctx.currentTime;
 
   const boom = ctx.createOscillator();

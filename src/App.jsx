@@ -5,7 +5,7 @@ import { applyWeeklyRollover } from "./utils/nationalPoint";
 import { uid } from "./utils/random";
 import { createBgMusicEngine } from "./audio/bgMusic";
 import { setSfxVolume, setSfxMuted } from "./audio/sfx";
-import { loadSettings, saveSetting } from "./utils/settings";
+import { loadSettings, saveSetting, applyDisplaySettings } from "./utils/settings";
 import {
   loadAccount, saveCharacterSlot, deleteCharacterSlot, saveAccountRace, changeAccountRace,
   saveAccountBank, saveAccountUnlockedSlots, saveAccountDiamonds, saveAccountBankGold, saveLastUsername, loadLastUsername,
@@ -98,8 +98,14 @@ export default function App() {
   // bloğu bu attribute'u dinliyor (bkz. o dosyadaki renk değişkenleri).
   // <html> üzerine yazıyoruz ki :root seçicisiyle eşleşsin.
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", audioSettings.theme);
-  }, [audioSettings.theme]);
+    applyDisplaySettings(audioSettings);
+  }, [audioSettings.theme,audioSettings.reducedMotion,audioSettings.effects,audioSettings.highContrast]);
+
+  useEffect(()=>{
+    const sync=()=>{musicRef.current?.setMuted(audioSettings.musicMuted||document.hidden);setSfxMuted(audioSettings.sfxMuted||document.hidden);};
+    document.addEventListener('visibilitychange',sync);sync();
+    return ()=>document.removeEventListener('visibilitychange',sync);
+  },[audioSettings.musicMuted,audioSettings.sfxMuted]);
 
   // Kullanıcı: loot bildirimini "yakalamakta zorlanıyorum" — 2.6s özellikle
   // öldürme bildirimi gibi çok parçalı (altın+XP+drop+görev) mesajlar için
@@ -358,6 +364,7 @@ export default function App() {
 
       {settingsOpen && (
         <SettingsModal
+          preferences={audioSettings} onPreferenceChange={updateAudioSetting}
           musicVolume={audioSettings.musicVolume}
           musicMuted={audioSettings.musicMuted}
           onMusicVolumeChange={(v) => updateAudioSetting("musicVolume", v)}

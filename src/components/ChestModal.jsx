@@ -1,3 +1,4 @@
+import RewardChest from './icons/RewardChest';
 import { Gift, CheckCircle2 } from "lucide-react";
 import { CLASSES } from "../data/classes";
 import { itemTierColor, ITEM_TIER_LABEL } from "../data/itemRarity";
@@ -17,7 +18,7 @@ export default function ChestModal({ state, onClose, playerClass }) {
         {phase === "shaking" && (
           <>
             <div className="chest-opening" aria-hidden="true">
-              <div className="chest-box"/>
+              <RewardChest size={150} tier={chest.tier} special={chest.special}/>
             </div>
             <div style={{ marginTop: 18, fontFamily: "var(--font-display)", fontSize: 14, color: "var(--text-muted)" }}>
               {t("inventory.chestOpening")}

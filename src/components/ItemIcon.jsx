@@ -1,6 +1,7 @@
+import ScrollArt from './icons/ScrollArt';
+import RewardChest from './icons/RewardChest';
 import WingArt from './WingArt';
-import { FlaskConical, ScrollText, Star, Gift, Sparkles } from "lucide-react";
-import { boostScrollDef } from "../data/boostScrolls";
+import { FlaskConical } from "lucide-react";
 import WeaponIcon from "./icons/WeaponIcon";
 import ArmorIcon from "./icons/ArmorIcon";
 import AccessoryIcon from "./icons/AccessoryIcon";
@@ -10,6 +11,8 @@ import StarterWeaponIcon from './StarterWeaponIcon';
 import {weaponIconArt} from '../data/starterWeaponArt';
 
 export default function ItemIcon({ item, size = 16, color = "currentColor", strokeWidth = 1.6 }) {
+  if(['scroll','bonusScroll','boostScroll','accessoryScroll'].includes(item.kind))return <ScrollArt item={item} size={size}/>;
+  if(item.kind==='chest')return <RewardChest size={size} tier={item.tier} special={item.special}/>;
   if(item.kind==='wings')return <WingArt wingId={item.wingId} size={size}/>;
   if(item.kind==='weapon' && weaponIconArt(item.name))return <StarterWeaponIcon item={item} size={size}/>;
   const customImage = item.kind === "potion" ? potionImageFor(item.potionType, item.tier) : itemImageFor(item.name, item.upgradeLevel);
@@ -44,19 +47,6 @@ export default function ItemIcon({ item, size = 16, color = "currentColor", stro
   }
   if (item.kind === "potion") {
     return <FlaskConical size={size} color={item.potionType === "hp" ? "#C9425A" : "#4FC3D9"} strokeWidth={strokeWidth} />;
-  }
-  if (item.kind === "scroll") {
-    return <ScrollText size={size} color={color} strokeWidth={strokeWidth} />;
-  }
-  if (item.kind === "bonusScroll") {
-    return <Star size={size} color="var(--gold-text)" strokeWidth={strokeWidth} />;
-  }
-  if (item.kind === "boostScroll") {
-    return <ScrollText size={size} color={boostScrollDef(item.boostId)?.color || color} strokeWidth={strokeWidth} />;
-  }
-  if (item.kind === "chest") {
-    const ChestIcon = item.special ? Sparkles : Gift;
-    return <ChestIcon size={size} color={color} strokeWidth={strokeWidth} />;
   }
   return null;
 }

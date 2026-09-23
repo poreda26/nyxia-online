@@ -1,3 +1,4 @@
+import ScrollArt from './icons/ScrollArt';
 import {useState} from 'react';
 import WingsShop from './WingsShop';
 import PremiumShop from './PremiumShop';
@@ -157,7 +158,7 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
           {BOOST_SCROLLS.map((s) => (
             <div key={s.id} style={{ ...styles.itemDetailCard, display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <ScrollText size={18} color={s.color} strokeWidth={1.6} />
+                <ScrollArt item={{kind:"boostScroll",boostId:s.id}} size={34}/>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13 }}>{boostScrollName(s.id, lang)}</div>

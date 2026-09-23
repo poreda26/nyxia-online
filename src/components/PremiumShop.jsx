@@ -1,3 +1,4 @@
+import ScrollArt from './icons/ScrollArt';
 import {useState} from 'react';
 import {Crown,Check,Gem,Shuffle,ScrollText,Star} from 'lucide-react';
 import {PREMIUM_TIERS} from '../data/premium';
@@ -124,7 +125,7 @@ return <div className="premium-shop">          <div style={{ fontSize: 10, color
             <button className="rpg-action" style={styles.tinyBtn} onClick={buyJobScroll}>{t("shop.buyShort")}</button>
           </div>
           <div className="rpg-row" style={{ ...styles.itemRow, borderColor: "#D4AF6A55", marginTop: 8 }}>
-            <Star size={18} color="var(--gold-text)" />
+            <ScrollArt item={{kind:"bonusScroll"}} size={32}/>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>{t("shop.bonusScrollTitle")}</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)" }}>

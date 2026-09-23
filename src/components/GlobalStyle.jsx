@@ -1,5 +1,13 @@
+import {useEffect} from 'react';
+import './MobileUI.css';
 import './RewardPanels.css';
 export default function GlobalStyle() {
+  useEffect(()=>{
+    const viewport=window.visualViewport;
+    const update=()=>{if(viewport&&viewport.scale!==1)return;document.documentElement.style.setProperty('--app-height',`${Math.round(viewport?.height||window.innerHeight)}px`);};
+    update();viewport?.addEventListener('resize',update);window.addEventListener('resize',update);
+    return ()=>{viewport?.removeEventListener('resize',update);window.removeEventListener('resize',update);};
+  },[]);
   return (
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -10,7 +18,7 @@ export default function GlobalStyle() {
          appRoot's height:100% resolves to nothing and it silently falls
          back to growing with content instead, which is why the frame used
          to visibly resize switching between tabs. */
-      html, body, #root { height: 100%; height:100dvh; overflow:hidden; }
+      html, body, #root { height: 100%; height:var(--app-height,100dvh); overflow:hidden; }
       #root { box-sizing:border-box; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
       body { margin: 0; overscroll-behavior: none; }
 

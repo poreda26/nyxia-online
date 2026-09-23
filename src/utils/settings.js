@@ -8,6 +8,10 @@ const KEYS = {
   sfxMuted: "rpgmarket:sfxMuted",
   language: "rpgmarket:language",
   theme: "rpgmarket:theme",
+  haptics: "rpgmarket:haptics",
+  reducedMotion: "rpgmarket:reducedMotion",
+  effects: "rpgmarket:effects",
+  highContrast: "rpgmarket:highContrast",
 };
 
 function readNum(key, fallback) {
@@ -32,13 +36,27 @@ export function loadSettings() {
     musicMuted: readBool(KEYS.musicMuted, false),
     sfxVolume: readNum(KEYS.sfxVolume, 60),
     sfxMuted: readBool(KEYS.sfxMuted, false),
-    language: readStr(KEYS.language, "tr"),
+    language: readStr(KEYS.language, "tr") === "en" ? "en" : "tr",
+    haptics: readBool(KEYS.haptics,true),
+    reducedMotion: readBool(KEYS.reducedMotion,false),
+    effects: readStr(KEYS.effects,"full") === "low" ? "low" : "full",
+    highContrast: readBool(KEYS.highContrast,false),
     // Kullanıcı isteği: "Oyunumuz çok Dark temada, daha light bir tema
     // yapabiliriz" — cihaza bağlı bir tercih, diğerleriyle aynı desen.
-    theme: readStr(KEYS.theme, "dark"),
+    theme: readStr(KEYS.theme, "dark") === "light" ? "light" : "dark",
   };
 }
 
 export function saveSetting(key, value) {
+  if(!KEYS[key])return;
   try { localStorage.setItem(KEYS[key], typeof value === "boolean" ? (value ? "1" : "0") : String(value)); } catch {}
 }
+
+export function applyDisplaySettings(settings) {
+ const root=document.documentElement;
+ root.dataset.theme=settings.theme;
+ root.dataset.motion=settings.reducedMotion?'reduced':'full';
+ root.dataset.effects=settings.effects;
+ root.dataset.contrast=settings.highContrast?'high':'normal';
+}
+export function hapticsEnabled(){return readBool(KEYS.haptics,true);}

@@ -26,6 +26,7 @@ export function itemSubLabel(item, lang = "tr") {
     return `${PLAYER_ACCESSORY_SLOT_LABEL[lang][item.slot]}${item.upgradeLocked ? locked : ""}`;
   }
   if (item.kind === "potion") return lang === "en" ? `${item.potionType === "hp" ? "Health" : "Mana"} · T${item.tier}` : `${item.potionType === "hp" ? "Can" : "Mana"} · T${item.tier}`;
+  if (item.kind === "accessoryScroll") return lang === "en" ? "Accessory upgrade" : "Takı yükseltme";
   if (item.kind === "scroll") return lang === "en" ? `T${item.tier} Scroll` : `T${item.tier} Parşömen`;
   if (item.kind === "raceScroll") return lang === "en" ? "Race Change" : "Irk Değiştirme";
   if (item.kind === "jobScroll") return lang === "en" ? "Class Change" : "Sınıf Değiştirme";
@@ -39,7 +40,7 @@ export function itemSubLabel(item, lang = "tr") {
 // Potions and scrolls are pure consumables — no atk/def/hp stats, so the
 // bag detail panel shows just their weight instead of an empty stat line.
 export function isConsumable(item) {
-  return item.kind === "potion" || item.kind === "scroll" || item.kind === "raceScroll" || item.kind === "jobScroll" || item.kind === "bonusScroll" || item.kind === "boostScroll";
+  return item.kind === "accessoryScroll" || item.kind === "potion" || item.kind === "scroll" || item.kind === "raceScroll" || item.kind === "jobScroll" || item.kind === "bonusScroll" || item.kind === "boostScroll";
 }
 
 export function itemStatLabel(item) {

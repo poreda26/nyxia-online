@@ -504,7 +504,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
 
                 return (
                   <button className="rpg-card" key={chest.id} onClick={() => openChest(chest)} style={{ ...styles.chestCard, borderColor: `${color}55` }}>
-                    <RewardChest size={48}/>
+                    <RewardChest size={48} tier={chest.tier} special={chest.special}/>
                     <div style={{ fontSize: 11, marginTop: 6, fontFamily: "var(--font-mono)", color, textAlign: "center" }}>
                       {chest.special ? t("inventory.specialChestName") : t("inventory.tierChest", { tier: tierName(lang, chest.tier) })}
                     </div>

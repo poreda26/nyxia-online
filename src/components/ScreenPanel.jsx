@@ -11,7 +11,7 @@ import ScreenCrest from './shared/ScreenCrest';
 // iç içelikle birebir aynı kalıyor.
 export default function ScreenPanel({children,screen}) {
  return <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
-  <div data-screen={screen} style={{...styles.tabContent,minHeight:0,overflowX:'hidden',overflowY:'auto',containerType:'size'}}>
+  <div data-screen={screen} style={{...styles.tabContent,minHeight:0,overflowX:'hidden',overflowY:'auto'}}>
    <div>{screen!=='battle'&&<ScreenCrest screen={screen}/>} {children}</div>
   </div>
  </div>;

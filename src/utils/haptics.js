@@ -1,3 +1,4 @@
+import {hapticsEnabled} from './settings';
 // Native touch feedback for the moments audio/sfx.js already treats as the
 // game's emotional beats (hit/crit, taking damage, upgrade success/fail,
 // level up) — wired in there so every existing sound call gets a matching
@@ -6,6 +7,7 @@
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 
 function safe(fn) {
+  if(!hapticsEnabled())return;
   try {
     const result = fn();
     if (result && typeof result.catch === "function") result.catch(() => {});

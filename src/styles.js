@@ -2,7 +2,7 @@ import { BAG_COLUMNS } from "./utils/inventory";
 
 export const styles = {
   appRoot: {
-    width: "100%", maxWidth: 420, margin: "0 auto", height: "100%", minHeight: 0, boxSizing: "border-box",
+    width: "100%", maxWidth: 560, margin: "0 auto", height: "100%", minHeight: 0, boxSizing: "border-box",
     background: "var(--bg-void)", color: "var(--text-primary)", fontFamily: "var(--font-body)",
     position: "relative", overflow: "hidden", borderRadius: 18, border: "1px solid var(--border)",
   },
@@ -244,13 +244,13 @@ export const styles = {
   },
 
   modalOverlay: {
-    position: "absolute", inset: 0, background: "rgba(11,12,16,0.86)",
+    position: "fixed", inset: 0, height: "var(--app-height,100dvh)", boxSizing: "border-box", padding: "max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))", background: "rgba(11,12,16,0.86)",
     display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, backdropFilter: "blur(2px)",
   },
   modalCard: {
     background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 18,
     padding: "36px 28px", display: "flex", flexDirection: "column", alignItems: "center",
-    minWidth: 240, position: "relative",
+    minWidth: 0, width: "100%", maxWidth: 420, boxSizing: "border-box", maxHeight: "calc(var(--app-height,100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)", overflowY: "auto", overscrollBehavior: "contain", position: "relative",
   },
 
   listingForm: { background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 12, padding: 12, marginTop: 10 },
@@ -340,13 +340,13 @@ export const styles = {
   // kaydırmadan göremiyordu); artık "Daha Fazla" sheet'iyle aynı mantıkta
   // alttan kayarak açılan, tüm ekranı (alt menü dahil) kaplayan bir widget.
   itemSheetOverlay: {
-    position: "fixed", inset: 0, background: "rgba(11,12,16,0.7)", zIndex: 60,
+    position: "fixed", inset: 0, height: "var(--app-height,100dvh)", boxSizing: "border-box", background: "rgba(11,12,16,0.7)", zIndex: 60,
     display: "flex", alignItems: "flex-end", justifyContent: "center", backdropFilter: "blur(2px)",
   },
   itemSheet: {
-    width: "100%", maxWidth: 420, maxHeight: "82vh", overflowY: "auto",
+    width: "100%", maxWidth: 420, maxHeight: "calc(var(--app-height,100dvh) - env(safe-area-inset-top) - 24px)", boxSizing: "border-box", overflowY: "auto", overscrollBehavior: "contain",
     background: "var(--bg-panel)", borderTop: "1px solid var(--border)",
-    borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: "14px 16px 22px",
+    borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: "14px max(16px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))",
   },
   itemSheetHandle: { width: 36, height: 4, borderRadius: 2, background: "var(--border)", margin: "0 auto 12px" },
 };
