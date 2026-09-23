@@ -20,10 +20,10 @@ def add(midi,start,duration,amp,kind='flute',pan=0):
  vibrato=.0015*np.sin(2*np.pi*4.7*t)*np.minimum(t/.6,1)
  phase=2*np.pi*f*(t+vibrato/(2*np.pi*4.7))
  if kind=='flute':
-  wave=np.sin(phase)+.18*np.sin(2*phase)+.045*np.sin(3*phase)
+  wave=np.sin(phase)+.075*np.sin(2*phase)+.012*np.sin(3*phase)
   breath=sosfilt(butter(2,[700,2400],btype='bandpass',fs=SR,output='sos'),rng.standard_normal(len(t)))
-  wave+=.055*breath
-  env=np.minimum(t/.16,1)*np.exp(-.1*t)*np.clip((duration+.38-t)/.55,0,1)
+  wave+=.018*breath
+  env=np.minimum(t/.24,1)*np.exp(-.1*t)*np.clip((duration+.38-t)/.55,0,1)
  elif kind=='harp':
   wave=sum(a*np.sin(2*np.pi*f*k*t)*np.exp(-t*(1.25+.42*k)) for k,a in [(1,1),(2,.42),(3,.2),(4,.065)])
   env=np.minimum(t/.009,1)*np.clip((duration+1.1-t)/.4,0,1)
@@ -60,13 +60,13 @@ for bar in range(48):
  pattern=[0,2,1,3,2,1] if section in [1,2,4] else [0,2,1,3]
  for j,k in enumerate(pattern):
   at=j*(4/len(pattern))*BEAT+.035
-  add(notes[k]+12,start+at,.9,.032*density,'harp',(-.45 if j%2==0 else .42))
+  add(notes[k],start+at,.9,.024*density,'harp',(-.45 if j%2==0 else .42))
  # Intro/outro remain sparse; middle section introduces a second phrase.
  if section not in [0,5] or bar%8>=4 and section==0 or bar%8<4 and section==5:
   for beat,note,dur in (b if section in [2,4] else a)[bar%8]:
-   add(note,start+beat*BEAT,dur*BEAT,.105*density,'flute',-.13)
+   add(note-12,start+beat*BEAT,dur*BEAT,.075*density,'flute',-.13)
  if section==3 and bar%2==0:
-  add(notes[1]+12,start+2*BEAT,1.4*BEAT,.028,'flute',.35)
+  add(notes[1],start+2*BEAT,1.4*BEAT,.020,'flute',.35)
  # Quiet frame drum, never a loud repetitive kick/snare groove.
  if section in [2,4] and bar%2==0:
   t=np.arange(int(.55*SR))/SR
@@ -79,18 +79,21 @@ for bar in range(48):
 for ch in range(2):
  length=int(2.7*SR);t=np.arange(length)/SR
  ir=rng.standard_normal(length)*np.exp(-t/0.52)
- ir=sosfilt(butter(2,3600,fs=SR,output='sos'),ir)
+ ir=sosfilt(butter(2,1800,fs=SR,output='sos'),ir)
  ir[:int(.025*SR)]=0;ir*=.19/np.sqrt(np.sum(ir**2))
  for delay,gain in [(.067,.14),(.113,.1),(.191,.07)]:ir[int((delay+ch*.009)*SR)]+=gain
  wet=fftconvolve(mix[:,ch],ir).astype(np.float32)
  mix[:,ch]+=wet[:N];mix[:len(wet)-N,ch]+=wet[N:]
 mix=sosfilt(butter(2,40,btype='highpass',fs=SR,output='sos'),mix,axis=0)
-peak=np.max(np.abs(mix));mix*=.63/max(peak,1e-8)
+# Warm revision: soften the upper spectrum and cap both level and peak.
+mix=sosfilt(butter(2,1800,fs=SR,output='sos'),mix,axis=0)
+peak=np.max(np.abs(mix));rms=np.sqrt(np.mean(mix**2))
+mix*=min(.50/max(peak,1e-8),.09/max(rms,1e-8))
 # A tiny seam interpolation prevents encoder/filter boundary clicks.
 edge=round(.006*SR)
 for ch in range(2):mix[:edge,ch]+=np.linspace(mix[-1,ch]-mix[0,ch],0,edge)
 wave=OUT/'nyxia-mist-valley.wav';write(wave,SR,(mix*32767).astype(np.int16))
 ffmpeg=imageio_ffmpeg.get_ffmpeg_exe()
 subprocess.run([ffmpeg,'-y','-v','error','-i',str(wave),'-codec:a','libmp3lame','-b:a','128k',str(ASSETS/'mist-valley.mp3')],check=True)
-subprocess.run([ffmpeg,'-y','-v','error','-ss','23','-i',str(wave),'-t','40','-af','afade=t=in:d=1,afade=t=out:st=37:d=3','-codec:a','libmp3lame','-b:a','160k',str(OUT/'nyxia-music-preview.mp3')],check=True)
+subprocess.run([ffmpeg,'-y','-v','error','-ss','23','-i',str(wave),'-t','40','-af','afade=t=in:d=1,afade=t=out:st=37:d=3','-codec:a','libmp3lame','-b:a','160k',str(OUT/'nyxia-music-warm-preview.mp3')],check=True)
 print(f'Original score: {DURATION:.1f}s; peak {np.max(abs(mix)):.3f}; RMS {np.sqrt(np.mean(mix**2)):.3f}; MP3 {(ASSETS/"mist-valley.mp3").stat().st_size/1e6:.2f}MB')

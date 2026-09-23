@@ -9,3 +9,6 @@ Oyun, besteyi HTMLAudio ile akış halinde çalar. Web Audio gain üzerinden iOS
 Efektler yerel Web Audio sentezi: metal kesiş/darbe, yay kirişi/ok, büyü küresi, alev, buz, yıldırım, zehir, şifa, güçlendirme, hasar alma, ıskalama, örs, yükseltme sonucu, seviye, sandık, iksir, menü. Kısa atak zarfı tık sesini azaltır; sesler bitince düğümler ayrılır. Ortak kompresör ani ses yığılmalarını sınırlar. Savaş ve savaş alanı gerçek aksiyonlarına bağlanır; oynanış hesabı değişmez.
 
 Kontrol: `node scripts/check-audio.mjs`. Gerçek MP3 oynatma/sessiz/dönüş/sıfır ses/temizleme, uygulamanın görünürlük olayı, 39 beceri ve temel efektlerin OfflineAudioContext çıktısı, eşzamanlı ses yükü, sessizken kaynak ayırmama. Bu tarayıcı testidir; fiziksel iOS/Android hoparlör/kulaklık dinleme testi ayrıca yapılmalıdır.
+
+## Daha sıcak düzenleme
+Kullanıcının tiz rahatsızlığı üzerine flüt ve arp bir oktav aşağı alındı; flütün üst harmonikleri ve nefes sesi azaltıldı. Melodi atakları yumuşatıldı, yankı ve ana karışım 1.8 kHz alçak geçiren filtreyle dengelendi. RMS en fazla 0.09, tepe en fazla 0.50 olacak şekilde seviye sınırlandı. Efektler değişmedi.
