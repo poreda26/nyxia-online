@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "server": "node server/start.mjs",
+    "test:server": "node --test tests/server.test.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
