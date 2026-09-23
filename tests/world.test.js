@@ -366,3 +366,33 @@ test('wing attack bonus and monster EXP/drop rewards activate only while equippe
   assert.equal(removed.player.inventory.at(-1).id,wing.id);
  }finally{Math.random=random;}
 });
+
+
+// Matched attack/defense isolates the skill budget from equipment scaling.
+test('all 39 skills preserve three-class parity across defense and execute thresholds', async()=>{
+ const {SKILLS_BY_CLASS}=await import('../src/data/skills');
+ const {computeSkillDamage,computeSkillHeal}=await import('../src/utils/skills');
+ const tables=Object.values(SKILLS_BY_CLASS);
+ assert.equal(new Set(tables.flat().map(s=>s.id)).size,39);
+ for(let i=0;i<13;i++) {
+  const skills=tables.map(t=>t[i]);
+  for(const skill of skills) {
+   assert.equal(skill.mpCost,skills[0].mpCost);assert.equal(skill.cooldown,skills[0].cooldown);
+   assert.deepEqual(skill.effect,skills[0].effect);
+  }
+  for(const atk of [20,100,500])for(const def of [0,100,400])for(const hp of [.2,.3,.8]) {
+   const values=skills.map(skill=>computeSkillDamage(skill,{clsAtk:4,atk,monsterDef:def,monsterHpPct:hp,rand:()=>0}));
+   assert.ok(values.every(v=>v===values[0]&&v>=1));
+  }
+  if(skills[0].effect.type==='heal') assert.ok(computeSkillHeal(skills[0],1000)<=250);
+ }
+});
+test('buff recast replaces the same stat and lasts three full following actions', async()=>{
+ const {refreshSkillBuff}=await import('../src/utils/skills');
+ let buffs=refreshSkillBuff([{stat:'def',mult:1.2,turnsLeft:3}],{type:'buffAtk',mult:1.45,turns:3});
+ buffs=refreshSkillBuff(buffs,{type:'buffAtk',mult:1.35,turns:3});
+ assert.equal(buffs.length,2);assert.equal(buffs.find(b=>b.stat==='atk').mult,1.35);
+ const active=[];
+ for(let turn=0;turn<4;turn++) {buffs=buffs.map(b=>({...b,turnsLeft:b.turnsLeft-1})).filter(b=>b.turnsLeft>0);active.push(buffs.some(b=>b.stat==='atk'));}
+ assert.deepEqual(active,[true,true,true,false]);
+});

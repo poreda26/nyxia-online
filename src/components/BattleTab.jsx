@@ -1,3 +1,4 @@
+import {refreshSkillBuff} from '../utils/skills';
 import {wingDexBonus} from '../data/wings';
 import MenuEmblem from './icons/MenuEmblem';
 import BattleScene, {hasBattleScene} from './BattleScene';
@@ -79,7 +80,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const [monster, setMonster] = useState(null); // active monster template
   const [battle, setBattle] = useState(null); // {monsterHp, monsterMaxHp, log, playerHp}
   const [visual, setVisual] = useState({id:0,type:'',label:''});
-  const showAction = (type,label) => setVisual(v => ({id:v.id+1,type,label}));
+  const showAction = (type,label,skillId) => setVisual(v => ({id:v.id+1,type,label,skillId}));
   const [shake, setShake] = useState(null); // 'player' | 'monster' | null
   const [pendingMap, setPendingMap] = useState(null); // map awaiting teleport confirmation
   const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal
@@ -449,7 +450,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     if (attackLockRef.current) return;
     if (!battle || battle.finished || player.hp <= 0) return;
     const skill = classSkills(player.class).find((s) => s.id === skillId);
-    if (!skill) return;
+    if (!skill || !player.skills.known.includes(skillId)) return;
     if ((battle.skillCooldowns[skillId] || 0) > 0) { pushToast(t("battle.skillOnCooldown"), "warn"); return; }
     if (player.mp < skill.mpCost) { pushToast(t("battle.notEnoughMana"), "warn"); return; }
     attackLockRef.current = true;
@@ -458,7 +459,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     const skillCooldowns = { ...ticked.skillCooldowns, [skillId]: skill.cooldown };
     const maxHp = playerMaxHp(player);
     const e = skill.effect;
-    showAction(e.type,skillName(skill));
+    showAction(e.type,skillName(skill),skill.id);
 
     if (ticked.monsterHp <= 0) {
       setPlayer((p) => ({ ...p, mp: p.mp - skill.mpCost }));
@@ -493,11 +494,11 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       const actualHeal = Math.min(healAmt, maxHp - player.hp);
       if (actualHeal > 0) setVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: actualHeal } }));
     } else if (e.type === "buffAtk" || e.type === "buffDef") {
-      buffs = [...buffs, { stat: e.type === "buffAtk" ? "atk" : "def", mult: e.mult, turnsLeft: e.turns }];
+      buffs = refreshSkillBuff(buffs, e);
       log = pushLog(log, t("battle.log.skillBuff", { skill: skillName(skill) }));
     } else if (e.type === "dot") {
       const perTick = computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct: 1, rand: () => 0 });
-      dot = { dmgPerTurn: perTick, turnsLeft: e.turns };
+      dot = { dmgPerTurn: Math.max(1, Math.round(perTick * buffMultiplier(ticked.buffs, "atk"))), turnsLeft: e.turns };
       log = pushLog(log, t("battle.log.skillDot", { skill: skillName(skill) }));
       playHit({ crit: false });
       setShake("monster");

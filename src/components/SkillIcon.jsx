@@ -1,10 +1,37 @@
 import {useId} from 'react';
-const themes={w:['blade','heart','blade','flame','blades','poison','shield','target','blades','shield','flame','heart','blades'],r:['arrow','heart','target','target','arrows','poison','arrow','target','arrows','wind','arrow','heart','arrows'],m:['orb','heart','flame','orb','bolt','poison','ice','skull','meteor','time','orb','heart','meteor']};
+export const themes={w:['blade','resolve','hammer','horn','blades','bleed','quake','guillotine','brokenShield','banner','dragon','fist','vortex'],r:['arrow','bandage','target','eye','doubleArrow','poisonArrow','pierce','markedArrow','feather','wind','bullseye','leaf','arrowRain'],m:['orb','spring','flame','rune','bolt','sulfur','ice','skull','meteor','time','chaos','siphon','starfall']};
 const colors={blade:'#eac079',blades:'#f49663',arrow:'#93d5b0',arrows:'#7de5c0',heart:'#83e2b9',flame:'#ff9850',shield:'#80c9ef',target:'#e0c586',poison:'#be86ef',ice:'#98eaff',orb:'#bb9bff',bolt:'#a8deff',skull:'#c593ff',meteor:'#ffa172',time:'#ddb4ff',wind:'#b3e2cb'};
 export default function SkillIcon({skill,skillId,effectType,size=32,color}){
  const uid=useId(),id=skill?.id||skillId||'',n=Number(id.slice(1))||1;
- const kind=themes[id[0]]?.[n-1]||({heal:'heart',buffAtk:'flame',buffDef:'shield',dot:'poison',execute:'target'}[effectType]||'blade'),c=colors[kind];
+ const kind=themes[id[0]]?.[n-1]||({heal:'heart',buffAtk:'flame',buffDef:'shield',dot:'poison',execute:'target'}[effectType]||'blade'),c=colors[kind]||({w:'#efb477',r:'#92dfb2',m:'#c2a4ff'}[id[0]])||'#eac079';
  const shapes={
+ resolve:<path d="M22 14L32 8L42 14V30L32 39L22 30Z M14 43H50M20 50H44" stroke={c} strokeWidth="3" fill="none"/>,
+ hammer:<path d="M17 15L37 10L47 24L27 32Z M30 29L17 53" stroke={c} strokeWidth="3" fill="none"/>,
+ horn:<path d="M12 27L25 24L43 12L48 40L27 34L14 37Z M48 19L55 15M50 28H58" stroke={c} strokeWidth="3" fill="none"/>,
+ bleed:<path d="M13 17L40 43M19 12L46 38M43 35Q59 55 44 55Q30 55 43 35Z" stroke={c} strokeWidth="3" fill="none"/>,
+ quake:<path d="M7 45L19 39L26 46L35 34L45 43L57 38 M32 8V29M23 21L32 30L41 21" stroke={c} strokeWidth="3" fill="none"/>,
+ guillotine:<path d="M15 52V12H49V52 M20 19H44V29L20 38Z M9 53H55" stroke={c} strokeWidth="3" fill="none"/>,
+ brokenShield:<path d="M29 10L12 18L17 41L28 51L24 35L33 27Z M36 10L51 18L46 41L35 51L31 37L40 28Z" stroke={c} strokeWidth="3" fill="none"/>,
+ banner:<path d="M18 55V9L47 14L40 25L48 36L18 31 M25 17L33 21L26 26" stroke={c} strokeWidth="3" fill="none"/>,
+ dragon:<path d="M10 18L27 23L39 12L54 18L42 27L49 34L35 42L21 35L12 47M36 18L39 21 M22 47L42 7" stroke={c} strokeWidth="3" fill="none"/>,
+ fist:<path d="M17 29V17H24V27V12H32V26V14H40V29V20H47V38L39 51H25L13 38V29Z" stroke={c} strokeWidth="3" fill="none"/>,
+ vortex:<path d="M13 27Q18 4 41 16Q60 27 45 46Q27 61 15 42Q8 27 29 23Q46 21 40 37Q35 47 26 36 M44 9L53 18" stroke={c} strokeWidth="3" fill="none"/>,
+ bandage:<path d="M10 25L25 10L54 39L39 54Z M20 23L41 44M25 19L46 40M18 33L31 20M31 46L44 33" stroke={c} strokeWidth="3" fill="none"/>,
+ eye:<path d="M7 32Q32 7 57 32Q32 57 7 32Z M39 32A7 7 0 1 0 25 32A7 7 0 1 0 39 32" stroke={c} strokeWidth="3" fill="none"/>,
+ doubleArrow:<path d="M12 51L36 13L27 17M36 13L37 24 M28 53L52 15L43 19M52 15L53 26" stroke={c} strokeWidth="3" fill="none"/>,
+ poisonArrow:<path d="M10 50L48 12L36 15M48 12L45 24 M25 24Q9 42 22 42Q35 42 25 24Z" stroke={c} strokeWidth="3" fill="none"/>,
+ pierce:<path d="M8 43L55 22L42 21M55 22L47 33 M29 15L36 22M39 36L45 43M32 30L29 39" stroke={c} strokeWidth="3" fill="none"/>,
+ markedArrow:<path d="M13 51L48 16L35 18M48 16L46 29 M24 23L40 39M40 23L24 39" stroke={c} strokeWidth="3" fill="none"/>,
+ feather:<path d="M12 51Q21 17 51 12Q52 42 22 46Z M12 51L44 20M23 37L23 25M31 30L44 30" stroke={c} strokeWidth="3" fill="none"/>,
+ bullseye:<path d="M45 32A16 16 0 1 0 29 48 M38 32A9 9 0 1 0 29 41 M29 32L55 10L45 11M55 10L54 20" stroke={c} strokeWidth="3" fill="none"/>,
+ leaf:<path d="M13 50Q8 13 52 12Q55 53 13 50Z M13 50L43 23M23 40V27M32 32H44" stroke={c} strokeWidth="3" fill="none"/>,
+ arrowRain:<path d="M12 10V41L7 34M12 41L17 34 M32 16V53L27 46M32 53L37 46 M52 10V41L47 34M52 41L57 34" stroke={c} strokeWidth="3" fill="none"/>,
+ spring:<path d="M11 44Q32 33 53 44M15 51Q32 41 49 51 M32 9Q12 32 32 35Q52 32 32 9Z" stroke={c} strokeWidth="3" fill="none"/>,
+ rune:<path d="M32 9L52 21V44L32 55L12 44V21Z M22 41V23L42 41V23M22 32H42" stroke={c} strokeWidth="3" fill="none"/>,
+ sulfur:<path d="M10 22Q5 10 19 12Q30 3 37 13Q55 7 55 24Z M18 32L13 43M32 32L25 51M48 32L40 53" stroke={c} strokeWidth="3" fill="none"/>,
+ chaos:<path d="M32 7L38 24L55 18L44 33L55 48L37 42L32 58L26 41L8 48L19 32L8 17L26 23Z" stroke={c} strokeWidth="3" fill="none"/>,
+ siphon:<path d="M17 13Q4 34 18 40Q30 35 17 13Z M44 26Q29 50 44 54Q59 50 44 26Z M27 16Q49 8 52 24M48 18L52 24L57 19" stroke={c} strokeWidth="3" fill="none"/>,
+ starfall:<path d="M32 13L37 25L50 26L40 35L43 48L32 40L21 48L24 35L14 26L27 25Z M12 8L7 18M51 8L57 19M9 46L6 55" stroke={c} strokeWidth="3" fill="none"/>,
  blade:<><path d="M17 47L44 13L48 10L47 19L22 49Z" fill="#edf6ff"/><path d="M13 39L27 51M18 46L11 55" stroke="#deb978" strokeWidth="5"/></>,
  blades:<><path d="M14 12L19 13L47 45L43 50L15 18Z M49 12L44 13L16 45L21 50L48 18Z" fill="#dceaff"/><path d="M11 39L25 51M39 51L53 39" stroke="#ffd39a" strokeWidth="4"/></>,
  arrow:<><path d="M17 12Q51 32 17 52" stroke="#e2c291" strokeWidth="4" fill="none"/><path d="M17 12L27 32L17 52" stroke="#eee0bd" fill="none"/><path d="M12 39L49 23M44 21L50 22L47 29" stroke={c} strokeWidth="4"/></>,

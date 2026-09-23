@@ -135,3 +135,9 @@ export function describeEffect(effect, t = defaultEffectT) {
     default: return "";
   }
 }
+
+// Same-stat buffs refresh; never multiply into exponential damage.
+export function refreshSkillBuff(buffs, effect) {
+  const stat = effect.type === 'buffAtk' ? 'atk' : 'def';
+  return [...buffs.filter(b => b.stat !== stat), {stat, mult: effect.mult, turnsLeft: effect.turns + 1}];
+}
