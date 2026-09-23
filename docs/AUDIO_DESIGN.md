@@ -12,3 +12,6 @@ Kontrol: `node scripts/check-audio.mjs`. Gerçek MP3 oynatma/sessiz/dönüş/sı
 
 ## Daha sıcak düzenleme
 Kullanıcının tiz rahatsızlığı üzerine flüt ve arp bir oktav aşağı alındı; flütün üst harmonikleri ve nefes sesi azaltıldı. Melodi atakları yumuşatıldı, yankı ve ana karışım 1.8 kHz alçak geçiren filtreyle dengelendi. RMS en fazla 0.09, tepe en fazla 0.50 olacak şekilde seviye sınırlandı. Efektler değişmedi.
+
+## Uğultu ve yankı düzeltmesi
+Uzun yankı kuyruğu 2.7 saniyeden 0.65 saniyeye indirildi; yankı seviyesi belirgin azaltıldı. Bas ve yaylıların seviyesi ve nota kuyrukları azaltıldı, yaylı detune daraltıldı. 100 Hz altı temizlendi. Önceki pes melodi korunur; RMS hedefi 0.075.
