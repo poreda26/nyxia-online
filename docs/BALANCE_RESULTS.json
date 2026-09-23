@@ -1,0 +1,3878 @@
+{
+  "pvp": [
+    {
+      "tier": 1,
+      "level": 15,
+      "plus": 1,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 47.15,
+      "draw": 0,
+      "rounds": 14
+    },
+    {
+      "tier": 1,
+      "level": 15,
+      "plus": 1,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 57,
+      "draw": 0,
+      "rounds": 21
+    },
+    {
+      "tier": 1,
+      "level": 15,
+      "plus": 1,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 50.55,
+      "draw": 0,
+      "rounds": 22
+    },
+    {
+      "tier": 1,
+      "level": 15,
+      "plus": 5,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 44.2,
+      "draw": 0,
+      "rounds": 13
+    },
+    {
+      "tier": 1,
+      "level": 15,
+      "plus": 5,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 56.9,
+      "draw": 0,
+      "rounds": 18
+    },
+    {
+      "tier": 1,
+      "level": 15,
+      "plus": 5,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 48.6,
+      "draw": 0,
+      "rounds": 19
+    },
+    {
+      "tier": 1,
+      "level": 15,
+      "plus": 8,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 48.85,
+      "draw": 0,
+      "rounds": 11
+    },
+    {
+      "tier": 1,
+      "level": 15,
+      "plus": 8,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 54.65,
+      "draw": 0,
+      "rounds": 15
+    },
+    {
+      "tier": 1,
+      "level": 15,
+      "plus": 8,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 46.05,
+      "draw": 0,
+      "rounds": 15
+    },
+    {
+      "tier": 2,
+      "level": 25,
+      "plus": 1,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 42.5,
+      "draw": 0,
+      "rounds": 12
+    },
+    {
+      "tier": 2,
+      "level": 25,
+      "plus": 1,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 53.4,
+      "draw": 0,
+      "rounds": 13
+    },
+    {
+      "tier": 2,
+      "level": 25,
+      "plus": 1,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 46.65,
+      "draw": 0,
+      "rounds": 14
+    },
+    {
+      "tier": 2,
+      "level": 25,
+      "plus": 5,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 48.15,
+      "draw": 0,
+      "rounds": 11
+    },
+    {
+      "tier": 2,
+      "level": 25,
+      "plus": 5,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 54.55,
+      "draw": 0,
+      "rounds": 12
+    },
+    {
+      "tier": 2,
+      "level": 25,
+      "plus": 5,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 41.65,
+      "draw": 0,
+      "rounds": 13
+    },
+    {
+      "tier": 2,
+      "level": 25,
+      "plus": 8,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 44.2,
+      "draw": 0,
+      "rounds": 9
+    },
+    {
+      "tier": 2,
+      "level": 25,
+      "plus": 8,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 61.75,
+      "draw": 0,
+      "rounds": 9
+    },
+    {
+      "tier": 2,
+      "level": 25,
+      "plus": 8,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 43.2,
+      "draw": 0,
+      "rounds": 13
+    },
+    {
+      "tier": 3,
+      "level": 40,
+      "plus": 1,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 53.05,
+      "draw": 0,
+      "rounds": 10
+    },
+    {
+      "tier": 3,
+      "level": 40,
+      "plus": 1,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 47.6,
+      "draw": 0,
+      "rounds": 10
+    },
+    {
+      "tier": 3,
+      "level": 40,
+      "plus": 1,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 46.3,
+      "draw": 0,
+      "rounds": 11
+    },
+    {
+      "tier": 3,
+      "level": 40,
+      "plus": 5,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 48.8,
+      "draw": 0,
+      "rounds": 10
+    },
+    {
+      "tier": 3,
+      "level": 40,
+      "plus": 5,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 50.55,
+      "draw": 0,
+      "rounds": 10
+    },
+    {
+      "tier": 3,
+      "level": 40,
+      "plus": 5,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 49.05,
+      "draw": 0,
+      "rounds": 10
+    },
+    {
+      "tier": 3,
+      "level": 40,
+      "plus": 8,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 43.3,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 3,
+      "level": 40,
+      "plus": 8,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 42.4,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 3,
+      "level": 40,
+      "plus": 8,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 46.5,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 4,
+      "level": 50,
+      "plus": 1,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 42.7,
+      "draw": 0,
+      "rounds": 10
+    },
+    {
+      "tier": 4,
+      "level": 50,
+      "plus": 1,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 41.45,
+      "draw": 0,
+      "rounds": 10
+    },
+    {
+      "tier": 4,
+      "level": 50,
+      "plus": 1,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 51.4,
+      "draw": 0,
+      "rounds": 10
+    },
+    {
+      "tier": 4,
+      "level": 50,
+      "plus": 5,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 50.05,
+      "draw": 0,
+      "rounds": 12
+    },
+    {
+      "tier": 4,
+      "level": 50,
+      "plus": 5,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 45.65,
+      "draw": 0,
+      "rounds": 12
+    },
+    {
+      "tier": 4,
+      "level": 50,
+      "plus": 5,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 50.45,
+      "draw": 0,
+      "rounds": 12
+    },
+    {
+      "tier": 4,
+      "level": 50,
+      "plus": 8,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 51.1,
+      "draw": 0,
+      "rounds": 12
+    },
+    {
+      "tier": 4,
+      "level": 50,
+      "plus": 8,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 47.3,
+      "draw": 0,
+      "rounds": 12
+    },
+    {
+      "tier": 4,
+      "level": 50,
+      "plus": 8,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 51.1,
+      "draw": 0,
+      "rounds": 12
+    },
+    {
+      "tier": 5,
+      "level": 60,
+      "plus": 1,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 50.75,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 5,
+      "level": 60,
+      "plus": 1,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 44.4,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 5,
+      "level": 60,
+      "plus": 1,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 48.3,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 5,
+      "level": 60,
+      "plus": 5,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 49.2,
+      "draw": 0,
+      "rounds": 9
+    },
+    {
+      "tier": 5,
+      "level": 60,
+      "plus": 5,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 52.95,
+      "draw": 0,
+      "rounds": 9
+    },
+    {
+      "tier": 5,
+      "level": 60,
+      "plus": 5,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 49.1,
+      "draw": 0,
+      "rounds": 9
+    },
+    {
+      "tier": 5,
+      "level": 60,
+      "plus": 8,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 46.15,
+      "draw": 0,
+      "rounds": 9
+    },
+    {
+      "tier": 5,
+      "level": 60,
+      "plus": 8,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 51.05,
+      "draw": 0,
+      "rounds": 9
+    },
+    {
+      "tier": 5,
+      "level": 60,
+      "plus": 8,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 50.25,
+      "draw": 0,
+      "rounds": 9
+    },
+    {
+      "tier": 6,
+      "level": 65,
+      "plus": 1,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 50.8,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 6,
+      "level": 65,
+      "plus": 1,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 54.7,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 6,
+      "level": 65,
+      "plus": 1,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 51.7,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 6,
+      "level": 65,
+      "plus": 5,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 47.1,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 6,
+      "level": 65,
+      "plus": 5,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 44.9,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 6,
+      "level": 65,
+      "plus": 5,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 48.7,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 6,
+      "level": 65,
+      "plus": 8,
+      "a": "warrior",
+      "b": "rogue",
+      "winPct": 48.55,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 6,
+      "level": 65,
+      "plus": 8,
+      "a": "warrior",
+      "b": "mage",
+      "winPct": 45.95,
+      "draw": 0,
+      "rounds": 8
+    },
+    {
+      "tier": 6,
+      "level": 65,
+      "plus": 8,
+      "a": "rogue",
+      "b": "mage",
+      "winPct": 48.5,
+      "draw": 0,
+      "rounds": 8
+    }
+  ],
+  "pve": [
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "current",
+      "monster": "Sis Kurdu",
+      "winPct": 100,
+      "turns": 2,
+      "hpPct": 98,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "current",
+      "monster": "Kabuklu Golem",
+      "winPct": 100,
+      "turns": 2.7,
+      "hpPct": 97,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "current",
+      "monster": "Otlak Yabanisi",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 96,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "current",
+      "monster": "Bataklık Sürüngeni",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 92,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "current",
+      "monster": "Nadas Devi",
+      "winPct": 100,
+      "turns": 6.2,
+      "hpPct": 83,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Sis Kurdu",
+      "winPct": 100,
+      "turns": 2,
+      "hpPct": 98,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Kabuklu Golem",
+      "winPct": 100,
+      "turns": 2.7,
+      "hpPct": 97,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Otlak Yabanisi",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 96,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Bataklık Sürüngeni",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 92,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Nadas Devi",
+      "winPct": 100,
+      "turns": 6.2,
+      "hpPct": 83,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Sis Kurdu",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 91,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Kabuklu Golem",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 89,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Otlak Yabanisi",
+      "winPct": 100,
+      "turns": 4.3,
+      "hpPct": 81,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Bataklık Sürüngeni",
+      "winPct": 100,
+      "turns": 6.2,
+      "hpPct": 67,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Nadas Devi",
+      "winPct": 99.95,
+      "turns": 8.3,
+      "hpPct": 41,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "current",
+      "monster": "Sis Kurdu",
+      "winPct": 100,
+      "turns": 2,
+      "hpPct": 98,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "current",
+      "monster": "Kabuklu Golem",
+      "winPct": 100,
+      "turns": 2.4,
+      "hpPct": 97,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "current",
+      "monster": "Otlak Yabanisi",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 95,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "current",
+      "monster": "Bataklık Sürüngeni",
+      "winPct": 100,
+      "turns": 4,
+      "hpPct": 91,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "current",
+      "monster": "Nadas Devi",
+      "winPct": 100,
+      "turns": 5,
+      "hpPct": 85,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Sis Kurdu",
+      "winPct": 100,
+      "turns": 2,
+      "hpPct": 98,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Kabuklu Golem",
+      "winPct": 100,
+      "turns": 2.4,
+      "hpPct": 97,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Otlak Yabanisi",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 95,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Bataklık Sürüngeni",
+      "winPct": 100,
+      "turns": 4,
+      "hpPct": 91,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Nadas Devi",
+      "winPct": 100,
+      "turns": 5,
+      "hpPct": 85,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Sis Kurdu",
+      "winPct": 100,
+      "turns": 2.9,
+      "hpPct": 89,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Kabuklu Golem",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 87,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Otlak Yabanisi",
+      "winPct": 100,
+      "turns": 4,
+      "hpPct": 80,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Bataklık Sürüngeni",
+      "winPct": 100,
+      "turns": 5.2,
+      "hpPct": 66,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Nadas Devi",
+      "winPct": 99.95,
+      "turns": 7.1,
+      "hpPct": 36,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "current",
+      "monster": "Sis Kurdu",
+      "winPct": 100,
+      "turns": 2,
+      "hpPct": 98,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "current",
+      "monster": "Kabuklu Golem",
+      "winPct": 100,
+      "turns": 2,
+      "hpPct": 97,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "current",
+      "monster": "Otlak Yabanisi",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 94,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "current",
+      "monster": "Bataklık Sürüngeni",
+      "winPct": 100,
+      "turns": 4,
+      "hpPct": 90,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "current",
+      "monster": "Nadas Devi",
+      "winPct": 100,
+      "turns": 5,
+      "hpPct": 82,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Sis Kurdu",
+      "winPct": 100,
+      "turns": 2,
+      "hpPct": 98,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Kabuklu Golem",
+      "winPct": 100,
+      "turns": 2,
+      "hpPct": 97,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Otlak Yabanisi",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 94,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Bataklık Sürüngeni",
+      "winPct": 100,
+      "turns": 4,
+      "hpPct": 90,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "previous",
+      "monster": "Nadas Devi",
+      "winPct": 100,
+      "turns": 5,
+      "hpPct": 82,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Sis Kurdu",
+      "winPct": 100,
+      "turns": 2,
+      "hpPct": 92,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Kabuklu Golem",
+      "winPct": 100,
+      "turns": 3,
+      "hpPct": 85,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Otlak Yabanisi",
+      "winPct": 100,
+      "turns": 3.9,
+      "hpPct": 75,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Bataklık Sürüngeni",
+      "winPct": 100,
+      "turns": 5,
+      "hpPct": 59,
+      "weaponTier": 1
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "level": 8,
+      "gear": "starter",
+      "monster": "Nadas Devi",
+      "winPct": 100,
+      "turns": 6.9,
+      "hpPct": 35,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "current",
+      "monster": "Kül Yaratığı",
+      "winPct": 100,
+      "turns": 3.1,
+      "hpPct": 95,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "current",
+      "monster": "Volkan Sürüngeni",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 92,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "current",
+      "monster": "Kanyon Akrebi",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 91,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "current",
+      "monster": "Lav Ruhu",
+      "winPct": 100,
+      "turns": 5.2,
+      "hpPct": 87,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Kül Yaratığı",
+      "winPct": 100,
+      "turns": 7.3,
+      "hpPct": 75,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Volkan Sürüngeni",
+      "winPct": 100,
+      "turns": 8.4,
+      "hpPct": 70,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Kanyon Akrebi",
+      "winPct": 100,
+      "turns": 10.6,
+      "hpPct": 56,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Lav Ruhu",
+      "winPct": 100,
+      "turns": 13.4,
+      "hpPct": 49,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Kül Yaratığı",
+      "winPct": 91.15,
+      "turns": 11.6,
+      "hpPct": 18,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Volkan Sürüngeni",
+      "winPct": 32.2,
+      "turns": 12.2,
+      "hpPct": 4,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Kanyon Akrebi",
+      "winPct": 0.75,
+      "turns": 11.2,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Lav Ruhu",
+      "winPct": 0,
+      "turns": 10.1,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "current",
+      "monster": "Kül Yaratığı",
+      "winPct": 100,
+      "turns": 3.1,
+      "hpPct": 94,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "current",
+      "monster": "Volkan Sürüngeni",
+      "winPct": 100,
+      "turns": 3.8,
+      "hpPct": 92,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "current",
+      "monster": "Kanyon Akrebi",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 89,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "current",
+      "monster": "Lav Ruhu",
+      "winPct": 100,
+      "turns": 4.7,
+      "hpPct": 87,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Kül Yaratığı",
+      "winPct": 100,
+      "turns": 5.7,
+      "hpPct": 79,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Volkan Sürüngeni",
+      "winPct": 100,
+      "turns": 6.6,
+      "hpPct": 73,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Kanyon Akrebi",
+      "winPct": 100,
+      "turns": 8.3,
+      "hpPct": 62,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Lav Ruhu",
+      "winPct": 100,
+      "turns": 10.4,
+      "hpPct": 53,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Kül Yaratığı",
+      "winPct": 95.65,
+      "turns": 9.3,
+      "hpPct": 27,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Volkan Sürüngeni",
+      "winPct": 67.3,
+      "turns": 10.6,
+      "hpPct": 10,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Kanyon Akrebi",
+      "winPct": 4,
+      "turns": 9.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Lav Ruhu",
+      "winPct": 0.1,
+      "turns": 9.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "current",
+      "monster": "Kül Yaratığı",
+      "winPct": 100,
+      "turns": 3.1,
+      "hpPct": 94,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "current",
+      "monster": "Volkan Sürüngeni",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 90,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "current",
+      "monster": "Kanyon Akrebi",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 89,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "current",
+      "monster": "Lav Ruhu",
+      "winPct": 100,
+      "turns": 4.9,
+      "hpPct": 85,
+      "weaponTier": 2
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Kül Yaratığı",
+      "winPct": 100,
+      "turns": 6.1,
+      "hpPct": 74,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Volkan Sürüngeni",
+      "winPct": 100,
+      "turns": 7,
+      "hpPct": 66,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Kanyon Akrebi",
+      "winPct": 100,
+      "turns": 8.5,
+      "hpPct": 59,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "previous",
+      "monster": "Lav Ruhu",
+      "winPct": 100,
+      "turns": 10.6,
+      "hpPct": 49,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Kül Yaratığı",
+      "winPct": 77.2,
+      "turns": 8.2,
+      "hpPct": 21,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Volkan Sürüngeni",
+      "winPct": 54.4,
+      "turns": 8.8,
+      "hpPct": 10,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Kanyon Akrebi",
+      "winPct": 4.65,
+      "turns": 8.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "level": 20,
+      "gear": "starter",
+      "monster": "Lav Ruhu",
+      "winPct": 0,
+      "turns": 7.9,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "current",
+      "monster": "Buzul Kurdu",
+      "winPct": 100,
+      "turns": 4,
+      "hpPct": 93,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "current",
+      "monster": "Alev Örümceği",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 93,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "current",
+      "monster": "Don Devi",
+      "winPct": 100,
+      "turns": 5,
+      "hpPct": 90,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "current",
+      "monster": "Kor Salamanderi",
+      "winPct": 100,
+      "turns": 5.2,
+      "hpPct": 87,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "current",
+      "monster": "Zirve Muhafızı",
+      "winPct": 100,
+      "turns": 6.2,
+      "hpPct": 83,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Buzul Kurdu",
+      "winPct": 100,
+      "turns": 5.2,
+      "hpPct": 86,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Alev Örümceği",
+      "winPct": 100,
+      "turns": 6.9,
+      "hpPct": 78,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Don Devi",
+      "winPct": 100,
+      "turns": 7.3,
+      "hpPct": 75,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Kor Salamanderi",
+      "winPct": 100,
+      "turns": 8.5,
+      "hpPct": 66,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Zirve Muhafızı",
+      "winPct": 100,
+      "turns": 10.5,
+      "hpPct": 54,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Buzul Kurdu",
+      "winPct": 0,
+      "turns": 11.1,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Alev Örümceği",
+      "winPct": 0,
+      "turns": 10,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Don Devi",
+      "winPct": 0,
+      "turns": 10,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Kor Salamanderi",
+      "winPct": 0,
+      "turns": 7.8,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Zirve Muhafızı",
+      "winPct": 0,
+      "turns": 7.8,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "current",
+      "monster": "Buzul Kurdu",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 93,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "current",
+      "monster": "Alev Örümceği",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 92,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "current",
+      "monster": "Don Devi",
+      "winPct": 100,
+      "turns": 4.7,
+      "hpPct": 89,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "current",
+      "monster": "Kor Salamanderi",
+      "winPct": 100,
+      "turns": 5.1,
+      "hpPct": 86,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "current",
+      "monster": "Zirve Muhafızı",
+      "winPct": 100,
+      "turns": 5.9,
+      "hpPct": 82,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Buzul Kurdu",
+      "winPct": 100,
+      "turns": 5.1,
+      "hpPct": 85,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Alev Örümceği",
+      "winPct": 100,
+      "turns": 6.4,
+      "hpPct": 77,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Don Devi",
+      "winPct": 100,
+      "turns": 7.1,
+      "hpPct": 73,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Kor Salamanderi",
+      "winPct": 100,
+      "turns": 8.3,
+      "hpPct": 63,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Zirve Muhafızı",
+      "winPct": 100,
+      "turns": 10.3,
+      "hpPct": 57,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Buzul Kurdu",
+      "winPct": 0,
+      "turns": 11.6,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Alev Örümceği",
+      "winPct": 0,
+      "turns": 9.8,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Don Devi",
+      "winPct": 0,
+      "turns": 9.8,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Kor Salamanderi",
+      "winPct": 0,
+      "turns": 8.1,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Zirve Muhafızı",
+      "winPct": 0,
+      "turns": 7.1,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "current",
+      "monster": "Buzul Kurdu",
+      "winPct": 100,
+      "turns": 4,
+      "hpPct": 92,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "current",
+      "monster": "Alev Örümceği",
+      "winPct": 100,
+      "turns": 4.1,
+      "hpPct": 90,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "current",
+      "monster": "Don Devi",
+      "winPct": 100,
+      "turns": 4.9,
+      "hpPct": 87,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "current",
+      "monster": "Kor Salamanderi",
+      "winPct": 100,
+      "turns": 5.2,
+      "hpPct": 84,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "current",
+      "monster": "Zirve Muhafızı",
+      "winPct": 100,
+      "turns": 6.1,
+      "hpPct": 78,
+      "weaponTier": 3
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Buzul Kurdu",
+      "winPct": 100,
+      "turns": 5.2,
+      "hpPct": 83,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Alev Örümceği",
+      "winPct": 100,
+      "turns": 6.5,
+      "hpPct": 74,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Don Devi",
+      "winPct": 100,
+      "turns": 7.2,
+      "hpPct": 68,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Kor Salamanderi",
+      "winPct": 100,
+      "turns": 8.3,
+      "hpPct": 59,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "previous",
+      "monster": "Zirve Muhafızı",
+      "winPct": 100,
+      "turns": 10.5,
+      "hpPct": 50,
+      "weaponTier": 2
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Buzul Kurdu",
+      "winPct": 0.3,
+      "turns": 9.4,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Alev Örümceği",
+      "winPct": 0,
+      "turns": 8.2,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Don Devi",
+      "winPct": 0,
+      "turns": 7.8,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Kor Salamanderi",
+      "winPct": 0,
+      "turns": 6.7,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "level": 33,
+      "gear": "starter",
+      "monster": "Zirve Muhafızı",
+      "winPct": 0,
+      "turns": 5.5,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "current",
+      "monster": "Harabe İskeleti",
+      "winPct": 100,
+      "turns": 5,
+      "hpPct": 90,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "current",
+      "monster": "Lanetli Rahip",
+      "winPct": 100,
+      "turns": 5.1,
+      "hpPct": 89,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "current",
+      "monster": "Tapınak Bekçisi",
+      "winPct": 100,
+      "turns": 7.1,
+      "hpPct": 82,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "current",
+      "monster": "Gölge Vaizi",
+      "winPct": 100,
+      "turns": 8,
+      "hpPct": 78,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Harabe İskeleti",
+      "winPct": 100,
+      "turns": 7.1,
+      "hpPct": 73,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Lanetli Rahip",
+      "winPct": 100,
+      "turns": 7.9,
+      "hpPct": 66,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Tapınak Bekçisi",
+      "winPct": 100,
+      "turns": 9.4,
+      "hpPct": 58,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Gölge Vaizi",
+      "winPct": 100,
+      "turns": 12.4,
+      "hpPct": 48,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Harabe İskeleti",
+      "winPct": 0,
+      "turns": 6.6,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Lanetli Rahip",
+      "winPct": 0,
+      "turns": 6.5,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Tapınak Bekçisi",
+      "winPct": 0,
+      "turns": 5.4,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Gölge Vaizi",
+      "winPct": 0,
+      "turns": 5.4,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "current",
+      "monster": "Harabe İskeleti",
+      "winPct": 100,
+      "turns": 5,
+      "hpPct": 89,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "current",
+      "monster": "Lanetli Rahip",
+      "winPct": 100,
+      "turns": 5.1,
+      "hpPct": 88,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "current",
+      "monster": "Tapınak Bekçisi",
+      "winPct": 100,
+      "turns": 6.4,
+      "hpPct": 83,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "current",
+      "monster": "Gölge Vaizi",
+      "winPct": 100,
+      "turns": 7.6,
+      "hpPct": 77,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Harabe İskeleti",
+      "winPct": 100,
+      "turns": 6.8,
+      "hpPct": 73,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Lanetli Rahip",
+      "winPct": 100,
+      "turns": 7.8,
+      "hpPct": 65,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Tapınak Bekçisi",
+      "winPct": 100,
+      "turns": 9.3,
+      "hpPct": 58,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Gölge Vaizi",
+      "winPct": 100,
+      "turns": 10.7,
+      "hpPct": 49,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Harabe İskeleti",
+      "winPct": 0,
+      "turns": 7.1,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Lanetli Rahip",
+      "winPct": 0,
+      "turns": 5.8,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Tapınak Bekçisi",
+      "winPct": 0,
+      "turns": 5.9,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Gölge Vaizi",
+      "winPct": 0,
+      "turns": 5.7,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "current",
+      "monster": "Harabe İskeleti",
+      "winPct": 100,
+      "turns": 5,
+      "hpPct": 88,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "current",
+      "monster": "Lanetli Rahip",
+      "winPct": 100,
+      "turns": 5.1,
+      "hpPct": 86,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "current",
+      "monster": "Tapınak Bekçisi",
+      "winPct": 100,
+      "turns": 6.2,
+      "hpPct": 81,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "current",
+      "monster": "Gölge Vaizi",
+      "winPct": 100,
+      "turns": 7.8,
+      "hpPct": 72,
+      "weaponTier": 4
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Harabe İskeleti",
+      "winPct": 100,
+      "turns": 7.1,
+      "hpPct": 67,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Lanetli Rahip",
+      "winPct": 100,
+      "turns": 7.9,
+      "hpPct": 58,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Tapınak Bekçisi",
+      "winPct": 100,
+      "turns": 10,
+      "hpPct": 54,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "previous",
+      "monster": "Gölge Vaizi",
+      "winPct": 100,
+      "turns": 11.4,
+      "hpPct": 44,
+      "weaponTier": 3
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Harabe İskeleti",
+      "winPct": 0,
+      "turns": 5.4,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Lanetli Rahip",
+      "winPct": 0,
+      "turns": 5.4,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Tapınak Bekçisi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "level": 45,
+      "gear": "starter",
+      "monster": "Gölge Vaizi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "current",
+      "monster": "Uçurum Solucanı",
+      "winPct": 100,
+      "turns": 6.3,
+      "hpPct": 81,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "current",
+      "monster": "Karanlık Çağırıcı",
+      "winPct": 100,
+      "turns": 7.9,
+      "hpPct": 74,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "current",
+      "monster": "Dip İblisi",
+      "winPct": 100,
+      "turns": 8.4,
+      "hpPct": 70,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "current",
+      "monster": "Kabus Gölgesi",
+      "winPct": 100,
+      "turns": 9.2,
+      "hpPct": 65,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "current",
+      "monster": "Uçurum Efendisi",
+      "winPct": 100,
+      "turns": 10.7,
+      "hpPct": 58,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Uçurum Solucanı",
+      "winPct": 100,
+      "turns": 9.1,
+      "hpPct": 69,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Karanlık Çağırıcı",
+      "winPct": 100,
+      "turns": 10.1,
+      "hpPct": 64,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Dip İblisi",
+      "winPct": 100,
+      "turns": 10.6,
+      "hpPct": 59,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Kabus Gölgesi",
+      "winPct": 100,
+      "turns": 13.5,
+      "hpPct": 60,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Uçurum Efendisi",
+      "winPct": 100,
+      "turns": 18,
+      "hpPct": 44,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Uçurum Solucanı",
+      "winPct": 0,
+      "turns": 5.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Karanlık Çağırıcı",
+      "winPct": 0,
+      "turns": 5.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Dip İblisi",
+      "winPct": 0,
+      "turns": 5.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Kabus Gölgesi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Uçurum Efendisi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "current",
+      "monster": "Uçurum Solucanı",
+      "winPct": 100,
+      "turns": 6.7,
+      "hpPct": 78,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "current",
+      "monster": "Karanlık Çağırıcı",
+      "winPct": 100,
+      "turns": 7.6,
+      "hpPct": 73,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "current",
+      "monster": "Dip İblisi",
+      "winPct": 100,
+      "turns": 8.6,
+      "hpPct": 67,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "current",
+      "monster": "Kabus Gölgesi",
+      "winPct": 100,
+      "turns": 9.9,
+      "hpPct": 59,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "current",
+      "monster": "Uçurum Efendisi",
+      "winPct": 100,
+      "turns": 11.3,
+      "hpPct": 64,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Uçurum Solucanı",
+      "winPct": 100,
+      "turns": 8.5,
+      "hpPct": 70,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Karanlık Çağırıcı",
+      "winPct": 100,
+      "turns": 9.8,
+      "hpPct": 62,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Dip İblisi",
+      "winPct": 100,
+      "turns": 10.5,
+      "hpPct": 59,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Kabus Gölgesi",
+      "winPct": 100,
+      "turns": 12.8,
+      "hpPct": 63,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Uçurum Efendisi",
+      "winPct": 100,
+      "turns": 15.9,
+      "hpPct": 52,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Uçurum Solucanı",
+      "winPct": 0,
+      "turns": 5.7,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Karanlık Çağırıcı",
+      "winPct": 0,
+      "turns": 5.6,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Dip İblisi",
+      "winPct": 0,
+      "turns": 4.5,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Kabus Gölgesi",
+      "winPct": 0,
+      "turns": 4.5,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Uçurum Efendisi",
+      "winPct": 0,
+      "turns": 4.4,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "current",
+      "monster": "Uçurum Solucanı",
+      "winPct": 100,
+      "turns": 6.3,
+      "hpPct": 77,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "current",
+      "monster": "Karanlık Çağırıcı",
+      "winPct": 100,
+      "turns": 7.8,
+      "hpPct": 69,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "current",
+      "monster": "Dip İblisi",
+      "winPct": 100,
+      "turns": 8.4,
+      "hpPct": 63,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "current",
+      "monster": "Kabus Gölgesi",
+      "winPct": 100,
+      "turns": 9.3,
+      "hpPct": 58,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "current",
+      "monster": "Uçurum Efendisi",
+      "winPct": 100,
+      "turns": 11.1,
+      "hpPct": 60,
+      "weaponTier": 5
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Uçurum Solucanı",
+      "winPct": 100,
+      "turns": 8.4,
+      "hpPct": 65,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Karanlık Çağırıcı",
+      "winPct": 100,
+      "turns": 9.2,
+      "hpPct": 59,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Dip İblisi",
+      "winPct": 100,
+      "turns": 10.4,
+      "hpPct": 57,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Kabus Gölgesi",
+      "winPct": 100,
+      "turns": 12.4,
+      "hpPct": 59,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "previous",
+      "monster": "Uçurum Efendisi",
+      "winPct": 100,
+      "turns": 16.3,
+      "hpPct": 52,
+      "weaponTier": 4
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Uçurum Solucanı",
+      "winPct": 0,
+      "turns": 5.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Karanlık Çağırıcı",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Dip İblisi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Kabus Gölgesi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "level": 55,
+      "gear": "starter",
+      "monster": "Uçurum Efendisi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "current",
+      "monster": "Kızıl Muhafız",
+      "winPct": 100,
+      "turns": 10.1,
+      "hpPct": 55,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "current",
+      "monster": "Alev Celladı",
+      "winPct": 100,
+      "turns": 11.3,
+      "hpPct": 63,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "current",
+      "monster": "Kaos İblisi",
+      "winPct": 100,
+      "turns": 13.3,
+      "hpPct": 57,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "current",
+      "monster": "Kıyamet Ejderhası",
+      "winPct": 100,
+      "turns": 15,
+      "hpPct": 46,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Kızıl Muhafız",
+      "winPct": 100,
+      "turns": 13.1,
+      "hpPct": 63,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Alev Celladı",
+      "winPct": 100,
+      "turns": 14.7,
+      "hpPct": 53,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Kaos İblisi",
+      "winPct": 99.95,
+      "turns": 16.8,
+      "hpPct": 38,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Kıyamet Ejderhası",
+      "winPct": 93.9,
+      "turns": 20,
+      "hpPct": 18,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Kızıl Muhafız",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Alev Celladı",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Kaos İblisi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Kıyamet Ejderhası",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "current",
+      "monster": "Kızıl Muhafız",
+      "winPct": 100,
+      "turns": 11.1,
+      "hpPct": 60,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "current",
+      "monster": "Alev Celladı",
+      "winPct": 100,
+      "turns": 12.6,
+      "hpPct": 57,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "current",
+      "monster": "Kaos İblisi",
+      "winPct": 100,
+      "turns": 14.1,
+      "hpPct": 52,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "current",
+      "monster": "Kıyamet Ejderhası",
+      "winPct": 100,
+      "turns": 16.3,
+      "hpPct": 48,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Kızıl Muhafız",
+      "winPct": 100,
+      "turns": 13.8,
+      "hpPct": 56,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Alev Celladı",
+      "winPct": 100,
+      "turns": 15.7,
+      "hpPct": 50,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Kaos İblisi",
+      "winPct": 100,
+      "turns": 17.8,
+      "hpPct": 50,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Kıyamet Ejderhası",
+      "winPct": 99.75,
+      "turns": 19.5,
+      "hpPct": 37,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Kızıl Muhafız",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Alev Celladı",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Kaos İblisi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Kıyamet Ejderhası",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "current",
+      "monster": "Kızıl Muhafız",
+      "winPct": 100,
+      "turns": 10.3,
+      "hpPct": 56,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "current",
+      "monster": "Alev Celladı",
+      "winPct": 100,
+      "turns": 12.4,
+      "hpPct": 49,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "current",
+      "monster": "Kaos İblisi",
+      "winPct": 100,
+      "turns": 14,
+      "hpPct": 46,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "current",
+      "monster": "Kıyamet Ejderhası",
+      "winPct": 100,
+      "turns": 15.3,
+      "hpPct": 39,
+      "weaponTier": 6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Kızıl Muhafız",
+      "winPct": 100,
+      "turns": 13,
+      "hpPct": 47,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Alev Celladı",
+      "winPct": 100,
+      "turns": 15.3,
+      "hpPct": 46,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Kaos İblisi",
+      "winPct": 100,
+      "turns": 17.1,
+      "hpPct": 36,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "previous",
+      "monster": "Kıyamet Ejderhası",
+      "winPct": 100,
+      "turns": 19.4,
+      "hpPct": 24,
+      "weaponTier": 5
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Kızıl Muhafız",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Alev Celladı",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Kaos İblisi",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "level": 63,
+      "gear": "starter",
+      "monster": "Kıyamet Ejderhası",
+      "winPct": 0,
+      "turns": 4.3,
+      "hpPct": 0,
+      "weaponTier": 1
+    }
+  ],
+  "samplesPerCase": 2000,
+  "bonuses": {
+    "bonuses": [
+      {
+        "cls": "warrior",
+        "mode": "baseline",
+        "winPct": 50.25
+      },
+      {
+        "cls": "warrior",
+        "mode": "wings",
+        "winPct": 64.3
+      },
+      {
+        "cls": "warrior",
+        "mode": "boosts",
+        "winPct": 96.1
+      },
+      {
+        "cls": "warrior",
+        "mode": "antiMatch",
+        "winPct": 59.05
+      },
+      {
+        "cls": "warrior",
+        "mode": "antiWrong",
+        "winPct": 52.35
+      },
+      {
+        "cls": "rogue",
+        "mode": "baseline",
+        "winPct": 50.3
+      },
+      {
+        "cls": "rogue",
+        "mode": "wings",
+        "winPct": 60.55
+      },
+      {
+        "cls": "rogue",
+        "mode": "boosts",
+        "winPct": 87.05
+      },
+      {
+        "cls": "rogue",
+        "mode": "antiMatch",
+        "winPct": 68.6
+      },
+      {
+        "cls": "rogue",
+        "mode": "antiWrong",
+        "winPct": 52.2
+      },
+      {
+        "cls": "mage",
+        "mode": "baseline",
+        "winPct": 50.1
+      },
+      {
+        "cls": "mage",
+        "mode": "wings",
+        "winPct": 54.2
+      },
+      {
+        "cls": "mage",
+        "mode": "boosts",
+        "winPct": 90.45
+      },
+      {
+        "cls": "mage",
+        "mode": "antiMatch",
+        "winPct": 74.1
+      },
+      {
+        "cls": "mage",
+        "mode": "antiWrong",
+        "winPct": 50.2
+      }
+    ],
+    "upgradeRegressions": []
+  },
+  "bosses": [
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 9.278
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 11.686
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 11.158
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 13.064
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 7.442
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 9.826
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 10.644
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 12.614
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 8.914
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 11.222
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 8.914
+    },
+    {
+      "map": "Fallow Valley",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 11.222
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 7.214
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 9.466
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 7.356
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 10.266
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 6.136
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 8.248
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 6.234
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 8.962
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 7.24
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 9.238
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 7.24
+    },
+    {
+      "map": "Ashen Canyon",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 9.238
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 8.5
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 11.464
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 8.362
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 10.35
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 8.508
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 10.016
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 8.508
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 10.098
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 9.366
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 11.768
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 9.366
+    },
+    {
+      "map": "Frostburn Summit",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 11.768
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 13.878
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 21.18
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 14.422
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 17.838
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 12.846
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 17.172
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 12.846
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 17.424
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 15.106
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 19.13
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 15.106
+    },
+    {
+      "map": "Ruined Sanctuary",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 19.13
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 99.8,
+      "turns": 25.894
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 1.2,
+      "turns": 27.662
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 22.616
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 28.918
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 23.974
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 50.4,
+      "turns": 32.998
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 23.294
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 30.596
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 24.982
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 32.38
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 24.982
+    },
+    {
+      "map": "Abyssal Pit",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 32.38
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 0,
+      "turns": 31.846
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 0,
+      "turns": 27.6
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 33.642
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "warrior",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 42.508
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 5.8,
+      "turns": 34.018
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 0,
+      "turns": 29.708
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 35.058
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "rogue",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 42.706
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": false,
+      "winPct": 100,
+      "turns": 34.516
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": false,
+      "winPct": 0.2,
+      "turns": 30.3
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "kind": "mapBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 33.964
+    },
+    {
+      "map": "Crimson Battlefront",
+      "cls": "mage",
+      "kind": "dungeonBoss",
+      "potions": true,
+      "winPct": 100,
+      "turns": 42.1
+    }
+  ]
+}

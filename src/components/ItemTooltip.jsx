@@ -135,6 +135,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
             value={`+${item.defenseAbility.value}`}
           />
         )}
+        {item.defenseAbility&&<div style={{fontSize:10,color:'var(--text-muted)',lineHeight:1.5}}>{lang==='tr'?'PvP silah savunması puanı. Aynı tür puanlar birleşir; hasar azaltma üst sınırı %25.':'PvP weapon-defense points. Same-type points combine; damage reduction is capped at 25%.'}</div>}
         {item.kind === "accessory" && item.upgradeLocked && (
           <StatLine label={t("itemTooltip.upgradeLabel")} value={t("settings.off")} color="#E8A5AF" />
         )}

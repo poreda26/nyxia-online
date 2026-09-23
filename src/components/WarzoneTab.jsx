@@ -1,3 +1,7 @@
+import PracticeDuel from './PracticeDuel';
+import {createDuel,stepDuel} from '../utils/duelEngine';
+import {comparablePlayer} from '../utils/pvpBalance';
+import {playSkill} from '../audio/sfx';
 import {wingMultiplier} from '../data/wings';
 import RankBadge from './shared/RankBadge';
 import MenuEmblem from './icons/MenuEmblem';
@@ -12,7 +16,7 @@ import {
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
 import { MAPS } from "../data/maps";
-import { spawnGhost, ghostDamageFromPlayer, playerDamageFromGhost, ghostSelfHeal, tickWorldBoss } from "../utils/warzoneCombat";
+import { spawnGhost, tickWorldBoss } from "../utils/warzoneCombat";
 import { bossSchedule, pickWeightedWinner } from "../utils/warzoneBoss";
 import { awardNationalPoint, penalizeNationalPoint } from "../utils/nationalPoint";
 import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
@@ -141,16 +145,10 @@ function warzoneTick(wz, player, t, tm, huntActive, now) {
 // ölüm kontrolü yapmak) çağıranın işi — bkz. startDuel ve tick effect'teki
 // ambush dalı, ikisi de aynı setPlayer+ölüm-kontrolü desenini kullanıyor.
 function initiateDuel(ghost, def, player, t) {
-  const ghostFirst = Math.random() < 0.5;
-  const log = [t("warzone.log.duelAppeared", { ghost: ghost.name }), ghostFirst ? t("warzone.log.coinFlipGhostFirst") : t("warzone.log.coinFlipPlayerFirst")];
-  let ghostFirstDmg = 0;
-  if (ghostFirst) {
-    const dmg = playerDamageFromGhost(ghost, def, player);
-    ghostFirstDmg = dmg ?? 0;
-    log.push(dmg == null ? t("warzone.log.ghostMissedYou", { ghost: ghost.name }) : t("warzone.log.ghostHitYou", { ghost: ghost.name, dmg }));
-  }
-  const duel = { ghost, ghostHp: ghost.hp, log, finished: false };
-  return { duel, ghostFirstDmg };
+  const avatar=ghost.avatar||comparablePlayer(player,ghost.cls);
+  const engine=createDuel(player,avatar,{seed:Math.floor(Math.random()*4294967295)});
+  const log=[t('warzone.log.duelAppeared',{ghost:ghost.name}),t(engine.first?'warzone.log.coinFlipGhostFirst':'warzone.log.coinFlipPlayerFirst')];
+  return {duel:{ghost,ghostHp:engine.fighters[1].hp,log,finished:false,engine},ghostFirstDmg:0};
 }
 
 export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChange }) {
@@ -328,6 +326,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     return (
       <div style={styles.panelScroll}>
 
+        <PracticeDuel player={player}/>
         {locked ? (
           <EmptyState icon={Lock} title={t("warzone.lockedTitle")} subtitle={t("warzone.lockedSubtitle", { level: WARZONE_UNLOCK_LEVEL })} />
         ) : (
@@ -358,6 +357,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
           <DoorOpen size={14} /> {t("warzone.teleportBtn", { cost: WARZONE_TELEPORT_COST })}
         </button>
 
+        <PracticeDuel player={player}/>
         {confirmingEntry && (
           <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setConfirmingEntry(false)}>
             <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
@@ -724,67 +724,24 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   const runDuelTurn = () => {
     if (lockRef.current || !wz.duel || wz.duel.finished || player.hp <= 0) return;
     lockRef.current = true;
-    setDuelVisual((v) => ({ id: v.id + 1, type: "attack", label: t("battle.actionAttack") }));
-    const duel = wz.duel;
-    let log = [...duel.log];
-    let ghostHp = duel.ghostHp;
-    // Bu turun gerçek güncel canı — rakibin karşılığını hesaplarken
-    // player.hp'nin bayat (henüz commit edilmemiş) değerine değil buna bakılır.
-    const currentHp = player.hp;
-
-    const isCrit = Math.random() < cls.crit;
-    const dmg = ghostDamageFromPlayer(cls, atk, duel.ghost, isCrit, player);
-    if (dmg == null) {
-      log.push(t("warzone.log.youMissedGhost", { ghost: duel.ghost.name }));
-    } else {
-      ghostHp = Math.max(0, ghostHp - dmg);
-      log.push(isCrit ? t("warzone.log.youCritGhost", { ghost: duel.ghost.name, dmg }) : t("warzone.log.youHitGhost", { ghost: duel.ghost.name, dmg }));
-    }
-    setDuelVisual((v) => ({ ...v, outgoing: { hit: dmg != null, damage: dmg ?? 0, crit: isCrit } }));
-    if(dmg!=null)playHit({crit:isCrit,cls:player.class});else playMiss();
-    setDuelShake(dmg != null ? "ghost" : null);
-    if (dmg != null) setTimeout(() => setDuelShake(null), 260);
-
-    if (ghostHp <= 0) {
-      log.push(t("warzone.log.ghostDefeated", { ghost: duel.ghost.name }));
-      const result = awardNationalPoint(player);
-      const nextPlayer = { ...result.player, milestones: { ...result.player.milestones, duelsWon: (result.player.milestones?.duelsWon || 0) + 1 } };
-      setPlayer(() => nextPlayer);
-      setWz((prev) => ({ ...prev, duel: { ...prev.duel, ghostHp: 0, log: log.slice(-24), finished: true } }));
-      pushToast(t("warzone.toast.duelWon", { ghost: duel.ghost.name, gain: result.gain }), "loot");
-      newlyUnlocked(player, nextPlayer).forEach((a) => pushToast(t("clan.toastAchievement", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
-      setTimeout(() => { endDuel(duel.ghost.id, true); lockRef.current = false; }, 700);
-      return;
-    }
-
-    // Rakibin turu: önce küçük ihtimalle kendini iyileştirme, yoksa saldırı.
-    let playerDied = false;
-    const healedTo = ghostSelfHeal({ ...duel.ghost, hp: ghostHp }, false);
-    if (healedTo != null) {
-      ghostHp = healedTo;
-      log.push(t("warzone.log.ghostSelfHealed", { ghost: duel.ghost.name }));
-    } else {
-      const gdmg = playerDamageFromGhost(duel.ghost, def, player);
-      setDuelVisual((v) => ({ ...v, incoming: { hit: gdmg != null, damage: gdmg ?? 0 } }));
-      if(gdmg!=null)playHurt();else playMiss();
-      if (gdmg == null) {
-        log.push(t("warzone.log.ghostMissedYou", { ghost: duel.ghost.name }));
-      } else {
-        log.push(t("warzone.log.ghostHitYou", { ghost: duel.ghost.name, dmg: gdmg }));
-        setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - gdmg) }));
-        playerDied = currentHp - gdmg <= 0;
-        setDuelShake("player");
-        setTimeout(() => setDuelShake(null), 260);
-      }
-    }
-
-    setWz((prev) => ({ ...prev, duel: { ...prev.duel, ghostHp, log: log.slice(-24), finished: playerDied } }));
-
-    if (playerDied) {
-      setTimeout(() => finishDuelAsLoss(duel.ghost.id), 500);
-    } else {
-      setTimeout(() => { lockRef.current = false; }, 320);
-    }
+    const duel=wz.duel;
+    const engine=stepDuel(duel.engine||createDuel(player,duel.ghost.avatar||comparablePlayer(player,duel.ghost.cls)));
+    const [self,enemy]=engine.fighters;
+    let log=[...duel.log];
+    for(const event of engine.events){const name=event.side?duel.ghost.name:(player.nickname||'Sen');log.push(`${name} · ${event.label||event.type}: ${event.heal?`+${event.heal} HP`:event.damage||'—'}`);}
+    const outgoing=engine.events.find(e=>e.side===0&&e.type!=='dotTick');
+    const incoming=engine.events.find(e=>e.side===1&&e.type!=='dotTick');
+    setDuelVisual(v=>({id:v.id+1,type:outgoing?.type||'attack',skillId:outgoing?.skillId,enemySkillId:incoming?.skillId,enemyType:incoming?.type,outgoing:outgoing?{...outgoing,damage:outgoing.heal||outgoing.damage}:null,incoming:incoming?{...incoming,damage:incoming.heal||incoming.damage}:null}));
+    if(outgoing?.skillId)playSkill(self.skills.find(s=>s.id===outgoing.skillId),player.class);else if(outgoing?.hit)playHit({crit:outgoing.crit,cls:player.class});else playMiss();
+    if(incoming?.damage&&!incoming.heal)playHurt();
+    const updated={...player,hp:Math.round(self.hp),mp:Math.round(self.mp)};
+    setPlayer(()=>updated);
+    setWz(prev=>({...prev,duel:{...prev.duel,engine,ghostHp:Math.round(enemy.hp),log:log.slice(-24),finished:engine.finished}}));
+    if(engine.finished){
+      if(engine.winner===0){const result=awardNationalPoint(updated);const nextPlayer={...result.player,milestones:{...result.player.milestones,duelsWon:(result.player.milestones?.duelsWon||0)+1}};setPlayer(()=>nextPlayer);pushToast(t('warzone.toast.duelWon',{ghost:duel.ghost.name,gain:result.gain}),'loot');setTimeout(()=>{endDuel(duel.ghost.id,true);lockRef.current=false;},700);}
+      else if(engine.winner===1)setTimeout(()=>finishDuelAsLoss(duel.ghost.id),500);
+      else {pushToast(lang==='tr'?'VS berabere bitti.':'Duel ended in a draw.');setTimeout(()=>{endDuel(duel.ghost.id,false);lockRef.current=false;},700);}
+    }else setTimeout(()=>{lockRef.current=false;},320);
   };
 
   const playerDead = player.hp <= 0;
@@ -799,7 +756,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   return (
     <div style={styles.panelScroll}>
 
-      <div className="rpg-tabs" style={styles.subtabRow}>
+      <div className="rpg-tabs" style={{...styles.subtabRow,flexWrap:"wrap"}}>
         <button aria-selected={subtab === "alan"} style={{ ...styles.subtabBtn, ...(subtab === "alan" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("alan")}>{t("warzone.tabArea")}</button>
         <button aria-selected={subtab === "av"} style={{ ...styles.subtabBtn, ...(subtab === "av" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("av")}>{t("warzone.tabHunt")}</button>
         <button aria-selected={subtab === "siralama"} style={{ ...styles.subtabBtn, ...(subtab === "siralama" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("siralama")}>{t("warzone.tabRanking")}</button>
@@ -1108,7 +1065,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
             ))}
           </div>
 
-          <div className="rpg-tabs" style={styles.subtabRow}>
+          <div className="rpg-tabs" style={{...styles.subtabRow,flexWrap:"wrap"}}>
             <button style={{ ...styles.subtabBtn, ...(lbSort === "weeklyPoint" ? styles.subtabBtnActive : {}) }} onClick={() => setLbSort("weeklyPoint")}>{t("warzone.weekly")}</button>
             <button style={{ ...styles.subtabBtn, ...(lbSort === "nationalPoint" ? styles.subtabBtnActive : {}) }} onClick={() => setLbSort("nationalPoint")}>{t("warzone.permanent")}</button>
           </div>

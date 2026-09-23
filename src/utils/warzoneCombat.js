@@ -1,3 +1,5 @@
+import {classSkills} from './skills';
+import {playerMaxMp} from './player';
 import { rand, pick, uid } from "./random";
 import { CLASSES } from "../data/classes";
 import { totalStats, playerDef, playerMaxHp, armorSetDamageReduction } from "./player";
@@ -21,11 +23,15 @@ export function spawnGhost(player) {
 
   const race = opposingRace(player.race);
   const cls = pick(Object.keys(CLASSES));
-  const fighter=pvpSnapshot(comparablePlayer(player,cls));
+  const avatar=comparablePlayer(player,cls);avatar.race=race;avatar.nickname='Rakip';
+  const skills=classSkills(cls).filter(s=>s.unlockLevel<=player.level);
+  avatar.skills={known:skills.map(s=>s.id),loadout:['heal','buffAtk','dot','damage','execute'].map(type=>skills.filter(s=>s.effect.type===type).at(-1)?.id).filter(Boolean)};
+  avatar.hp=playerMaxHp(avatar);avatar.mp=playerMaxMp(avatar);
+  const fighter=pvpSnapshot(avatar);
   const maxHp = fighter.maxHp;
 
   return {
-    ...fighter,
+    ...fighter, avatar, equipped:avatar.equipped,
     id: uid(),
     name: pick(ghostNamesForRace(race)),
     race,

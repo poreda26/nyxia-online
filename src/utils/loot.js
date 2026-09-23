@@ -269,6 +269,7 @@ export function rollMapLoot(tierId, mapTier = tierId) {
 // is the ONLY path to a Tier 6 "Eşsiz" item outside a GM /silah grant, and
 // even here the odds are deliberately brutal (3%) so a unique stays unique.
 export function rollSpecialChestLoot(playerClass) {
+  if(Math.random()<.01)return rollAccessory(6);
   const { specialUniqueChance } = getChestConfig();
   if (maxWeaponTier(playerClass) >= 6 && Math.random() < specialUniqueChance) {
     // Katalog eşya-eşya yeniden dolduruluyor — bu sınıfın T6'sı henüz

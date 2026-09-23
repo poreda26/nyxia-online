@@ -121,8 +121,8 @@ test('T4 Warrior and archer Rogue remain within the beta PvP win band',()=>{
 });
 test('universal tier accessories merge three matching copies and locked map rings do not',()=>{
  for(const slot of ['earring','necklace','ring','belt']){
-  assert.equal(ACCESSORY_SETS[slot].length,15);
-  for(let tier=1;tier<=5;tier++)assert.equal(ACCESSORY_SETS[slot].filter((item)=>item.tier===tier).length,3);
+  assert.equal(ACCESSORY_SETS[slot].length,27);
+  for(let tier=1;tier<=5;tier++)assert.equal(ACCESSORY_SETS[slot].filter((item)=>item.tier===tier).length,tier===5?9:3);
  }
  const copies=[0,1,2].map(()=>gmBuildAccessory('ring',4,0,'Ejder Muhafızı Yüzük'));
  const p={...player(),inventory:[...copies,{id:'paper',kind:'accessoryScroll',count:1}]};
@@ -395,4 +395,33 @@ test('buff recast replaces the same stat and lasts three full following actions'
  const active=[];
  for(let turn=0;turn<4;turn++) {buffs=buffs.map(b=>({...b,turnsLeft:b.turnsLeft-1})).filter(b=>b.turnsLeft>0);active.push(buffs.some(b=>b.stat==='atk'));}
  assert.deepEqual(active,[true,true,true,false]);
+});
+
+
+test('automatic skill duels are deterministic, bounded and immutable',async()=>{
+ const {fixture,simulateDuel}=await import('./balance-fixtures');
+ const {createDuel,stepDuel}=await import('../src/utils/duelEngine');
+ const a=fixture('warrior',50,4),b=fixture('mage',50,4),before=JSON.stringify([a,b]);
+ const first=simulateDuel(a,b,421);assert.deepEqual(first,simulateDuel(a,b,421));assert.equal(JSON.stringify([a,b]),before);
+ assert.ok(first.finished&&first.round<=100);for(const f of first.fighters){assert.ok(f.mp>=0&&f.mp<=f.maxMp);assert.ok(f.hp>=0&&f.hp<=f.maxHp);}
+ let state=createDuel(a,b,{seed:10,fullHealth:true}),used=[];while(!state.finished){state=stepDuel(state);used.push(...state.events.filter(e=>e.skillId));}
+ assert.ok(used.some(e=>e.side===0)&&used.some(e=>e.side===1));assert.equal(stepDuel(state),state);
+ let empty={...a,skills:{known:[],loadout:['w13']}};assert.equal(createDuel(empty,b).fighters[0].skills.length,0);
+});
+test('weapon anti-defense is type-specific, capped, upgradeable and ignores broken items',async()=>{
+ const {fixture}=await import('./balance-fixtures');const {pvpDamage}=await import('../src/utils/pvpBalance');
+ const a=fixture('warrior',60,5),b=fixture('rogue',60,5),plain=pvpSnapshot(b),attacker=pvpSnapshot(a);
+ const ward=ACCESSORY_SETS.ring.find(i=>i.tier===6&&i.defenseAbility?.vs===attacker.weaponType);assert.ok(ward);
+ const item=gmBuildAccessory('ring',6,3,ward.name);assert.equal(item.defenseAbility.value,9);
+ b.equipped.ring1={...item,defenseAbility:{vs:attacker.weaponType,value:10000}};
+ const defended=pvpSnapshot(b);const baseline=pvpDamage(attacker,{...defended,antiDef:{}},false,()=>.99),reduced=pvpDamage(attacker,defended,false,()=>.99);
+ assert.ok(reduced>=baseline*.75-1&&reduced<baseline);assert.equal(pvpDamage({...attacker,weaponType:'staff'},defended,false,()=>.99),baseline);
+ b.equipped.ring1.currentDurability=0;assert.equal(pvpSnapshot(b).antiDef[attacker.weaponType]||0,0);
+ assert.equal(plain.antiDef[attacker.weaponType]||0,0);
+});
+test('PvP includes wings and active boosts once; EXP/drop bonuses never cause damage',async()=>{
+ const {fixture}=await import('./balance-fixtures');let a=fixture('mage',60,5),base=pvpSnapshot(a);
+ a.equipped.wings=makeWings('dawn');const wing=pvpSnapshot(a);assert.ok(wing.atk>base.atk&&wing.duelHp>base.duelHp);
+ a.activeBoosts={atk:Date.now()+60000,def:Date.now()+60000,hp:Date.now()+60000};const boosted=pvpSnapshot(a);assert.ok(Math.abs(boosted.atk/wing.atk-1.2)<1e-8);assert.ok(Math.abs(boosted.def/wing.def-1.1)<1e-8);assert.equal(boosted.duelHp-wing.duelHp,100);
+ a.activeBoosts={exp:Date.now()+60000,gold:Date.now()+60000,np:Date.now()+60000};assert.equal(pvpSnapshot(a).atk,wing.atk);
 });

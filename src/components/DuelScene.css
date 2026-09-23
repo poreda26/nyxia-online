@@ -12,3 +12,5 @@
    çeviriyoruz ki yazı ters okunmasın. */
 .duel-ghost{transform:scaleX(-1)}
 .duel-ghost .battle-unit-name{transform:scaleX(-1)}
+
+.duel-scene{width:100%;max-width:100%;box-sizing:border-box;aspect-ratio:auto;height:280px;min-width:0}.duel-scene .battle-hud{gap:20px}.duel-scene .battle-scene-caption{bottom:8px}.duel-scene .battle-unit{bottom:17%;height:48%}
