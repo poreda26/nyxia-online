@@ -12,3 +12,9 @@ Doğrulama:
 - check-duel-ui ve check-hud: üç sınıf otomatik VS, beş ekran genişliği, tarayıcı hataları.
 
 Bu tarama tüm oyun durumlarının hatasızlığını kanıtlamaz. Silah boşluğu için görsel regresyon testi artık tekrar çalıştırılabilir.
+
+## El üstü ortak maske düzeltmesi
+
+- Hedef silahın üzerinde tahmini el elipsleriyle şeffaf delik açma kaldırıldı. Kesintisiz silahın üstüne gerçek kuşanılmış eldiven katmanı çizilir; efekt maskeleri ayrı kalır.
+- Warrior kaynak zırh atlasındaki kılıç ucu, kolu kapsamayan dar bir çokgenle çıkarılır.
+- check-grip-continuity.mjs: Ayaz Balta/Yırtıcı Pençe/Gökdev Baltası × Human/Karus × +7/+8. Tutuşun hemen üzerindeki y=213–231 satırları alfa pikseliyle doğrulanır. Eski kod Ayaz Balta Human +7 y=231'de başarısız; düzeltme 12 kombinasyonda geçer.

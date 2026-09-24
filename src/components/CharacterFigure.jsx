@@ -45,12 +45,13 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
  return <svg className={`character-figure ${className}`} viewBox="-92 0 602 627" preserveAspectRatio={align} role="img" aria-label={`${a.identity} · ${a.weaponName||'Silahsız'}`} data-character={a.identity} data-weapon={a.weaponName||''} data-look={active.length?'armor':'cloth-base'} data-armor-slots={active.join(',')}>
  <defs>
   <clipPath id={`${id}-target`}>{clipPath(a.atlasKey,a.frameIndex)}</clipPath>
-  <mask id={`${id}-source-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}><path d={rig.cls==='warrior'?'':sg.head} fill="white"/><path d={spine(sg)} fill="none" stroke="white" strokeWidth="16"/>{sourceBow&&<path d={stringPath(sourceBow,sourceGrip)} fill="none" stroke="white" strokeWidth="6"/>}{holes(sg,'black')}</g></mask>
+  <mask id={`${id}-source-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}><path d={rig.cls==='warrior'?'M248,221L386,30L403,35L397,64L278,241Z':sg.head} fill="white"/><path d={spine(sg)} fill="none" stroke="white" strokeWidth="16"/>{sourceBow&&<path d={stringPath(sourceBow,sourceGrip)} fill="none" stroke="white" strokeWidth="6"/>}{holes(sg,'black')}</g></mask>
   {layers.map(layer=><g key={layer.name}>
    <clipPath id={`${id}-${layer.name}-clip`}>{clipPath(layer.key,si)}</clipPath>
    <mask id={`${id}-${layer.name}-mask`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{regionPaths(layer.name)}</g><rect width="1254" height="1254" fill="black" mask={`url(#${id}-source-weapon)`}/></mask>
   </g>)}
-  <mask id={`${id}-target-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white" stroke="white" strokeWidth="4" strokeLinejoin="round"/><path d={tg.butt||""} fill="white" stroke="white" strokeWidth="3" strokeLinejoin="round"/><path d={spine(tg)} fill="none" stroke="white" strokeWidth="16"/>{holes(tg,'black')}</g></mask>
+  {/* Keep the shaft continuous: the actual equipped hand is composited above it. Generic hand ellipses cut beyond the visible fingers. */}
+  <mask id={`${id}-target-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white" stroke="white" strokeWidth="4" strokeLinejoin="round"/><path d={tg.butt||""} fill="white" stroke="white" strokeWidth="3" strokeLinejoin="round"/><path d={spine(tg)} fill="none" stroke="white" strokeWidth="16"/></g></mask>
   <mask id={`${id}-head`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white"/>{holes(tg,'black')}</g></mask>
   <mask id={`${id}-grip`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{holes(sg,'white')}</g></mask>
   <clipPath id={`${id}-grip-clip`}>{clipPath(armorAtlas(player.class,tiers.gauntlets),si)}</clipPath>
