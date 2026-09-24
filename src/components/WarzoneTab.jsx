@@ -327,7 +327,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   if (locked || npLocked) {
     return (
       <div className="warzone-panel" style={styles.panelScroll}>
-        <header className="warzone-banner"><Swords size={30}/><div><small>NYXIA ONLINE</small><h2>{t("warzone.enterTitle")}</h2><span>{player.nickname || t("battle.you")} · Lv.{player.level} · {player.nationalPoint || 0} NP</span></div></header>
+        <header className="warzone-banner"><Swords size={30}/><div><small>NYXIA ONLINE</small><h2>{t("warzone.title")}</h2><span>{player.nickname || t("battle.you")} · Lv.{player.level} · {player.nationalPoint || 0} NP</span></div></header>
 
         <PracticeDuel player={player}/>
         {locked ? (
@@ -346,7 +346,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     const canAfford = player.gold >= WARZONE_TELEPORT_COST;
     return (
       <div className="warzone-panel" style={styles.panelScroll}>
-        <header className="warzone-banner"><Swords size={30}/><div><small>NYXIA ONLINE</small><h2>{t("warzone.enterTitle")}</h2><span>{player.nickname || t("battle.you")} · Lv.{player.level} · {player.nationalPoint || 0} NP</span></div></header>
+        <header className="warzone-banner"><Swords size={30}/><div><small>NYXIA ONLINE</small><h2>{t("warzone.title")}</h2><span>{player.nickname || t("battle.you")} · Lv.{player.level} · {player.nationalPoint || 0} NP</span></div></header>
 
         <EmptyState
           icon={DoorOpen}
@@ -759,7 +759,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
   return (
     <div className="warzone-panel" style={styles.panelScroll}>
-        <header className="warzone-banner"><Swords size={30}/><div><small>NYXIA ONLINE</small><h2>{t("warzone.enterTitle")}</h2><span>{player.nickname || t("battle.you")} · Lv.{player.level} · {player.nationalPoint || 0} NP</span></div></header>
+        <header className="warzone-banner"><Swords size={30}/><div><small>NYXIA ONLINE</small><h2>{t("warzone.title")}</h2><span>{player.nickname || t("battle.you")} · Lv.{player.level} · {player.nationalPoint || 0} NP</span></div></header>
 
       <div className="rpg-tabs" style={{...styles.subtabRow,flexWrap:"wrap"}}>
         <button aria-selected={subtab === "alan"} style={{ ...styles.subtabBtn, ...(subtab === "alan" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("alan")}>{t("warzone.tabArea")}</button>
@@ -1095,3 +1095,4 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     </div>
   );
 }
+
