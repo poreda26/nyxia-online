@@ -19,7 +19,7 @@ try {
     assert.equal(await view.getAttribute('data-armor-slots'),slot);
     assert.equal(await view.getAttribute('data-weapon'),weapon);
     assert.equal(await view.locator(`[data-armor-layer="${slot}"]`).getAttribute('data-armor-tier'),String(tier));
-    assert.ok(await view.locator(`[data-armor-layer="${slot}"]`).getAttribute('href'));
+    assert.ok(await view.locator(`[data-armor-layer="${slot}"] image`).last().getAttribute('href'));
    }
    await page.getByLabel(label,{exact:true}).selectOption('0');
    assert.equal(await page.locator('.character-figure').first().getAttribute('data-look'),'cloth-base');

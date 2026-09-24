@@ -7,9 +7,11 @@ export const ARMOR_POSES={warrior:'warrior-4',rogue:'rogue-0',mage:'mage-0'};
 export function armorTier(item,cls,slot){return ARMOR_SETS.find(a=>a.cls===cls&&a.slot===slot&&a.name===item?.name)?.tier||0;}
 export function armorAtlas(cls,tier){const base=ARMOR_POSES[cls];return tier===0?`${base}-cloth-base`:cls==='warrior'&&tier===4?'warrior-4-chitin-sample':`${base}-armor-t${tier}`;}
 export function armorRegions(cls,col,row){
+ const wy=row?-10:0;
  if(cls==='warrior')return {...CHITIN_SAMPLE_REGIONS,
   head:'M135,50L258,50L258,155L238,200L183,193L155,178L145,150L135,135Z',
   chest:'M25,95L260,95L336,202L342,338L281,366L223,352L132,376L33,357Z',
+  gauntlets:CHITIN_SAMPLE_REGIONS.gauntlets.split('ZM')[0]+`Z M229,${237+wy}L255,${235+wy}L271,${254+wy}L280,${266+wy}L293,${270+wy}L300,${289+wy}L298,${308+wy}L283,${322+wy}L265,${325+wy}L246,${312+wy}L234,${291+wy}L218,${274+wy}L216,${255+wy}Z`,
  };
  if(cls==='mage')return {
   head:'M95,50L262,50L262,150L248,177L209,173L184,148L171,125L130,125L95,125Z',
@@ -35,6 +37,19 @@ export function characterArmorRig(player,appearance){
  const col=cls==='warrior'?2:cross?2:0;
  const frameIndex=row*3+col;
  const sourceGeometry=weaponGeometry({atlasKey:sourceKey,frameIndex,size:[1254,1254],weaponName:'source'});
+ // Armor atlases use a different fist pose from the weapon atlases. Never
+ // reuse the weapon's oval: it includes the old sword guard and blade.
+ if(cls==='warrior'){
+  const y=row?-10:0;
+  sourceGeometry.hands=[[243,260+y,23,24],[179,326+y,25,24]];
+  sourceGeometry.grip=`M231,${238+y}Q245,${235+y} 258,${249+y}L264,${263+y}L254,${281+y}L235,${284+y}L219,${269+y}L218,${258+y}Z M158,${307+y}L185,${307+y}L204,${325+y}L203,${337+y}L187,${348+y}L163,${339+y}L151,${325+y}Z`;
+  sourceGeometry.head='M244,226L387,28L407,30L408,66L283,247Z M216,216L298,247L307,253L304,268L289,270L210,232L209,223Z';
+  sourceGeometry.stem=`M150,${357+y}L249,${246+y}`;
+ }
+ if(cls==='mage'){
+  // The old rectangular staff-head cut also erased the robe above the fist.
+  sourceGeometry.head='M280,199L298,166L304,0L440,0L440,146L333,169L301,208Z';
+ }
  const targetGeometry=weaponGeometry(appearance);
  const a=sourceGeometry.hands[0],b=targetGeometry.hands[0];
  let scale=1,dx=0,dy=0;

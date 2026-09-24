@@ -16,6 +16,7 @@ const url=key=>images[`../assets/characters/weapons/${key}.png`];
 const cellTransform=i=>`translate(${i%3*418} ${Math.floor(i/3)*627})`;
 const spine=g=>{if(g.stem)return g.stem;if(g.hands.length<2||!g.shaft)return '';const start=g.shaft.match(/M([^L]+)/)[1],front=g.hands[0],back=g.hands[1];return `M${start}L${back[0]},${back[1]}L${front[0]},${front[1]}L${front[0]+(front[0]-back[0])*1.2},${front[1]+(front[1]-back[1])*1.2}`;};
 const holes=(g,color)=>g.hands.map(([cx,cy,rx,ry],i)=><ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} fill={color}/>);
+const grip=(g,color)=>g.grip?<path d={g.grip} fill={color}/>:holes(g,color);
 export default function CharacterFigure({player,className='',align='xMidYMax meet'}){
  const id=useId(),a=characterAppearance(player),rig=a&&characterArmorRig(player,a);
  if(!rig||!a.frame)return <div className="character-loading">Görünüm hazırlanıyor</div>;
@@ -38,22 +39,30 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
  const effects=a.supported?weaponEffects(player.equipped?.mainHand):[];
  const clipPath=(key,i)=>{const f=frames[key];return f?.frames[i]?<path d={f.frames[i].mask} transform={`scale(${1254/f.size[0]} ${1254/f.size[1]})`}/>:null;};
  const regionPaths=name=>ARMOR_SLOTS.map(slot=><path key={slot} d={regions[slot]} fill={(name==='cloth'?!tiers[slot]:name===slot)?'white':'black'}/>);
- const armorLight=l=><g key={l.name} className={`armor-effect armor-effect-${l.effect.strong?'8':'7'}`} data-armor-effect={l.name} data-tier={l.effect.tier} data-upgrade={l.effect.plus} style={{'--armor-intensity':l.effect.intensity,'--armor-peak':Math.min(1,l.effect.intensity+.15),'--armor-duration':`${l.effect.duration}s`}} mask={`url(#${id}-${l.name}-mask)`}>
-  <g filter={`url(#${id}-armor-${l.name})`}><image href={url(l.key)} width="1254" height="1254" clipPath={`url(#${id}-${l.name}-clip)`} mask={`url(#${id}-${l.name}-mask)`}/></g>
-  {l.effect.strong&&<g clipPath={`url(#${id}-${l.name}-clip)`}><rect className="armor-sweep" x="0" y="0" width="1254" height="1254" fill={`url(#${id}-armor-shine)`}/></g>}
+ const layerArtwork=l=><>
+  {/* Restore only the body area hidden by the baked-in sword using adjacent
+      material from this same armor tier, behind the equipped hand. */}
+  {rig.cls==='warrior'&&<g clipPath={`url(#${id}-shoulder-repair)`} mask={`url(#${id}-${l.name}-region)`}><g mask={`url(#${id}-source-weapon)`}><g transform="translate(50 0)"><image href={url(l.key)} width="1254" height="1254" clipPath={`url(#${id}-${l.name}-clip)`}/></g></g></g>}
+  <image href={url(l.key)} width="1254" height="1254" clipPath={`url(#${id}-${l.name}-clip)`} mask={`url(#${id}-${l.name}-mask)`}/>
+ </>;
+ const armorLight=l=><g key={l.name} className={`armor-effect armor-effect-${l.effect.strong?'8':'7'}`} data-armor-effect={l.name} data-tier={l.effect.tier} data-upgrade={l.effect.plus} style={{'--armor-intensity':l.effect.intensity,'--armor-peak':Math.min(1,l.effect.intensity+.15),'--armor-duration':`${l.effect.duration}s`}}>
+  <g filter={`url(#${id}-armor-${l.name})`}>{layerArtwork(l)}</g>
+  {l.effect.strong&&<g clipPath={`url(#${id}-${l.name}-clip)`} mask={`url(#${id}-${l.name}-mask)`}><rect className="armor-sweep" x="0" y="0" width="1254" height="1254" fill={`url(#${id}-armor-shine)`}/></g>}
  </g>;
  return <svg className={`character-figure ${className}`} viewBox="-92 0 602 627" preserveAspectRatio={align} role="img" aria-label={`${a.identity} · ${a.weaponName||'Silahsız'}`} data-character={a.identity} data-weapon={a.weaponName||''} data-look={active.length?'armor':'cloth-base'} data-armor-slots={active.join(',')}>
  <defs>
   <clipPath id={`${id}-target`}>{clipPath(a.atlasKey,a.frameIndex)}</clipPath>
-  <mask id={`${id}-source-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}><path d={rig.cls==='warrior'?'M248,221L386,30L403,35L397,64L278,241Z':sg.head} fill="white"/><path d={spine(sg)} fill="none" stroke="white" strokeWidth="16"/>{sourceBow&&<path d={stringPath(sourceBow,sourceGrip)} fill="none" stroke="white" strokeWidth="6"/>}{holes(sg,'black')}</g></mask>
+  <clipPath id={`${id}-shoulder-repair`}><path transform={cellTransform(si)} d="M204,200Q248,193 269,219Q280,240 276,260L262,274L235,258L204,238Z"/></clipPath>
+  <mask id={`${id}-source-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}><path d={sg.head} fill="white"/><path d={spine(sg)} fill="none" stroke="white" strokeWidth="16"/>{sourceBow&&<path d={stringPath(sourceBow,sourceGrip)} fill="none" stroke="white" strokeWidth="6"/>}{grip(sg,'black')}</g></mask>
   {layers.map(layer=><g key={layer.name}>
    <clipPath id={`${id}-${layer.name}-clip`}>{clipPath(layer.key,si)}</clipPath>
+   <mask id={`${id}-${layer.name}-region`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{regionPaths(layer.name)}</g></mask>
    <mask id={`${id}-${layer.name}-mask`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{regionPaths(layer.name)}</g><rect width="1254" height="1254" fill="black" mask={`url(#${id}-source-weapon)`}/></mask>
   </g>)}
   {/* Keep the shaft continuous: the actual equipped hand is composited above it. Generic hand ellipses cut beyond the visible fingers. */}
   <mask id={`${id}-target-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white" stroke="white" strokeWidth="4" strokeLinejoin="round"/><path d={tg.butt||""} fill="white" stroke="white" strokeWidth="3" strokeLinejoin="round"/><path d={spine(tg)} fill="none" stroke="white" strokeWidth="16"/></g></mask>
   <mask id={`${id}-head`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white"/>{holes(tg,'black')}</g></mask>
-  <mask id={`${id}-grip`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{holes(sg,'white')}</g></mask>
+  <mask id={`${id}-grip`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{grip(sg,'white')}</g></mask>
   <clipPath id={`${id}-grip-clip`}>{clipPath(armorAtlas(player.class,tiers.gauntlets),si)}</clipPath>
   <mask id={`${id}-clearance`} maskUnits="userSpaceOnUse" x="-100" y="-100" width="1454" height="1454"><rect x="-100" y="-100" width="1454" height="1454" fill="white"/>{clipPath(a.atlasKey,a.frameIndex)}<g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white"/>{holes(tg,'black')}</g></mask>
   {effects.map(e=><filter key={e.key} id={`${id}-effect-${e.key}`} x="-35%" y="-35%" width="170%" height="170%" colorInterpolationFilters="sRGB"><WeaponEffectFilter effect={e} spread={tg.spread}/></filter>)}
@@ -64,7 +73,7 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
  {equippedWing(player)&&<g data-equipped-wings={player.equipped.wings.wingId} transform={rig.transform}><svg x="-65" y="55" width="520" height="400" overflow="visible"><WingArt wingId={player.equipped.wings.wingId}/></svg></g>}
  <g transform={rig.transform}>
   <svg width="418" height="627" viewBox={`${si%3*418} ${Math.floor(si/3)*627} 418 627`} overflow="visible">
-   {layers.map(layer=><image key={layer.name} data-armor-layer={layer.name} data-armor-tier={tiers[layer.name]||0} href={url(layer.key)} width="1254" height="1254" clipPath={`url(#${id}-${layer.name}-clip)`} mask={`url(#${id}-${layer.name}-mask)`} filter={layer.name!=='cloth'?dyeFilter:undefined}/>)}
+   {layers.map(layer=><g key={layer.name} data-armor-layer={layer.name} data-armor-tier={tiers[layer.name]||0} filter={layer.name!=='cloth'?dyeFilter:undefined}>{layerArtwork(layer)}</g>)}
    {layers.filter(l=>l.effect&&l.name!=='gauntlets').map(armorLight)}
   </svg>
   {alignedBow&&<g stroke="#987b50" fill="none" strokeWidth="1.5"><path d={stringPath(alignedBow,sourceGrip)}/><path d={`M${sourceGrip}L405,${sourceGrip[1]}`}/><path d={`M400,${sourceGrip[1]-4}L415,${sourceGrip[1]}L400,${sourceGrip[1]+4}`}/></g>}
