@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { Lock, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle, Gem } from "lucide-react";
 import MonsterPortrait from './MonsterPortrait';
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
+import { isMonsterUnlocked, isMapProgressUnlocked, monsterKillCount, KILLS_TO_UNLOCK_NEXT } from "../utils/mapProgress";
 import { buildSoloDungeonStages, buildDungeonStageChoices, SOLO_DUNGEON_DAILY_LIMIT } from "../data/soloDungeon";
 import { buildMapBoss } from "../data/mapBosses";
 import { canFightMapBoss } from "../utils/mapBoss";
@@ -113,6 +114,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // kullanıcının "ücreti belirt ve onay iste" isteği.
   const requestTeleport = (targetMap) => {
     if (player.level < targetMap.levelMin) return;
+    const targetIdx = MAPS.findIndex((m) => m.id === targetMap.id);
+    if (!isMapProgressUnlocked(player, targetIdx, MAPS)) return;
     if (targetMap.id === player.currentMapId) return;
     setPendingMap(targetMap);
   };
@@ -694,13 +697,16 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <DoorOpen size={12} /> {t("battle.gateDesc", { cost: GATE_TELEPORT_COST })}
           </p>
           <div style={styles.tierScroller}>
-            {MAPS.map((m2) => {
-              const mlocked = player.level < m2.levelMin;
+            {MAPS.map((m2, idx) => {
+              const levelLocked = player.level < m2.levelMin;
+              const progressLocked = !levelLocked && !isMapProgressUnlocked(player, idx, MAPS);
+              const mlocked = levelLocked || progressLocked;
               const isSel = m2.id === map.id;
               return (
                 <button
                   key={m2.id}
                   onClick={() => requestTeleport(m2)}
+                  title={progressLocked ? t("battle.mapProgressLockedDesc", { prevMap: MAPS[idx - 1].name, need: KILLS_TO_UNLOCK_NEXT }) : undefined}
                   style={{
                     ...styles.tierChip,
                     borderColor: isSel ? m2.color : "var(--border)",
@@ -727,23 +733,40 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <>
               <SectionLabel>{t("battle.monstersHeader", { map: map.name })}</SectionLabel>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {map.monsters.map((m) => (
-                    <div key={m.id} className="monster-hunt-card" style={{'--monster-accent':map.color}}>
+                {map.monsters.map((m, i) => {
+                  const unlocked = isMonsterUnlocked(player, map, i);
+                  const prev = i > 0 ? map.monsters[i - 1] : null;
+                  return (
+                    <div key={m.id} className="monster-hunt-card" style={{'--monster-accent':map.color, opacity: unlocked ? 1 : 0.55}}>
                         <div className="monster-face-frame">
                           <MonsterPortrait monster={m} label={tm(m)}/>
                         </div>
                         <div className="monster-card-body">
                           <div className="monster-card-name">{tm(m)}</div>
-                          <div className="monster-card-stats">
-                            <span>HP <b>{m.hp}</b></span><span>ATK <b>{m.atk}</b></span><span>DEF <b>{m.def}</b></span>
-                          </div>
-                      <button className="monster-attack" onClick={() => startBattle(m)}>
-                        <Sword size={13}/>
-                        {t("battle.startBattle")}
-                      </button>
+                          {unlocked ? (
+                            <div className="monster-card-stats">
+                              <span>HP <b>{m.hp}</b></span><span>ATK <b>{m.atk}</b></span><span>DEF <b>{m.def}</b></span>
+                            </div>
+                          ) : (
+                            <div className="monster-card-stats" style={{ color: "var(--text-faint)" }}>
+                              {t("battle.monsterLockedDesc", { prev: tm(prev), current: monsterKillCount(player, prev.id), need: KILLS_TO_UNLOCK_NEXT })}
+                            </div>
+                          )}
+                      {unlocked ? (
+                        <button className="monster-attack" onClick={() => startBattle(m)}>
+                          <Sword size={13}/>
+                          {t("battle.startBattle")}
+                        </button>
+                      ) : (
+                        <button className="monster-attack" disabled style={{ opacity: 0.6, cursor: "default" }}>
+                          <Lock size={13}/>
+                          {t("battle.monsterLocked")}
+                        </button>
+                      )}
                         </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
