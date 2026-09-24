@@ -1,5 +1,6 @@
+import './TopBar.css';
 import { useState, useEffect } from "react";
-import { Coins, Crown, Gem, Gift, Plus, ScrollText, Settings } from "lucide-react";
+import { Coins, Crown, Gem, Gift, Plus, ScrollText, Settings, Swords, Shield, Heart } from "lucide-react";
 import { xpToNext, MAX_LEVEL, formatGold } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { activeTitleInfo } from "../utils/achievements";
@@ -36,11 +37,11 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
   return (
     <div className="game-topbar" style={styles.topBar}>
       <div className="hud-main" style={styles.topBarRow}>
-        <div style={styles.classBadge}>
+        <div className="hud-class-medallion" style={{...styles.classBadge, "--class-color":cls.color}}>
           <Icon size={26} color={cls.color} strokeWidth={2} />
         </div>
         <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
+          <div className="hud-identity">
             <span style={{ fontFamily: "var(--font-display)", fontSize: 14, letterSpacing: 0.3, display: "flex", alignItems: "center", gap: 5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {premiumTier && <Crown size={13} color={premiumTier.color} strokeWidth={2} fill={premiumTier.color} style={{ flexShrink: 0 }} />}
               {/* Kullanıcı isteği: sınıf ikonu (solda) zaten sınıfı belli
@@ -59,14 +60,14 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
               {atCap ? t("topBar.maxLevel") : `${player.xp}/${need} XP`}
             </span>
           </div>
-          <div style={styles.xpTrack}>
+          <div className="hud-xp-track" role="progressbar" aria-label="EXP" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} style={styles.xpTrack}>
             <div style={{ ...styles.xpFill, width: `${pct}%`, background: atCap ? "#D4AF6A" : cls.color }} />
           </div>
         </div>
         {onOpenDailyLogin && (
           <button
             onClick={onOpenDailyLogin}
-            title={t("topBar.dailyLogin")}
+            title={t("topBar.dailyLogin")} aria-label={t("topBar.dailyLogin")}
             style={{ position: "relative", background: "none", border: "none", color: dailyLoginAvailable ? "var(--gold-text)" : "var(--text-faint)", cursor: "pointer", padding: 4, flexShrink: 0 }}
           >
             <Gift size={16} strokeWidth={1.8} />
@@ -80,7 +81,7 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
         {onOpenSettings && (
           <button
             onClick={onOpenSettings}
-            title={t("settings.title")}
+            title={t("settings.title")} aria-label={t("settings.title")}
             style={{ background: "none", border: "none", color: "var(--gold-text)", cursor: "pointer", padding: 4, flexShrink: 0 }}
           >
             <Settings size={16} strokeWidth={1.8} />
@@ -88,11 +89,11 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
         )}
       </div>
       <div className="hud-lower"><div className="hud-stats" style={styles.topBarSub}>
-        <span>ATK {atk}</span>
-        <span style={{ color: "var(--border)" }}>|</span>
-        <span>DEF {def}</span>
-        <span style={{ color: "var(--border)" }}>|</span>
-        <span>HP {maxHp}</span>
+        <span><Swords size={12}/> ATK <b>{atk}</b></span>
+
+        <span><Shield size={12}/> DEF <b>{def}</b></span>
+
+        <span><Heart size={12}/> HP <b>{maxHp}</b></span>
       </div><div className="hud-currency">        <div style={styles.goldChip}>
           <Coins size={13} color="var(--gold-text)" />
           <span style={{ fontFamily: "var(--font-mono)" }}>{formatGold(player.gold)}</span>

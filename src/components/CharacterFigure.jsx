@@ -50,9 +50,9 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
    <clipPath id={`${id}-${layer.name}-clip`}>{clipPath(layer.key,si)}</clipPath>
    <mask id={`${id}-${layer.name}-mask`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{regionPaths(layer.name)}</g><rect width="1254" height="1254" fill="black" mask={`url(#${id}-source-weapon)`}/></mask>
   </g>)}
-  <mask id={`${id}-target-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white"/><path d={tg.butt||""} fill="white"/><path d={spine(tg)} fill="none" stroke="white" strokeWidth="16"/>{holes(tg,'black')}</g></mask>
+  <mask id={`${id}-target-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white" stroke="white" strokeWidth="4" strokeLinejoin="round"/><path d={tg.butt||""} fill="white" stroke="white" strokeWidth="3" strokeLinejoin="round"/><path d={spine(tg)} fill="none" stroke="white" strokeWidth="16"/>{holes(tg,'black')}</g></mask>
   <mask id={`${id}-head`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white"/>{holes(tg,'black')}</g></mask>
-  <mask id={`${id}-grip`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{regionPaths('gauntlets')}</g></mask>
+  <mask id={`${id}-grip`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{holes(sg,'white')}</g></mask>
   <clipPath id={`${id}-grip-clip`}>{clipPath(armorAtlas(player.class,tiers.gauntlets),si)}</clipPath>
   <mask id={`${id}-clearance`} maskUnits="userSpaceOnUse" x="-100" y="-100" width="1454" height="1454"><rect x="-100" y="-100" width="1454" height="1454" fill="white"/>{clipPath(a.atlasKey,a.frameIndex)}<g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white"/>{holes(tg,'black')}</g></mask>
   {effects.map(e=><filter key={e.key} id={`${id}-effect-${e.key}`} x="-35%" y="-35%" width="170%" height="170%" colorInterpolationFilters="sRGB"><WeaponEffectFilter effect={e} spread={tg.spread}/></filter>)}

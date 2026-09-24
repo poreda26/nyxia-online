@@ -1,0 +1,12 @@
+import '../src/components/GameChrome.css';
+import '../src/components/MobileUI.css';
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import GlobalStyle from '../src/components/GlobalStyle';
+import TopBar from '../src/components/TopBar';
+import ScreenPanel from '../src/components/ScreenPanel';
+import {LanguageProvider} from '../src/i18n/LanguageContext';
+import {initialPlayer} from '../src/utils/player';
+import {CLASSES} from '../src/data/classes';
+const p={...initialPlayer('warrior','human','QA'),nickname:'UzunKarakterAdı123',gold:2000000000,diamonds:100000};
+createRoot(document.getElementById('root')).render(<LanguageProvider lang="tr" setLang={()=>{}}><GlobalStyle/><div className="game-hub" style={{width:'100%',background:'var(--bg-panel)'}}><TopBar player={p} cls={CLASSES.warrior} maxHp={9999} atk={9999} def={9999} onOpenSettings={()=>{window.settingsClicked=true}} onOpenDailyLogin={()=>{window.dailyClicked=true}} onOpenDiamondShop={()=>{window.shopClicked=true}}/>{['inventory','market','character','upgrade','captain','warzone','clan','chat'].map(screen=><ScreenPanel key={screen} screen={screen}><p data-content={screen}>İçerik</p></ScreenPanel>)}</div></LanguageProvider>);
