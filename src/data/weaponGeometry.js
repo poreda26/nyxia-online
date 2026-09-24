@@ -100,6 +100,8 @@ export function weaponGeometry(appearance){
   const h=row?241:246;
   hands=[[scythe?267:col===0&&index===6?267:263,h,27,30],[196,row?310:322,28,26]];
   const sword=index===2||(index===4&&col===2)||(index===5&&col===1);
+  // The scythe neck follows its own axis; extrapolating the grip direction cuts its collar.
+  if(scythe)stem=row?'M72,464L196,310L267,241L365,86':'M72,464L196,322L267,246L365,86';
   if(scythe)head=polygon([[303,0],[491,0],[491,262],[448,262],[346,139],[303,103]]);
   else if(sword)head=polygon([[260,240],[292,194],[344,0],[428,0],[428,235],[322,263],[286,275]]);
   else head=polygon([[index===1&&col===2?224:266,0],[492,0],[492,229],[321,234],[283,195],[index===1&&col===2?224:266,104]]);
