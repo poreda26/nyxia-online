@@ -1,3 +1,4 @@
+import { varyDamage } from '../utils/combat';
 import {wingDexBonus} from '../data/wings';
 import { ATTACK_DURATION } from './animation';
 import { MAPS } from '../data/maps';
@@ -149,7 +150,7 @@ export function command(world, player, action, random = Math.random) {
   const atk = totalStats(next).atk * buffMult(world,'atk');
   const dmg = !hit ? 0 : skill
     ? computeSkillDamage(skill, { clsAtk: CLASSES[next.class].atk, atk, monsterDef: target.template.def, monsterHpPct: target.hp/target.template.hp, rand: (a,b) => Math.floor(random()*(b-a+1))+a })
-    : Math.max(1,Math.round(mitigate((CLASSES[next.class].atk+atk*0.9)*(crit?1.8:1),target.template.def,MONSTER_DEF_K)));
+    : varyDamage(mitigate((CLASSES[next.class].atk+atk*0.9)*(crit?1.8:1),target.template.def,MONSTER_DEF_K), random);
   const ranged=player.class==='rogue'||player.class==='mage';
   world.pendingStrike={targetId:target.id,dmg,hit:!!hit,crit,skill,at:world.time+(ranged?0.40:0.28)};
   if(ranged) world.projectile={kind:player.class==='rogue'?'arrow':'magic',from:{x:world.actor.x,y:world.actor.y-58},to:{x:target.x,y:target.y-40},start:world.time+0.28,end:world.time+0.40};

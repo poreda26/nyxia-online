@@ -1,3 +1,4 @@
+import { varyDamage } from '../utils/combat';
 import {refreshSkillBuff} from '../utils/skills';
 import {wingDexBonus} from '../data/wings';
 import MenuEmblem from './icons/MenuEmblem';
@@ -422,7 +423,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     // onun "çeviklik" vekili.
     const playerHits = rollHit((player.stats.dex+wingDexBonus(player)), monster.atk, player.level);
     const dmg = playerHits
-      ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)))
+      ? varyDamage(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K))
       : 0;
     const monsterHp = Math.max(0, ticked.monsterHp - dmg);
     const log = pushLog(ticked.log, !playerHits ? t("battle.log.playerMiss") : isCrit ? t("battle.log.criticalHit", { dmg }) : t("battle.log.hit", { dmg }));

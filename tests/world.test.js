@@ -425,3 +425,15 @@ test('PvP includes wings and active boosts once; EXP/drop bonuses never cause da
  a.activeBoosts={atk:Date.now()+60000,def:Date.now()+60000,hp:Date.now()+60000};const boosted=pvpSnapshot(a);assert.ok(Math.abs(boosted.atk/wing.atk-1.2)<1e-8);assert.ok(Math.abs(boosted.def/wing.def-1.1)<1e-8);assert.equal(boosted.duelHp-wing.duelHp,100);
  a.activeBoosts={exp:Date.now()+60000,gold:Date.now()+60000,np:Date.now()+60000};assert.equal(pvpSnapshot(a).atk,wing.atk);
 });
+
+// Relative variation remains visible at high gear levels without shifting average power.
+import { varyDamage } from '../src/utils/combat';
+test('damage variation preserves mean and scales from 300 to 350 for a 325 baseline', () => {
+  assert.equal(varyDamage(325, () => 0), 300);
+  assert.equal(varyDamage(325, () => 1), 350);
+  assert.equal(varyDamage(325, () => .5), 325);
+  const rolls = Array.from({length:1001}, (_, i) => varyDamage(325, () => i/1000));
+  assert.ok(Math.abs(rolls.reduce((a,b)=>a+b,0)/rolls.length-325)<0.05);
+  assert.ok(new Set(rolls).size > 40);
+  assert.equal(varyDamage(1, () => 0),1);
+});

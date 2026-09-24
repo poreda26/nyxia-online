@@ -35,3 +35,8 @@ export function hitChance(attackerDex, defenderDex, attackerLevel) {
 export function rollHit(attackerDex, defenderDex, attackerLevel) {
   return Math.random() < hitChance(attackerDex, defenderDex, attackerLevel);
 }
+
+// Symmetric +/- 1/13: a 325 baseline rolls from 300 to 350.
+export function varyDamage(base, random = Math.random) {
+  return Math.max(1, Math.round(base * (1 + (Math.max(0, Math.min(1, random())) * 2 - 1) / 13)));
+}

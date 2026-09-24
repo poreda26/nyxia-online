@@ -1,6 +1,6 @@
 import { SKILLS_BY_CLASS, MAX_LOADOUT_SLOTS } from "../data/skills";
 import { isTierQuestClaimed } from "./quests";
-import { mitigate, MONSTER_DEF_K } from "./combat";
+import { varyDamage, mitigate, MONSTER_DEF_K } from "./combat";
 import { tierName } from "../data/itemRarity";
 
 export function classSkills(cls) {
@@ -96,7 +96,7 @@ export function computeSkillDamage(skill, { clsAtk, atk, monsterDef, monsterHpPc
   const e = skill.effect;
   let mult = e.mult ?? 1;
   if (e.type === "execute" && !(monsterHpPct <= e.hpPctThreshold)) mult = 1;
-  return Math.max(1, Math.round(mitigate((clsAtk + atk * 0.9) * mult, monsterDef, MONSTER_DEF_K) + rand(-2, 3)));
+  return varyDamage(mitigate((clsAtk + atk * 0.9) * mult, monsterDef, MONSTER_DEF_K), () => (rand(-10000, 10000) + 10000) / 20000);
 }
 
 export function computeSkillHeal(skill, maxHp) {

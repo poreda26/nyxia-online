@@ -1,0 +1,14 @@
+.warzone-panel{min-width:0;box-sizing:border-box}
+.warzone-banner{display:flex;align-items:center;gap:16px;padding:22px 18px;margin-bottom:16px;border:1px solid #b9874566;border-radius:16px;background:radial-gradient(ellipse at 95% 0%,#a12b4140,transparent 65%),linear-gradient(135deg,#25202a,#111720);color:#edc887;box-shadow:inset 0 1px #ffe2a51a,0 8px 24px #0003}
+.warzone-banner>svg{flex-shrink:0;filter:drop-shadow(0 0 12px #da8e4b66)}
+.warzone-banner small{font-size:9px;letter-spacing:3px;color:#c49c6e}
+.warzone-banner h2{font-family:var(--font-display);margin:5px 0;font-size:23px}
+.warzone-banner span{font-size:11px;color:#bdb6c6;overflow-wrap:anywhere}
+.warzone-panel>.rpg-tabs{position:sticky;top:0;z-index:3;padding:6px;background:var(--bg-panel);border:1px solid #b9874533;border-radius:12px;gap:5px}
+.warzone-panel>.rpg-tabs button{flex:1;min-height:44px;border-radius:8px}
+.warzone-panel>.rpg-tabs button[aria-selected=true]{box-shadow:inset 0 -2px #edc887;background:linear-gradient(180deg,#b987452b,#b9874510)!important;color:#edc887!important}
+.warzone-boss-card{border-radius:14px!important;padding:15px!important;background:linear-gradient(135deg,#89304714,transparent),var(--bg-panel)!important;box-shadow:inset 0 1px #ffffff08}
+.warzone-boss-card .monster-mini-portrait{width:64px;height:64px;flex-shrink:0;border-radius:14px;box-shadow:0 4px 14px #0004}
+.warzone-opponent{border-radius:12px!important;min-height:64px;background:linear-gradient(100deg,#bd904b12,transparent),var(--bg-panel)!important}
+.warzone-panel button{touch-action:manipulation}
+@media(max-width:360px){.warzone-banner{padding:16px 12px;gap:12px}.warzone-banner h2{font-size:20px}.warzone-boss-card{padding:10px!important}}

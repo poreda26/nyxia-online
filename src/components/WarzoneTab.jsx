@@ -1,3 +1,5 @@
+import './WarzoneTab.css';
+import { varyDamage } from '../utils/combat';
 import PracticeDuel from './PracticeDuel';
 import {createDuel,stepDuel} from '../utils/duelEngine';
 import {comparablePlayer} from '../utils/pvpBalance';
@@ -324,7 +326,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
   if (locked || npLocked) {
     return (
-      <div style={styles.panelScroll}>
+      <div className="warzone-panel" style={styles.panelScroll}>
+        <header className="warzone-banner"><Swords size={30}/><div><small>NYXIA ONLINE</small><h2>{t("warzone.enterTitle")}</h2><span>{player.nickname || t("battle.you")} · Lv.{player.level} · {player.nationalPoint || 0} NP</span></div></header>
 
         <PracticeDuel player={player}/>
         {locked ? (
@@ -342,7 +345,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   if (!entered) {
     const canAfford = player.gold >= WARZONE_TELEPORT_COST;
     return (
-      <div style={styles.panelScroll}>
+      <div className="warzone-panel" style={styles.panelScroll}>
+        <header className="warzone-banner"><Swords size={30}/><div><small>NYXIA ONLINE</small><h2>{t("warzone.enterTitle")}</h2><span>{player.nickname || t("battle.you")} · Lv.{player.level} · {player.nationalPoint || 0} NP</span></div></header>
 
         <EmptyState
           icon={DoorOpen}
@@ -403,7 +407,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     // DEX'i yok, kendi ATK'si vekil.
     const playerHitsBoss = rollHit(player.stats.dex, boss.atk, player.level);
     const dmg = playerHitsBoss
-      ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), boss.def, MONSTER_DEF_K) + rand(-2, 3)))
+      ? varyDamage(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), boss.def, MONSTER_DEF_K))
       : 0;
     setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], outgoing: { hit: playerHitsBoss, damage: dmg, crit: isCrit } } }));
     if(playerHitsBoss)playHit({crit:isCrit,cls:player.class});else playMiss();
@@ -587,7 +591,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       const isCrit = Math.random() < cls.crit;
       const playerHits = rollHit(player.stats.dex, monster.atk, player.level);
       const dmg = playerHits
-        ? Math.max(1, Math.round(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K) + rand(-2, 3)))
+        ? varyDamage(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K))
         : 0;
       monsterHp = Math.max(0, monsterHp - dmg);
       log.push(!playerHits ? t("warzone.log.huntMissed", { monster: monster.name }) : isCrit ? t("warzone.log.huntCrit", { monster: monster.name, dmg }) : t("warzone.log.huntHit", { monster: monster.name, dmg }));
@@ -754,7 +758,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   const lbEntries = leaderboardFor(lbRace, lbCls, player.weekId, player, lbSort);
 
   return (
-    <div style={styles.panelScroll}>
+    <div className="warzone-panel" style={styles.panelScroll}>
+        <header className="warzone-banner"><Swords size={30}/><div><small>NYXIA ONLINE</small><h2>{t("warzone.enterTitle")}</h2><span>{player.nickname || t("battle.you")} · Lv.{player.level} · {player.nationalPoint || 0} NP</span></div></header>
 
       <div className="rpg-tabs" style={{...styles.subtabRow,flexWrap:"wrap"}}>
         <button aria-selected={subtab === "alan"} style={{ ...styles.subtabBtn, ...(subtab === "alan" ? styles.subtabBtnActive : {}) }} onClick={() => setSubtab("alan")}>{t("warzone.tabArea")}</button>
@@ -788,7 +793,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
                     .filter((r) => r.dmg > 0).sort((a, b) => b.dmg - a.dmg)
                 : [];
               return (
-                <div key={boss.id} style={{ ...styles.combatant, borderColor: `${boss.color}55`, opacity: sched.phase === "dormant" ? 0.6 : 1 }}>
+                <div className="warzone-boss-card" key={boss.id} style={{ ...styles.combatant, borderColor: `${boss.color}55`, opacity: sched.phase === "dormant" ? 0.6 : 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div className="monster-mini-portrait" style={{borderColor:boss.color}}>
                       {sched.phase==='dormant'?<Skull size={20} style={{margin:13}}/>:<MonsterPortrait monster={boss} label={tm(boss)}/>}
@@ -890,7 +895,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
             {idleGhosts.map((g) => {
               const GIcon = CLASSES[g.cls].icon;
               return (
-                <div key={g.id} className="rpg-row" style={styles.itemRow}>
+                <div key={g.id} className="rpg-row warzone-opponent" style={styles.itemRow}>
                   <div style={{ ...styles.monsterIcon, width: 30, height: 30, background: `${RACES[g.race].color}22`, color: RACES[g.race].color }}>
                     <GIcon size={14} strokeWidth={1.6} />
                   </div>
