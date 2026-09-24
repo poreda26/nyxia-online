@@ -112,6 +112,7 @@ const base = {
       subtitle: "Bu isim karakterlerini bu tarayıcıda ayırt eder.",
       placeholder: "kullanıcı adı", submit: "Giriş Yap",
       caveat: "Bu yerel bir profildir — şifre yok, sunucu yok. Sadece bu tarayıcıda karakterlerini saklamak için kullanılır.",
+      reservedNameError: "Bu kullanıcı adı kullanılamaz, lütfen başka bir isim dene.",
     },
     raceSelect: {
       eyebrow: "YENİ KARAKTER", title: "Bir ırk seç.",
@@ -350,6 +351,7 @@ const base = {
       subtitle: "This name tells your characters apart on this browser.",
       placeholder: "username", submit: "Log In",
       caveat: "This is a local profile — no password, no server. It's only used to store your characters in this browser.",
+      reservedNameError: "That username can't be used — please try a different name.",
     },
     raceSelect: {
       eyebrow: "NEW CHARACTER", title: "Choose a nation.",

@@ -11,6 +11,18 @@ import {rebalanceSavedWeapon} from '../data/balancedWeapons';
 
 const ACCOUNTS_KEY = "rpgmarket:accounts";
 const LAST_USERNAME_KEY = "rpgmarket:lastUsername";
+
+// Güvenlik testi bulgusu: `accounts[username]` deseninde kullanıcı adı
+// tam "__proto__"/"constructor"/"prototype" olursa obje-key davranışı
+// bozuluyordu (bkz. readAccounts'taki Object.create(null) düzeltmesi, o
+// asıl kök çözüm). Bu, LoginScreen'in aynı isimleri en baştan reddetmesi
+// için ayrıca export ediliyor — kullanıcı "neden giremiyorum" diye
+// şaşırmasın diye net bir hata gösterebilsin, sadece sessizce bozuk bir
+// hesapla karşılaşmasın.
+const RESERVED_USERNAMES = new Set(["__proto__", "constructor", "prototype"]);
+export function isReservedUsername(username) {
+  return RESERVED_USERNAMES.has(String(username).trim().toLowerCase());
+}
 // Hesap en fazla 3 karakter slotu tutabilir ama kullanıcı isteğiyle
 // başlangıçta sadece 2'si açık — 3.'sü mevcut karakterlerden birinin
 // elmasıyla açılabiliyor (bkz. THIRD_SLOT_COST_DIAMONDS, App.jsx
@@ -29,12 +41,28 @@ function emptyAccount() {
   return { race: null, characters: Array(CHARACTER_SLOTS).fill(null), bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS, diamonds: 0, bankGold: 0 };
 }
 
+// Güvenlik: `accounts[username]` deseni bu dosyada her yerde kullanılıyor,
+// `username` de doğrudan kullanıcının login ekranına yazdığı serbest metin
+// (bkz. LoginScreen.jsx — sadece 20 karakter sınırı var, karakter seti
+// kısıtlaması yok). Biri kullanıcı adı olarak tam "__proto__" yazarsa,
+// düz bir `{}` üzerinde `accounts["__proto__"] = {...}` normal bir key
+// YAZMAZ — objenin prototipini değiştirir, ki bu hem o hesabın verisinin
+// hiç kaydedilmemesine (JSON.stringify prototip zincirini asla yazmaz, bu
+// da localStorage'a sessizce "{}" yazılmasına) hem de aynı `accounts`
+// referansı üzerinde art arda yapılan başka okuma/yazmaların (bu dosyanın
+// her fonksiyonu aynı turda birden fazla kez readAccounts/writeAccounts
+// çağırabiliyor) beklenmedik şekilde birbirine karışmasına yol açar.
+// `Object.create(null)` prototipsiz bir obje kurduğu için `__proto__`
+// (ve varsayılan olarak miras alınan `constructor`/`toString` gibi diğer
+// Object.prototype üyeleri) artık özel bir davranış tetiklemiyor, sıradan
+// bir veri key'i oluyor — bracket-notation ile yazılmış geri kalan tüm kod
+// değişmeden çalışmaya devam ediyor.
 function readAccounts() {
   try {
     const raw = localStorage.getItem(ACCOUNTS_KEY);
-    return raw ? JSON.parse(raw) : {};
+    return raw ? Object.assign(Object.create(null), JSON.parse(raw)) : Object.create(null);
   } catch {
-    return {};
+    return Object.create(null);
   }
 }
 

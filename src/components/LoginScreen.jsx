@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronRight, User } from "lucide-react";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
+import { isReservedUsername } from "../utils/storage";
 
 // No password field on purpose — there's no backend to check one against,
 // and storing something LABELED a password in localStorage (in plaintext,
@@ -11,10 +12,12 @@ import { useTranslation } from "../i18n/LanguageContext";
 export default function LoginScreen({ initialUsername, onLogin }) {
   const { t } = useTranslation();
   const [username, setUsername] = useState(initialUsername || "");
+  const [error, setError] = useState(false);
 
   const submit = () => {
     const trimmed = username.trim();
     if (!trimmed) return;
+    if (isReservedUsername(trimmed)) { setError(true); return; }
     onLogin(trimmed);
   };
 
@@ -33,7 +36,7 @@ export default function LoginScreen({ initialUsername, onLogin }) {
         <input
           type="text"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={(e) => { setUsername(e.target.value); setError(false); }}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
           placeholder={t("login.placeholder")}
           maxLength={20}
@@ -41,6 +44,12 @@ export default function LoginScreen({ initialUsername, onLogin }) {
           autoFocus
         />
       </div>
+
+      {error && (
+        <p style={{ ...styles.loginCaveat, color: "#E8425A", marginTop: -10 }}>
+          {t("login.reservedNameError")}
+        </p>
+      )}
 
       <button
         style={{ ...styles.primaryBtn, background: "#D4AF6A", alignSelf: "center" }}

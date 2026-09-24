@@ -59,10 +59,21 @@ export const DEFAULT_DROP_CONFIG = buildDefaultDropConfig();
 // localStorage'daki kayıt eksik/eski şemalıysa (örn. oyuna yeni bir canavar
 // eklendi ama admin.html'de henüz kaydedilmedi) her seviyede varsayılana
 // düşüyor — hiçbir zaman "undefined altın aralığı" gibi bir çökmeye yol açmaz.
+//
+// Güvenlik testi bulgusu: `override` JSON.parse'tan geliyor (bkz.
+// getDropConfig) ve `out[key] = ...` bracket-notation'ı — `override` içinde
+// "__proto__" adında bir key varsa (biri localStorage'ı elle bozarsa) bu
+// döngü normal bir veri key'i YAZMAZ, `out`'un prototipini değiştirir
+// (utils/storage.js#readAccounts'taki aynı bug sınıfı). admin.html
+// production'a hiç girmiyor ve bu ayar sadece o panelden yazılıyor, ama
+// biri kendi localStorage'ını elle değiştirirse yine de bu davranışa
+// takılır — tehlikeli key'leri baştan atlıyoruz.
+const UNSAFE_MERGE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 function deepMerge(base, override) {
   if (!override || typeof override !== "object" || Array.isArray(override)) return base;
   const out = { ...base };
   for (const key of Object.keys(override)) {
+    if (UNSAFE_MERGE_KEYS.has(key)) continue;
     const bv = base?.[key];
     const ov = override[key];
     out[key] = (ov && typeof ov === "object" && !Array.isArray(ov) && bv && typeof bv === "object")

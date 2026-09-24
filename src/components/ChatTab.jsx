@@ -3,7 +3,7 @@ import { Send, ShieldCheck, HelpCircle, Wand2 } from "lucide-react";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import * as chatService from "../services/chatService";
-import { parseGmCommand, executeGmCommand } from "../utils/gmCommands";
+import { parseGmCommand, executeGmCommand, tryGmUnlock } from "../utils/gmCommands";
 import { displayClassName } from "../utils/player";
 import GmItemPanel from "./GmItemPanel";
 import { useTranslation } from "../i18n/LanguageContext";
@@ -34,6 +34,15 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
     setInput("");
 
     const parsed = parseGmCommand(text);
+
+    if (parsed && !player.isGM && tryGmUnlock(parsed)) {
+      // Parola sohbet geçmişine hiç yazılmıyor (bkz. gmCommands.js'teki not)
+      // — sadece bu karaktere isGM veriliyor, mesaj gönderilmiyor.
+      setPlayer({ ...player, isGM: true });
+      pushToast(t("chat.gmUnlocked"), "loot");
+      return;
+    }
+
     if (parsed && player.isGM) {
       await chatService.sendMessage(displayName, text, true);
       const { player: nextPlayer, bank: nextBank, resultText } = executeGmCommand(player, parsed.cmd, parsed.args, bank);

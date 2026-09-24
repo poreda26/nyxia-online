@@ -135,13 +135,18 @@ export function initialPlayer(cls, race, nickname) {
     // Tier 5 armor (see equipItem below) and prefixes the class name with
     // "Master" everywhere it's displayed (see displayClassName below).
     awakened: false,
-    // NOTE: this build has no real backend, so GM status can only be
-    // enforced client-side — it defaults to true because this is a
-    // single-player local build (you're the only one who can run it). Once
-    // there's a real server, GM must be verified there; a client-side flag
-    // alone is trivially spoofable from devtools and must never be trusted
-    // for a real multiplayer deployment.
-    isGM: true,
+    // Kullanıcı isteği: "Chat üzerinden bir şeyleri elde edebilecek tek
+    // kişi GM ekibi olacak, geri kalan kimse elde edememeli." — artık
+    // varsayılan false; GM yetkisi sadece Sohbet'teki gizli /gmgiris
+    // parola komutuyla açılıyor (bkz. utils/gmCommands.js#GM_UNLOCK_*,
+    // ChatTab.jsx#send). NOT: bu build'in hâlâ gerçek bir backend'i yok,
+    // yani bu istemci tarafında tutulan bir bayrak — parolayı bilen biri
+    // yine de açabilir, ya da devtools'tan localStorage'ı elden düzenleyip
+    // kendi karakterine isGM:true yazabilir. Bu, "hiçbirini bilmeyen
+    // sıradan oyuncu" için gerçek bir engel ama kriptografik bir garanti
+    // değil — gerçek güvence ancak bir sunucu isGM'i kendi tarafında
+    // doğruladığında gelir.
+    isGM: false,
     // Otomatik Saldırı ayarları — bkz. components/BattleTab.jsx (savaş
     // ekranındaki ikon aynı `enabled` alanını değiştirir) ve
     // components/CharacterTab.jsx'in "Otomatik Saldırı" alt sekmesi. Eşikler

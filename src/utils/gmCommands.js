@@ -20,6 +20,28 @@ export function parseGmCommand(raw) {
   return { cmd: cmd.toLowerCase(), args };
 }
 
+// Kullanıcı isteği: "Chat üzerinden bir şeyleri elde edebilecek tek kişi GM
+// ekibi olacak" — player.isGM artık varsayılan false (bkz. player.js), bu
+// yüzden GM ekibinin kendi karakterinde yetkiyi açacak bir yolu olması
+// lazım. `/gmgiris <parola>` doğru parolayla eşleşirse isGM'i açıyor;
+// yanlış parola ya da başka herhangi bir komut TAMAMEN normal bir sohbet
+// mesajı gibi davranıyor (bkz. ChatTab.jsx#send) — böylece "bu komut var
+// mı yok mu" diye ayırt edilemiyor, ve başarılı denemede parola sohbet
+// geçmişine hiç yazılmıyor. Bu GERÇEK bir sunucu doğrulaması DEĞİL —
+// istemci tarafında bir dize karşılaştırması, JS paketini okuyan biri
+// parolayı bulabilir. Sıradan bir oyuncuyu durdurur, kararlı bir
+// tersine-mühendisi durdurmaz; asıl güvence ancak bir backend isGM'i
+// kendi tarafında doğruladığında gelir (bkz. güvenlik testi notları).
+//
+// GM ekibi bu parolayı biliyor olacak — istersen kendi seçtiğin, daha
+// akılda kalıcı bir parolayla değiştir.
+export const GM_UNLOCK_COMMAND = "gmgiris";
+export const GM_UNLOCK_PASSPHRASE = "nyxia-gm-7f3k";
+
+export function tryGmUnlock(parsed) {
+  return !!parsed && parsed.cmd === GM_UNLOCK_COMMAND && parsed.args[0] === GM_UNLOCK_PASSPHRASE;
+}
+
 function clampTier(value, max = 5) {
   const t = parseInt(value, 10);
   if (!Number.isFinite(t)) return 1;
