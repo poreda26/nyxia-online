@@ -69,6 +69,17 @@ export function formatReason(t, result, fallbackKey) {
   return t(`common.reason.${result.reason}`, result.reasonVars);
 }
 
+// Faz 6 — gerçek backend çağrıları (utils/api.js#call) hata fırlatınca
+// Error.code'a UPPER_SNAKE bir kod koyuyor (bkz. server/app.mjs#fail) —
+// yukarıdaki formatReason'ın camelCase `reason` sözleşmesinden FARKLI,
+// karışmasın diye ayrı bir namespace (common.serverError.*) kullanıyor.
+export function formatServerError(t, error, fallbackKey) {
+  if (!error?.code) return fallbackKey ? t(fallbackKey) : "";
+  const key = `common.serverError.${error.code}`;
+  const value = t(key);
+  return value === key ? (fallbackKey ? t(fallbackKey) : value) : value;
+}
+
 export function translateWith(lang, key, vars) {
   const primary = lookup(translations[lang], key);
   const value = primary ?? lookup(translations.tr, key);

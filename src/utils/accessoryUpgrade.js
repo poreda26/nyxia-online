@@ -5,6 +5,15 @@
 // utils/inventory.js#makeAccessoryScrollStack) tüketilip TEK bir takı,
 // bir sonraki seviyenin gerçek verisiyle (bkz. data/accessories.js#levels)
 // üretiliyor. Silah/zırhın aksine başarısızlık ihtimali yok.
+//
+// UI artık Silah/Zırh forge'u ile aynı etkileşim modelini kullanıyor
+// (kullanıcı isteği: "Takı Yükseltme sekmesi Silah/zırh sekmesi gibi
+// olacak") — takılar isim/seviyeye göre otomatik gruplanıp tek bir butona
+// basmak yerine, forge'daki gibi 3 ayrı kutucuğa TEK TEK dokunularak
+// çantadan çekiliyor. Bu yüzden aşağıdaki fonksiyonlar artık envanteri
+// isim/seviyeyle yeniden taramıyor — bileşen (AccessoryUpgradeTab) hangi 3
+// öğenin ve hangi parşömenin çantadan çekilip kutuya konduğunu zaten bildiği
+// için doğrudan o öğeleri alıyor.
 import { applyLevelData } from "./upgrade";
 import { uid } from "./random";
 
@@ -12,60 +21,20 @@ import { uid } from "./random";
 // sabiti değiştirmek yeterli, başka hiçbir yer dokunulmaz.
 export const ACCESSORY_UPGRADE_MAX_LEVEL = 3;
 
-// Çantadaki takıları isim+seviyeye göre gruplar, en az 3 tane olanları
-// döner — Takı Yükseltme sekmesinin listelediği şey bu.
-export function upgradableAccessoryGroups(player) {
-  const groups = new Map();
-  for (const it of player.inventory) {
-    if (it.kind !== "accessory" || it.upgradeLocked) continue;
-    const key = `${it.name}:::${it.upgradeLevel || 0}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(it);
-  }
-  return [...groups.values()]
-    .filter((items) => items.length >= 3)
-    .map((items) => ({ sample: items[0], count: items.length }));
-}
-
-export function canUpgradeAccessory(player, sample) {
+// Bir takının forge'a (kutucuklara) hiç konulup konulamayacağını kontrol
+// eder — kilitli mi, zaten maksimum seviyede mi.
+export function accessoryUpgradeBlocked(sample) {
   if (sample.upgradeLocked) return { ok: false, reason: "accessoryUpgradeLocked" };
-  const level = sample.upgradeLevel || 0;
-  if (level >= ACCESSORY_UPGRADE_MAX_LEVEL) {
+  if ((sample.upgradeLevel || 0) >= ACCESSORY_UPGRADE_MAX_LEVEL) {
     return { ok: false, reason: "accessoryMaxLevelLocked", reasonVars: { max: ACCESSORY_UPGRADE_MAX_LEVEL } };
-  }
-  const matching = player.inventory.filter(
-    (it) => it.kind === "accessory" && it.name === sample.name && (it.upgradeLevel || 0) === level
-  );
-  if (matching.length < 3) return { ok: false, reason: "accessoryNeedThree" };
-  if (!player.inventory.some((it) => it.kind === "accessoryScroll" && it.count > 0)) {
-    return { ok: false, reason: "noAccessoryUpgradeScroll" };
   }
   return { ok: true };
 }
 
-// 3 takı + 1 kağıt tüketip %100 oranda bir sonraki seviyede TEK bir takı
-// üretir. `sampleId` gruptaki HERHANGİ bir öğenin id'si olabilir — hangi 3
-// tanesinin tüketildiği önemli değil, hepsi zaten aynı isim+seviye.
-export function upgradeAccessory(player, sampleId) {
-  const sample = player.inventory.find((it) => it.id === sampleId);
-  if (!sample) return { player, upgraded: false, reason: "itemNotFound" };
-  const check = canUpgradeAccessory(player, sample);
-  if (!check.ok) return { player, upgraded: false, reason: check.reason, reasonVars: check.reasonVars };
-
+// 3 kutucuktaki (zaten aynı isim+seviyeden olduğu doğrulanmış) takılardan
+// birinin örneğini alıp %100 oranda bir sonraki seviyede TEK bir takı
+// üretir — üçü de aynı olduğundan hangisinin "örnek" alındığı önemsiz.
+export function buildUpgradedAccessory(sample) {
   const level = sample.upgradeLevel || 0;
-  const matching = player.inventory.filter(
-    (it) => it.kind === "accessory" && it.name === sample.name && (it.upgradeLevel || 0) === level
-  );
-  const consumeIds = new Set(matching.slice(0, 3).map((it) => it.id));
-  const scroll = player.inventory.find((it) => it.kind === "accessoryScroll" && it.count > 0);
-
-  let inventory = player.inventory.filter((it) => !consumeIds.has(it.id));
-  inventory = inventory
-    .map((it) => (it.id === scroll.id ? { ...it, count: it.count - 1 } : it))
-    .filter((it) => !(it.id === scroll.id && it.count <= 0));
-
-  const upgraded = { ...applyLevelData(sample, level + 1), id: uid() };
-  inventory.push(upgraded);
-
-  return { player: { ...player, inventory }, upgraded: true, item: upgraded };
+  return { ...applyLevelData(sample, level + 1), id: uid() };
 }

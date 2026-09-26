@@ -6,10 +6,12 @@ import * as chatService from "../services/chatService";
 import { parseGmCommand, executeGmCommand, tryGmUnlock } from "../utils/gmCommands";
 import { displayClassName } from "../utils/player";
 import GmItemPanel from "./GmItemPanel";
+import FriendsPanel from "./FriendsPanel";
 import { useTranslation } from "../i18n/LanguageContext";
 
 export default function ChatTab({ player, setPlayer, bank, setBank, pushToast }) {
   const { t } = useTranslation();
+  const [subtab, setSubtab] = useState("public"); // "public" | "friends"
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [showHelp, setShowHelp] = useState(false);
@@ -37,7 +39,10 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [messages.length]);
 
-  const displayName = `${displayClassName(player)} · Lv.${player.level}`;
+  // Kullanıcı isteği: sohbette sınıf adı değil, karakterin kendi ismi görünsün.
+  // Eski kayıtlarda nickname olmayabilir (bkz. utils/player.js normalize) —
+  // o durumda sınıf adına düşer.
+  const displayName = `${player.nickname || displayClassName(player)} · Lv.${player.level}`;
 
   const send = async () => {
     const text = input.trim();
@@ -71,6 +76,19 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
 
   return (
     <div style={styles.panelScroll}>
+      <div className="rpg-tabs" style={{ ...styles.subtabRow, marginTop: 12 }}>
+        <button onClick={() => setSubtab("public")} style={{ ...styles.subtabBtn, ...(subtab === "public" ? styles.subtabBtnActive : {}) }}>
+          {t("chat.subtabPublic")}
+        </button>
+        <button onClick={() => setSubtab("friends")} style={{ ...styles.subtabBtn, ...(subtab === "friends" ? styles.subtabBtnActive : {}) }}>
+          {t("chat.subtabFriends")}
+        </button>
+      </div>
+
+      {subtab === "friends" ? (
+        <FriendsPanel pushToast={pushToast} />
+      ) : (
+      <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
@@ -136,6 +154,8 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
           <Send size={13} />
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }

@@ -11,6 +11,11 @@ import { resolve, extname, join } from 'node:path';
 // sapabilecek bir "boss listesi" olmasın diye).
 import { WARZONE_BOSSES } from '../src/data/warzone.js';
 import { bossSchedule } from '../src/utils/warzoneBoss.js';
+// Faz 6 — arkadaş/özel mesaj/gerçek çok-oyunculu klan. Aynı Faz 4 ilkesi:
+// saf veri dosyaları doğrudan buradan import ediliyor (klan üye/subay
+// tavanı, bina maliyet tablosu) — istemci ile sunucu aynı sabitleri kullanır.
+import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_COLORS } from '../src/data/clan.js';
+import { CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from '../src/data/clanBoss.js';
 
 const scrypt = promisify(derive);
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -54,7 +59,13 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS boss_fights(boss_id TEXT NOT NULL, spawn_at INTEGER NOT NULL, hp INTEGER NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(boss_id,spawn_at));
     CREATE TABLE IF NOT EXISTS boss_contributions(boss_id TEXT NOT NULL, spawn_at INTEGER NOT NULL, account INTEGER NOT NULL REFERENCES accounts(id), damage INTEGER NOT NULL, PRIMARY KEY(boss_id,spawn_at,account));
     CREATE TABLE IF NOT EXISTS boss_loot_claims(id INTEGER PRIMARY KEY AUTOINCREMENT, account INTEGER NOT NULL REFERENCES accounts(id), boss_id TEXT NOT NULL, created_at INTEGER NOT NULL);
-    CREATE TABLE IF NOT EXISTS duel_history(id INTEGER PRIMARY KEY AUTOINCREMENT, challenger INTEGER NOT NULL REFERENCES accounts(id), opponent INTEGER NOT NULL REFERENCES accounts(id), winner TEXT NOT NULL, created_at INTEGER NOT NULL);`);
+    CREATE TABLE IF NOT EXISTS duel_history(id INTEGER PRIMARY KEY AUTOINCREMENT, challenger INTEGER NOT NULL REFERENCES accounts(id), opponent INTEGER NOT NULL REFERENCES accounts(id), winner TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS friend_requests(id INTEGER PRIMARY KEY AUTOINCREMENT, from_account INTEGER NOT NULL REFERENCES accounts(id), to_account INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, UNIQUE(from_account,to_account));
+    CREATE TABLE IF NOT EXISTS friendships(account_a INTEGER NOT NULL REFERENCES accounts(id), account_b INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, PRIMARY KEY(account_a,account_b));
+    CREATE TABLE IF NOT EXISTS direct_messages(id INTEGER PRIMARY KEY AUTOINCREMENT, from_account INTEGER NOT NULL REFERENCES accounts(id), to_account INTEGER NOT NULL REFERENCES accounts(id), text TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS clans(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, color TEXT NOT NULL, founder_account INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, building_level INTEGER NOT NULL DEFAULT 1, treasury_gold INTEGER NOT NULL DEFAULT 0, treasury_diamonds INTEGER NOT NULL DEFAULT 0, treasury_np INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS clan_members(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), clan_id INTEGER NOT NULL REFERENCES clans(id), role TEXT NOT NULL, joined_at INTEGER NOT NULL, donated_np INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS clan_invites(id INTEGER PRIMARY KEY AUTOINCREMENT, clan_id INTEGER NOT NULL REFERENCES clans(id), from_account INTEGER NOT NULL REFERENCES accounts(id), to_account INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, UNIQUE(clan_id,to_account));`);
   // Başlangıçta bir kerelik temizlik — hafta öncesinin boss kayıtları hiç
   // kullanılmayacak, DB'nin sınırsız büyümesini önler.
   {
@@ -92,6 +103,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   const chatRateLimit = makeRateLimiter(20);
   const bossAttackRateLimit = makeRateLimiter(60);
   const duelRateLimit = makeRateLimiter(20);
+  const socialRateLimit = makeRateLimiter(30);
+  const dmRateLimit = makeRateLimiter(30);
   const read = async req => {
     let size = 0; const chunks = [];
     for await (const chunk of req) {
@@ -407,6 +420,283 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (!Number.isSafeInteger(opponentAccountId) || !winner) throw fail(400, 'INVALID_DUEL_RESULT');
         db.prepare('INSERT INTO duel_history(challenger,opponent,winner,created_at) VALUES(?,?,?,?)').run(account.id, opponentAccountId, winner, Date.now());
         return send(200, { ok: true });
+      }
+      // Faz 6 — arkadaş listesi. Hesap adı (accounts.name) ile hedefleniyor,
+      // karakter takma adıyla DEĞİL — takma ad hesaplar arası benzersiz
+      // değil (bkz. yukarıdaki market notu), hesap adı ise öyle.
+      if (path === '/api/social/friends' && req.method === 'GET') {
+        const friendRows = db.prepare(`SELECT accounts.id AS id, accounts.name AS name FROM friendships
+          JOIN accounts ON accounts.id = CASE WHEN friendships.account_a=? THEN friendships.account_b ELSE friendships.account_a END
+          WHERE friendships.account_a=? OR friendships.account_b=?`).all(account.id, account.id, account.id);
+        const incoming = db.prepare('SELECT friend_requests.id AS id, accounts.id AS fromId, accounts.name AS fromName, friend_requests.created_at AS createdAt FROM friend_requests JOIN accounts ON accounts.id=friend_requests.from_account WHERE friend_requests.to_account=?').all(account.id);
+        const outgoing = db.prepare('SELECT friend_requests.id AS id, accounts.id AS toId, accounts.name AS toName, friend_requests.created_at AS createdAt FROM friend_requests JOIN accounts ON accounts.id=friend_requests.to_account WHERE friend_requests.from_account=?').all(account.id);
+        return send(200, {
+          friends: friendRows.map(r => ({ accountId: r.id, name: r.name })),
+          incoming: incoming.map(r => ({ id: r.id, fromAccountId: r.fromId, fromName: r.fromName, createdAt: r.createdAt })),
+          outgoing: outgoing.map(r => ({ id: r.id, toAccountId: r.toId, toName: r.toName, createdAt: r.createdAt })),
+        });
+      }
+      // İki yönlü bekleyen istek varsa (B zaten A'ya istek göndermiş) yeni bir
+      // bekleyen istek daha açmak yerine doğrudan arkadaşlığı kur — Discord
+      // tarzı "karşılıklı istek otomatik kabul" davranışı.
+      if (path === '/api/social/friends/request' && req.method === 'POST') {
+        socialRateLimit(account.id);
+        const body = await read(req);
+        const name = typeof body?.name === 'string' ? body.name.trim().toLowerCase() : '';
+        if (!name) throw fail(400, 'INVALID_NAME');
+        const target = db.prepare('SELECT id FROM accounts WHERE name=?').get(name);
+        if (!target) throw fail(404, 'ACCOUNT_NOT_FOUND');
+        if (target.id === account.id) throw fail(400, 'CANNOT_FRIEND_SELF');
+        const [a, b] = account.id < target.id ? [account.id, target.id] : [target.id, account.id];
+        if (db.prepare('SELECT 1 FROM friendships WHERE account_a=? AND account_b=?').get(a, b)) throw fail(409, 'ALREADY_FRIENDS');
+        const reverse = db.prepare('SELECT id FROM friend_requests WHERE from_account=? AND to_account=?').get(target.id, account.id);
+        if (reverse) {
+          db.exec('BEGIN IMMEDIATE');
+          try {
+            db.prepare('DELETE FROM friend_requests WHERE id=?').run(reverse.id);
+            db.prepare('INSERT OR IGNORE INTO friendships(account_a,account_b,created_at) VALUES(?,?,?)').run(a, b, Date.now());
+            db.exec('COMMIT');
+          } catch (error) { db.exec('ROLLBACK'); throw error; }
+          return send(200, { status: 'accepted' });
+        }
+        try { db.prepare('INSERT INTO friend_requests(from_account,to_account,created_at) VALUES(?,?,?)').run(account.id, target.id, Date.now()); }
+        catch (error) { if (error.code?.startsWith('ERR_SQLITE')) throw fail(409, 'REQUEST_ALREADY_SENT'); throw error; }
+        return send(200, { status: 'pending' });
+      }
+      const friendAcceptMatch = path.match(/^\/api\/social\/friends\/(\d+)\/accept$/);
+      if (friendAcceptMatch && req.method === 'POST') {
+        const id = Number(friendAcceptMatch[1]);
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          const reqRow = db.prepare('SELECT * FROM friend_requests WHERE id=? AND to_account=?').get(id, account.id);
+          if (!reqRow) throw fail(404, 'REQUEST_NOT_FOUND');
+          const [a, b] = reqRow.from_account < account.id ? [reqRow.from_account, account.id] : [account.id, reqRow.from_account];
+          db.prepare('INSERT OR IGNORE INTO friendships(account_a,account_b,created_at) VALUES(?,?,?)').run(a, b, Date.now());
+          db.prepare('DELETE FROM friend_requests WHERE id=?').run(id);
+          db.exec('COMMIT');
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
+        return send(200, { ok: true });
+      }
+      const friendDeclineMatch = path.match(/^\/api\/social\/friends\/(\d+)\/decline$/);
+      if (friendDeclineMatch && req.method === 'POST') {
+        const result = db.prepare('DELETE FROM friend_requests WHERE id=? AND (to_account=? OR from_account=?)').run(Number(friendDeclineMatch[1]), account.id, account.id);
+        if (result.changes === 0) throw fail(404, 'REQUEST_NOT_FOUND');
+        return send(200, { ok: true });
+      }
+      const unfriendMatch = path.match(/^\/api\/social\/friends\/(\d+)$/);
+      if (unfriendMatch && req.method === 'DELETE') {
+        const otherId = Number(unfriendMatch[1]);
+        const [a, b] = account.id < otherId ? [account.id, otherId] : [otherId, account.id];
+        db.prepare('DELETE FROM friendships WHERE account_a=? AND account_b=?').run(a, b);
+        return send(200, { ok: true });
+      }
+      // Özel mesaj — sadece gerçek arkadaşlar arasında (kullanıcı isteği:
+      // "özel sohbet"). Genel sohbetin aksine (chat_messages, herkese açık)
+      // burası iki hesap arasındaki tek konuşmayı filtreliyor.
+      const areFriends = (x, y) => { const [a, b] = x < y ? [x, y] : [y, x]; return !!db.prepare('SELECT 1 FROM friendships WHERE account_a=? AND account_b=?').get(a, b); };
+      const dmMatch = path.match(/^\/api\/social\/messages\/(\d+)$/);
+      if (dmMatch && req.method === 'GET') {
+        const otherId = Number(dmMatch[1]);
+        if (!areFriends(account.id, otherId)) throw fail(403, 'NOT_FRIENDS');
+        const rows = db.prepare('SELECT id, from_account, text, created_at FROM direct_messages WHERE (from_account=? AND to_account=?) OR (from_account=? AND to_account=?) ORDER BY id DESC LIMIT 100').all(account.id, otherId, otherId, account.id).reverse();
+        return send(200, rows.map(r => ({ id: r.id, mine: r.from_account === account.id, text: r.text, createdAt: r.created_at })));
+      }
+      if (dmMatch && req.method === 'POST') {
+        const otherId = Number(dmMatch[1]);
+        dmRateLimit(account.id);
+        if (!areFriends(account.id, otherId)) throw fail(403, 'NOT_FRIENDS');
+        const body = await read(req);
+        const text = typeof body?.text === 'string' ? body.text.trim().slice(0, 500) : '';
+        if (!text) throw fail(400, 'INVALID_MESSAGE');
+        const createdAt = Date.now();
+        db.prepare('INSERT INTO direct_messages(from_account,to_account,text,created_at) VALUES(?,?,?,?)').run(account.id, otherId, text, createdAt);
+        const id = db.prepare('SELECT last_insert_rowid() AS id').get().id;
+        return send(200, { id, mine: true, text, createdAt });
+      }
+      // Faz 6 — gerçek çok-oyunculu klan. Kuruluş maliyeti (elmas) oyundaki
+      // HER ekonomi hareketi gibi istemcide düşülüyor (bkz. dosyanın en
+      // üstündeki genel güven notu); sunucu sadece klan/üyelik KAYDININ
+      // kendisini (kimin hangi klanda, hazine, davetler) otoriter tutuyor —
+      // bunlar gerçek başka oyuncularla paylaşılan veri olduğu için asla
+      // istemciye bırakılamaz.
+      const myMembership = () => db.prepare('SELECT * FROM clan_members WHERE account_id=?').get(account.id);
+      if (path === '/api/clan' && req.method === 'POST') {
+        const body = await read(req);
+        const name = typeof body?.name === 'string' ? body.name.trim().slice(0, 24) : '';
+        const color = CLAN_COLORS.includes(body?.color) ? body.color : CLAN_COLORS[0];
+        if (!name) throw fail(400, 'INVALID_CLAN_NAME');
+        if (myMembership()) throw fail(409, 'ALREADY_IN_CLAN');
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          let clanId;
+          try {
+            db.prepare('INSERT INTO clans(name,color,founder_account,created_at) VALUES(?,?,?,?)').run(name, color, account.id, Date.now());
+            clanId = db.prepare('SELECT last_insert_rowid() AS id').get().id;
+          } catch (error) { if (error.code?.startsWith('ERR_SQLITE')) throw fail(409, 'CLAN_NAME_TAKEN'); throw error; }
+          db.prepare('INSERT INTO clan_members(account_id,clan_id,role,joined_at,donated_np) VALUES(?,?,?,?,0)').run(account.id, clanId, 'leader', Date.now());
+          db.exec('COMMIT');
+          return send(200, { clanId });
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
+      }
+      if (path === '/api/clan/mine' && req.method === 'GET') {
+        const membership = myMembership();
+        if (!membership) return send(200, { clan: null });
+        const clan = db.prepare('SELECT * FROM clans WHERE id=?').get(membership.clan_id);
+        if (!clan) { db.prepare('DELETE FROM clan_members WHERE account_id=?').run(account.id); return send(200, { clan: null }); }
+        // Üyenin görünen adı/sınıfı — düello rakibi seçiminde kullanılan
+        // AYNI "en yüksek seviyeli karakter = ana karakter" sezgisi (bkz.
+        // /api/warzone/duel/opponent), tutarlılık için tekrarlanıyor.
+        const memberRows = db.prepare('SELECT clan_members.account_id AS accountId, clan_members.role AS role, clan_members.joined_at AS joinedAt, clan_members.donated_np AS donatedNp, accounts.name AS accountName, backups.data AS data FROM clan_members JOIN accounts ON accounts.id=clan_members.account_id LEFT JOIN backups ON backups.account=clan_members.account_id WHERE clan_members.clan_id=?').all(clan.id);
+        const members = memberRows.map(r => {
+          let main = null;
+          if (r.data) {
+            try {
+              const parsed = JSON.parse(r.data);
+              const chars = Array.isArray(parsed?.characters) ? parsed.characters.filter(Boolean) : [];
+              main = chars.reduce((best, c) => (!best || (c.level || 0) > (best.level || 0) ? c : best), null);
+            } catch { /* bozuk yedek — hesap adına düş */ }
+          }
+          return { accountId: r.accountId, name: main?.nickname || r.accountName, cls: main?.class || null, level: main?.level || 0, role: r.role, joinedAt: r.joinedAt, donatedNp: r.donatedNp };
+        });
+        return send(200, { clan: {
+          id: clan.id, name: clan.name, color: clan.color, createdAt: clan.created_at,
+          buildingLevel: clan.building_level,
+          treasury: { gold: clan.treasury_gold, diamonds: clan.treasury_diamonds, np: clan.treasury_np },
+          myRole: membership.role, myDonatedNp: membership.donated_np,
+          members,
+        } });
+      }
+      if (path === '/api/clan/invite' && req.method === 'POST') {
+        socialRateLimit(account.id);
+        const membership = myMembership();
+        if (!membership || (membership.role !== 'leader' && membership.role !== 'officer')) throw fail(403, 'LEADER_OFFICER_ONLY');
+        const body = await read(req);
+        const name = typeof body?.name === 'string' ? body.name.trim().toLowerCase() : '';
+        const target = db.prepare('SELECT id FROM accounts WHERE name=?').get(name);
+        if (!target) throw fail(404, 'ACCOUNT_NOT_FOUND');
+        if (target.id === account.id) throw fail(400, 'CANNOT_INVITE_SELF');
+        if (db.prepare('SELECT 1 FROM clan_members WHERE account_id=?').get(target.id)) throw fail(409, 'TARGET_ALREADY_IN_CLAN');
+        const memberCount = db.prepare('SELECT COUNT(*) AS c FROM clan_members WHERE clan_id=?').get(membership.clan_id).c;
+        if (memberCount >= CLAN_MAX_MEMBERS) throw fail(409, 'CLAN_FULL');
+        db.prepare('INSERT INTO clan_invites(clan_id,from_account,to_account,created_at) VALUES(?,?,?,?) ON CONFLICT(clan_id,to_account) DO UPDATE SET from_account=excluded.from_account, created_at=excluded.created_at').run(membership.clan_id, account.id, target.id, Date.now());
+        return send(200, { ok: true });
+      }
+      if (path === '/api/clan/invites' && req.method === 'GET') {
+        const rows = db.prepare('SELECT clan_invites.id AS id, clans.id AS clanId, clans.name AS clanName, clans.color AS clanColor, accounts.name AS fromName, clan_invites.created_at AS createdAt FROM clan_invites JOIN clans ON clans.id=clan_invites.clan_id JOIN accounts ON accounts.id=clan_invites.from_account WHERE clan_invites.to_account=?').all(account.id);
+        return send(200, rows.map(r => ({ id: r.id, clanId: r.clanId, clanName: r.clanName, clanColor: r.clanColor, fromName: r.fromName, createdAt: r.createdAt })));
+      }
+      const clanInviteAcceptMatch = path.match(/^\/api\/clan\/invites\/(\d+)\/accept$/);
+      if (clanInviteAcceptMatch && req.method === 'POST') {
+        if (myMembership()) throw fail(409, 'ALREADY_IN_CLAN');
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          const invite = db.prepare('SELECT * FROM clan_invites WHERE id=? AND to_account=?').get(Number(clanInviteAcceptMatch[1]), account.id);
+          if (!invite) throw fail(404, 'INVITE_NOT_FOUND');
+          const memberCount = db.prepare('SELECT COUNT(*) AS c FROM clan_members WHERE clan_id=?').get(invite.clan_id).c;
+          if (memberCount >= CLAN_MAX_MEMBERS) throw fail(409, 'CLAN_FULL');
+          db.prepare('INSERT INTO clan_members(account_id,clan_id,role,joined_at,donated_np) VALUES(?,?,?,?,0)').run(account.id, invite.clan_id, 'member', Date.now());
+          // Bir klana katılınca diğer tüm bekleyen davetler anlamsızlaşıyor
+          // (aynı anda tek klanda olunabilir).
+          db.prepare('DELETE FROM clan_invites WHERE to_account=?').run(account.id);
+          db.exec('COMMIT');
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
+        return send(200, { ok: true });
+      }
+      const clanInviteDeclineMatch = path.match(/^\/api\/clan\/invites\/(\d+)\/decline$/);
+      if (clanInviteDeclineMatch && req.method === 'POST') {
+        const result = db.prepare('DELETE FROM clan_invites WHERE id=? AND to_account=?').run(Number(clanInviteDeclineMatch[1]), account.id);
+        if (result.changes === 0) throw fail(404, 'INVITE_NOT_FOUND');
+        return send(200, { ok: true });
+      }
+      // Ayrılınca kendi bağışladığı NP'nin iadesi (%35) İSTEMCİDE hesaplanıyor
+      // (bkz. utils/clan.js#leaveClan, kullanıcı isteği) — sunucu sadece o
+      // hesaplamayı yapabilmesi için ayrılan üyenin gerçek donated_np'sini
+      // döndürüyor. Lider ayrılırsa: kalan üyelerden biri (önce subay, sonra
+      // en kıdemli) otomatik lider olur; kimse kalmadıysa klan tamamen silinir.
+      if (path === '/api/clan/leave' && req.method === 'POST') {
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          const membership = myMembership();
+          if (!membership) throw fail(409, 'NOT_IN_CLAN');
+          const donatedNp = membership.donated_np;
+          db.prepare('DELETE FROM clan_members WHERE account_id=?').run(account.id);
+          if (membership.role === 'leader') {
+            const next = db.prepare("SELECT account_id FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'officer' THEN 0 ELSE 1 END, joined_at ASC LIMIT 1").get(membership.clan_id);
+            if (next) db.prepare("UPDATE clan_members SET role='leader' WHERE account_id=?").run(next.account_id);
+            else {
+              db.prepare('DELETE FROM clans WHERE id=?').run(membership.clan_id);
+              db.prepare('DELETE FROM clan_invites WHERE clan_id=?').run(membership.clan_id);
+            }
+          }
+          db.exec('COMMIT');
+          return send(200, { donatedNp });
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
+      }
+      if (path === '/api/clan/kick' && req.method === 'POST') {
+        const membership = myMembership();
+        if (!membership || (membership.role !== 'leader' && membership.role !== 'officer')) throw fail(403, 'LEADER_OFFICER_ONLY');
+        const body = await read(req);
+        const targetId = Number(body?.accountId);
+        if (!Number.isSafeInteger(targetId) || targetId === account.id) throw fail(400, 'INVALID_TARGET');
+        const target = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND clan_id=?').get(targetId, membership.clan_id);
+        if (!target) throw fail(404, 'MEMBER_NOT_FOUND');
+        if (target.role === 'leader') throw fail(400, 'CANNOT_KICK_LEADER');
+        db.prepare('DELETE FROM clan_members WHERE account_id=?').run(targetId);
+        return send(200, { ok: true });
+      }
+      if ((path === '/api/clan/promote' || path === '/api/clan/demote') && req.method === 'POST') {
+        const membership = myMembership();
+        if (!membership || membership.role !== 'leader') throw fail(403, 'LEADER_ONLY');
+        const body = await read(req);
+        const targetId = Number(body?.accountId);
+        const target = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND clan_id=?').get(targetId, membership.clan_id);
+        if (!target || target.role === 'leader') throw fail(404, 'MEMBER_NOT_FOUND');
+        if (path === '/api/clan/promote') {
+          if (target.role !== 'officer') {
+            const officerCount = db.prepare("SELECT COUNT(*) AS c FROM clan_members WHERE clan_id=? AND role='officer'").get(membership.clan_id).c;
+            if (officerCount >= CLAN_MAX_OFFICERS) throw fail(409, 'TOO_MANY_OFFICERS');
+            db.prepare("UPDATE clan_members SET role='officer' WHERE account_id=?").run(targetId);
+          }
+        } else {
+          db.prepare("UPDATE clan_members SET role='member' WHERE account_id=? AND role='officer'").run(targetId);
+        }
+        return send(200, { ok: true });
+      }
+      // Bağış: oyuncunun kendi altın/elmas/NP düşüşü istemcide (dosyanın
+      // üstündeki genel güven notuyla aynı seviye) — sunucu sadece PAYLAŞILAN
+      // hazineyi (gerçek diğer üyelerin de gördüğü) atomik olarak artırıyor.
+      if (path === '/api/clan/donate' && req.method === 'POST') {
+        const membership = myMembership();
+        if (!membership) throw fail(409, 'NOT_IN_CLAN');
+        const body = await read(req);
+        const amount = Number(body?.amount);
+        const currency = ['gold', 'diamonds', 'np'].includes(body?.currency) ? body.currency : null;
+        if (!currency || !Number.isSafeInteger(amount) || amount <= 0) throw fail(400, 'INVALID_DONATION');
+        const column = currency === 'gold' ? 'treasury_gold' : currency === 'diamonds' ? 'treasury_diamonds' : 'treasury_np';
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          db.prepare(`UPDATE clans SET ${column} = ${column} + ? WHERE id=?`).run(amount, membership.clan_id);
+          if (currency === 'np') db.prepare('UPDATE clan_members SET donated_np = donated_np + ? WHERE account_id=?').run(amount, account.id);
+          db.exec('COMMIT');
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
+        return send(200, { ok: true });
+      }
+      // Bina yükseltmesi PAYLAŞILAN hazineden düştüğü için (kendi cebinden
+      // değil) burası sunucu-otoriter — maliyet/tavan istemciyle aynı sabit
+      // dosyadan (bkz. yukarıdaki import), iki taraf asla sapamaz.
+      if (path === '/api/clan/building/upgrade' && req.method === 'POST') {
+        const membership = myMembership();
+        if (!membership || (membership.role !== 'leader' && membership.role !== 'officer')) throw fail(403, 'LEADER_OFFICER_ONLY');
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          const clan = db.prepare('SELECT * FROM clans WHERE id=?').get(membership.clan_id);
+          if (clan.building_level >= CLAN_BUILDING_MAX_LEVEL) throw fail(409, 'CLAN_BUILDING_MAX_LEVEL');
+          const cost = CLAN_BUILDING_UPGRADE_COST[clan.building_level + 1];
+          if (clan.treasury_gold < cost.gold || clan.treasury_diamonds < cost.diamonds) throw fail(409, 'TREASURY_NEEDS_COST');
+          db.prepare('UPDATE clans SET building_level=building_level+1, treasury_gold=treasury_gold-?, treasury_diamonds=treasury_diamonds-? WHERE id=?').run(cost.gold, cost.diamonds, clan.id);
+          db.exec('COMMIT');
+          return send(200, { buildingLevel: clan.building_level + 1 });
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
       }
       throw fail(404, 'NOT_FOUND');
     } catch (error) { send(error.status || 500, { error: error.status ? error.message : 'SERVER_ERROR' }); }

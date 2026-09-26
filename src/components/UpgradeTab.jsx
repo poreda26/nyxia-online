@@ -78,7 +78,9 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
   };
 
   const handleBagTap = (item) => {
-    if (item.kind === "armor" || item.kind === "weapon" || item.kind === "accessory") {
+    // Kullanıcı isteği: Takı artık burada basılmıyor, kendi "Takı Yükseltme"
+    // sekmesi var (bkz. AccessoryUpgradeTab.jsx).
+    if (item.kind === "armor" || item.kind === "weapon") {
       if (item.noTrade) { pushToast(t("upgrade.itemNoTrade"), "warn"); return; }
       swapStagedItem(item);
       return;

@@ -21,6 +21,12 @@ export const FIRST_PURCHASE_BONUS_PRICE_LABEL = "₺49,99";
 export const FIRST_PURCHASE_BONUS_SCROLL_COUNT = 3;
 export const FIRST_PURCHASE_BONUS_ITEM_TIER = 1;
 export const FIRST_PURCHASE_BONUS_UPGRADE_LEVEL = 6;
+// Kullanıcı isteği: silah zırhtan bir kademe daha güçlü görünsün — T1
+// havuzunun en düşük (index 0) silahı değil, ondan bir üstteki (index 1)
+// silah, ve +6 değil +7'de verilsin. +7 aynı zamanda weaponEffects.js'in
+// parlama eşiği (>=7) — StarterWeaponIcon zaten bunu otomatik uyguluyor,
+// ayrı bir efekt kablolamasına gerek yok.
+export const FIRST_PURCHASE_BONUS_WEAPON_UPGRADE_LEVEL = 7;
 
 export function hasClaimedFirstPurchaseBonus(player) {
   return !!player.firstPurchaseBonusClaimed;
@@ -37,8 +43,10 @@ export function buildBonusGear(cls) {
     const piece = gmBuildArmor(cls, slot, FIRST_PURCHASE_BONUS_ITEM_TIER, FIRST_PURCHASE_BONUS_UPGRADE_LEVEL);
     if (piece) items.push({ ...piece, noTrade: true });
   }
-  const weaponTemplate = gmWeaponTemplates(cls).find((w) => w.tier === FIRST_PURCHASE_BONUS_ITEM_TIER);
-  const weapon = weaponTemplate && gmBuildWeaponById(cls, weaponTemplate.id, FIRST_PURCHASE_BONUS_UPGRADE_LEVEL);
+  // Kalkanlar hariç, sadece gerçek T1 silahlar arasından bir üsttekini seç.
+  const tier1Weapons = gmWeaponTemplates(cls).filter((w) => w.tier === FIRST_PURCHASE_BONUS_ITEM_TIER && !w.id.startsWith("s"));
+  const weaponTemplate = tier1Weapons[1] || tier1Weapons[0];
+  const weapon = weaponTemplate && gmBuildWeaponById(cls, weaponTemplate.id, FIRST_PURCHASE_BONUS_WEAPON_UPGRADE_LEVEL);
   if (weapon) items.push({ ...weapon, noTrade: true });
   return items;
 }

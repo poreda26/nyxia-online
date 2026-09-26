@@ -1,11 +1,6 @@
-// T6 eklendi — Yükseltme Ustası'nın parşömen tezgahı gerçek T6 eşyalar
-// (Giantic Axe, Eagle's Eye vb., bkz. data/warriorWeapons.js, rogueWeapons.js)
-// eklenmeden ÖNCE yazılmıştı, tezgah hâlâ T1-T5'te duruyordu — bug testinde
-// bulundu: bir oyuncu %3 şansla bir T6 eşsiz eşya düşürse bile onu ASLA
-// yükseltemiyordu (harita/dünya canavarı loot tier'ı da 5'te tavanlanıyor,
-// bkz. data/maps.js, data/warzone.js#WORLD_BOSS.lootTier). Fiyat, mevcut
-// x5/x2 dönüşümlü artış desenine uyuyor (1000*5).
-const SCROLL_PRICES = { 1: 10, 2: 50, 3: 100, 4: 500, 5: 1000, 6: 5000 };
+// Kullanıcının yeni fiyat listesi (2026-09-27): Sıradan 100 / Nadide 300 /
+// Nadir 750 / Destansı 2000 / Efsanevi 5000 / Mitik 10000 altın.
+const SCROLL_PRICES = { 1: 100, 2: 300, 3: 750, 4: 2000, 5: 5000, 6: 10000 };
 export function scrollPrice(tierId) { return SCROLL_PRICES[tierId] ?? 0; }
 
 export const MAX_UPGRADE_LEVEL = 8;

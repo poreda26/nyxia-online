@@ -1,27 +1,27 @@
 import RankBadge from './shared/RankBadge';
 import MenuEmblem from './icons/MenuEmblem';
-import { useState, useEffect } from "react";
-import { Shield, LogOut, Plus, ChevronUp, ChevronDown, Swords, Coins, Gem, Flag, Landmark, Skull, Lock, Clock } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Shield, LogOut, Plus, ChevronUp, ChevronDown, UserX, Swords, Coins, Gem, Flag, Landmark, Skull, Lock, Clock, Mail } from "lucide-react";
 import { CLASSES } from "../data/classes";
 import { RACES } from "../data/races";
-import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS } from "../data/clan";
+import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS, CLAN_COLORS } from "../data/clan";
 import { CLAN_BOSS_STAGES, CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from "../data/clanBoss";
-import {
-  foundClan, leaveClan, promoteMember, demoteMember,
-  onlineCountFor, clanExpBonus, canStartDungeon, startDungeon,
-  donateNP, donateGold, donateDiamonds, canUpgradeClanBuilding, upgradeClanBuilding,
-  clanLeaderboardFor,
-} from "../utils/clan";
+import { onlineCountFor, clanExpBonus, canStartDungeon, startDungeon, clanLeaderboardFor } from "../utils/clan";
 import {
   unlockedBossStages, openClanBoss, bossTimeLeftMs, bossCurrentHp, bossMaxHp,
   canPlayerAttackBoss, attackClanBoss, isClanBossActive,
 } from "../utils/clanBoss";
+import {
+  fetchMyClan, foundClanApi, inviteToClan, fetchClanInvites, acceptClanInvite, declineClanInvite,
+  leaveClanApi, kickClanMember, promoteClanMember, demoteClanMember, donateToClan, upgradeClanBuildingApi,
+} from "../services/clanService";
+import { pick } from "../utils/random";
 import { newlyUnlocked } from "../utils/achievements";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import BarTrack from "./shared/BarTrack";
 import EmptyState from "./shared/EmptyState";
-import { useTranslation, formatReason } from "../i18n/LanguageContext";
+import { useTranslation, formatReason, formatServerError } from "../i18n/LanguageContext";
 
 const fmt = (n) => Math.round(n).toLocaleString("tr-TR");
 const fmtClock = (ms) => {
@@ -29,22 +29,69 @@ const fmtClock = (ms) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
-// Kullanıcı isteği: "Artık bot oyuncular klanlar pazarlar yok" — sahte
-// (hayalet) klan üyeleri ve katılınabilecek sahte klanlar kaldırıldı. Bir
-// klan artık sadece gerçek oyunculardan oluşuyor; gerçek başka bir klana
-// katılmak, paylaşımlı bir backend gelene kadar mümkün değil (bkz.
-// aşağıdaki "Mevcut Klanlar" boş durumu).
+// Sunucudan gelen /api/clan/mine yanıtını, player.clan'ın eski (bkz. git
+// geçmişi) yerel biçimine eşler — utils/clanBoss.js ve utils/clan.js'in
+// klanla ilgili geri kalan yerel hesapları (EXP bonusu, Klan Zindanı/Boss —
+// kasıtlı olarak kapsam dışı bırakıldı, bkz. bu dosyanın altındaki not)
+// hiç değişmeden aynı alanları okumaya devam edebilsin diye. dungeon/boss
+// SUNUCUDA yok (yerel kalmaya devam ediyor) — önceki değerleri koru.
+function mergeClanResponse(player, serverClan) {
+  if (!serverClan) return { ...player, clan: null };
+  return {
+    ...player,
+    clan: {
+      id: serverClan.id,
+      name: serverClan.name,
+      color: serverClan.color,
+      role: serverClan.myRole,
+      createdAt: serverClan.createdAt,
+      members: serverClan.members,
+      treasury: serverClan.treasury,
+      buildingLevel: serverClan.buildingLevel,
+      myNpDonated: serverClan.myDonatedNp,
+      dungeon: player.clan?.dungeon || { lastStartedDay: null, startedBy: null },
+      boss: player.clan?.boss || null,
+    },
+  };
+}
+
+// Kullanıcı isteği: "arkadaş ekleme - özel sohbet - klan daveti vb.
+// özellikleri ekle" + "klanı da tam çok-oyunculu yap" — klan üyeliği/davet/
+// paylaşımlı hazine artık server/app.mjs'in /api/clan/* uçlarında gerçek
+// diğer hesaplarla payaşılıyor (bkz. services/clanService.js). Klan Zindanı
+// ve Klan Boss (utils/clanBoss.js) kasıtlı olarak bu kapsamın DIŞINDA
+// bırakıldı — ikisi de kendi paylaşımlı simülasyonunu (Dünya Canavarı'nınki
+// gibi) gerektirir, ayrı bir kapsam kararı; şimdilik eskisi gibi yerel kalıyor.
 export default function ClanTab({ player, setPlayer, pushToast }) {
   const { t } = useTranslation();
   const roleLabel = (role) => t(`clan.role.${role}`);
   const stageName = (stage) => (stage ? t(`clan.bossStage.${stage.id}.name`) : "");
   const [founding, setFounding] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  const [inviteInput, setInviteInput] = useState("");
   const [donateNpInput, setDonateNpInput] = useState("");
   const [donateGoldInput, setDonateGoldInput] = useState("");
   const [donateDiamondInput, setDonateDiamondInput] = useState("");
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [lbRace, setLbRace] = useState(player.race);
+  const [invites, setInvites] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const { clan } = await fetchMyClan();
+      setPlayer((p) => mergeClanResponse(p, clan));
+      setInvites(clan ? [] : await fetchClanInvites());
+    } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
+    finally { setLoaded(true); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    const id = setInterval(refresh, 8000);
+    return () => clearInterval(id);
+  }, [refresh]);
 
   // Boss açıkken geri sayım/HP saniyeler içinde eskir — bu tick sadece
   // yeniden render tetikler (bkz. utils/clanBoss.js'in "Date.now()'dan
@@ -52,29 +99,77 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   const [, forceTick] = useState(0);
   useEffect(() => {
     if (!player.clan?.boss) return;
-    const id = setInterval(() => forceTick((t) => t + 1), 2000);
+    const id = setInterval(() => forceTick((tk) => tk + 1), 2000);
     return () => clearInterval(id);
   }, [player.clan?.boss]);
 
-  const handleFound = () => {
-    const result = foundClan(player, nameInput);
-    if (!result.founded) { pushToast(formatReason(t, result), "warn"); return; }
-    setPlayer(result.player);
-    pushToast(t("clan.toastFounded", { name: result.player.clan.name }), "loot");
-    newlyUnlocked(player, result.player).forEach((a) => pushToast(t("clan.toastAchievement", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
+  const handleFound = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) { pushToast(t("common.reason.enterClanName"), "warn"); return; }
+    if (player.diamonds < CLAN_FOUND_COST_DIAMONDS) { pushToast(t("common.reason.notEnoughDiamonds"), "warn"); return; }
+    try {
+      await foundClanApi(trimmed, pick(CLAN_COLORS));
+    } catch (error) { pushToast(formatServerError(t, error), "warn"); return; }
+    const before = player;
+    setPlayer((p) => {
+      const after = { ...p, diamonds: p.diamonds - CLAN_FOUND_COST_DIAMONDS, milestones: { ...p.milestones, hasFoundedClan: true } };
+      newlyUnlocked(before, after).forEach((a) => pushToast(t("clan.toastAchievement", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
+      return after;
+    });
+    pushToast(t("clan.toastFounded", { name: trimmed }), "loot");
     setFounding(false);
     setNameInput("");
+    refresh();
   };
 
-  const handleLeave = () => {
-    const result = leaveClan(player);
-    setPlayer(result.player);
-    pushToast(result.refund > 0 ? t("clan.toastLeftRefund", { refund: fmt(result.refund) }) : t("clan.toastLeft"), "default");
+  const handleInvite = async () => {
+    const name = inviteInput.trim().toLowerCase();
+    if (!name) return;
+    try {
+      await inviteToClan(name);
+      pushToast(t("clan.toastInviteSent", { name }), "loot");
+      setInviteInput("");
+    } catch (error) { pushToast(formatServerError(t, error), "warn"); }
+  };
+
+  const handleAcceptInvite = async (id, clanName) => {
+    try {
+      await acceptClanInvite(id);
+      pushToast(t("clan.toastJoined", { name: clanName }), "loot");
+      refresh();
+    } catch (error) { pushToast(formatServerError(t, error), "warn"); }
+  };
+
+  const handleDeclineInvite = async (id) => {
+    try { await declineClanInvite(id); setInvites((list) => list.filter((i) => i.id !== id)); }
+    catch (error) { pushToast(formatServerError(t, error), "warn"); }
+  };
+
+  const handleLeave = async () => {
+    try {
+      const { donatedNp } = await leaveClanApi();
+      const refund = Math.round((donatedNp || 0) * 0.35);
+      setPlayer((p) => ({ ...p, clan: null, nationalPoint: p.nationalPoint + refund }));
+      pushToast(refund > 0 ? t("clan.toastLeftRefund", { refund: fmt(refund) }) : t("clan.toastLeft"), "default");
+    } catch (error) { pushToast(formatServerError(t, error), "warn"); }
     setConfirmingLeave(false);
+    refresh();
   };
 
-  const handlePromote = (memberId) => setPlayer((p) => promoteMember(p, memberId));
-  const handleDemote = (memberId) => setPlayer((p) => demoteMember(p, memberId));
+  const handleKick = async (accountId) => {
+    try { await kickClanMember(accountId); refresh(); }
+    catch (error) { pushToast(formatServerError(t, error), "warn"); }
+  };
+
+  const handlePromote = async (accountId) => {
+    try { await promoteClanMember(accountId); refresh(); }
+    catch (error) { pushToast(formatServerError(t, error), "warn"); }
+  };
+
+  const handleDemote = async (accountId) => {
+    try { await demoteClanMember(accountId); refresh(); }
+    catch (error) { pushToast(formatServerError(t, error), "warn"); }
+  };
 
   const handleStartDungeon = () => {
     const result = startDungeon(player);
@@ -83,38 +178,32 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     pushToast(t("clan.toastDungeonStarted"), "loot");
   };
 
-  const handleDonateNP = () => {
-    const amount = parseInt(donateNpInput, 10);
-    const result = donateNP(player, amount);
-    if (!result.donated) { pushToast(formatReason(t, result, "clan.toastDonateFailed"), "warn"); return; }
-    setPlayer(result.player);
-    pushToast(t("clan.toastDonatedNp", { amount: fmt(amount) }), "loot");
-    setDonateNpInput("");
+  const handleDonate = async (currency, rawAmount, clearInput) => {
+    const amount = parseInt(rawAmount, 10);
+    if (!Number.isFinite(amount) || amount <= 0) { pushToast(formatReason(t, { reason: "enterValidAmount" }, "clan.toastDonateFailed"), "warn"); return; }
+    const balance = currency === "np" ? player.nationalPoint : currency === "gold" ? player.gold : player.diamonds;
+    if (balance < amount) { pushToast(formatReason(t, { reason: currency === "np" ? "notEnoughNP" : currency === "gold" ? "notEnoughGold" : "notEnoughDiamonds" }, "clan.toastDonateFailed"), "warn"); return; }
+    try {
+      await donateToClan(currency, amount);
+    } catch (error) { pushToast(formatServerError(t, error, "clan.toastDonateFailed"), "warn"); return; }
+    setPlayer((p) => ({
+      ...p,
+      nationalPoint: currency === "np" ? p.nationalPoint - amount : p.nationalPoint,
+      gold: currency === "gold" ? p.gold - amount : p.gold,
+      diamonds: currency === "diamonds" ? p.diamonds - amount : p.diamonds,
+    }));
+    const toastKey = currency === "np" ? "clan.toastDonatedNp" : currency === "gold" ? "clan.toastDonatedGold" : "clan.toastDonatedDiamonds";
+    pushToast(t(toastKey, { amount: fmt(amount) }), "loot");
+    clearInput();
+    refresh();
   };
 
-  const handleDonateGold = () => {
-    const amount = parseInt(donateGoldInput, 10);
-    const result = donateGold(player, amount);
-    if (!result.donated) { pushToast(formatReason(t, result, "clan.toastDonateFailed"), "warn"); return; }
-    setPlayer(result.player);
-    pushToast(t("clan.toastDonatedGold", { amount: fmt(amount) }), "loot");
-    setDonateGoldInput("");
-  };
-
-  const handleDonateDiamonds = () => {
-    const amount = parseInt(donateDiamondInput, 10);
-    const result = donateDiamonds(player, amount);
-    if (!result.donated) { pushToast(formatReason(t, result, "clan.toastDonateFailed"), "warn"); return; }
-    setPlayer(result.player);
-    pushToast(t("clan.toastDonatedDiamonds", { amount: fmt(amount) }), "loot");
-    setDonateDiamondInput("");
-  };
-
-  const handleUpgradeBuilding = () => {
-    const result = upgradeClanBuilding(player);
-    if (!result.upgraded) { pushToast(formatReason(t, result, "clan.toastUpgradeFailed"), "warn"); return; }
-    setPlayer(result.player);
-    pushToast(t("clan.toastBuildingLevelUp", { level: result.player.clan.buildingLevel }), "loot");
+  const handleUpgradeBuilding = async () => {
+    try {
+      await upgradeClanBuildingApi();
+      pushToast(t("clan.toastBuildingLevelUp", { level: (player.clan.buildingLevel || 1) + 1 }), "loot");
+      refresh();
+    } catch (error) { pushToast(formatServerError(t, error, "clan.toastUpgradeFailed"), "warn"); }
   };
 
   const handleOpenBoss = (stageId) => {
@@ -164,6 +253,25 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     return (
       <div style={styles.panelScroll}>
 
+        {loaded && invites.length > 0 && (
+          <>
+            <SectionLabel><Mail size={14}/>{t("clan.invitesTitle")}</SectionLabel>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {invites.map((inv) => (
+                <div key={inv.id} className="rpg-row" style={{ ...styles.itemRow, borderColor: `${inv.clanColor}66` }}>
+                  <MenuEmblem name="clan" size={28}/>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, color: inv.clanColor }}>{inv.clanName}</div>
+                    <div style={{ fontSize: 9, color: "var(--text-faint)" }}>{t("clan.invitedBy", { name: inv.fromName })}</div>
+                  </div>
+                  <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleAcceptInvite(inv.id, inv.clanName)}>{t("clan.acceptInviteBtn")}</button>
+                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDeclineInvite(inv.id)}>{t("clan.declineInviteBtn")}</button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         <div className="rpg-card" style={styles.itemDetailCard}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <MenuEmblem name="clan" size={34}/>
@@ -199,11 +307,16 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   const online = onlineCountFor(clan);
   const bonus = clanExpBonus(online);
   const isLeader = clan.role === "leader";
+  const isOfficerOrLeader = clan.role === "leader" || clan.role === "officer";
   const officerCount = clan.members.filter((m) => m.role === "officer").length;
   const dungeonReady = canStartDungeon(player);
-  const canManageDungeon = clan.role === "leader" || clan.role === "officer";
-  const buildingCheck = canUpgradeClanBuilding(player);
+  const canManageDungeon = isOfficerOrLeader;
   const nextBuildingCost = CLAN_BUILDING_UPGRADE_COST[clan.buildingLevel + 1];
+  const buildingCheck = !nextBuildingCost
+    ? { ok: false }
+    : clan.treasury.gold < nextBuildingCost.gold || clan.treasury.diamonds < nextBuildingCost.diamonds
+      ? { ok: false, reason: "treasuryNeedsCost", reasonVars: { gold: nextBuildingCost.gold, diamonds: nextBuildingCost.diamonds } }
+      : { ok: true };
   const unlocked = unlockedBossStages(clan);
   const bossActive = isClanBossActive(clan);
   const activeStage = clan.boss ? CLAN_BOSS_STAGES.find((s) => s.id === clan.boss.stageId) : null;
@@ -217,7 +330,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
           <MenuEmblem name="clan" size={34}/>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 16, color: clan.color }}>{clan.name}</div>
-            <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{roleLabel(clan.role)} · {t("clan.memberCountShort", { count: clan.members.length + 1, max: CLAN_MAX_MEMBERS })}</div>
+            <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{roleLabel(clan.role)} · {t("clan.memberCountShort", { count: clan.members.length, max: CLAN_MAX_MEMBERS })}</div>
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--text-muted)" }}>
@@ -225,6 +338,22 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
           <span>{t("clan.expBonusLabel")}: {bonus > 0 ? `+%${Math.round(bonus * 100)}` : t("clan.none")}</span>
         </div>
       </div>
+
+      {isOfficerOrLeader && (
+        <div className="rpg-card" style={styles.itemDetailCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Mail size={16} color="var(--gold-text)" strokeWidth={1.6} />
+            <div style={{ fontSize: 13 }}>{t("clan.inviteHeading")}</div>
+          </div>
+          <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+            <input
+              type="text" value={inviteInput} onChange={(e) => setInviteInput(e.target.value)}
+              placeholder={t("clan.invitePlaceholder")} style={{ ...styles.selectInput, flex: 1 }} maxLength={24}
+            />
+            <button className="rpg-action" style={styles.tinyBtn} onClick={handleInvite}>{t("clan.inviteSendBtn")}</button>
+          </div>
+        </div>
+      )}
 
       <div className="rpg-card" style={styles.itemDetailCard}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -246,7 +375,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
               className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(!buildingCheck.ok ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }}
               disabled={!buildingCheck.ok}
               onClick={handleUpgradeBuilding}
-              title={!buildingCheck.ok ? buildingCheck.reason : undefined}
+              title={!buildingCheck.ok ? formatReason(t, buildingCheck) : undefined}
             >
               {t("clan.upgradeBuildingBtn", { level: clan.buildingLevel + 1, gold: fmt(nextBuildingCost.gold), diamonds: fmt(nextBuildingCost.diamonds) })}
             </button>
@@ -258,15 +387,15 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
           <div style={{ display: "flex", gap: 6 }}>
             <input type="number" min="1" placeholder={t("clan.donateNpPlaceholder")} value={donateNpInput} onChange={(e) => setDonateNpInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
-            <button className="rpg-action" style={styles.tinyBtn} onClick={handleDonateNP}>{t("clan.donateBtn")}</button>
+            <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleDonate("np", donateNpInput, () => setDonateNpInput(""))}>{t("clan.donateBtn")}</button>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <input type="number" min="1" placeholder={t("clan.donateGoldPlaceholder")} value={donateGoldInput} onChange={(e) => setDonateGoldInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
-            <button className="rpg-action" style={styles.tinyBtn} onClick={handleDonateGold}>{t("clan.donateBtn")}</button>
+            <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleDonate("gold", donateGoldInput, () => setDonateGoldInput(""))}>{t("clan.donateBtn")}</button>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <input type="number" min="1" placeholder={t("clan.donateDiamondPlaceholder")} value={donateDiamondInput} onChange={(e) => setDonateDiamondInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
-            <button className="rpg-action" style={styles.tinyBtn} onClick={handleDonateDiamonds}>{t("clan.donateBtn")}</button>
+            <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleDonate("diamonds", donateDiamondInput, () => setDonateDiamondInput(""))}>{t("clan.donateBtn")}</button>
           </div>
         </div>
         <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.5 }}>
@@ -373,31 +502,37 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
       <SectionLabel>{t("clan.membersTitle")}</SectionLabel>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {clan.members.map((m) => {
-          const MIcon = CLASSES[m.cls].icon;
+          const clsDef = m.cls ? CLASSES[m.cls] : null;
+          const MIcon = clsDef?.icon || Shield;
           return (
-            <div key={m.id} className="rpg-row" style={styles.itemRow}>
-              <div style={{ ...styles.monsterIcon, width: 28, height: 28, background: `${CLASSES[m.cls].color}22`, color: CLASSES[m.cls].color }}>
+            <div key={m.accountId} className="rpg-row" style={styles.itemRow}>
+              <div style={{ ...styles.monsterIcon, width: 28, height: 28, background: `${clsDef?.color || "#8892a6"}22`, color: clsDef?.color || "#8892a6" }}>
                 <MIcon size={13} strokeWidth={1.6} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12 }}>{m.name}</div>
+                <div style={{ fontSize: 12 }}>{m.name}{m.level > 0 ? ` · Lv.${m.level}` : ""}</div>
                 <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{roleLabel(m.role)}</div>
               </div>
               {isLeader && m.role !== "leader" && (
-                m.role === "officer" ? (
-                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDemote(m.id)} title={t("clan.demoteTitle")}>
-                    <ChevronDown size={11} />
+                <>
+                  {m.role === "officer" ? (
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDemote(m.accountId)} title={t("clan.demoteTitle")}>
+                      <ChevronDown size={11} />
+                    </button>
+                  ) : (
+                    <button
+                      className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: officerCount >= CLAN_MAX_OFFICERS ? 0.4 : 1 }}
+                      disabled={officerCount >= CLAN_MAX_OFFICERS}
+                      onClick={() => handlePromote(m.accountId)}
+                      title={t("clan.promoteTitle")}
+                    >
+                      <ChevronUp size={11} />
+                    </button>
+                  )}
+                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => handleKick(m.accountId)} title={t("clan.kickTitle")}>
+                    <UserX size={11} />
                   </button>
-                ) : (
-                  <button
-                    className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: officerCount >= CLAN_MAX_OFFICERS ? 0.4 : 1 }}
-                    disabled={officerCount >= CLAN_MAX_OFFICERS}
-                    onClick={() => handlePromote(m.id)}
-                    title={t("clan.promoteTitle")}
-                  >
-                    <ChevronUp size={11} />
-                  </button>
-                )
+                </>
               )}
             </div>
           );
