@@ -46,6 +46,17 @@ const mageStems=[
  [[[111,510],[337,166]],[[128,510],[321,169]],null],
 ];
 const warriorButts=[[[78,453],[68,467],[70,466]],[[36,490],[35,479],[51,460]],[[181,365],[183,362],[181,373]],[[86,425],[92,437],[90,430]],[[87,438],[159,371],[180,352]],[[158,382],[174,369],[61,460]],[[78,440],null,null]];
+// Atlas-specific shaft endpoints and front-grip heights. The original poses
+// are not interchangeable: a shared hand ellipse cut entire mace necks away.
+const warriorNecks=[
+ [[320,145,246],[318,145,246],[315,145,246]],
+ [[314,146,249],[319,142,249],[303,145,249]],
+ [[280,261,285],[277,263,285],[274,267,285]],
+ [[318,151,246],[312,148,251],[318,146,251]],
+ [[319,148,247],[314,197,248],[299,184,260]],
+ [[308,197,258],[310,190,258],[287,178,233]],
+ [[324,177,249],null,null],
+];
 const polygon = points => 'M'+points.map(p=>p.join(',')).join('L')+'Z';
 export function bowEndpoints(appearance){
  if(!appearance.atlasKey.startsWith('rogue'))return null;
@@ -64,7 +75,7 @@ export function weaponGeometry(appearance){
  const {atlasKey,frameIndex,size,weaponName}=appearance;
  const col=frameIndex%3,row=Math.floor(frameIndex/3),sx=size[0]/1254,sy=size[1]/1254;
  const transform=`translate(${col*418*sx} ${row*627*sy}) scale(${sx} ${sy})`;
- let head='',shaft='',hands=[],spread=.75,stem='',butt='';
+ let head='',shaft='',hands=[],spread=.75,stem='',butt='',shaftWidth=16,gripCore=0;
  if(!weaponName)return {head,shaft,hands,transform,spread};
  if(atlasKey.startsWith('rogue')){
   const index=Number(atlasKey.split('-')[1]),key=`${index}:${col}`,bow=bows[key],cross=crossbows[key];
@@ -107,7 +118,15 @@ export function weaponGeometry(appearance){
   else head=polygon([[index===1&&col===2?224:266,0],[492,0],[492,229],[321,234],[283,195],[index===1&&col===2?224:266,104]]);
   const butt=scythe?[72,464]:warriorButts[index]?.[col];
   if(butt)shaft=ribbon([butt,[scythe?330:330,scythe?148:153]],6);
+  const neck=!scythe&&warriorNecks[index]?.[col];
+  if(butt&&neck){
+   const dy=row?-10:0,start=[butt[0],butt[1]+dy],end=[neck[0],neck[1]+dy];
+   stem=`M${start}L${end}`;shaft=ribbon([start,end],6);shaftWidth=24;
+   gripCore=index===3&&col===2?23:index===2?12:11;
+   const atY=y=>[start[0]+(y-start[1])*(end[0]-start[0])/(end[1]-start[1]),y];
+   hands=[[...atY(neck[2]+dy),27,30],[...atY((index===2?337:322)+dy),28,26]];
+  }
  }
- return {head,shaft,hands,transform,spread,stem,butt};
+ return {head,shaft,hands,transform,spread,stem,butt,shaftWidth,gripCore};
 }
 

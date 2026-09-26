@@ -7,6 +7,8 @@ import { parseGmCommand, executeGmCommand, tryGmUnlock } from "../utils/gmComman
 import { displayClassName } from "../utils/player";
 import GmItemPanel from "./GmItemPanel";
 import FriendsPanel from "./FriendsPanel";
+import Avatar,{PlayerAvatarPicker} from './Avatar';
+import {playerAvatarId} from '../data/avatars';
 import { useTranslation } from "../i18n/LanguageContext";
 
 export default function ChatTab({ player, setPlayer, bank, setBank, pushToast }) {
@@ -60,17 +62,17 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
     }
 
     if (parsed && player.isGM) {
-      await chatService.sendMessage(displayName, text, true);
+      await chatService.sendMessage(displayName, text, true, playerAvatarId(player));
       const { player: nextPlayer, bank: nextBank, resultText } = executeGmCommand(player, parsed.cmd, parsed.args, bank);
       setPlayer(nextPlayer);
       if (nextBank) setBank(nextBank);
-      await chatService.sendMessage(t("chat.gmSystemAuthor"), resultText, true);
+      await chatService.sendMessage(t("chat.gmSystemAuthor"), resultText, true, playerAvatarId(player));
       pushToast(resultText, "loot");
       refresh();
       return;
     }
 
-    await chatService.sendMessage(displayName, text, player.isGM);
+    await chatService.sendMessage(displayName, text, player.isGM, playerAvatarId(player));
     refresh();
   };
 
@@ -86,9 +88,10 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
       </div>
 
       {subtab === "friends" ? (
-        <FriendsPanel pushToast={pushToast} />
+        <FriendsPanel pushToast={pushToast} player={player}/>
       ) : (
       <>
+      <PlayerAvatarPicker player={player} setPlayer={setPlayer}/>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
@@ -128,6 +131,7 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
         {messages.map((m) => (
           <div key={m.id} className="rpg-chat-msg" style={styles.chatMsg}>
             <div style={styles.chatMsgHeader}>
+              {!m.isSystem&&<Avatar id={m.avatarId} size={34} label={m.author}/>}
               {m.isGM && <ShieldCheck size={11} color="var(--gold-text)" />}
               <span style={{ color: m.isSystem ? "var(--text-faint)" : m.isGM ? "var(--gold-text)" : "var(--text-muted)" }}>
                 {m.isSystem ? t("chat.systemAuthor") : m.author}

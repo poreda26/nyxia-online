@@ -17,10 +17,10 @@ import {useTranslation} from '../i18n/LanguageContext';
 
 // Read-only presentation: no timers, rewards, combat decisions or storage writes.
 export const hasBattleScene = monster => !!battleVisualFor(monster);
-function Figure({rect,label,source=actors,size=[1448,1086]}) {
+export function MonsterFigure({rect,label,outline,source=actors,size=[1448,1086]}) {
   const clip=useId();
   return <svg className="battle-figure" viewBox={rect.join(' ')} preserveAspectRatio="xMidYMax meet" role="img" aria-label={label}>
-    <defs><clipPath id={clip}><rect x={rect[0]} y={rect[1]} width={rect[2]} height={rect[3]}/></clipPath></defs>
+    <defs><clipPath id={clip}>{outline?<path d={outline}/>:<rect x={rect[0]} y={rect[1]} width={rect[2]} height={rect[3]}/>}</clipPath></defs>
     <image href={source} width={size[0]} height={size[1]} clipPath={`url(#${clip})`} />
   </svg>;
 }
@@ -53,7 +53,7 @@ export default function BattleScene({player,monster,battle,map,visual,enemyScale
     </div>
     <div key={visual.id} className={`battle-cast ${active?'is-active':''} ${support?'is-support':''} ${ranged?'is-ranged':''} ${incoming?'has-counter':''} ${incoming?.hit?'incoming-hit':''} ${battle.monsterHp<=0?'is-victory':''}`}>
       <div className="battle-unit battle-hero"><div className="battle-motion"><CharacterFigure player={player}/></div><span className="battle-unit-name">{player.nickname || t('battle.you')}</span></div>
-      <div className="battle-unit battle-enemy" style={enemyScale?{transform:`scale(${enemyScale})`,transformOrigin:'50% 100%'}:undefined}><div className="battle-motion"><Figure rect={rect} label={tm(monster)} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name" style={enemyScale?{transform:`scale(${1/enemyScale})`}:undefined}>{tm(monster)}</span></div>
+      <div className="battle-unit battle-enemy" style={enemyScale?{transform:`scale(${enemyScale})`,transformOrigin:'50% 100%'}:undefined}><div className="battle-motion"><MonsterFigure outline={art.clip} rect={rect} label={tm(monster)} source={enemyAtlases[art.atlas]} size={art.size}/></div><span className="battle-unit-name" style={enemyScale?{transform:`scale(${1/enemyScale})`}:undefined}>{tm(monster)}</span></div>
       {active&&visual.skillId&&<SkillEffect id={visual.skillId} type={visual.type}/>}
       {active&&!visual.skillId&&<><i className={`battle-effect ${support?'battle-aura':ranged?'battle-projectile':'battle-slash'}`} />{!support&&<i className="battle-impact" aria-hidden="true"/>}</>}
       {incoming&&<>{incoming.hit&&<><i className="battle-counter" aria-hidden="true"/><i className="incoming-burst" aria-hidden="true"/></>}<span className={`incoming-number ${incoming.hit?'':'incoming-miss'}`}>{incoming.hit?`−${incoming.damage}`:t('battle.missIncoming')}</span></>}

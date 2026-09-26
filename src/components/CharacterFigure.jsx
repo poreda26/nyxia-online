@@ -59,8 +59,11 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
    <mask id={`${id}-${layer.name}-region`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{regionPaths(layer.name)}</g></mask>
    <mask id={`${id}-${layer.name}-mask`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{regionPaths(layer.name)}</g><rect width="1254" height="1254" fill="black" mask={`url(#${id}-source-weapon)`}/></mask>
   </g>)}
-  {/* Keep the shaft continuous: the actual equipped hand is composited above it. Generic hand ellipses cut beyond the visible fingers. */}
-  <mask id={`${id}-target-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white" stroke="white" strokeWidth="4" strokeLinejoin="round"/><path d={tg.butt||""} fill="white" stroke="white" strokeWidth="3" strokeLinejoin="round"/><path d={spine(tg)} fill="none" stroke="white" strokeWidth="16"/></g></mask>
+  {/* Remove baked-in fingers only when a solid grip core fills their pixels.
+      The equipped armor's hand is composited above the uninterrupted handle. */}
+  <mask id={`${id}-target-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white" stroke="white" strokeWidth="4" strokeLinejoin="round"/><path d={tg.butt||""} fill="white" stroke="white" strokeWidth="3" strokeLinejoin="round"/><path d={spine(tg)} fill="none" stroke="white" strokeWidth={tg.shaftWidth||16}/>{tg.gripCore?holes(tg,'black'):null}</g></mask>
+  <mask id={`${id}-grip-core`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}>{holes(tg,'white')}</g></mask>
+  <linearGradient id={`${id}-handle-material`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#291b16"/><stop offset=".38" stopColor="#85634a"/><stop offset=".56" stopColor="#493025"/><stop offset="1" stopColor="#1d1513"/></linearGradient>
   <mask id={`${id}-head`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white"/>{holes(tg,'black')}</g></mask>
   <mask id={`${id}-grip`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}>{grip(sg,'white')}</g></mask>
   <clipPath id={`${id}-grip-clip`}>{clipPath(armorAtlas(player.class,tiers.gauntlets),si)}</clipPath>
@@ -79,6 +82,9 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
   {alignedBow&&<g stroke="#987b50" fill="none" strokeWidth="1.5"><path d={stringPath(alignedBow,sourceGrip)}/><path d={`M${sourceGrip}L405,${sourceGrip[1]}`}/><path d={`M400,${sourceGrip[1]-4}L415,${sourceGrip[1]}L400,${sourceGrip[1]+4}`}/></g>}
  </g>
  {a.weaponName&&a.supported&&<g transform={targetOffset}>
+  {/* A solid grip core fills the pixels formerly hidden by the source pose's
+      fingers. Only the equipped armor's fingers are drawn over the shaft. */}
+  {tg.gripCore>0&&<g mask={`url(#${id}-grip-core)`}><path transform={cellTransform(a.frameIndex)} d={tg.stem} fill="none" stroke={`url(#${id}-handle-material)`} strokeWidth={tg.gripCore+2}/><path transform={cellTransform(a.frameIndex)} d={tg.stem} fill="none" stroke="#d1b286" strokeOpacity=".24" strokeWidth="2"/></g>}
   <image data-held-weapon={a.weaponName} href={url(a.atlasKey)} width="1254" height="1254" clipPath={`url(#${id}-target)`} mask={`url(#${id}-target-weapon)`}/>
   {effects.map((e,index)=><g key={e.key} style={effects.length>1?{animationDelay:`${-index*1.6}s`}:undefined} className={`weapon-effect ${effects.length>1?"weapon-effect-multi":""} weapon-effect-${e.key} ${e.strong?'weapon-effect-strong':''}`} data-element={e.key} data-upgrade={a.upgrade} mask={`url(#${id}-clearance)`}><g filter={`url(#${id}-effect-${e.key})`}><g mask={`url(#${id}-head)`}>{clipPath(a.atlasKey,a.frameIndex)}</g></g></g>)}
  </g>}

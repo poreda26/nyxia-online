@@ -5,12 +5,14 @@ import { useTranslation, formatServerError } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
+import Avatar from './Avatar';
+import {playerAvatarId} from '../data/avatars';
 
 // Kullanıcı isteği: "arkadaş ekleme - özel sohbet - vs - klan daveti vb.
 // özellikleri ekle" — arkadaş listesi + iki hesap arasındaki özel mesajlaşma.
 // Genel Sohbet'in (bkz. ChatTab.jsx) yanına bir alt sekme olarak eklendi,
 // aynı "Silah/Zırh vs Takı Yükseltme" alt sekme deseniyle (bkz. UpgradeTab.jsx).
-export default function FriendsPanel({ pushToast }) {
+export default function FriendsPanel({ pushToast, player }) {
   const { t } = useTranslation();
   const [friends, setFriends] = useState([]);
   const [incoming, setIncoming] = useState([]);
@@ -83,7 +85,7 @@ export default function FriendsPanel({ pushToast }) {
     const text = threadInput.trim();
     if (!text || !activeThread) return;
     setThreadInput("");
-    try { await socialService.sendDirectMessage(activeThread.accountId, text); refreshThread(); }
+    try { await socialService.sendDirectMessage(activeThread.accountId, text, playerAvatarId(player)); refreshThread(); }
     catch (error) { pushToast(formatServerError(t, error), "warn"); }
   };
 
@@ -99,6 +101,7 @@ export default function FriendsPanel({ pushToast }) {
         <div ref={logRef} className="rpg-chat-log" style={styles.chatLog}>
           {messages.map((m) => (
             <div key={m.id} className="rpg-chat-msg" style={{ ...styles.chatMsg, alignItems: m.mine ? "flex-end" : "flex-start" }}>
+              <Avatar id={m.avatarId} size={32}/>
               <div className="rpg-chat-bubble" style={{ ...styles.chatMsgBubble, ...(m.mine ? { background: "var(--gold-text)", color: "#15171E" } : {}) }}>
                 {m.text}
               </div>

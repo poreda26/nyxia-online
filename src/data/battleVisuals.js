@@ -19,7 +19,7 @@ export function battleVisualFor(monster){
     if(index<0&&!dungeon&&!mapBoss) continue;
     const region=regions[map.id];
     if(dungeon||mapBoss) index=monster.isBoss?region.boss:map.monsters.length-1;
-    return {...region,mapId:map.id,index,rect:region.atlas==='fallow'?fallowRects[index]:battleAtlasBounds[region.atlas][index],size:region.atlas==='fallow'?[1448,1086]:[1536,1024]};
+    return {...region,mapId:map.id,index,clip:region.atlas==='fallow'&&index===4?'M1060,757H1448V1086H1140V944L1060,913Z':null,rect:region.atlas==='fallow'?fallowRects[index]:battleAtlasBounds[region.atlas][index],size:region.atlas==='fallow'?[1448,1086]:[1536,1024]};
   }
   return null;
 }

@@ -10,6 +10,6 @@ export async function fetchMessages() {
 }
 
 // POST /api/chat/messages
-export async function sendMessage(author, text, isGM) {
-  return call("chat/messages", "POST", { author, text, isGM: !!isGM });
+export async function sendMessage(author, text, isGM, avatarId) {
+  return call("chat/messages", "POST", { author, text, isGM: !!isGM, avatarId });
 }

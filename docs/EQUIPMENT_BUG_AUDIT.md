@@ -32,3 +32,7 @@ Yukarıdaki yalnızca sap katmanına bakan testler, kullanıcının gösterdiği
 Bu testler belirtilen tutuş bölgesini kapsar; otomatik piksel kontrolü tek başına tüm görsel kusurları kanıtlamaz. Temas sayfaları ayrıca gözle incelenir.
 
 Eski `check-armor-browser.mjs`, artık kaynakta bulunmayan `character-check.html` önizlemesine bağlı olduğundan sınıf seçicisini bulamadı; başarılı kontroller arasında sayılmadı. Bu turdaki tarayıcı doğrulaması mevcut `CharacterFigure` bileşenini doğrudan kullanan `equipment-gallery.jsx` üzerinden yapıldı. Dünya testleri 42/42, zırh birim testleri 4/4 ve üretim derlemesi başarılı.
+
+## Totem Topuzu — sapın gerçek pikselleri
+
+Önceki birleşik görünümde elin dolu olması, elin üstündeki sapın kesilmediğini kanıtlamıyordu. `check-weapon-neck.mjs` orijinal atlasın gerçek sap piksellerini kesilmiş silah katmanıyla karşılaştırır. Eski kod Human'da 442 pikselin 0'ını koruduğu için başarısız oldu. Ayrı sap eksenleri ve dolu tutuş katmanı sonrasında Human/Karus testleri 442/442. Warrior'ın 19 silahı iki ırkta +1/+7/+8 için yeniden çizilip yakın çekimler gözle incelendi; 114 durum ve 12 zırh/bez katmanı kontrolü geçti.

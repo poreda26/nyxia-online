@@ -23,7 +23,7 @@ import {itemImageFor} from '../src/data/itemImages';
 import {characterAppearance,CHARACTER_IDENTITIES} from '../src/data/characterAppearance';
 import {gmWeaponTemplates,gmBuildWeaponById,gmBuildArmor,gmBuildAccessory} from '../src/utils/loot';
 import {pvpSnapshot,rollPvpDamage,comparablePlayer} from '../src/utils/pvpBalance';
-import {canUpgradeAccessory,upgradeAccessory} from '../src/utils/accessoryUpgrade';
+import {accessoryUpgradeBlocked,buildUpgradedAccessory,ACCESSORY_UPGRADE_MAX_LEVEL} from '../src/utils/accessoryUpgrade';
 import {ACCESSORY_SETS} from '../src/data/accessories';
 const player=()=>learnFreeSkills(initialPlayer('warrior','karus','WorldTest'));
 
@@ -119,18 +119,20 @@ test('T4 Warrior and archer Rogue remain within the beta PvP win band',()=>{
  console.log(`T4 +5 / accessory +3: Warrior ${rate*100}%, Rogue ${(1-rate)*100}% (2000 duels)`);
  assert.ok(rate>=.44&&rate<=.56,`Warrior win rate ${rate}; W ${JSON.stringify(a)} R ${JSON.stringify(b)}`);
 });
-test('universal tier accessories merge three matching copies and locked map rings do not',()=>{
+test('universal accessory result preserves stats and input; locked map rings and capped levels are rejected',()=>{
  for(const slot of ['earring','necklace','ring','belt']){
   assert.equal(ACCESSORY_SETS[slot].length,27);
   for(let tier=1;tier<=5;tier++)assert.equal(ACCESSORY_SETS[slot].filter((item)=>item.tier===tier).length,tier===5?9:3);
  }
  const copies=[0,1,2].map(()=>gmBuildAccessory('ring',4,0,'Ejder Muhafızı Yüzük'));
- const p={...player(),inventory:[...copies,{id:'paper',kind:'accessoryScroll',count:1}]};
- assert.equal(canUpgradeAccessory(p,copies[0]).ok,true);
- const result=upgradeAccessory(p,copies[0].id);
- assert.equal(result.upgraded,true);assert.equal(result.item.upgradeLevel,1);assert.ok(result.item.def>copies[0].def);
+ const before=JSON.stringify(copies);
+ assert.equal(accessoryUpgradeBlocked(copies[0]).ok,true);
+ const result=buildUpgradedAccessory(copies[0]);
+ assert.equal(result.upgradeLevel,1);assert.ok(result.def>copies[0].def);
+ assert.notEqual(result.id,copies[0].id);assert.equal(JSON.stringify(copies),before);
+ assert.equal(accessoryUpgradeBlocked({...copies[0],upgradeLevel:ACCESSORY_UPGRADE_MAX_LEVEL}).ok,false);
  const locked=gmBuildAccessory('ring',2,0,'Volkan Güç Yüzüğü');
- assert.equal(canUpgradeAccessory({...p,inventory:[locked,locked,locked]},locked).ok,false);
+ assert.equal(accessoryUpgradeBlocked(locked).ok,false);
 });
 test('consumables cannot corrupt equipment or disappear through equip',()=>{
  const scroll={id:'accessory-paper',kind:'accessoryScroll',count:3};

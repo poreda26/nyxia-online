@@ -77,6 +77,8 @@ const base = {
       // kod döndürüyor (bkz. server/app.mjs#fail) — karışmasın diye ayrı
       // bir namespace (bkz. i18n/LanguageContext.jsx#formatServerError).
       serverError: {
+        INVALID_AVATAR: "Lütfen listeden geçerli bir avatar seç.",
+        LEADER_REQUIRED: "Klan armasını yalnızca klan lideri değiştirebilir.",
         ACCOUNT_NOT_FOUND: "Bu kullanıcı adıyla bir hesap yok.",
         CANNOT_FRIEND_SELF: "Kendini arkadaş olarak ekleyemezsin.",
         CANNOT_INVITE_SELF: "Kendini davet edemezsin.",
@@ -355,6 +357,8 @@ const base = {
         marketItemGone: "That item is no longer available.",
       },
       serverError: {
+        INVALID_AVATAR: "Please choose a valid avatar from the list.",
+        LEADER_REQUIRED: "Only the clan leader can change its crest.",
         ACCOUNT_NOT_FOUND: "No account exists with that username.",
         CANNOT_FRIEND_SELF: "You can't add yourself as a friend.",
         CANNOT_INVITE_SELF: "You can't invite yourself.",

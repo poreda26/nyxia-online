@@ -1,5 +1,7 @@
 import RankBadge from './shared/RankBadge';
 import MenuEmblem from './icons/MenuEmblem';
+import Avatar,{AvatarPicker} from './Avatar';
+import {updateClanAvatar} from '../services/clanService';
 import { useState, useEffect, useCallback } from "react";
 import { Shield, LogOut, Plus, ChevronUp, ChevronDown, UserX, Swords, Coins, Gem, Flag, Landmark, Skull, Lock, Clock, Mail } from "lucide-react";
 import { CLASSES } from "../data/classes";
@@ -43,6 +45,7 @@ function mergeClanResponse(player, serverClan) {
       id: serverClan.id,
       name: serverClan.name,
       color: serverClan.color,
+      avatarId:serverClan.avatarId||'wolf',
       role: serverClan.myRole,
       createdAt: serverClan.createdAt,
       members: serverClan.members,
@@ -63,7 +66,7 @@ function mergeClanResponse(player, serverClan) {
 // bırakıldı — ikisi de kendi paylaşımlı simülasyonunu (Dünya Canavarı'nınki
 // gibi) gerektirir, ayrı bir kapsam kararı; şimdilik eskisi gibi yerel kalıyor.
 export default function ClanTab({ player, setPlayer, pushToast }) {
-  const { t } = useTranslation();
+  const { t,lang } = useTranslation();
   const roleLabel = (role) => t(`clan.role.${role}`);
   const stageName = (stage) => (stage ? t(`clan.bossStage.${stage.id}.name`) : "");
   const [founding, setFounding] = useState(false);
@@ -76,13 +79,17 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   const [lbRace, setLbRace] = useState(player.race);
   const [invites, setInvites] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [avatarId,setAvatarId]=useState('wolf');
+  const [busy,setBusy]=useState(false);
+  const [loadError,setLoadError]=useState(false);
 
   const refresh = useCallback(async () => {
     try {
       const { clan } = await fetchMyClan();
       setPlayer((p) => mergeClanResponse(p, clan));
       setInvites(clan ? [] : await fetchClanInvites());
-    } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
+      setLoadError(false);
+    } catch { setLoadError(true); }
     finally { setLoaded(true); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -104,12 +111,15 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   }, [player.clan?.boss]);
 
   const handleFound = async () => {
+    if(busy)return;
     const trimmed = nameInput.trim();
     if (!trimmed) { pushToast(t("common.reason.enterClanName"), "warn"); return; }
     if (player.diamonds < CLAN_FOUND_COST_DIAMONDS) { pushToast(t("common.reason.notEnoughDiamonds"), "warn"); return; }
     try {
-      await foundClanApi(trimmed, pick(CLAN_COLORS));
+      setBusy(true);
+      await foundClanApi(trimmed, pick(CLAN_COLORS),avatarId);
     } catch (error) { pushToast(formatServerError(t, error), "warn"); return; }
+    finally {setBusy(false);}
     const before = player;
     setPlayer((p) => {
       const after = { ...p, diamonds: p.diamonds - CLAN_FOUND_COST_DIAMONDS, milestones: { ...p.milestones, hasFoundedClan: true } };
@@ -121,6 +131,13 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     setNameInput("");
     refresh();
   };
+  const changeAvatar=async next=>{
+    if(busy)return;setBusy(true);
+    try{await updateClanAvatar(next);setPlayer(p=>({...p,clan:p.clan?{...p.clan,avatarId:next}:null}));}
+    catch(error){pushToast(formatServerError(t,error),'warn');}
+    finally{setBusy(false);}
+  };
+  const connectionStatus=loadError?<div className="clan-status" role="status">{lang==='en'?'Clan server could not be reached.':'Klan sunucusuna ulaşılamadı.'}<button onClick={refresh}>{lang==='en'?'Retry':'Tekrar dene'}</button></div>:!loaded?<div className="clan-status" role="status">{lang==='en'?'Loading clan…':'Klan bilgileri yükleniyor…'}</div>:null;
 
   const handleInvite = async () => {
     const name = inviteInput.trim().toLowerCase();
@@ -231,7 +248,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             onClick={() => setLbRace(key)}
             style={{ ...styles.tierChip, borderColor: lbRace === key ? r.color : "var(--border)", background: lbRace === key ? `${r.color}1A` : "var(--bg-panel)" }}
           >
-            <span style={{ fontSize: 11, color: r.color }}>{t(`races.${key}.name`)}</span>
+            <span style={{ fontSize: 12, color: r.color }}>{t(`races.${key}.name`)}</span>
           </button>
         ))}
       </div>
@@ -240,7 +257,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
           <div key={e.rank} className="rpg-row rpg-ranking-row" style={{ ...styles.itemRow, ...(e.isPlayerClan ? { borderColor: "#D4AF6A" } : {}) }}>
             <RankBadge rank={e.rank}/>
             <div style={{ flex: 1, fontSize: 12, color: e.isPlayerClan ? "var(--text-primary)" : "var(--text-muted)" }}>{e.name}{e.isPlayerClan ? t("clan.yourClanSuffix") : ""}</div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 3 }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 3 }}>
               <Flag size={10} color="#8B6FC9" /> {fmt(e.nationalPoint)}
             </div>
           </div>
@@ -251,7 +268,9 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
 
   if (!player.clan) {
     return (
-      <div style={styles.panelScroll}>
+      <div className="clan-panel" style={styles.panelScroll}>
+        {connectionStatus}
+        <div className="rpg-card clan-hero" style={{display:'flex',gap:16,alignItems:'center'}}><Avatar id={avatarId} clan size={80}/><div><h3>{lang==='en'?'Under one banner':'Aynı sancak altında'}</h3><p>{lang==='en'?'Build your clan, choose its crest and gather your allies.':'Klanını kur, armanı seç ve yol arkadaşlarını bir araya getir.'}</p></div></div>
 
         {loaded && invites.length > 0 && (
           <>
@@ -259,10 +278,10 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {invites.map((inv) => (
                 <div key={inv.id} className="rpg-row" style={{ ...styles.itemRow, borderColor: `${inv.clanColor}66` }}>
-                  <MenuEmblem name="clan" size={28}/>
+                  <Avatar id={inv.avatarId} clan size={42}/>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, color: inv.clanColor }}>{inv.clanName}</div>
-                    <div style={{ fontSize: 9, color: "var(--text-faint)" }}>{t("clan.invitedBy", { name: inv.fromName })}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("clan.invitedBy", { name: inv.fromName })}</div>
                   </div>
                   <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleAcceptInvite(inv.id, inv.clanName)}>{t("clan.acceptInviteBtn")}</button>
                   <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDeclineInvite(inv.id)}>{t("clan.declineInviteBtn")}</button>
@@ -274,19 +293,20 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
 
         <div className="rpg-card" style={styles.itemDetailCard}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <MenuEmblem name="clan" size={34}/>
+            <Avatar id={avatarId} clan size={52}/>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13 }}>{t("clan.foundHeading")}</div>
-              <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("clan.foundDesc", { cost: CLAN_FOUND_COST_DIAMONDS })}</div>
+              <div style={{ fontSize: 14 }}>{t("clan.foundHeading")}</div>
+              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("clan.foundDesc", { cost: CLAN_FOUND_COST_DIAMONDS })}</div>
             </div>
           </div>
           {founding ? (
-            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+            <div className="clan-found-form">
               <input
                 type="text" value={nameInput} onChange={(e) => setNameInput(e.target.value)}
                 placeholder={t("clan.foundNamePlaceholder")} style={styles.selectInput} maxLength={24}
               />
-              <button className="rpg-action" style={styles.tinyBtn} onClick={handleFound}>{t("clan.foundBtn")}</button>
+              <AvatarPicker clan value={avatarId} onChange={setAvatarId} disabled={busy}/>
+              <button disabled={busy||!nameInput.trim()||!loaded||loadError} className="rpg-action" style={styles.tinyBtn} onClick={handleFound}>{busy?(lang==='en'?'Creating…':'Kuruluyor…'):t("clan.foundBtn")}</button>
             </div>
           ) : (
             <button className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={() => setFounding(true)}>
@@ -323,27 +343,30 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   const bossOpenedToday = clan.boss?.lastOpenedDay === new Date().toDateString();
 
   return (
-    <div style={styles.panelScroll}>
+    <div className="clan-panel" style={styles.panelScroll}>
+      {connectionStatus}
 
-      <div className="rpg-card" style={{ ...styles.itemDetailCard, borderColor: `${clan.color}66`, background: `${clan.color}0d` }}>
+      <div className="rpg-card clan-hero" style={{ ...styles.itemDetailCard, borderColor: `${clan.color}66`, background: `${clan.color}0d` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <MenuEmblem name="clan" size={34}/>
+          <Avatar id={clan.avatarId} clan size={78}/>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 16, color: clan.color }}>{clan.name}</div>
-            <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{roleLabel(clan.role)} · {t("clan.memberCountShort", { count: clan.members.length, max: CLAN_MAX_MEMBERS })}</div>
+            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{roleLabel(clan.role)} · {t("clan.memberCountShort", { count: clan.members.length, max: CLAN_MAX_MEMBERS })}</div>
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--text-muted)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 12, color: "var(--text-muted)" }}>
           <span>{t("clan.onlineLabel")}: {online}</span>
           <span>{t("clan.expBonusLabel")}: {bonus > 0 ? `+%${Math.round(bonus * 100)}` : t("clan.none")}</span>
         </div>
       </div>
 
+      {isLeader&&<details className="avatar-customize"><summary>{lang==='en'?'Change clan crest':'Klan armasını değiştir'}</summary><AvatarPicker clan value={clan.avatarId||'wolf'} onChange={changeAvatar} disabled={busy}/></details>}
+
       {isOfficerOrLeader && (
         <div className="rpg-card" style={styles.itemDetailCard}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Mail size={16} color="var(--gold-text)" strokeWidth={1.6} />
-            <div style={{ fontSize: 13 }}>{t("clan.inviteHeading")}</div>
+            <div style={{ fontSize: 14 }}>{t("clan.inviteHeading")}</div>
           </div>
           <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
             <input
@@ -359,11 +382,11 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Landmark size={18} color="var(--gold-text)" strokeWidth={1.6} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13 }}>{t("clan.treasuryTitle")}</div>
-            <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("clan.buildingLevelLabel", { level: clan.buildingLevel, max: CLAN_BUILDING_MAX_LEVEL })}</div>
+            <div style={{ fontSize: 14 }}>{t("clan.treasuryTitle")}</div>
+            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("clan.buildingLevelLabel", { level: clan.buildingLevel, max: CLAN_BUILDING_MAX_LEVEL })}</div>
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 12, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Flag size={11} color="#8B6FC9" /> {fmt(clan.treasury.np)} NP</span>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Coins size={11} color="var(--gold-text)" /> {fmt(clan.treasury.gold)}g</span>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Gem size={11} color="#8B6FC9" /> {fmt(clan.treasury.diamonds)}</span>
@@ -380,7 +403,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
               {t("clan.upgradeBuildingBtn", { level: clan.buildingLevel + 1, gold: fmt(nextBuildingCost.gold), diamonds: fmt(nextBuildingCost.diamonds) })}
             </button>
           ) : (
-            <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>{t("clan.buildingMaxed")}</div>
+            <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>{t("clan.buildingMaxed")}</div>
           )
         )}
 
@@ -398,7 +421,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleDonate("diamonds", donateDiamondInput, () => setDonateDiamondInput(""))}>{t("clan.donateBtn")}</button>
           </div>
         </div>
-        <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.5 }}>
           {t("clan.donateFootnote")}
         </div>
       </div>
@@ -407,8 +430,8 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <MenuEmblem name="dungeon" size={42}/>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13 }}>{t("clan.bossTitle")}</div>
-            <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("clan.bossDesc")}</div>
+            <div style={{ fontSize: 14 }}>{t("clan.bossTitle")}</div>
+            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{t("clan.bossDesc")}</div>
           </div>
         </div>
 
@@ -417,16 +440,16 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 14, color: activeStage?.color }}>{stageName(activeStage)}</span>
               {bossActive && (
-                <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 3 }}>
+                <span style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 3 }}>
                   <Clock size={10} /> {fmtClock(bossTimeLeftMs(clan))}
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 4 }}>
               {fmt(bossCurrentHp(clan))}/{fmt(bossMaxHp(clan))} HP
             </div>
             <BarTrack pct={(bossCurrentHp(clan) / bossMaxHp(clan)) * 100} color={activeStage?.color} />
-            <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>
               {bossActive
                 ? (player.clan.boss.playerAttacked ? t("clan.bossYouAttacked") : t("clan.bossAwaitingAttack"))
                 : bossCurrentHp(clan) <= 0
@@ -452,7 +475,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
                   <MenuEmblem name="dungeon" size={32}/>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, color: stage.color }}>{stageName(stage)}</div>
-                    <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
                       {t("clan.bossStageRequirement", { np: fmt(stage.npRequired), level: stage.buildingLevelRequired })}
                     </div>
                   </div>
@@ -478,8 +501,8 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Swords size={18} color="#C9425A" strokeWidth={1.6} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13 }}>{t("clan.dungeonTitle")}</div>
-            <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
+            <div style={{ fontSize: 14 }}>{t("clan.dungeonTitle")}</div>
+            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
               {clan.dungeon.lastStartedDay ? t("clan.dungeonStartedBy", { name: clan.dungeon.startedBy }) : t("clan.dungeonNotStarted")}
             </div>
           </div>
@@ -506,12 +529,10 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
           const MIcon = clsDef?.icon || Shield;
           return (
             <div key={m.accountId} className="rpg-row" style={styles.itemRow}>
-              <div style={{ ...styles.monsterIcon, width: 28, height: 28, background: `${clsDef?.color || "#8892a6"}22`, color: clsDef?.color || "#8892a6" }}>
-                <MIcon size={13} strokeWidth={1.6} />
-              </div>
-              <div style={{ flex: 1 }}>
+              <Avatar id={m.avatarId} size={40}/>
+              <div className="clan-member-name">
                 <div style={{ fontSize: 12 }}>{m.name}{m.level > 0 ? ` · Lv.${m.level}` : ""}</div>
-                <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{roleLabel(m.role)}</div>
+                <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{roleLabel(m.role)}</div>
               </div>
               {isLeader && m.role !== "leader" && (
                 <>

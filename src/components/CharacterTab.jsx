@@ -1,4 +1,5 @@
 import {equippedStatBonus} from '../utils/player';
+import Avatar,{PlayerAvatarPicker} from './Avatar';
 import './ProgressionPanels.css';
 import { useState, useRef, useEffect } from "react";
 import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award, Gem } from "lucide-react";
@@ -93,7 +94,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
 
       <div className="rpg-character-summary" style={styles.charSummary}>
         <div style={{ ...styles.charAvatar, borderColor: cls.color }}>
-          <cls.icon size={28} color={cls.color} strokeWidth={1.6} />
+          <Avatar player={player} size={48}/>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayClassName(player)}</div>
@@ -309,6 +310,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
 
       {subtab === "cosmetics" && (
         <>
+          <PlayerAvatarPicker player={player} setPlayer={setPlayer}/>
           <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 10px" }}>
             {t("character.cosmetics.intro")}
           </p>
