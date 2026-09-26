@@ -128,7 +128,12 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
-      const msgs = await chatService.fetchMessages();
+      let msgs;
+      try {
+        msgs = await chatService.fetchMessages();
+      } catch {
+        return; // Oturum/ağ geçici sorunu — bir sonraki periyotta tekrar dener.
+      }
       if (cancelled) return;
       if (tab === "chat") {
         setChatSeenCount(msgs.length);

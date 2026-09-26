@@ -172,31 +172,6 @@ export function saveAccountBankGold(username, bankGold) {
   writeAccounts(accounts);
 }
 
-// Oyuncu Pazarı — kullanıcı isteği: "Pazarımız bir depo gibi açılacak.
-// Maksimum 10 adet eşya konulabilen bir satış yeri." Artık tek tek eşya
-// ilanları değil, hesap başına TEK bir "tezgah" (stall): bir isim (satan
-// karakterin adı), süre, açılış ücreti ve içinde en çok 10 eşya. Sayfa
-// yenilenince sıfırlanan bellek içi bir yapı değil, hesaba kalıcı
-// kaydediliyor (bkz. services/marketService.js). NPC'lerin sahte ilanları
-// hâlâ kalıcı değil, sadece oyuncunun kendi tezgahı.
-//
-// Eski (bir önceki turdaki) format düz bir dizi ilandı — o şekil artık
-// geçersiz, Array.isArray ile tespit edip null'a düşürüyoruz (eski
-// ilanların fiyat/süre bağlamı yeni tezgah şekline temiz taşınamaz, zaten
-// bu özellik geçen tur ilk kez eklenmişti, kaybedilecek gerçek bir veri yok).
-export function loadMarketStall(username) {
-  const accounts = readAccounts();
-  const account = accounts[username] || emptyAccount();
-  const stall = account.market;
-  return stall && !Array.isArray(stall) ? stall : null;
-}
-
-export function saveMarketStall(username, stall) {
-  const accounts = readAccounts();
-  const account = accounts[username] || emptyAccount();
-  accounts[username] = { ...account, market: stall };
-  writeAccounts(accounts);
-}
 
 export function saveLastUsername(username) {
   try { localStorage.setItem(LAST_USERNAME_KEY, username); } catch { /* ignore */ }

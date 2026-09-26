@@ -11,6 +11,7 @@ import {
   saveAccountBank, saveAccountUnlockedSlots, saveAccountDiamonds, saveAccountBankGold, saveLastUsername, loadLastUsername,
   CHARACTER_SLOTS, DEFAULT_UNLOCKED_SLOTS, THIRD_SLOT_COST_DIAMONDS, CHARACTER_DELETE_COST_DIAMONDS,
 } from "./utils/storage";
+import { fetchMe, fetchBackup, pushBackup } from "./utils/api";
 import { styles } from "./styles";
 import GlobalStyle from "./components/GlobalStyle";
 import LoginScreen from "./components/LoginScreen";
@@ -180,20 +181,106 @@ export default function App() {
     setAccount((a) => ({ ...a, bankGold: typeof updater === "function" ? updater(a.bankGold) : updater }));
   }, []);
 
-  const handleLogin = (name) => {
+  // Faz 2 — hesap artık sadece bu tarayıcıda değil, sunucudaki backup'a da
+  // senkronlanıyor (bkz. utils/api.js#fetchBackup/pushBackup). backupRevisionRef
+  // sunucunun beklediği bir sonraki sürüm numarasını tutar (iyimser
+  // eşzamanlılık — bkz. server/app.mjs#/api/backup). skipNextSyncRef, login
+  // sırasında (ya da bir çakışma sonrası) setAccount çağrıldığında hemen
+  // arkasından gelen "account değişti, sunucuya gönder" effect'inin bu
+  // özel değişikliği tekrar geri göndermesini engeller — sonsuz döngü değil
+  // ama gereksiz bir tur olurdu.
+  const backupRevisionRef = useRef(0);
+  const skipNextSyncRef = useRef(false);
+
+  const migrateAccount = (acc) => ({ ...acc, characters: acc.characters.map((p) => (p ? migratePlayer(p) : p)) });
+
+  const handleLogin = async (name) => {
     setUsername(name);
     saveLastUsername(name);
-    const acc = loadAccount(name);
     // CharacterSelectScreen render's straight from account.characters (bkz.
     // CLASSES[p.class] look-up'ı) — handlePlay'e kadar migratePlayer hiç
     // çalışmadığından, kaldırılmış bir sınıfta (ör. Priest) kalmış eski bir
     // karakter seçim ekranını hiç açılmadan çökertirdi. Bu yüzden tüm
     // slotlar HEMEN burada, listeye girmeden önce migrate ediliyor.
-    setAccount({ ...acc, characters: acc.characters.map((p) => (p ? migratePlayer(p) : p)) });
+    const localAcc = migrateAccount(loadAccount(name));
+    let finalAccount = localAcc;
+    try {
+      const backup = await fetchBackup();
+      if (backup.revision > 0 && backup.data) {
+        // Sunucuda bu hesap için zaten bir yedek var — o, kalıcı/paylaşılan
+        // kaynak sayılır (ör. başka bir cihazda oynanmış olabilir).
+        finalAccount = migrateAccount(backup.data);
+        backupRevisionRef.current = backup.revision;
+      } else {
+        // İlk senkron — yerel veriyi hiç kaybetmeden sunucuya taşı.
+        const pushed = await pushBackup(0, localAcc);
+        backupRevisionRef.current = pushed.revision;
+      }
+    } catch {
+      // Backend'e ulaşılamadı (ağ/oturum sorunu) — yerel veriyle devam,
+      // bir sonraki hesap değişikliğinde tekrar senkron denenir.
+    }
+    skipNextSyncRef.current = true;
+    setAccount(finalAccount);
     // Race is chosen once per account, before ever seeing character slots —
     // every character created afterward shares it (see RACES caveat).
-    setScreen(acc.race ? "characterSelect" : "raceSelect");
+    setScreen(finalAccount.race ? "characterSelect" : "raceSelect");
   };
+
+  // Sunucudaki oturum çerezi hâlâ geçerliyse (7 gün) her sayfa açılışında
+  // yeniden şifre girmeye gerek kalmasın diye — backend yoksa/çerez yoksa
+  // fetchMe sessizce reddeder, login ekranı normal şekilde açılır.
+  //
+  // `cancelled` bayrağı olmadan StrictMode'un dev'de bu effect'i iki kez
+  // çalıştırması handleLogin'i (dolayısıyla sunucu senkronunu) art arda iki
+  // kez tetikleyip sahte bir 409 çakışmasına yol açıyordu (bkz.
+  // WarzoneTab.jsx'in aynı sorunu aynı desenle çözdüğü not) — StrictMode'un
+  // mount→cleanup→mount döngüsünde ilk çağrının sonucu artık yok sayılıyor.
+  useEffect(() => {
+    let cancelled = false;
+    fetchMe().then(({ name }) => { if (!cancelled) handleLogin(name); }).catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Hesapta gerçek bir değişiklik oldukça (karakter kaydı, depo, elmas,
+  // slot açma...) sunucudaki yedeği de güncel tutar — kullanıcı "Faz 2" dedi:
+  // karakter artık sadece bu tarayıcıda yaşamıyor. 1.5s'lik gecikme, savaş
+  // gibi art arda hızlı değişikliklerde her tık için ayrı istek atmamak için.
+  //
+  // ÖNEMLİ: `account.characters[activeSlot]` oyun oynanırken React state'inde
+  // GÜNCELLENMİYOR — yukarıdaki eski efekt (satır ~136) sadece localStorage'a
+  // yazıyor (saveCharacterSlot), account'u değil (diamonds hariç). Asıl
+  // güncel karakter oyun sırasında `player`. Bu yüzden gönderilecek veri
+  // account'un DEĞİL, player'ın activeSlot'a birleştirilmiş hâli — yoksa
+  // sunucuya hep bir tur GERİDE kalmış bir karakter giderdi (bu yüzden
+  // canlı testte altın artışı hiç sunucuya ulaşmıyordu).
+  useEffect(() => {
+    if (!username) return;
+    if (skipNextSyncRef.current) { skipNextSyncRef.current = false; return; }
+    const payload = activeSlot !== null && player
+      ? { ...account, characters: account.characters.map((c, i) => (i === activeSlot ? player : c)) }
+      : account;
+    const timer = setTimeout(async () => {
+      try {
+        const result = await pushBackup(backupRevisionRef.current, payload);
+        backupRevisionRef.current = result.revision;
+      } catch (err) {
+        if (err.code !== "BACKUP_CONFLICT") return; // ağ/oturum sorunu — bir sonraki değişiklikte tekrar dener
+        try {
+          const fresh = await fetchBackup();
+          backupRevisionRef.current = fresh.revision;
+          if (fresh.data) {
+            skipNextSyncRef.current = true;
+            setAccount(migrateAccount(fresh.data));
+            pushToast(translateWith(audioSettings.language, "app.backupSyncedFromOtherDevice"), "warn");
+          }
+        } catch { /* sunucuya şu an hiç ulaşılamıyor — sessizce vazgeç */ }
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account, player, activeSlot, username]);
 
   const handleChooseAccountRace = (race) => {
     saveAccountRace(username, race);

@@ -16,12 +16,23 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
   const [showGmPanel, setShowGmPanel] = useState(false);
   const logRef = useRef(null);
 
+  // Karşılama mesajı sunucuda saklanmıyor (her oyuncuya kendi dilinde,
+  // sadece yerelde gösterilir) — gerçek mesajların en başına ekleniyor.
+  const WELCOME = { id: "welcome", author: "system", textKey: "chat.welcomeMessage", isSystem: true, isGM: false, createdAt: 0 };
+
   const refresh = useCallback(async () => {
-    const msgs = await chatService.fetchMessages();
-    setMessages(msgs);
+    try {
+      const msgs = await chatService.fetchMessages();
+      setMessages([WELCOME, ...msgs]);
+    } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  // Diğer oyuncuların mesajlarını görmek için periyodik yenileme.
+  useEffect(() => {
+    const id = setInterval(refresh, 4000);
+    return () => clearInterval(id);
+  }, [refresh]);
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [messages.length]);

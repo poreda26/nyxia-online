@@ -1,68 +1,19 @@
-import { rand, pick, uid } from "./random";
+import { pick, uid } from "./random";
 import { todayKey } from "./day";
-import { CLASSES } from "../data/classes";
-import { ghostNamesForRace } from "../data/warzoneNames";
-import { seededRng, seededShuffle } from "./seededRng";
-import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS, CLAN_EXP_TIERS, CLAN_NAMES, CLAN_COLORS, CLAN_NP_DONATION_REFUND_RATE } from "../data/clan";
+import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS, CLAN_EXP_TIERS, CLAN_COLORS, CLAN_NP_DONATION_REFUND_RATE } from "../data/clan";
 import { CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from "../data/clanBoss";
 
-// Gerçek sunucu gelene kadar hem kurulan hem katılınan klanlar tamamen
-// simüle — data/warzoneNames.js'teki (Savaş Alanı hayaletleri için zaten
-// var olan) isim havuzu klan üyeleri için de kullanılıyor. Test
-// edilebilirlik için (kullanıcı: "hazır olsun, ben test edeceğim") hem
-// kurulan hem katılınan klanlar gerçekçi organik büyüme beklemeden
-// doğrudan online-sayısı eşiklerinin hepsini test edebilecek büyüklükte
-// (15-38 simüle üye) doğuyor.
-function spawnClanMemberRandom(race, role) {
-  const names = ghostNamesForRace(race);
-  return { id: uid(), name: pick(names), race, cls: pick(Object.keys(CLASSES)), role };
-}
-
-// Sahte klanları listelerken her şeyin (isim, üye sayısı, her üyenin adı/
-// sınıfı) `rng`'den türemesi gerekiyor — aksi hâlde her render'da farklı
-// üye isimleriyle "titreme" olur (bkz. utils/leaderboard.js'teki aynı
-// disiplin).
-function spawnClanMemberSeeded(race, role, rng) {
-  const names = ghostNamesForRace(race);
-  const classKeys = Object.keys(CLASSES);
-  return {
-    id: `m-${Math.floor(rng() * 1e9)}`,
-    name: names[Math.floor(rng() * names.length)],
-    race,
-    cls: classKeys[Math.floor(rng() * classKeys.length)],
-    role,
-  };
-}
-
-function generateMembersSeeded(race, count, rng, withLeaderRoles) {
-  const members = [];
-  for (let i = 0; i < count; i++) {
-    let role = "member";
-    if (withLeaderRoles) {
-      if (i === 0) role = "leader";
-      else if (i <= CLAN_MAX_OFFICERS) role = "officer";
-    }
-    members.push(spawnClanMemberSeeded(race, role, rng));
-  }
-  return members;
-}
-
-// Bir saatlik dilime göre değişen (ama o dilim içinde sabit) online/offline
-// durumu — gerçek bir tick döngüsü kurmadan "zamanla değişiyor" hissi verir.
-function hourBucket() {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
-}
-
-function isMemberOnline(memberId) {
-  const rng = seededRng(`online:${memberId}:${hourBucket()}`);
-  return rng() < 0.55;
-}
+// Kullanıcı isteği: "Artık bot oyuncular klanlar pazarlar yok" — sahte
+// (simüle) klan üyeleri ve rakip klanlar tamamen kaldırıldı. Bir klan artık
+// sadece GERÇEK oyunculardan oluşuyor; şu an klana gerçek başka bir oyuncu
+// davet etme/katılma yolu yok (paylaşımlı bir backend gerekiyor), bu yüzden
+// bir klan pratikte sadece kurucusundan ibaret kalıyor — `members` dizisi
+// kurucu DIŞINDAKİ üyeleri tutar (bkz. onlineCountFor'daki +1).
 
 // +1: oyuncunun kendisi her zaman online sayılır (sekmeyi açtığı an zaten öyle).
 export function onlineCountFor(clan) {
   if (!clan) return 0;
-  return clan.members.filter((m) => isMemberOnline(m.id)).length + 1;
+  return clan.members.length + 1;
 }
 
 // En yüksek eşiğe göre TEK bir bonus — üst üste binmez (bkz. data/clan.js).
@@ -98,7 +49,6 @@ export function foundClan(player, name) {
   if (!trimmed) return { player, founded: false, reason: "enterClanName" };
   if (player.diamonds < CLAN_FOUND_COST_DIAMONDS) return { player, founded: false, reason: "notEnoughDiamonds" };
 
-  const memberCount = rand(15, 38);
   const clan = {
     id: uid(),
     name: trimmed,
@@ -106,7 +56,7 @@ export function foundClan(player, name) {
     role: "leader",
     founded: true,
     createdAt: Date.now(),
-    members: Array.from({ length: memberCount }, () => spawnClanMemberRandom(player.race, "member")),
+    members: [],
     dungeon: freshDungeon(),
     treasury: freshTreasury(),
     buildingLevel: 1,
@@ -119,67 +69,27 @@ export function foundClan(player, name) {
   };
 }
 
-// Bir ırk için "var olan" 5 klanın isimleri — deterministik (seed: ırk),
-// hem "Mevcut Klanlar" katılma listesinde (generateDecoyClans) hem de Klan
-// Sıralaması'nda (clanLeaderboardFor) AYNI isimler kullanılsın diye ortak
-// bir yerden türetiliyor; aksi halde ikisi tutarsız iki farklı klan seti
-// gösterirdi.
-function decoyClanNamesForRace(race) {
-  const rng = seededRng(`clans:${race}`);
-  return seededShuffle(CLAN_NAMES, rng).slice(0, 5);
-}
-
-// Katılınabilecek sahte klanlar — oyuncunun ırkına göre seed'lenir, bu
-// yüzden aynı ırktaki her karakter için aynı 5 klan görünür (gerçek sunucu
-// gelince bu fonksiyonun yerini gerçek bir "klanları listele" API'si alacak).
-export function generateDecoyClans(player) {
-  const rng = seededRng(`clans:${player.race}`);
-  const names = decoyClanNamesForRace(player.race);
-  return names.map((name) => {
-    const memberCount = 14 + Math.floor(rng() * 24); // 14-37
-    return {
-      id: `decoy:${name}`,
-      name,
-      color: CLAN_COLORS[Math.floor(rng() * CLAN_COLORS.length)],
-      members: generateMembersSeeded(player.race, memberCount, rng, true),
-    };
-  });
-}
-
-// Bir decoy klanın NP'si — zamanla/haftaya göre değişmez (klan NP'si gerçek
-// oyunda da kalıcı, hiç sıfırlanmıyor, bkz. treasury.np), sadece ırk+isme
-// göre sabit deterministik bir değer.
-function decoyClanNP(race, name) {
-  const rng = seededRng(`clanNP:${race}:${name}`);
-  return Math.round(3000 + rng() * 900000);
-}
-
-// Klan Sıralaması — NP'ye göre, ırk başına AYRI (kullanıcı isteği: "İki ırk
-// için ayrı sıralama istiyorum"). O ırkın 5 klanının hepsi decoy NP alır;
-// oyuncu bu ırktansa VE bir klana üyeyse kendi klanı da listeye girer —
-// katıldığı klan zaten bu 5'ten biriyse (isim eşleşir) o satırın NP'si
-// gerçek clan.treasury.np ile değiştirilir (aynı klan iki kez görünmesin),
-// kendi kurduğu (havuzda olmayan bir isimdeki) bir klansa ayrı bir satır
-// olarak eklenir.
+// Klan Sıralaması — gerçek başka klanlar için paylaşımlı bir backend
+// gerekiyor, henüz yok; bu yüzden sıralama artık sadece (varsa) oyuncunun
+// KENDİ klanını, tek satır olarak gösteriyor.
 export function clanLeaderboardFor(race, player) {
-  const entries = decoyClanNamesForRace(race).map((name) => ({ name, nationalPoint: decoyClanNP(race, name), isPlayerClan: false }));
   if (player?.clan && player.race === race) {
-    const idx = entries.findIndex((e) => e.name === player.clan.name);
-    const own = { name: player.clan.name, nationalPoint: player.clan.treasury.np, isPlayerClan: true };
-    if (idx >= 0) entries[idx] = own;
-    else entries.push(own);
+    return [{ name: player.clan.name, nationalPoint: player.clan.treasury.np, isPlayerClan: true, rank: 1 }];
   }
-  entries.sort((a, b) => b.nationalPoint - a.nationalPoint);
-  return entries.map((e, i) => ({ ...e, rank: i + 1 }));
+  return [];
 }
 
-export function joinClan(player, decoyClan) {
+// Var olan bir klana katılmak — gerçek başka klanları listeleyecek bir
+// backend gelene kadar çağıracak bir yer yok (bkz. ClanTab.jsx'teki boş
+// "Mevcut Klanlar" durumu), fonksiyonun kendisi genel bırakıldı ki o
+// backend geldiğinde değişmeden kullanılabilsin.
+export function joinClan(player, otherClan) {
   if (player.clan) return { player, joined: false, reason: "alreadyInClan" };
-  if (decoyClan.members.length + 1 >= CLAN_MAX_MEMBERS) return { player, joined: false, reason: "clanFull" };
+  if (otherClan.members.length + 1 >= CLAN_MAX_MEMBERS) return { player, joined: false, reason: "clanFull" };
   const clan = {
-    id: decoyClan.id, name: decoyClan.name, color: decoyClan.color,
+    id: otherClan.id, name: otherClan.name, color: otherClan.color,
     role: "member", founded: false, createdAt: Date.now(),
-    members: decoyClan.members, dungeon: freshDungeon(),
+    members: otherClan.members, dungeon: freshDungeon(),
     treasury: freshTreasury(),
     buildingLevel: 1,
     myNpDonated: 0,

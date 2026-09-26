@@ -1,7 +1,6 @@
 import { CLASSES } from "../data/classes";
 import { totalStats } from "./player";
 import { mitigate, MONSTER_DEF_K } from "./combat";
-import { seededRng } from "./seededRng";
 import { todayKey } from "./clan";
 import { CLAN_BOSS_STAGES, CLAN_BOSS_WINDOW_MS, findBossStage } from "../data/clanBoss";
 
@@ -45,45 +44,10 @@ export function bossTimeLeftMs(clan) {
   return Math.max(0, CLAN_BOSS_WINDOW_MS - bossElapsedMs(clan));
 }
 
-// Klanın hayalet üyeleri de pencere boyunca birer kez vuruyor — gerçek bir
-// tick döngüsü kurup state'i sürekli mutasyona uğratmak yerine (bkz.
-// utils/clan.js#isMemberOnline'daki aynı disiplin), her üyenin "ne zaman
-// vuracağı" ve "ne kadar hasar vereceği" boss açıldığı anda (openedAt) ve
-// üye id'sinden deterministik olarak türetiliyor — kaç kere hesaplanırsa
-// hesaplansın aynı sonucu verir, sekmeyi ne zaman açarsan aç tutarlı kalır.
-function memberContribution(member, clan, stage) {
-  const rng = seededRng(`clanboss:${clan.boss.openedAt}:${member.id}`);
-  const attackAtMs = rng() * CLAN_BOSS_WINDOW_MS;
-  const dmg = Math.round(stage.memberDmgMin + rng() * (stage.memberDmgMax - stage.memberDmgMin));
-  return { attackAtMs, dmg };
-}
-
-export function simulatedMemberDamage(clan) {
-  if (!clan?.boss) return 0;
-  const stage = findBossStage(clan.boss.stageId);
-  if (!stage) return 0;
-  const elapsed = bossElapsedMs(clan);
-  let total = 0;
-  for (const m of clan.members) {
-    const { attackAtMs, dmg } = memberContribution(m, clan, stage);
-    if (elapsed >= attackAtMs) total += dmg;
-  }
-  return total;
-}
-
-export function simulatedAttackerCount(clan) {
-  if (!clan?.boss) return 0;
-  const stage = findBossStage(clan.boss.stageId);
-  if (!stage) return 0;
-  const elapsed = bossElapsedMs(clan);
-  let count = 0;
-  for (const m of clan.members) {
-    const { attackAtMs } = memberContribution(m, clan, stage);
-    if (elapsed >= attackAtMs) count += 1;
-  }
-  return count;
-}
-
+// Kullanıcı isteği: "Artık bot oyuncular klanlar pazarlar yok" — hayalet
+// üyelerin boss'a katkısı kaldırıldı. Boss'un canı artık sadece GERÇEK
+// üyelerin (şu an: sadece oyuncunun kendi tek saldırısı, bkz.
+// attackClanBoss) verdiği hasarla azalıyor.
 export function bossMaxHp(clan) {
   const stage = clan?.boss ? findBossStage(clan.boss.stageId) : null;
   return stage ? stage.hp : 0;
@@ -92,7 +56,7 @@ export function bossMaxHp(clan) {
 export function bossCurrentHp(clan) {
   if (!clan?.boss) return 0;
   const maxHp = bossMaxHp(clan);
-  return Math.max(0, maxHp - simulatedMemberDamage(clan) - (clan.boss.playerDamage || 0));
+  return Math.max(0, maxHp - (clan.boss.playerDamage || 0));
 }
 
 // Boss "açık" sayılır: hâlâ süresi dolmamış VE hâlâ canı var. İkisinden biri

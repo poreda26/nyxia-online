@@ -2,37 +2,33 @@ import './WarzoneTab.css';
 import { varyDamage } from '../utils/combat';
 import PracticeDuel from './PracticeDuel';
 import {createDuel,stepDuel} from '../utils/duelEngine';
-import {comparablePlayer} from '../utils/pvpBalance';
-import {playSkill} from '../audio/sfx';
 import {wingMultiplier} from '../data/wings';
 import RankBadge from './shared/RankBadge';
 import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useRef } from "react";
 import MonsterPortrait from './MonsterPortrait';
-import { Skull, Swords, Heart, Zap, Lock, Gift, LogOut, DoorOpen, Users, Percent, Loader2, X } from "lucide-react";
+import { Skull, Swords, Heart, Zap, Lock, Gift, LogOut, DoorOpen, Loader2, X, Users } from "lucide-react";
 import {
   WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WARZONE_BOSSES, WARZONE_TICK_MS,
-  GHOST_POPULATION, GHOST_REPLACE_SECONDS, AMBUSH_CHANCE_PER_TICK,
-  WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT, WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP,
 } from "../data/warzone";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
 import { MAPS } from "../data/maps";
-import { spawnGhost, tickWorldBoss } from "../utils/warzoneCombat";
-import { bossSchedule, pickWeightedWinner } from "../utils/warzoneBoss";
+import { bossSchedule } from "../utils/warzoneBoss";
+import * as warzoneBossService from "../services/warzoneBossService";
+import * as warzoneDuelService from "../services/warzoneDuelService";
 import { awardNationalPoint, penalizeNationalPoint } from "../utils/nationalPoint";
 import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
+import { premiumNpLossReduction } from "../utils/premium";
 import { leaderboardFor } from "../utils/leaderboard";
 import { rollLoot } from "../utils/loot";
 import { grantMonsterReward } from "../utils/monsterRewards";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty, armorSetDamageReduction, clampGold, formatGold } from "../utils/player";
-import { premiumNpLossReduction } from "../utils/premium";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { rand, uid, pick } from "../utils/random";
-import { newlyUnlocked } from "../utils/achievements";
-import { playLevelUp, playHit, playMiss, playHurt, playPotion } from "../audio/sfx";
+import { playLevelUp, playHit, playMiss, playHurt, playPotion, playSkill } from "../audio/sfx";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -53,15 +49,15 @@ const CRIMSON_MAP = MAPS.find((m) => m.id === "crimson_battlefront");
 // Kullanıcı isteği: "Tüm dropları düzenleyebileceğim bir sistem" — bir
 // boss'un ham WARZONE_BOSSES girdisine admin.html'de kaydedilmiş bir
 // override varsa (bkz. utils/dropConfig.js#getWarzoneBossConfig) üstüne
-// biniyor, yoksa boss aynen kalıyor. Tüm boss okuma noktaları (roster
-// JSX'i, attackBoss, warzoneTick) bu tek fonksiyondan geçiyor ki hiçbiri
-// ham (override'sız) değerleri unutup kullanmasın.
+// biniyor, yoksa boss aynen kalıyor. Sadece görsel/loot alanları için
+// (isim, renk, drop şansları) — paylaşımlı can/maxHp artık SUNUCUDAN geliyor
+// (bkz. sharedBosses), admin override'ı bu yerel-tarayıcı ayarı hiç
+// etkilemiyor, aksi halde overrid'i açık biri paylaşımlı gerçeklikle
+// uyuşmayan bir maxHp görürdü.
 function effectiveBoss(boss) {
   const override = getWarzoneBossConfig(boss.id);
   return override ? { ...boss, ...override } : boss;
 }
-
-const GHOST_REPLACE_TICKS = Math.max(1, Math.round((GHOST_REPLACE_SECONDS * 1000) / WARZONE_TICK_MS));
 
 function fmtMmSs(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -74,83 +70,12 @@ const POTION_COOLDOWN_TURNS = 2;
 // büyük olsun" — BattleScene.jsx'in enemyScale prop'una geçiliyor.
 const BOSS_VISUAL_SCALE = 2.4;
 
-function freshWz(player) {
+function freshWz() {
   return {
-    bosses: {}, // { [bossId]: { spawnAt, hp, damageByPlayer, damageByGhost, resolved } } — bkz. warzoneTick
-    ghosts: Array.from({ length: GHOST_POPULATION }, () => spawnGhost(player)),
     log: [],
-    duel: null,
     hunt: null,
     searching: null,
   };
-}
-
-// Bir tick'te: her boss için zamanlamaya bakılıyor (bkz. utils/warzoneBoss.js#
-// bossSchedule) — "active" faza YENİ girmişse taze bir savaş durumu
-// başlatılıyor, hâlâ "active"se hayaletlerin vuruşu işleniyor, "gone"a
-// düşmüşse (öldürülmeden pencere kapanmışsa) hiçbir ödül vermeden
-// sessizce çözülüyor. Öldürülen bosslar `bossResolutions`'a ekleniyor —
-// asıl loot dağıtımı (Math.random tabanlı ağırlıklı çekiliş +
-// setPlayer/pushToast) çağıran tarafta (tick effect'i) yapılıyor, bu
-// fonksiyon PvE hasarı dışında side-effect üretmiyor.
-function warzoneTick(wz, player, t, tm, huntActive, now) {
-  const bosses = { ...wz.bosses };
-  let ghosts = wz.ghosts;
-  const lines = [];
-  const bossResolutions = [];
-
-  for (const rawBoss of WARZONE_BOSSES) {
-    const boss = effectiveBoss(rawBoss);
-    const sched = bossSchedule(boss, now);
-    let state = bosses[boss.id];
-    if (sched.phase === "active") {
-      if (!state || state.spawnAt !== sched.spawnAt) {
-        state = { spawnAt: sched.spawnAt, hp: boss.hp, damageByPlayer: 0, damageByGhost: {}, resolved: false };
-        lines.push(t("warzone.log.bossSpawned", { boss: tm(boss) }));
-      }
-      if (!state.resolved) {
-        const activeGhosts = ghosts.filter((g) => !g.gone && !g.dueling);
-        if (activeGhosts.length > 0) {
-          const result = tickWorldBoss(boss, state.hp, activeGhosts, state.damageByGhost);
-          state = { ...state, hp: result.hp, damageByGhost: result.damageByGhost };
-          lines.push(...result.hits.map((h) => t("warzone.log.ghostHitBoss", { ghost: h.ghostName, boss: tm(boss), dmg: h.dmg })));
-        }
-        if (state.hp <= 0) {
-          state = { ...state, resolved: true };
-          bossResolutions.push({ boss, damageByPlayer: state.damageByPlayer, damageByGhost: state.damageByGhost, ghosts });
-        }
-      }
-      bosses[boss.id] = state;
-    } else if (sched.phase === "gone" && state && !state.resolved) {
-      bosses[boss.id] = { ...state, resolved: true };
-    }
-  }
-
-  ghosts = ghosts.map((g) => {
-    if (!g.gone) return g;
-    const respawnTicks = g.respawnTicks - 1;
-    return respawnTicks <= 0 ? spawnGhost(player) : { ...g, respawnTicks };
-  });
-
-  let ambushGhost = null;
-  const idle = ghosts.filter((g) => !g.gone && !g.dueling);
-  if (huntActive && idle.length > 0 && Math.random() < AMBUSH_CHANCE_PER_TICK) {
-    ambushGhost = idle[Math.floor(Math.random() * idle.length)];
-  }
-
-  return { bosses, ghosts, lines, bossResolutions, ambushGhost };
-}
-
-// Düello başlar başlamaz yazı-tura atılır — %50 ihtimalle rakip önce
-// vuruyor (kullanıcı isteği: "sıra tabanlı ... yazı tura sistemi gibi").
-// Saf fonksiyon: ghostFirstDmg'i player.hp'ye uygulamak (ve gerekiyorsa
-// ölüm kontrolü yapmak) çağıranın işi — bkz. startDuel ve tick effect'teki
-// ambush dalı, ikisi de aynı setPlayer+ölüm-kontrolü desenini kullanıyor.
-function initiateDuel(ghost, def, player, t) {
-  const avatar=ghost.avatar||comparablePlayer(player,ghost.cls);
-  const engine=createDuel(player,avatar,{seed:Math.floor(Math.random()*4294967295)});
-  const log=[t('warzone.log.duelAppeared',{ghost:ghost.name}),t(engine.first?'warzone.log.coinFlipGhostFirst':'warzone.log.coinFlipPlayerFirst')];
-  return {duel:{ghost,ghostHp:engine.fighters[1].hp,log,finished:false,engine},ghostFirstDmg:0};
 }
 
 export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChange }) {
@@ -162,20 +87,29 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   const maxMp = playerMaxMp(player);
 
   const [subtab, setSubtab] = useState("alan");
-  const [wz, setWz] = useState(() => freshWz(player));
-  const [confirmingRetreat, setConfirmingRetreat] = useState(false);
+  const [wz, setWz] = useState(() => freshWz());
   const [entered, setEntered] = useState(false);
   const [confirmingEntry, setConfirmingEntry] = useState(false);
-  const [expandedBossId, setExpandedBossId] = useState(null);
   // Kullanıcı isteği: "Savaş alanında neden karakterimiz ve düşmanımız
   // karşılıklı gözükmüyor?" — BattleTab.jsx#showAction/setVisual ile aynı
-  // desen, sadece burada üç ayrı savaş türü (boss/av/düello) olduğu için
-  // her biri kendi visual state'ini taşıyor. bossVisuals boss id'ye göre
-  // ayrı tutuluyor çünkü aynı anda birden fazla boss aktif olabiliyor.
+  // desen, sadece burada iki ayrı savaş türü (boss/av) olduğu için her biri
+  // kendi visual state'ini taşıyor. bossVisuals boss id'ye göre ayrı
+  // tutuluyor çünkü aynı anda birden fazla boss aktif olabiliyor.
   const [huntVisual, setHuntVisual] = useState({ id: 0, type: "", label: "" });
   const [bossVisuals, setBossVisuals] = useState({});
+  // Faz 4 — { [bossId]: { hp, maxHp, resolved, myDamage, totalDamage } },
+  // SUNUCUDAN geliyor (bkz. services/warzoneBossService.js). Sadece "active"
+  // fazdaki bosslar için bir kayıt var; server periyodik olarak yenileniyor
+  // ki başka gerçek oyuncuların vuruşları da görünsün.
+  const [sharedBosses, setSharedBosses] = useState({});
+  const knownActiveRef = useRef(new Set());
+  // Faz 5 — düellodaki rakip GERÇEK bir hesabın anlık görüntüsü (bkz.
+  // services/warzoneDuelService.js). opponentAccountRef sonucu sunucuya
+  // bildirirken (reportDuelResult) hangi hesap olduğunu hatırlamak için.
+  const [confirmingRetreat, setConfirmingRetreat] = useState(false);
+  const [findingOpponent, setFindingOpponent] = useState(false);
   const [duelVisual, setDuelVisual] = useState({ id: 0, type: "", label: "" });
-  const [duelShake, setDuelShake] = useState(null); // 'player' | 'ghost' | null
+  const opponentAccountRef = useRef(null);
   const [deathInfo, setDeathInfo] = useState(null); // { xpLost } | null — drives DeathModal (Dünya Canavarı/Canavar Ara elinde ölüm)
   const [levelUpInfo, setLevelUpInfo] = useState(null); // Canavar Ara XP verdiği için (düellolar vermiyor) burada da seviye atlanabilir
   const [lbRace, setLbRace] = useState(player.race);
@@ -209,76 +143,69 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [wz.duel?.log?.length, wz.hunt?.log?.length]);
+  }, [wz.hunt?.log?.length]);
 
-  // Sekmeden ayrılmak (başka bir BottomNav sekmesine geçmek) bu bileşeni
-  // tamamen unmount eder — wz ephemeral olduğu için düello dahil her şey
-  // sıfırlanır. Bunu düello kaybını National Point cezasından kaçmak için
-  // kullanmayı engellemek üzere: yarım kalmış bir düello varken sekmeden
-  // ayrılmak, düelloyu terk etmiş (kaybetmiş) saymak anlamına gelir.
-  const wzRef = useRef(wz);
-  useEffect(() => { wzRef.current = wz; }, [wz]);
+  // "X boss'u ortaya çıktı" log satırı — SADECE yerel bir fark tespiti
+  // (bkz. utils/warzoneBoss.js#bossSchedule, sunucuya hiç sormuyor), bir
+  // boss `now` ilerledikçe "active" faza yeni girdiğinde bir kere yazılıyor.
   useEffect(() => {
-    return () => {
-      const duel = wzRef.current?.duel;
-      if (duel && !duel.finished) {
-        setPlayer((p) => {
-          const goldLoss = duel.fromAmbush ? Math.min(WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP, Math.round(p.gold * WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT)) : 0;
-          return { ...penalizeNationalPoint(p), gold: Math.max(0, p.gold - goldLoss) };
-        });
+    if (locked || npLocked || !entered) return;
+    const activeNow = new Set();
+    const lines = [];
+    for (const rawBoss of WARZONE_BOSSES) {
+      const boss = effectiveBoss(rawBoss);
+      const sched = bossSchedule(boss, now);
+      if (sched.phase !== "active") continue;
+      const key = `${boss.id}:${sched.spawnAt}`;
+      activeNow.add(key);
+      if (!knownActiveRef.current.has(key)) lines.push(t("warzone.log.bossSpawned", { boss: tm(boss) }));
+    }
+    knownActiveRef.current = activeNow;
+    if (lines.length > 0) setWz((prev) => ({ ...prev, log: [...prev.log, ...lines].slice(-24) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now, locked, npLocked, entered]);
+
+  // Faz 4 — paylaşımlı boss canını/katkılarını periyodik olarak sunucudan
+  // çeker, böylece başka gerçek oyuncuların vuruşları da (birkaç saniye
+  // içinde) görünür olur. WARZONE_TICK_MS aynı ritmi (3s) kullanıyor.
+  useEffect(() => {
+    if (locked || npLocked || !entered) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const result = await warzoneBossService.fetchActiveBosses();
+        if (!cancelled) setSharedBosses(result.bosses);
+      } catch { /* ağ/oturum sorunu — bir sonraki periyotta tekrar dener */ }
+    };
+    poll();
+    const id = setInterval(poll, WARZONE_TICK_MS);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [locked, npLocked, entered]);
+
+  // Boss ödülü artık HER ZAMAN benim olmuyor (bkz. server/app.mjs'in
+  // /api/warzone/boss/:id/attack notundaki ağırlıklı çekiliş) — bu yüzden
+  // "ben mi öldürdüm" varsayımı yerine, kazandığım bekleyen ödülleri
+  // (loot-claims) periyodik olarak yoklayıp varsa YEREL olarak üretiyorum
+  // (bkz. grantBossLoot — eşya/sandık/parşömen üretimi hâlâ istemcide,
+  // sunucuya taşınmadı) ve sunucuya "aldım" diye bildiriyorum.
+  useEffect(() => {
+    if (locked || npLocked || !entered) return;
+    let cancelled = false;
+    const poll = async () => {
+      let claims;
+      try { claims = (await warzoneBossService.fetchLootClaims()).claims; } catch { return; }
+      if (cancelled) return;
+      for (const claim of claims) {
+        const boss = WARZONE_BOSSES.find((b) => b.id === claim.bossId);
+        if (boss) grantBossLoot(effectiveBoss(boss));
+        try { await warzoneBossService.claimLoot(claim.id); } catch { /* bir sonraki yoklamada tekrar dener */ }
       }
     };
+    poll();
+    const id = setInterval(poll, 5000);
+    return () => { cancelled = true; clearInterval(id); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Gerçek-zamanlı alan simülasyonu — düello sırasında duraklar (bkz.
-  // aşağıdaki erken return). Recursive setTimeout kullanıyoruz (setInterval
-  // değil) ki her tur en güncel `wz`/`player`'ı görsün, eski closure sorunu
-  // yaşanmasın; StrictMode'un dev'de effect'i iki kez çalıştırması da
-  // cleanup ile (clearTimeout) güvenli.
-  useEffect(() => {
-    if (locked || npLocked || !entered || wz.duel) return;
-    const timer = setTimeout(() => {
-      // `wz`/`player` burada garanti güncel: bu effect [wz, player, ...]'a
-      // bağımlı olduğu için herhangi bir değişiklik bu timer'ı zaten iptal
-      // edip yenisini kurar — yani setWz'e bir updater fonksiyonu yerine
-      // doğrudan hesaplanmış bir nesne veriyoruz (StrictMode'un updater
-      // fonksiyonlarını iki kez çağırdığı senaryoyu, ve iki farklı
-      // Math.random() sonucunun dışarıdaki closure değişkenleriyle
-      // commit edilen state'ten sapma ihtimalini baştan ortadan kaldırır).
-      const huntActive = !!wz.hunt;
-      const result = warzoneTick(wz, player, t, tm, huntActive, Date.now());
-      let next = { ...wz, bosses: result.bosses, ghosts: result.ghosts, log: [...wz.log, ...result.lines].slice(-24) };
-      let ambushFirstDmg = 0;
-      if (result.ambushGhost) {
-        const initiated = initiateDuel(result.ambushGhost, def, player, t);
-        ambushFirstDmg = initiated.ghostFirstDmg;
-        next = {
-          ...next,
-          ghosts: next.ghosts.map((g) => (g.id === result.ambushGhost.id ? { ...g, dueling: true } : g)),
-          duel: { ...initiated.duel, fromAmbush: true },
-          // Kullanıcı isteği: pusu sadece Canavar Ara'yı yarıda kesiyor —
-          // yarım kalan av için hiçbir ödül verilmiyor.
-          hunt: null,
-        };
-      }
-      setWz(next);
-      // Hayaletlerin öldürdüğü bosslar için loot dağıtımı (ağırlıklı
-      // çekiliş) — oyuncunun kendi vuruşuyla öldürdüğü boss #attackBoss'un
-      // kendi içinde, aynı resolveBossLoot ile ayrıca çözülüyor.
-      result.bossResolutions.forEach(resolveBossLoot);
-      if (result.ambushGhost) {
-        pushToast(t("warzone.toast.huntAmbush", { ghost: result.ambushGhost.name }), "warn");
-        if (ambushFirstDmg > 0) {
-          const wouldDie = player.hp - ambushFirstDmg <= 0;
-          setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - ambushFirstDmg) }));
-          if (wouldDie) setTimeout(() => finishDuelAsLoss(result.ambushGhost.id), 500);
-        }
-      }
-    }, WARZONE_TICK_MS);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wz, player, locked, npLocked, entered]);
+  }, [locked, npLocked, entered]);
 
   // Kullanıcı isteği: "Canavar Ara" dediğimizde 5-15 saniye arası rastgele
   // bir "aranıyor" süresi olsun, canavar anında çıkmasın (bkz. aşağıdaki
@@ -309,14 +236,29 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wz.searching]);
 
+  // Sekmeden ayrılmak (başka bir BottomNav sekmesine geçmek) bu bileşeni
+  // tamamen unmount eder — wz ephemeral olduğu için düello dahil her şey
+  // sıfırlanır. Bunu düello kaybını National Point cezasından kaçmak için
+  // kullanmayı engellemek üzere: yarım kalmış bir düello varken sekmeden
+  // ayrılmak, düelloyu terk etmiş (kaybetmiş) saymak anlamına gelir.
+  const wzRef = useRef(wz);
+  useEffect(() => { wzRef.current = wz; }, [wz]);
+  useEffect(() => {
+    return () => {
+      const duel = wzRef.current?.duel;
+      if (duel && !duel.finished) setPlayer((p) => penalizeNationalPoint(p));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Kullanıcı isteği: "1v1'ler otomatik savaş olacak. Karşılıklı olarak
   // otomatik savaşacaklar. Kazanan bu şekilde adil ortaya çıkacak." —
   // düello başladıktan sonra hiçbir manuel tıklama gerekmiyor, bu effect
   // bitene kadar turları kendiliğinden oynatıyor. runDuelTurn aşağıda
-  // (erken return'lerden SONRA) tanımlı olsa da, senkron render sırasında
-  // bu satıra ulaşıldığında const'u zaten atanmış oluyor — tıpkı aşağıdaki
-  // tick effect'in de erken return'lerden önce, ama resolveBossLoot'u
-  // (yine sonradan tanımlı) çağırdığı gibi (bkz. o effect'in yorum notu).
+  // (erken return'lerden SONRA) tanımlı olsa da, bu effect'in callback'i
+  // React'in commit fazından SONRA çalıştığı için (senkron render sırasında
+  // değil) o zamana kadar runDuelTurn zaten atanmış oluyor — aynı desen
+  // yukarıdaki loot-claims/boss polling effect'lerinde de var.
   useEffect(() => {
     if (!wz.duel || wz.duel.finished) return;
     const timer = setTimeout(() => { runDuelTurn(); }, 1100);
@@ -392,11 +334,16 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
   // ---- Boss: oyuncunun kendi vuruşu (bkz. utils/warzoneBoss.js'in üstündeki
   // not — sadece bossSchedule'ın "active" dediği bosslara saldırılabilir) ----
-  const attackBoss = (bossId) => {
+  // Faz 4 — hasar hâlâ istemcide hesaplanıyor (mevcut formül, değişmedi),
+  // ama artık sunucuya bildiriliyor: paylaşımlı can sunucuda azalıyor,
+  // başka gerçek oyuncular da aynı düşüşü görüyor. Boss ölürse ödül HER
+  // ZAMAN bana gitmez (ağırlıklı çekiliş sunucuda, bkz. server/app.mjs) —
+  // kazanırsam loot-claims yoklamasıyla (yukarıdaki effect) ayrıca gelir.
+  const attackBoss = async (bossId) => {
     const rawBoss = WARZONE_BOSSES.find((b) => b.id === bossId);
     const boss = rawBoss && effectiveBoss(rawBoss);
-    const activeState = wz.bosses[bossId];
-    if (lockRef.current || wz.duel || !boss || !activeState || activeState.resolved || player.hp <= 0) return;
+    const activeState = sharedBosses[bossId];
+    if (lockRef.current || !boss || !activeState || activeState.resolved || player.hp <= 0) return;
     lockRef.current = true;
     setBossVisuals((bv) => ({ ...bv, [bossId]: { id: (bv[bossId]?.id || 0) + 1, type: "attack", label: t("battle.actionAttack") } }));
     const isCrit = Math.random() < cls.crit;
@@ -410,26 +357,30 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], outgoing: { hit: playerHitsBoss, damage: dmg, crit: isCrit } } }));
     if(playerHitsBoss)playHit({crit:isCrit,cls:player.class});else playMiss();
 
-    let resolution = null;
-    let bossSurvived = false;
-    setWz((prev) => {
-      // Bir tick'in (hayaletlerin) bu tıklamayla aynı anda boss'u zaten
-      // öldürmüş/pencereyi kapatmış olma ihtimaline karşı — `prev` her zaman
-      // güncel, `wz` (dışarıdaki closure) bayat olabilir.
-      const prevState = prev.bosses[bossId];
-      if (!prevState || prevState.resolved) return prev;
-      const hp = Math.max(0, prevState.hp - dmg);
-      const damageByPlayer = prevState.damageByPlayer + dmg;
-      const log = [...prev.log, !playerHitsBoss ? t("warzone.log.youMissedBoss", { boss: tm(boss) }) : isCrit ? t("warzone.log.youCritBoss", { boss: tm(boss), dmg }) : t("warzone.log.youHitBoss", { boss: tm(boss), dmg })];
-      if (hp <= 0) {
-        resolution = { boss, damageByPlayer, damageByGhost: prevState.damageByGhost, ghosts: prev.ghosts };
-        return { ...prev, bosses: { ...prev.bosses, [bossId]: { ...prevState, hp: 0, damageByPlayer, resolved: true } }, log: log.slice(-24) };
+    let bossSurvived = true;
+    if (playerHitsBoss && dmg > 0) {
+      try {
+        const result = await warzoneBossService.attackBoss(bossId, dmg);
+        setSharedBosses((prev) => ({
+          ...prev,
+          [bossId]: {
+            ...prev[bossId], hp: result.hp, resolved: result.resolved,
+            myDamage: (prev[bossId]?.myDamage || 0) + dmg, totalDamage: (prev[bossId]?.totalDamage || 0) + dmg,
+          },
+        }));
+        setWz((prev) => ({ ...prev, log: [...prev.log, isCrit ? t("warzone.log.youCritBoss", { boss: tm(boss), dmg }) : t("warzone.log.youHitBoss", { boss: tm(boss), dmg })].slice(-24) }));
+        bossSurvived = !result.resolved;
+      } catch {
+        // Boss az önce başkası tarafından bitirilmiş ya da pencere kapanmış
+        // olabilir (bkz. server/app.mjs — BOSS_ALREADY_DEFEATED/
+        // BOSS_NOT_ACTIVE) — sessizce vazgeç, bir sonraki yoklama (yukarıdaki
+        // effect) gerçek durumu zaten getirecek.
+        lockRef.current = false;
+        return;
       }
-      bossSurvived = true;
-      return { ...prev, bosses: { ...prev.bosses, [bossId]: { ...prevState, hp, damageByPlayer } }, log: log.slice(-24) };
-    });
-
-    if (resolution) resolveBossLoot(resolution);
+    } else {
+      setWz((prev) => ({ ...prev, log: [...prev.log, t("warzone.log.youMissedBoss", { boss: tm(boss) })].slice(-24) }));
+    }
 
     if (bossSurvived) {
       // Boss hâlâ ayaktaysa oyuncuya karşılık verir.
@@ -459,21 +410,6 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       }
     }
     setTimeout(() => { lockRef.current = false; }, 320);
-  };
-
-  // Kullanıcı isteği: "Düşen drop random olacak. Damage atan kişiler
-  // arasında en yüksek damage'i atan kişi biraz daha şanslı olacak." —
-  // hem oyuncunun kendi vuruşuyla öldürdüğü hem hayaletlerin öldürdüğü
-  // bosslar için TEK ortak çözüm yolu (bkz. utils/warzoneBoss.js#
-  // pickWeightedWinner).
-  const resolveBossLoot = ({ boss, damageByPlayer, damageByGhost, ghosts }) => {
-    const winnerKey = pickWeightedWinner({ ...damageByGhost, player: damageByPlayer });
-    if (winnerKey === "player") {
-      grantBossLoot(boss);
-    } else {
-      const winnerGhost = ghosts.find((g) => g.id === winnerKey);
-      pushToast(t("warzone.log.bossDefeatedByOther", { boss: tm(boss), label: winnerGhost?.name || t("warzone.bossDeathLabelGhost") }), "default");
-    }
   };
 
   const grantBossLoot = (boss) => {
@@ -512,6 +448,109 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     pushToast(drops.join("  ·  "), "loot");
   };
 
+  // ---- Düello: Faz 5 — sunucudan GERÇEK bir başka hesabın anlık
+  // görüntüsünü iste, ona karşı (deterministik motorla, istemcide) otomatik
+  // savaş. Rakip o an çevrimdışı olabilir, hiçbir şey kaybetmez/kazanmaz.
+  const findOpponent = async () => {
+    if (lockRef.current || wz.duel || player.hp <= 0 || findingOpponent) return;
+    setFindingOpponent(true);
+    try {
+      const result = await warzoneDuelService.fetchOpponent(player.level);
+      if (!result.opponent) { pushToast(t("warzone.toast.noOpponentFound"), "warn"); return; }
+      opponentAccountRef.current = result.opponentAccountId;
+      const engine = createDuel(player, result.opponent, { seed: result.seed, fullHealth: true });
+      const ghost = { name: result.opponentName, cls: result.opponent.class, avatar: result.opponent, maxHp: engine.fighters[1].maxHp };
+      const log = [t("warzone.log.duelAppeared", { ghost: ghost.name }), t(engine.first ? "warzone.log.coinFlipGhostFirst" : "warzone.log.coinFlipPlayerFirst")];
+      setWz((prev) => ({ ...prev, duel: { ghost, ghostHp: engine.fighters[1].hp, log, finished: false, engine } }));
+    } catch {
+      pushToast(t("warzone.toast.noOpponentFound"), "warn");
+    } finally {
+      setFindingOpponent(false);
+    }
+  };
+
+  const endDuel = () => {
+    opponentAccountRef.current = null;
+    setWz((prev) => ({ ...prev, duel: null }));
+  };
+
+  // Premium National Point kaybını azalttığı için (Mythic %10, Apex %5 —
+  // bkz. utils/premium.js#premiumNpLossReduction) toast'ta gösterilecek
+  // gerçek kayıp miktarını burada, sadece görüntü amaçlı, ayrıca hesaplıyoruz.
+  const actualNpLoss = () => Math.round(NP_LOSS_PENALTY * (1 - premiumNpLossReduction(player)));
+
+  // Bir düelloyu kaybetmenin tek yolu — hem sıradan bir turda hem de
+  // yazı-tura ile rakibin ilk vuruşunda öldürülürse aynı sonuç: National
+  // Point kaybı (bkz. utils/nationalPoint.js#penalizeNationalPoint),
+  // "Bayıldın" bildirimi.
+  const finishDuelAsLoss = () => {
+    const loss = actualNpLoss();
+    const opponentAccountId = opponentAccountRef.current;
+    setPlayer((p) => ({ ...penalizeNationalPoint(p), hp: playerMaxHp(p), mp: playerMaxMp(p) }));
+    pushToast(t("warzone.toast.fainted", { loss }), "warn");
+    if (opponentAccountId) warzoneDuelService.reportDuelResult(opponentAccountId, "opponent").catch(() => {});
+    endDuel();
+    lockRef.current = false;
+  };
+
+  // Onaylı, garanti çekilme — kaçış şansa bağlı değil ama düello kayıp
+  // sayılır, rakip hükmen galip ilan edilir.
+  const concedeDuel = () => {
+    if (!wz.duel) return;
+    const ghostName = wz.duel.ghost.name;
+    const loss = actualNpLoss();
+    const opponentAccountId = opponentAccountRef.current;
+    setPlayer((p) => penalizeNationalPoint(p));
+    pushToast(t("warzone.toast.conceded", { ghost: ghostName, loss }), "warn");
+    if (opponentAccountId) warzoneDuelService.reportDuelResult(opponentAccountId, "opponent").catch(() => {});
+    endDuel();
+    lockRef.current = false;
+    setConfirmingRetreat(false);
+  };
+
+  // Kullanıcı isteği: "1v1'ler otomatik savaş olacak. Karşılıklı olarak
+  // otomatik savaşacaklar. Kazanan bu şekilde adil ortaya çıkacak." — artık
+  // düellolarda hiçbir manuel karar (saldırı/beceri/pot seçimi) yok, tek
+  // tur her zaman aynı: önce oyuncu düz vuruyor, hayalet ölmediyse ya
+  // kendini iyileştiriyor ya da karşılık veriyor. Kazananı SADECE
+  // istatistikler + ilk vuruş yazı-turası + crit/ıskalama RNG'si belirliyor
+  // — yukarıdaki auto-battle effect'i bu fonksiyonu periyodik çağırıyor.
+  const runDuelTurn = () => {
+    if (lockRef.current || !wz.duel || wz.duel.finished || player.hp <= 0) return;
+    lockRef.current = true;
+    const duel = wz.duel;
+    const engine = stepDuel(duel.engine);
+    const [self, enemy] = engine.fighters;
+    let log = [...duel.log];
+    for (const event of engine.events) { const name = event.side ? duel.ghost.name : (player.nickname || "Sen"); log.push(`${name} · ${event.label || event.type}: ${event.heal ? `+${event.heal} HP` : event.damage || "—"}`); }
+    const outgoing = engine.events.find((e) => e.side === 0 && e.type !== "dotTick");
+    const incoming = engine.events.find((e) => e.side === 1 && e.type !== "dotTick");
+    setDuelVisual((v) => ({ id: v.id + 1, type: outgoing?.type || "attack", skillId: outgoing?.skillId, enemySkillId: incoming?.skillId, enemyType: incoming?.type, outgoing: outgoing ? { ...outgoing, damage: outgoing.heal || outgoing.damage } : null, incoming: incoming ? { ...incoming, damage: incoming.heal || incoming.damage } : null }));
+    if (outgoing?.skillId) playSkill(self.skills.find((s) => s.id === outgoing.skillId), player.class); else if (outgoing?.hit) playHit({ crit: outgoing.crit, cls: player.class }); else playMiss();
+    if (incoming?.damage && !incoming.heal) playHurt();
+    const updated = { ...player, hp: Math.round(self.hp), mp: Math.round(self.mp) };
+    setPlayer(() => updated);
+    setWz((prev) => ({ ...prev, duel: { ...prev.duel, engine, ghostHp: Math.round(enemy.hp), log: log.slice(-24), finished: engine.finished } }));
+    if (engine.finished) {
+      if (engine.winner === 0) {
+        const result = awardNationalPoint(updated);
+        const nextPlayer = { ...result.player, milestones: { ...result.player.milestones, duelsWon: (result.player.milestones?.duelsWon || 0) + 1 } };
+        setPlayer(() => nextPlayer);
+        pushToast(t("warzone.toast.duelWon", { ghost: duel.ghost.name, gain: result.gain }), "loot");
+        const opponentAccountId = opponentAccountRef.current;
+        if (opponentAccountId) warzoneDuelService.reportDuelResult(opponentAccountId, "me").catch(() => {});
+        setTimeout(() => { endDuel(); lockRef.current = false; }, 700);
+      } else if (engine.winner === 1) {
+        setTimeout(() => finishDuelAsLoss(), 500);
+      } else {
+        pushToast(lang === "tr" ? "VS berabere bitti." : "Duel ended in a draw.");
+        const opponentAccountId = opponentAccountRef.current;
+        if (opponentAccountId) warzoneDuelService.reportDuelResult(opponentAccountId, "draw").catch(() => {});
+        setTimeout(() => { endDuel(); lockRef.current = false; }, 700);
+      }
+    } else setTimeout(() => { lockRef.current = false; }, 320);
+  };
+
   // ---- Canavar Ara: riskli farm yolu (bkz. data/warzone.js'in üstündeki
   // not) — Crimson Battlefront'un canavarlarını avlıyor, normal avlanmadan
   // yüksek altın/drop oranıyla (bkz. utils/monsterRewards.js'in opts
@@ -538,7 +577,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // (monster üretimi) bu süre dolunca yukarıdaki useEffect'te (hook sırası
   // bozulmasın diye tüm hook'lar erken return'lerden ÖNCE olmalı) başlıyor.
   const startHunt = () => {
-    if (lockRef.current || wz.duel || wz.hunt || wz.searching || player.hp <= 0) return;
+    if (lockRef.current || wz.hunt || wz.searching || player.hp <= 0) return;
     setWz((prev) => ({ ...prev, searching: { durationMs: rand(5, 15) * 1000 } }));
   };
 
@@ -636,122 +675,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     setTimeout(() => { lockRef.current = false; }, 320);
   };
 
-  // ---- Düello: oyuncu bir hayaleti seçip meydan okuyor ----
-  const startDuel = (ghost) => {
-    if (lockRef.current || wz.duel || player.hp <= 0) return;
-    lockRef.current = true;
-    const { duel, ghostFirstDmg } = initiateDuel(ghost, def, player, t);
-    setWz((prev) => ({
-      ...prev,
-      ghosts: prev.ghosts.map((g) => (g.id === ghost.id ? { ...g, dueling: true } : g)),
-      duel,
-    }));
-    if (ghostFirstDmg > 0) {
-      const wouldDie = player.hp - ghostFirstDmg <= 0;
-      setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - ghostFirstDmg) }));
-      if (wouldDie) { setTimeout(() => finishDuelAsLoss(ghost.id), 500); return; }
-    }
-    setTimeout(() => { lockRef.current = false; }, 320);
-  };
-
-  // ghostDefeated: true  -> hayalet öldü, "gone" işaretlenir ve tick döngüsü
-  // GHOST_REPLACE_TICKS sonra yenisiyle değiştirir. false -> hayalet hayatta
-  // kaldı (kaçış ya da oyuncunun kaybı), hemen idle listeye geri döner.
-  const endDuel = (ghostId, ghostDefeated) => {
-    setWz((prev) => ({
-      ...prev,
-      duel: null,
-      ghosts: prev.ghosts.map((g) => {
-        if (g.id !== ghostId) return g;
-        return ghostDefeated ? { ...g, dueling: false, gone: true, respawnTicks: GHOST_REPLACE_TICKS } : { ...g, dueling: false };
-      }),
-    }));
-  };
-
-  // Premium National Point kaybını azalttığı için (Mythic %10, Apex %5 —
-  // bkz. utils/premium.js#premiumNpLossReduction) toast'ta gösterilecek
-  // gerçek kayıp miktarını burada, sadece görüntü amaçlı, ayrıca hesaplıyoruz.
-  const actualNpLoss = () => Math.round(NP_LOSS_PENALTY * (1 - premiumNpLossReduction(player)));
-
-  // Bir düelloyu kaybetmenin tek yolu — hem sıradan bir turda hem de
-  // yazı-tura ile rakibin ilk vuruşunda öldürülürse aynı sonuç: National
-  // Point kaybı (bkz. utils/nationalPoint.js#penalizeNationalPoint),
-  // "Bayıldın" bildirimi, hayalet hayatta kaldığı için hemen idle listeye
-  // döner (bkz. endDuel'in ghostDefeated:false dalı).
-  const finishDuelAsLoss = (ghostId) => {
-    const loss = actualNpLoss();
-    const fromAmbush = !!wz.duel?.fromAmbush;
-    let goldLoss = 0;
-    // National Point kaybı bu PvP kaybının kendi cezası zaten — burada ayrıca
-    // XP kaybettirmiyoruz (BattleTab/Dünya Canavarı ölümlerinden farklı),
-    // ama hp/mp'yi HER ZAMAN tam dolduruyoruz — eskiden burası da hiç
-    // yapmıyordu, "Bayıldın" sonrası can 0'da kalıp kalıyordu. Kullanıcı
-    // isteği: sadece PUSUDAN (Canavar Ara'yı kesen) kaybedersen altın da
-    // gider — Depo'daki DEĞİL, üstünde taşıdığın player.gold'dan, tavanlı.
-    setPlayer((p) => {
-      goldLoss = fromAmbush ? Math.min(WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP, Math.round(p.gold * WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT)) : 0;
-      return { ...penalizeNationalPoint(p), gold: Math.max(0, p.gold - goldLoss), hp: playerMaxHp(p), mp: playerMaxMp(p) };
-    });
-    pushToast(goldLoss > 0 ? t("warzone.toast.huntAmbushLost", { loss, gold: formatGold(goldLoss) }) : t("warzone.toast.fainted", { loss }), "warn");
-    endDuel(ghostId, false);
-    lockRef.current = false;
-  };
-
-  // Onaylı, garanti çekilme — riskli "Kaç" becerisinden farklı: kaçış şansa
-  // bağlı değil ama düello kayıp sayılır, rakip hükmen galip ilan edilir.
-  const concedeDuel = () => {
-    if (!wz.duel) return;
-    const ghostId = wz.duel.ghost.id;
-    const ghostName = wz.duel.ghost.name;
-    const loss = actualNpLoss();
-    const fromAmbush = !!wz.duel.fromAmbush;
-    let goldLoss = 0;
-    setPlayer((p) => {
-      goldLoss = fromAmbush ? Math.min(WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP, Math.round(p.gold * WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT)) : 0;
-      return { ...penalizeNationalPoint(p), gold: Math.max(0, p.gold - goldLoss) };
-    });
-    pushToast(goldLoss > 0 ? t("warzone.toast.huntAmbushConceded", { ghost: ghostName, loss, gold: formatGold(goldLoss) }) : t("warzone.toast.conceded", { ghost: ghostName, loss }), "warn");
-    endDuel(ghostId, false);
-    lockRef.current = false;
-    setConfirmingRetreat(false);
-  };
-
-  // Kullanıcı isteği: "1v1'ler otomatik savaş olacak. Karşılıklı olarak
-  // otomatik savaşacaklar. Kazanan bu şekilde adil ortaya çıkacak." — artık
-  // düellolarda hiçbir manuel karar (saldırı/beceri/pot seçimi) yok, tek
-  // tur her zaman aynı: önce oyuncu düz vuruyor, hayalet ölmediyse ya
-  // kendini iyileştiriyor ya da karşılık veriyor. Kazananı SADECE
-  // istatistikler + ilk vuruş yazı-turası + crit/ıskalama RNG'si belirliyor
-  // — yukarıdaki auto-battle effect'i bu fonksiyonu periyodik çağırıyor.
-  const runDuelTurn = () => {
-    if (lockRef.current || !wz.duel || wz.duel.finished || player.hp <= 0) return;
-    lockRef.current = true;
-    const duel=wz.duel;
-    const engine=stepDuel(duel.engine||createDuel(player,duel.ghost.avatar||comparablePlayer(player,duel.ghost.cls)));
-    const [self,enemy]=engine.fighters;
-    let log=[...duel.log];
-    for(const event of engine.events){const name=event.side?duel.ghost.name:(player.nickname||'Sen');log.push(`${name} · ${event.label||event.type}: ${event.heal?`+${event.heal} HP`:event.damage||'—'}`);}
-    const outgoing=engine.events.find(e=>e.side===0&&e.type!=='dotTick');
-    const incoming=engine.events.find(e=>e.side===1&&e.type!=='dotTick');
-    setDuelVisual(v=>({id:v.id+1,type:outgoing?.type||'attack',skillId:outgoing?.skillId,enemySkillId:incoming?.skillId,enemyType:incoming?.type,outgoing:outgoing?{...outgoing,damage:outgoing.heal||outgoing.damage}:null,incoming:incoming?{...incoming,damage:incoming.heal||incoming.damage}:null}));
-    if(outgoing?.skillId)playSkill(self.skills.find(s=>s.id===outgoing.skillId),player.class);else if(outgoing?.hit)playHit({crit:outgoing.crit,cls:player.class});else playMiss();
-    if(incoming?.damage&&!incoming.heal)playHurt();
-    const updated={...player,hp:Math.round(self.hp),mp:Math.round(self.mp)};
-    setPlayer(()=>updated);
-    setWz(prev=>({...prev,duel:{...prev.duel,engine,ghostHp:Math.round(enemy.hp),log:log.slice(-24),finished:engine.finished}}));
-    if(engine.finished){
-      if(engine.winner===0){const result=awardNationalPoint(updated);const nextPlayer={...result.player,milestones:{...result.player.milestones,duelsWon:(result.player.milestones?.duelsWon||0)+1}};setPlayer(()=>nextPlayer);pushToast(t('warzone.toast.duelWon',{ghost:duel.ghost.name,gain:result.gain}),'loot');setTimeout(()=>{endDuel(duel.ghost.id,true);lockRef.current=false;},700);}
-      else if(engine.winner===1)setTimeout(()=>finishDuelAsLoss(duel.ghost.id),500);
-      else {pushToast(lang==='tr'?'VS berabere bitti.':'Duel ended in a draw.');setTimeout(()=>{endDuel(duel.ghost.id,false);lockRef.current=false;},700);}
-    }else setTimeout(()=>{lockRef.current=false;},320);
-  };
-
   const playerDead = player.hp <= 0;
   const hpPotionTier = bestAvailablePotionTier(player, "hp");
   const mpPotionTier = bestAvailablePotionTier(player, "mp");
   const hpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "hp" && i.tier === hpPotionTier);
   const mpPotion = player.inventory.find((i) => i.kind === "potion" && i.potionType === "mp" && i.tier === mpPotionTier);
-  const idleGhosts = wz.ghosts.filter((g) => !g.gone && !g.dueling);
 
   const lbEntries = leaderboardFor(lbRace, lbCls, player.weekId, player, lbSort);
 
@@ -772,23 +700,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
             {WARZONE_BOSSES.map((rawBoss) => {
               const boss = effectiveBoss(rawBoss);
               const sched = bossSchedule(boss, now);
-              const state = wz.bosses[boss.id];
+              const state = sharedBosses[boss.id];
               const active = sched.phase === "active" && state && !state.resolved;
               const subtitleKey = sched.phase === "dormant" ? "warzone.bossDormant"
                 : sched.phase === "gone" ? "warzone.bossMissed"
                 : sched.phase === "gathering" ? "warzone.bossGatheringLabel"
                 : sched.phase === "countdown" ? "warzone.bossCountdownLabel"
                 : "warzone.bossDesc";
-              // Kullanıcı isteği: "Kimin ne kadar Damage vurduğu %'lik
-              // olarak isteyen oyuncular tarafından aktif olarak
-              // görülebilecek." — bir toggle'ın arkasında, hasarla orantılı
-              // yüzdelere ayrılmış bir liste (bkz. pickWeightedWinner'ın
-              // aynı toplamı).
-              const totalDmg = active ? state.damageByPlayer + Object.values(state.damageByGhost).reduce((a, b) => a + b, 0) : 0;
-              const dmgRows = active
-                ? [{ key: "player", name: t("warzone.youLabel"), dmg: state.damageByPlayer }, ...Object.entries(state.damageByGhost).map(([gid, dmg]) => ({ key: gid, name: wz.ghosts.find((g) => g.id === gid)?.name || t("warzone.bossDeathLabelGhost"), dmg }))]
-                    .filter((r) => r.dmg > 0).sort((a, b) => b.dmg - a.dmg)
-                : [];
               return (
                 <div className="warzone-boss-card" key={boss.id} style={{ ...styles.combatant, borderColor: `${boss.color}55`, opacity: sched.phase === "dormant" ? 0.6 : 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -806,14 +724,6 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
                       <div style={{ fontSize: 9, color: boss.color, textAlign: "center", fontFamily: "var(--font-mono)" }}>
                         {t("warzone.bossStartsIn", { time: fmtMmSs(sched.msUntilSpawn) })}
                       </div>
-                      <div style={{ fontSize: 9, color: "var(--text-faint)", display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
-                        <Users size={11} /> {t("warzone.bossRoomJoined")}
-                      </div>
-                      <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" }}>
-                        {idleGhosts.map((g) => (
-                          <span key={g.id} style={{ fontSize: 9, padding: "2px 6px", borderRadius: 6, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }}>{g.name}</span>
-                        ))}
-                      </div>
                     </div>
                   )}
 
@@ -825,15 +735,16 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
                   {active && (
                     <>
-                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
-                        <span>{t("warzone.yourDamage", { dmg: state.damageByPlayer })}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
+                        <span>{t("warzone.totalDamage", { dmg: state.totalDamage })}</span>
+                        <span>{t("warzone.yourDamage", { dmg: state.myDamage })}</span>
                       </div>
                       {hasBattleScene(boss) ? (
                         <div className="battle-mobile">
                           <BattleScene
                             player={player}
-                            monster={{ ...boss, hp: state.hp, maxHp: boss.hp, isBoss: true }}
-                            battle={{ monsterHp: state.hp, monsterMaxHp: boss.hp, log: [], finished: false }}
+                            monster={{ ...boss, hp: state.hp, maxHp: state.maxHp, isBoss: true }}
+                            battle={{ monsterHp: state.hp, monsterMaxHp: state.maxHp, log: [], finished: false }}
                             map={{ name: t("warzone.title") }}
                             visual={bossVisuals[boss.id] || { id: 0, type: "", label: "" }}
                             enemyScale={BOSS_VISUAL_SCALE}
@@ -842,9 +753,9 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
                       ) : (
                         <>
                           <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
-                            <span>{state.hp}/{boss.hp}</span>
+                            <span>{state.hp}/{state.maxHp}</span>
                           </div>
-                          <BarTrack pct={(state.hp / boss.hp) * 100} color={boss.color} />
+                          <BarTrack pct={(state.hp / state.maxHp) * 100} color={boss.color} />
                           <div style={styles.vsRow}><Swords size={14} color="var(--text-faint)" /></div>
                           <div style={{ ...styles.combatant, borderColor: `${cls.color}55` }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -862,24 +773,6 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
                       <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 6, background: boss.color, opacity: playerDead ? 0.5 : 1 }} onClick={() => attackBoss(boss.id)} disabled={playerDead}>
                         <Swords size={14} /> {t("warzone.attack")}
                       </button>
-
-                      <button
-                        style={{ ...styles.ghostBtn, marginTop: 2 }}
-                        onClick={() => setExpandedBossId((id) => (id === boss.id ? null : boss.id))}
-                      >
-                        <Percent size={11} /> {t("warzone.damageToggle")}
-                      </button>
-                      {expandedBossId === boss.id && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 4 }}>
-                          {dmgRows.map((r) => (
-                            <div key={r.key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ fontSize: 9, color: "var(--text-muted)", width: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-                              <div style={{ flex: 1 }}><BarTrack pct={totalDmg > 0 ? (r.dmg / totalDmg) * 100 : 0} color={boss.color} thin /></div>
-                              <span style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)", width: 30, textAlign: "right" }}>{totalDmg > 0 ? Math.round((r.dmg / totalDmg) * 100) : 0}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </>
                   )}
                 </div>
@@ -888,32 +781,20 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
           </div>
 
           <SectionLabel>{t("warzone.opponentsHeader")}</SectionLabel>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {idleGhosts.map((g) => {
-              const GIcon = CLASSES[g.cls].icon;
-              return (
-                <div key={g.id} className="rpg-row warzone-opponent" style={styles.itemRow}>
-                  <div style={{ ...styles.monsterIcon, width: 30, height: 30, background: `${RACES[g.race].color}22`, color: RACES[g.race].color }}>
-                    <GIcon size={14} strokeWidth={1.6} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12 }}>{g.name}</div>
-                    <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{t(`races.${g.race}.name`)} · {CLASSES[g.cls].name}</div>
-                  </div>
-                  <button style={{ ...styles.tinyBtn, background: "#C9425A" }} onClick={() => startDuel(g)} disabled={playerDead}>
-                    {t("warzone.challenge")}
-                  </button>
-                </div>
-              );
-            })}
-            {idleGhosts.length === 0 && <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", padding: 10 }}>{t("warzone.noOpponents")}</div>}
-          </div>
+          <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 8px" }}>{t("warzone.opponentsIntro")}</p>
+          <button
+            style={{ ...styles.primaryBtn, width: "100%", background: "#C9425A", opacity: playerDead || findingOpponent ? 0.5 : 1 }}
+            disabled={playerDead || findingOpponent}
+            onClick={findOpponent}
+          >
+            <Users size={14} /> {findingOpponent ? t("warzone.findingOpponent") : t("warzone.findOpponentBtn")}
+          </button>
         </>
       )}
 
       {subtab === "alan" && wz.duel && (
         <div className="battle-mobile" style={{ ...styles.battleArena, marginTop: 12 }}>
-          <DuelScene player={player} ghost={wz.duel.ghost} duel={wz.duel} visual={duelVisual} shake={duelShake} />
+          <DuelScene player={player} ghost={wz.duel.ghost} duel={wz.duel} visual={duelVisual} shake={null} />
 
           <div ref={logRef} style={styles.combatLog}>
             {wz.duel.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}

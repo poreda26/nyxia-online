@@ -8,8 +8,8 @@ export const WARZONE_UNLOCK_LEVEL = 50;
 // "entered" onay ekranı) alınan tek seferlik ışınlanma ücreti.
 export const WARZONE_TELEPORT_COST = 50;
 
-// Gerçek-zamanlı tick aralığı — hayaletlerin boss'a vurması / pusu ihtimali
-// bu ritimde değerlendirilir (bkz. utils/warzoneCombat.js).
+// Gerçek-zamanlı tick aralığı — boss faz geçişleri (bkz.
+// utils/warzoneBoss.js#bossSchedule) bu ritimde kontrol edilir.
 export const WARZONE_TICK_MS = 3000;
 
 // Kullanıcı isteği: "Alan kısmındaki canavarlar sadece bosslar olacak,
@@ -34,24 +34,9 @@ export const WARZONE_BOSS_FIGHT_WINDOW_MIN = 3; // aktifken saldırı süresi (d
 export const WARZONE_BOSS_GATHER_SECONDS = 20;
 export const WARZONE_BOSS_COUNTDOWN_SECONDS = 3;
 
-// Alanda aynı anda kaç hayalet rakip bulunsun, biri düellodan çıkınca (ölüm
-// ya da kaçış) kaç saniye sonra yenisiyle değişsin.
-export const GHOST_POPULATION = 3;
-export const GHOST_REPLACE_SECONDS = 20;
-
-// Kullanıcı isteği: "Düello ararsa" (kendi seçtiği hayalete meydan okumak)
-// güvenli NP yolu kalsın — Pusu artık SADECE "Canavar Ara" ile aktif
-// avlanırken (bkz. WarzoneTab.jsx'in `hunt` durumu) tetiklenebiliyor,
-// oyuncu boşta gezip rakip seçerken değil. Bu, "hangi rakibe gireceğimi
-// seçip riskten kaçarım" sorununu ortadan kaldırıyor — asıl kazanç (ve
-// asıl risk) avlanmaktan geliyor, seçici düello'dan değil.
-export const AMBUSH_CHANCE_PER_TICK = 0.10;
-
 // Canavar Ara — riskli farm yolu. Crimson Battlefront'un canavar havuzunu
 // kullanıyor (bkz. WarzoneTab.jsx#huntAction, utils/monsterRewards.js'in
-// opts parametresi), normal avlanmadan yüksek altın/drop oranıyla. Pusuya
-// düşüp kaybedersen National Point'e ek olarak ÜSTÜNDEKİ (Depo'daki DEĞİL,
-// player.gold) altının bir kısmını kaybedersin — bu yüzden risk gerçek.
+// opts parametresi), normal avlanmadan yüksek altın/drop oranıyla.
 // Güç/oranlar kullanıcı isteğiyle ince ayar yapılıyor, tek yerden.
 //
 // WARZONE_HUNT_POWER_MULT SADECE canavarın hp/atk/def'ine uygulanıyor
@@ -63,8 +48,6 @@ export const AMBUSH_CHANCE_PER_TICK = 0.10;
 export const WARZONE_HUNT_POWER_MULT = 1.5;
 export const WARZONE_HUNT_GOLD_MULT = 1.5;
 export const WARZONE_HUNT_DROP_MULT = 1.3;
-export const WARZONE_HUNT_AMBUSH_GOLD_LOSS_PCT = 0.08;
-export const WARZONE_HUNT_AMBUSH_GOLD_LOSS_CAP = 500;
 
 // Normal canavarlara göre ~3 kat drop/sandık/parşömen şansı, artı garanti
 // bonus altın — "güçlü ama drop şansı yüksek" isteğini karşılıyor.

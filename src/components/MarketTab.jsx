@@ -1,6 +1,6 @@
 import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useCallback } from "react";
-import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, ShoppingBag, AlertTriangle, ChevronDown, ChevronUp, Package2 } from "lucide-react";
+import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, AlertTriangle, ChevronDown, ChevronUp, ShoppingBag, Package2 } from "lucide-react";
 import { itemTierColor, tierName } from "../data/itemRarity";
 import { displayItemName, formatGold } from "../utils/player";
 import { itemStatLabel } from "../utils/itemDisplay";
@@ -34,18 +34,17 @@ function PotionQtyStepper({ qty, onChange }) {
   );
 }
 
-export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, pushToast, onOpenDiamondShop }) {
+export default function MarketTab({ player, setPlayer, bank, setBank, pushToast, onOpenDiamondShop }) {
   const { t, lang } = useTranslation();
   const DURATION_LABEL = t("market.durationLabels");
   const [subtab, setSubtab] = useState("market");
   // Kullanıcı isteği: "Pazarımız bir depo gibi açılacak. Maksimum 10 adet
   // eşya konulabilen bir satış yeri." — myStall tek bir tezgah objesi (ya da
-  // hiç açık değilse null), npcStalls sahte satıcıların isim bazlı
-  // gruplanmış eşya listesi (bkz. marketService.fetchMarket).
+  // hiç açık değilse null).
   const [myStall, setMyStall] = useState(null);
-  const [npcListings, setNpcListings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [otherStalls, setOtherStalls] = useState([]);
   const [expandedSeller, setExpandedSeller] = useState(null);
+  const [loading, setLoading] = useState(true);
   // Tezgahı açarken seçilen süre — kullanıcı isteği: "1 Saatlik 25 gold dan
   // başlayacak şekilde... 24 saatlik 250 gold olacak şekilde aşamalı fiyatı
   // yükselecek."
@@ -60,10 +59,9 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   // Kullanıcı isteği: "Pazardaki eşyaların üstüne bir kere tıklandığı zaman
   // eşyanın özelliğini gösteren bir widget açılsın." — InventoryTab'daki
   // aynı itemSheetOverlay/ItemTooltip düzeni burada da kullanılıyor.
-  // `source: "mine" | "npc"` hangi eylem düğmelerinin göründüğünü belirler.
   const [inspectEntry, setInspectEntry] = useState(null);
   // Kullanıcı isteği: "Pazardan eşya alıyorken Almak istediğine emin misin
-  // tarzında bir cümle ile onay istensin." — sadece NPC eşyaları için.
+  // tarzında bir cümle ile onay istensin."
   const [buyConfirm, setBuyConfirm] = useState(null);
   // Pot alım adedi — kullanıcı isteği: "+/- ikonları olsun sayıyı arttırıp
   // kaç tane almak istersek ayarlayabilelim... sayıyı elle yazabilsin."
@@ -72,28 +70,24 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   const qtyFor = (key) => potionQty[key] ?? 1;
   const setQty = (key, value) => setPotionQty((q) => ({ ...q, [key]: Math.max(1, Math.min(999, value)) }));
 
-  // fetchMarket/resolveMyStall are async (Promise-returning) even though
-  // the "server" is local for now — see services/marketService.js.
-  //
-  // Kullanıcı isteği: "Pazarlar altın ile kurulsun" + hesap artık birden
-  // fazla karakter arasında paylaşılan bir Depo Altını'na sahip (bkz.
-  // InventoryTab) — tezgahtan bir eşya satıldığında kazanılan altın, o an
-  // hangi karakter oynanıyorsa ona değil, ortak depo altınına ekleniyor.
+  // Faz 3 — Pazar artık gerçek backend'e bağlı (bkz. services/marketService.js).
+  // Diğer oyuncuların tezgahları GERÇEK; satın alma sunucuda atomik.
   const refreshMarket = useCallback(async () => {
     setLoading(true);
-    const sold = await marketService.resolveMyStall(username);
-    if (sold.length > 0) {
-      setBankGold((g) => g + sold.reduce((sum, entry) => sum + entry.price, 0));
-      sold.forEach((entry) => pushToast(t("market.soldFromStall", { item: displayItemName(entry.item, lang), gold: formatGold(entry.price) }), "loot"));
-    }
-    const fresh = await marketService.fetchMarket(username);
-    setMyStall(fresh.myStall);
-    setNpcListings(fresh.npcListings);
+    try {
+      const fresh = await marketService.fetchMarket();
+      setMyStall(fresh.myStall);
+      setOtherStalls(fresh.otherStalls);
+    } catch { /* ağ/oturum sorunu — bir sonraki refreshMarket'te tekrar dener */ }
     setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username]);
+  }, []);
 
   useEffect(() => { refreshMarket(); }, [refreshMarket]);
+  // Diğer oyuncuların yeni tezgah/eşyalarını görmek için periyodik yenileme.
+  useEffect(() => {
+    const id = setInterval(refreshMarket, 8000);
+    return () => clearInterval(id);
+  }, [refreshMarket]);
 
   const buyPotion = (potionType, tier, qty) => {
     const amount = Math.max(1, qty || 1);
@@ -110,7 +104,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   const openStall = async (durationHours) => {
     const fee = marketService.MARKET_DURATION_FEE[durationHours];
     if (player.gold < fee) { pushToast(t("market.notEnoughForStallFee", { fee }), "warn"); return; }
-    const result = await marketService.openStall(username, player.nickname, durationHours);
+    const result = await marketService.openStall(player.nickname, durationHours);
     if (!result.ok) { pushToast(formatReason(t, result, "market.stallOpenFailed"), "warn"); refreshMarket(); return; }
     setPlayer((p) => ({ ...p, gold: p.gold - fee }));
     setMyStall(result.stall);
@@ -137,7 +131,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
     const price = parseInt(priceInput, 10);
     if (!pickedItem) return;
     if (!Number.isFinite(price) || price <= 0) { pushToast(t("market.enterValidPrice"), "warn"); return; }
-    const result = await marketService.addItemToStall(username, pickedItem, price);
+    const result = await marketService.addItemToStall(pickedItem, price);
     if (!result.ok) { pushToast(formatReason(t, result, "market.addFailed"), "warn"); refreshMarket(); return; }
     if (pickerMode === "chest") {
       setPlayer((p) => ({ ...p, chests: p.chests.filter((c) => c.id !== pickedItem.id) }));
@@ -185,9 +179,9 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   // penceresinde gösteriliyor, bu fonksiyon sadece onaylandıktan sonra çalışır.
   const confirmCloseStall = async () => {
     setCloseConfirm(false);
-    const result = await marketService.closeStall(username);
-    if (!result) { pushToast(t("market.stallAlreadyClosed"), "warn"); refreshMarket(); return; }
-    const { placedChests, placedItems, lost } = distributeReclaimedItems(result.items.map((entry) => ({ ...entry })));
+    if (!myStall || myStall.items.length === 0) { setMyStall(null); return; }
+    const removed = await marketService.removeStallItems(myStall.items.map((entry) => entry.id));
+    const { placedChests, placedItems, lost } = distributeReclaimedItems(removed);
     setMyStall(null);
     if (lost > 0) pushToast(t("market.stallClosedSomeLost", { count: lost }), "warn");
     else pushToast(t("market.stallClosedReturned", { count: placedItems + placedChests }), "default");
@@ -196,52 +190,41 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
   // Kullanıcı isteği (bir önceki turdan, aynı ilke): "Deaktif olan
   // pazardaki eşyaları satıcı kendisi alacak... envanterinde ya da
   // deposunda yer yoksa bir bug problem yaşanmayacak." — otomatik iade yok,
-  // burada elle tetikleniyor; sığmayanlar tezgahta kalır, hiçbiri kaybolmaz.
+  // burada elle tetikleniyor; sığmayanlar tezgahta kalır (sadece BAŞARIYLA
+  // yerleştirilen id'ler sunucudan siliniyor), hiçbiri kaybolmaz.
   const reclaimStall = async () => {
-    const result = await marketService.reclaimStall(username);
-    if (!result) { pushToast(t("market.nothingToReclaim"), "warn"); refreshMarket(); return; }
-    const { placedIds, placedChests, placedItems, lost } = distributeReclaimedItems(result.items);
-    await marketService.removeReclaimedItems(username, placedIds);
-    const fresh = await marketService.fetchMarket(username);
+    if (!myStall || myStall.items.length === 0) { pushToast(t("market.nothingToReclaim"), "warn"); refreshMarket(); return; }
+    const { placedIds, placedChests, placedItems, lost } = distributeReclaimedItems(myStall.items);
+    await marketService.removeStallItems(placedIds);
+    const fresh = await marketService.fetchMarket();
     setMyStall(fresh.myStall);
     if (lost > 0) pushToast(t("market.reclaimedSomeLost", { count: placedItems + placedChests, lost }), "warn");
     else pushToast(t("market.reclaimedAll", { count: placedItems + placedChests }), "default");
   };
 
-  // ---- NPC tezgahları (Diğer Pazarlar) ----
+  // ---- Diğer Pazarlar (Faz 3 — gerçek oyuncular) ----
 
-  const requestBuy = (listing) => {
+  const requestBuy = (sellerId, listing) => {
     if (player.gold < listing.price) { pushToast(t("market.notEnoughGold"), "warn"); return; }
-    setBuyConfirm(listing);
+    setBuyConfirm({ sellerId, ...listing });
   };
 
   const confirmBuy = async () => {
     const listing = buyConfirm;
     setBuyConfirm(null);
     if (!listing) return;
-    const result = await marketService.buyListing(listing.id);
+    const result = await marketService.buyListing(listing.sellerId, listing.id);
     if (!result.ok) { pushToast(formatReason(t, result, "market.purchaseFailed"), "warn"); refreshMarket(); return; }
-    if (result.listing.item.kind === "chest") {
-      setPlayer((p) => ({ ...p, gold: p.gold - listing.price, chests: [...p.chests, { id: result.listing.item.id, tier: result.listing.item.tier, special: result.listing.item.special }] }));
+    if (result.item.kind === "chest") {
+      setPlayer((p) => ({ ...p, gold: p.gold - result.price, chests: [...p.chests, { id: result.item.id, tier: result.item.tier, special: result.item.special }] }));
     } else {
-      const addResult = addItemToInventory({ ...player, gold: player.gold - listing.price }, result.listing.item);
+      const addResult = addItemToInventory({ ...player, gold: player.gold - result.price }, result.item);
       if (!addResult.added) { pushToast(t("market.boughtButBagFull", { reason: formatReason(t, addResult) }), "warn"); }
       setPlayer(addResult.player);
     }
-    setNpcListings((ls) => ls.filter((l) => l.id !== listing.id));
-    pushToast(t("market.itemPurchased", { item: displayItemName(result.listing.item, lang) }), "loot");
+    pushToast(t("market.itemPurchased", { item: displayItemName(result.item, lang) }), "loot");
+    refreshMarket();
   };
-
-  // Kullanıcı isteği: "İtemler tek tek listelenmeyecek." — NPC eşyaları
-  // isim bazlı gruplanıp "X'in Pazarı (N eşya)" şeklinde tek satır olarak
-  // gösteriliyor, tıklanınca içindekiler açılıyor.
-  const npcStalls = [];
-  const seenSellers = new Set();
-  npcListings.forEach((l) => {
-    if (seenSellers.has(l.sellerName)) return;
-    seenSellers.add(l.sellerName);
-    npcStalls.push({ sellerName: l.sellerName, items: npcListings.filter((x) => x.sellerName === l.sellerName) });
-  });
 
   const stallFee = marketService.MARKET_DURATION_FEE[openDuration];
 
@@ -444,17 +427,17 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
           )}
 
           <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 14, marginBottom: 6, letterSpacing: 1, textTransform: "uppercase" }}>{t("market.otherStallsHeader")}</div>
-          {!loading && npcStalls.length === 0 ? (
+          {!loading && otherStalls.length === 0 ? (
             <EmptyState icon={Store} title={t("market.marketQuietTitle")} subtitle={t("market.marketQuietSubtitle")} />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {npcStalls.map((stall) => {
-                const expanded = expandedSeller === stall.sellerName;
+              {otherStalls.map((stall) => {
+                const expanded = expandedSeller === stall.sellerId;
                 return (
-                  <div key={stall.sellerName} className="rpg-card" style={{ ...styles.itemDetailCard, padding: 0, overflow: "hidden" }}>
+                  <div key={stall.sellerId} className="rpg-card" style={{ ...styles.itemDetailCard, padding: 0, overflow: "hidden" }}>
                     <button
                       style={{ width: "100%", background: "none", border: "none", padding: 12, display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--text-primary)" }}
-                      onClick={() => setExpandedSeller(expanded ? null : stall.sellerName)}
+                      onClick={() => setExpandedSeller(expanded ? null : stall.sellerId)}
                     >
                       <MenuEmblem name="market" size={32}/>
                       <span style={{ flex: 1, fontSize: 13, textAlign: "left" }}>
@@ -467,15 +450,15 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
                       <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 10px 10px" }}>
                         {stall.items.map((l) => (
                           <div key={l.id} className="rpg-row" style={{ ...styles.itemRow, borderColor: `${itemTierColor(l.item.tier)}44`, flexWrap: "wrap" }}>
-                            <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex" }} onClick={() => setInspectEntry({ ...l, source: "npc" })}>
+                            <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex" }} onClick={() => setInspectEntry({ ...l, sellerId: stall.sellerId, source: "other" })}>
                               <ItemIcon item={l.item} size={18} color={itemTierColor(l.item.tier)} strokeWidth={1.6} />
                             </button>
-                            <div style={{ flex: 1, minWidth: 110, cursor: "pointer" }} onClick={() => setInspectEntry({ ...l, source: "npc" })}>
+                            <div style={{ flex: 1, minWidth: 110, cursor: "pointer" }} onClick={() => setInspectEntry({ ...l, sellerId: stall.sellerId, source: "other" })}>
                               <div style={{ fontSize: 13 }}>{displayItemName(l.item, lang)}</div>
                               <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{tierName(lang, l.item.tier)} · {itemStatLabel(l.item)}</div>
                             </div>
                             <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--gold-text)", marginRight: 8 }}>{formatGold(l.price)}g</div>
-                            <button className="rpg-action" style={styles.tinyBtn} onClick={() => requestBuy(l)}>{t("market.buyShort")}</button>
+                            <button className="rpg-action" style={styles.tinyBtn} onClick={() => requestBuy(stall.sellerId, l)}>{t("market.buyShort")}</button>
                           </div>
                         ))}
                       </div>
@@ -499,8 +482,8 @@ export default function MarketTab({ player, setPlayer, bank, setBank, bankGold, 
             <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--gold-text)" }}>{formatGold(inspectEntry.price)}g</div>
               <div style={{ flex: 1 }} />
-              {inspectEntry.source === "npc" && (
-                <button className="rpg-action" style={styles.tinyBtn} onClick={() => { setInspectEntry(null); requestBuy(inspectEntry); }}>
+              {inspectEntry.source === "other" && (
+                <button className="rpg-action" style={styles.tinyBtn} onClick={() => { setInspectEntry(null); requestBuy(inspectEntry.sellerId, inspectEntry); }}>
                   {t("market.buyShort")}
                 </button>
               )}

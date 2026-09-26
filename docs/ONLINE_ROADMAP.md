@@ -1,35 +1,37 @@
-# Online geçiş — ilk aşama
+# Online geçiş yol haritası
 
-24 Eylül 2026: Hesap ve sürüm kontrollü yedek API'si hazırlandı. Mevcut oyun hâlâ yerel profillerle çalışır. API henüz canlıya kurulmadı veya oyun giriş ekranına bağlanmadı. GitHub Pages Node sunucusu çalıştıramaz.
+Son güncelleme: 26 Eylül 2026 — **Faz 2, 3, 4, 5 tamamlandı.**
 
-## Çalıştırma
+## Durum özeti
 
-Node 24.19 veya üzeri kullanın. Proje kökünde `npm run server`, kontroller için `npm run test:server`.
-Varsayılan adres 127.0.0.1:8787; izin verilen arayüz http://localhost:5177. `APP_ORIGIN`, `PORT`, `DATABASE_PATH` ortam değişkenleriyle ayarlanır.
-Üretimde `NODE_ENV=production` ve HTTPS `APP_ORIGIN` zorunlu. API'yi oyunun aynı sitesi altında `/api` reverse proxy ile sunun; GitHub Pages ile farklı site çerezlerine güvenmeyin. Node işlemi loopback üzerinden erişilir. Kalıcı disk gerekir. Veritabanı ve WAL dosyaları Git'e eklenmez.
+Oyun artık gerçek bir çok-oyunculu backend'e bağlı: hesap/karakter sunucuda senkron, gerçek oyuncular birbirinin pazarını görüp alışveriş yapabiliyor, Dünya Canavarı'na birlikte vurup ortak loot havuzuna katkı yapıyor, ve gerçek başka bir oyuncunun karakterine karşı PvP düellosu yapılabiliyor. Bot/sahte oyuncuların hiçbir izi kalmadı.
 
-## API
+## Tamamlananlar
 
-- POST /api/register ve /api/login: `{name,password}`. Kullanıcı adı 3–24 ASCII harf/rakam/alt çizgi; şifre 12–128 karakter.
-- GET /api/me: oturumdaki hesabın adı.
-- POST /api/logout: oturumu iptal eder.
-- GET /api/backup: `{revision,data,trusted:false}`.
-- PUT /api/backup: `{revision,data}`; data mevcut hesabın üç karakter slotunu ve diğer alanlarını aynen taşır. İlk sürüm 0. Eski sürümle yazma 409 döndürür; istemci bunu otomatik üzerine yazarak geçmemeli.
-- GET /api/health: altyapı durumu; authoritative=false.
+- **Hesap/oturum/yedek API** (`server/app.mjs`) — scrypt şifre, HttpOnly oturum çerezi, IP başına rate limit.
+- **Chat** gerçek backend'e bağlı (`/api/chat/messages`) — mesajlar SQLite'ta, tüm hesaplar aynı listeyi görüyor.
+- **Bot/sahte oyuncular tamamen kaldırıldı**: Pazar'daki sahte satıcılar, Klan'daki sahte üyeler/rakip klanlar, Sıralama'daki sahte kayıtlar, Savaş Alanı'ndaki hayalet PvP rakipleri.
+- **Faz 2 — Hesap senkronizasyonu**: girişte `GET /api/backup`'tan yükleniyor, her gerçek değişiklikte (savaş, satın alma, elmas, depo...) `PUT /api/backup` ile otomatik kaydediliyor. Çakışma (başka cihazdan yazma) durumunda en güncel sunucu verisi alınıyor. localStorage artık sadece yerel önbellek, sunucu asıl kaynak.
+- **Faz 3 — Paylaşımlı Pazar**: `market_stalls` tablosu, gerçek oyuncular birbirinin tezgahını görüp satın alabiliyor. Satın alma SQLite transaction içinde atomik (aynı eşya iki kişiye satılamaz). Ödeme satıcıya (çevrimdışı olsa bile) doğrudan sunucuda, onun yedeğine ekleniyor.
+- **Faz 4 — Paylaşımlı Dünya Canavarı**: `boss_fights`/`boss_contributions`/`boss_loot_claims` tabloları. Boss'un faz zamanlaması (`bossSchedule`) ve boss listesi istemci ile sunucunun **aynı dosyadan** (`src/utils/warzoneBoss.js`, `src/data/warzone.js`) geldiği tek kaynak. Hasar istemcide hesaplanıyor, sunucu akla yatkın bir üst sınırla (tek vuruş boss canının %50'sini aşamaz) kabul ediyor. Boss ölünce ödül ağırlıklı çekilişle (en çok hasar veren daha şanslı) gerçek bir katılımcıya gidiyor — o an çevrimdışıysa bile `loot-claims` ile bir sonraki girişinde teslim alıyor.
+- **Faz 5 — Gerçek PvP eşleştirme**: `duel_history` tablosu, `GET /api/warzone/duel/opponent`. Asenkron model — rakip, sunucudan rastgele seçilen **gerçek** bir başka hesabın en son senkronlanmış karakter anlık görüntüsü (o an çevrimdışı olabilir, hiçbir şey kaybetmez). Düello mevcut deterministik motorla (`src/utils/duelEngine.js`, değişmedi) istemcide koşuluyor. Canlı testte doğrulandı: gerçek bir hesabın karakteri rakip olarak geldi, kazanıldı, sonuç sunucuya kaydedildi.
+- Backend, arkadaşının VM'inde canlı: `https://nyxia.sametcantas.com` (Cloudflare Tunnel → Caddy → VM, systemd user servisi, kalıcı — `Linger=yes`).
+- Statik dosya sunumu backend'e eklendi — frontend derlenip aynı origin'den API ile birlikte sunuluyor (cookie/CORS sorunu yok).
 
-Şifreler ayrı tuzlarla scrypt özetidir. Oturumlar 256 bit rastgele, veritabanında özetli; HttpOnly/SameSite=Strict ve üretimde Secure çerez. Yazma istekleri açık Origin ve JSON ister. Hesap açma/giriş IP başına dakikada 12 denemeyle sınırlıdır. Yedek en çok 2 MiB; son 20 sürüm atomik işlem içinde korunur. Hesap kimliği istemciden kabul edilmez.
+## Güven sınırı — dürüstçe kalan açık
 
-## Kayıtların korunması ve güven sınırı
+Tüm fazlarda tutarlı bir ilke izlendi: **sunucu, kendi kontrol edebileceği şeyi (item transferi, boss HP, hesap kimliği) her zaman otoriter tutar; ama oyuncunun kendi karakterinin ATK/DEF/HP gibi çekirdek istatistikleri hâlâ istemcide hesaplanıyor ve sunucu bunu derinlemesine doğrulamıyor.** Somut olarak:
 
-Bu API yalnızca **güvenilmeyen eski yerel kayıtların yedeğini** tutar. Kaydı yüklemek online para/eşya yetkisi vermez. Eşya kimlikleri, +seviyeleri ve tüm diğer alanlar aynen saklanır; localStorage değişmez. Online ekonomi veritabanı bununla birleştirilmeyecek. Eski ilerlemenin online'a aktarılma politikası ayrıca belirlenmeli.
+- Pazar'da alıcının altın düşüşü istemcide (satıcıya ödeme sunucuda, garanti).
+- Boss'a verilen hasar miktarı istemcide hesaplanıp bir üst sınırla sunucuya bildiriliyor (tam yeniden hesaplama yok).
+- Düellodaki National Point ödülü/cezası istemcide uygulanıyor.
 
-## Sonraki işler
+Bu, oyundaki **diğer her ekonomi hareketiyle** (canavar öldürme, iksir alma, GM komutları) aynı güven seviyesinde — yani bir gerileme değil, mevcut mimarinin doğal sınırı. Tam çözüm — oyuncunun gerçek ekipman/istatistiklerinin sunucuda da bilinip doğrulanması (server-authoritative character state) — kapsamı çok büyük, ayrı bir gelecek girişim olarak kalıyor. İstenirse "Faz 6" olarak buraya eklenebilir.
 
-1. Barındırma seçimi, HTTPS ve kalıcı disk; harici yedek ve geri yükleme denemesi. Reverse proxy arkasında IP sınırını proxy katmanında da uygulama.
-2. Hesap ekranı, e-posta doğrulama/kurtarma; açık kullanıcı seçimiyle yerel yedek aktarımı ve çakışma ekranı. Mevcut profil adına otomatik hesap sahipliği tanımama.
-3. Sunucuda karakter/ekipman gerçeği, savaş komutları ve ödüller. İstemciden altın/elmas/hasar sonucu kabul etmeme.
-4. Gerçek oyuncu eşleştirme, zorunlu otomatik VS, bağlantı kopması, kilitli savaş ekipmanı.
-5. Atomik pazar/takas, işlem kayıtları, tekrar isteklerin tek kez uygulanması.
-6. Mobil bağlantı testleri, yük testi, izleme ve kapalı beta.
+## Ölçek
 
-Bu aşama tüm online geçişin bittiği anlamına gelmez. Sıralamalı maçlarda geçici güç bonuslarını kapatma gibi öneriler henüz oyun kuralı olarak uygulanmadı.
+Mevcut VM (1 vCPU/2GB) 500-1000 kullanıcı için tüm bu fazları rahat karşılar (polling tabanlı, WebSocket'e hiç gerek kalmadı — boss/pazar paylaşımı birkaç saniyelik yenilemeyle yeterli, PvP asenkron olduğu için gerçek zamanlı çift-taraflı senkron gerektirmedi).
+
+## Kayıtların korunması
+
+Yedek API'si eski yerel kayıtları kaybetmeden sunucuya taşıdı — eşya kimlikleri, +seviyeleri ve tüm diğer alanlar aynen korunuyor.

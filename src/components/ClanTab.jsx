@@ -7,19 +7,20 @@ import { RACES } from "../data/races";
 import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS } from "../data/clan";
 import { CLAN_BOSS_STAGES, CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from "../data/clanBoss";
 import {
-  foundClan, generateDecoyClans, joinClan, leaveClan, promoteMember, demoteMember,
+  foundClan, leaveClan, promoteMember, demoteMember,
   onlineCountFor, clanExpBonus, canStartDungeon, startDungeon,
   donateNP, donateGold, donateDiamonds, canUpgradeClanBuilding, upgradeClanBuilding,
   clanLeaderboardFor,
 } from "../utils/clan";
 import {
   unlockedBossStages, openClanBoss, bossTimeLeftMs, bossCurrentHp, bossMaxHp,
-  simulatedAttackerCount, canPlayerAttackBoss, attackClanBoss, isClanBossActive,
+  canPlayerAttackBoss, attackClanBoss, isClanBossActive,
 } from "../utils/clanBoss";
 import { newlyUnlocked } from "../utils/achievements";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import BarTrack from "./shared/BarTrack";
+import EmptyState from "./shared/EmptyState";
 import { useTranslation, formatReason } from "../i18n/LanguageContext";
 
 const fmt = (n) => Math.round(n).toLocaleString("tr-TR");
@@ -28,10 +29,11 @@ const fmtClock = (ms) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
-// Klan tamamen simüle (bkz. utils/clan.js) — gerçek sunucu gelene kadar hem
-// kurulan hem katılınan klanlar hayalet üyelerle dolduruluyor. Bu bileşen
-// sadece görüntüleme/yönetim katmanı; gerçek "sunucu" geldiğinde
-// foundClan/joinClan/generateDecoyClans'ın içi değişecek, arayüz aynı kalır.
+// Kullanıcı isteği: "Artık bot oyuncular klanlar pazarlar yok" — sahte
+// (hayalet) klan üyeleri ve katılınabilecek sahte klanlar kaldırıldı. Bir
+// klan artık sadece gerçek oyunculardan oluşuyor; gerçek başka bir klana
+// katılmak, paylaşımlı bir backend gelene kadar mümkün değil (bkz.
+// aşağıdaki "Mevcut Klanlar" boş durumu).
 export default function ClanTab({ player, setPlayer, pushToast }) {
   const { t } = useTranslation();
   const roleLabel = (role) => t(`clan.role.${role}`);
@@ -62,13 +64,6 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     newlyUnlocked(player, result.player).forEach((a) => pushToast(t("clan.toastAchievement", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
     setFounding(false);
     setNameInput("");
-  };
-
-  const handleJoin = (decoyClan) => {
-    const result = joinClan(player, decoyClan);
-    if (!result.joined) { pushToast(formatReason(t, result), "warn"); return; }
-    setPlayer(result.player);
-    pushToast(t("clan.toastJoined", { name: decoyClan.name }), "loot");
   };
 
   const handleLeave = () => {
@@ -166,7 +161,6 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   );
 
   if (!player.clan) {
-    const decoyClans = generateDecoyClans(player);
     return (
       <div style={styles.panelScroll}>
 
@@ -194,20 +188,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         </div>
 
         <SectionLabel>{t("clan.existingClans")}</SectionLabel>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {decoyClans.map((c) => (
-            <div key={c.id} className="rpg-row" style={{ ...styles.itemRow, borderColor: `${c.color}44` }}>
-              <div style={{ ...styles.monsterIcon, width: 32, height: 32, background: `${c.color}22`, color: c.color }}>
-                <MenuEmblem name="clan" size={34}/>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13 }}>{c.name}</div>
-                <div style={{ fontSize: 9, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{t("clan.memberCountShort", { count: c.members.length + 1, max: CLAN_MAX_MEMBERS })}</div>
-              </div>
-              <button className="rpg-action" style={{ ...styles.tinyBtn, background: c.color }} onClick={() => handleJoin(c)}>{t("clan.joinBtn")}</button>
-            </div>
-          ))}
-        </div>
+        <EmptyState icon={Shield} title={t("clan.noOtherClansTitle")} subtitle={t("clan.noOtherClansSubtitle")} />
 
         {leaderboardSection}
       </div>
@@ -318,7 +299,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             <BarTrack pct={(bossCurrentHp(clan) / bossMaxHp(clan)) * 100} color={activeStage?.color} />
             <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 6 }}>
               {bossActive
-                ? t("clan.bossAttackerCount", { count: simulatedAttackerCount(clan) })
+                ? (player.clan.boss.playerAttacked ? t("clan.bossYouAttacked") : t("clan.bossAwaitingAttack"))
                 : bossCurrentHp(clan) <= 0
                   ? t("clan.bossDefeatedComingSoon")
                   : t("clan.bossTimeUp")}

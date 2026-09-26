@@ -1,34 +1,15 @@
-// Global chat, built the same async-first way as marketService.js — every
-// export already has the shape a future fetch()/WebSocket-backed call
-// would have, so swapping the in-memory array below for a real server is a
-// contained change. Nothing in the UI layer talks to `messages` directly.
-import { uid } from "../utils/random";
+// Global chat — artık gerçek backend'e (server/app.mjs, /api/chat/messages)
+// bağlı: mesajlar sunucudaki SQLite'ta tutuluyor, tüm oyuncular aynı listeyi
+// görüyor. Giriş yapmamış (session'ı olmayan) biri ne okuyabilir ne yazabilir
+// (bkz. app.mjs — /api/chat/messages LOGIN_REQUIRED'dan sonra geliyor).
+import { call } from "../utils/api";
 
-let messages = [];
-let seeded = false;
-
-function seedIfNeeded() {
-  if (seeded) return;
-  seeded = true;
-  messages.push({
-    id: uid(),
-    author: "system",
-    textKey: "chat.welcomeMessage",
-    isSystem: true,
-    isGM: false,
-    createdAt: Date.now(),
-  });
-}
-
-// GET /chat/messages
+// GET /api/chat/messages
 export async function fetchMessages() {
-  seedIfNeeded();
-  return messages.map((m) => ({ ...m }));
+  return call("chat/messages", "GET");
 }
 
-// POST /chat/messages
+// POST /api/chat/messages
 export async function sendMessage(author, text, isGM) {
-  const msg = { id: uid(), author, text, isGM: !!isGM, isSystem: false, createdAt: Date.now() };
-  messages.push(msg);
-  return { ...msg };
+  return call("chat/messages", "POST", { author, text, isGM: !!isGM });
 }

@@ -1,8 +1,12 @@
-import { seededRng } from "./seededRng";
+// Faz 4 — dosya uzantısı bilerek açık yazılıyor: bu modül artık sadece
+// Vite/tarayıcı tarafından değil, Node'un kendi ESM yükleyicisi tarafından
+// da (server/app.mjs'in doğrudan importuyla, bkz. o dosyadaki not) okunuyor
+// — Node, Vite'ın aksine uzantısız import'u çözemiyor.
+import { seededRng } from "./seededRng.js";
 import {
   WARZONE_BOSSES, WARZONE_BOSS_SLOT_HOURS, WARZONE_BOSS_FIGHT_WINDOW_MIN,
   WARZONE_BOSS_GATHER_SECONDS, WARZONE_BOSS_COUNTDOWN_SECONDS,
-} from "../data/warzone";
+} from "../data/warzone.js";
 
 const SLOT_MS = WARZONE_BOSS_SLOT_HOURS * 3600000;
 const WINDOW_MS = WARZONE_BOSS_FIGHT_WINDOW_MIN * 60000;
@@ -65,20 +69,4 @@ export function noticeBossEntries(now = Date.now()) {
   return WARZONE_BOSSES
     .map((boss) => ({ boss, ...bossSchedule(boss, now) }))
     .filter((e) => e.phase === "gathering" || e.phase === "countdown" || e.phase === "active");
-}
-
-// Kullanıcı isteği: "Düşen drop random olacak. Damage atan kişiler arasında
-// en yüksek damage'i atan kişi biraz daha şanslı olacak." — hasarla
-// ORANTILI ağırlıklı bir çekiliş: kesin kazanan değil, sadece daha yüksek
-// ihtimal. damageMap: { [katılımcıAnahtarı]: toplamHasar }.
-export function pickWeightedWinner(damageMap) {
-  const entries = Object.entries(damageMap).filter(([, dmg]) => dmg > 0);
-  if (entries.length === 0) return null;
-  const total = entries.reduce((sum, [, dmg]) => sum + dmg, 0);
-  let roll = Math.random() * total;
-  for (const [key, dmg] of entries) {
-    roll -= dmg;
-    if (roll <= 0) return key;
-  }
-  return entries[entries.length - 1][0];
 }
