@@ -460,8 +460,18 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           WHERE friendships.account_a=? OR friendships.account_b=?`).all(account.id, account.id, account.id);
         const incoming = db.prepare('SELECT friend_requests.id AS id, accounts.id AS fromId, accounts.name AS fromName, friend_requests.created_at AS createdAt FROM friend_requests JOIN accounts ON accounts.id=friend_requests.from_account WHERE friend_requests.to_account=?').all(account.id);
         const outgoing = db.prepare('SELECT friend_requests.id AS id, accounts.id AS toId, accounts.name AS toName, friend_requests.created_at AS createdAt FROM friend_requests JOIN accounts ON accounts.id=friend_requests.to_account WHERE friend_requests.from_account=?').all(account.id);
+        // Kullanıcı isteği: "arkadaşlarımızla konuşmalarımızdan gelen
+        // mesajların bildirimi gözüksün" — her arkadaşın bana EN SON ne
+        // zaman mesaj attığı (benim ona attığım değil) tek sorguda
+        // toplanıyor; "okundu" durumu istemcide tutuluyor (bkz. Hub.jsx'in
+        // chatSeenCount ile aynı desen — sayfa yenilenince sıfırlanır,
+        // kritik veri değil).
+        const lastFromThem = new Map(
+          db.prepare('SELECT from_account AS id, MAX(created_at) AS lastAt FROM direct_messages WHERE to_account=? GROUP BY from_account').all(account.id)
+            .map(r => [r.id, r.lastAt])
+        );
         return send(200, {
-          friends: friendRows.map(r => ({ accountId: r.id, name: r.name })),
+          friends: friendRows.map(r => ({ accountId: r.id, name: r.name, lastMessageAt: lastFromThem.get(r.id) || null })),
           incoming: incoming.map(r => ({ id: r.id, fromAccountId: r.fromId, fromName: r.fromName, createdAt: r.createdAt })),
           outgoing: outgoing.map(r => ({ id: r.id, toAccountId: r.toId, toName: r.toName, createdAt: r.createdAt })),
         });

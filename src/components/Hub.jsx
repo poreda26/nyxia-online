@@ -154,21 +154,63 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   // istek sayısı zaten kendiliğinden bir kuyruk, Arkadaşlar sekmesi
   // açıkken (tab değiştiği an) nokta otomatik söner.
   const [incomingFriendRequestCount, setIncomingFriendRequestCount] = useState(0);
+
+  // Kullanıcı isteği: "arkadaşlarımızla olan konuşmalarımız sohbette ek
+  // sekme olarak gözükebilir... sekme gibi sonra kapatabiliriz." Açık DM
+  // sekmeleri (Hub'da yaşıyor ki Sohbet'ten başka bir sekmeye geçip
+  // dönünce kaybolmasın — bkz. ScreenPanel'in key={tab} ile her geçişte
+  // yeniden mount etmesi) + "görüldü" zaman damgaları (bkz. yukarıdaki
+  // chatSeenCount ile aynı desen, sayfa yenilenince sıfırlanır — kritik
+  // veri değil, sadece bildirim durumu).
+  const [openDmTabs, setOpenDmTabs] = useState([]); // [{accountId, name}]
+  const [dmSeenAt, setDmSeenAt] = useState({}); // { [accountId]: timestamp }
+  const [pendingActiveDm, setPendingActiveDm] = useState(null);
+  const [dmUnreadIds, setDmUnreadIds] = useState(new Set());
+
   useEffect(() => {
     let cancelled = false;
     const check = async () => {
-      try {
-        const data = await socialService.fetchFriends();
-        if (!cancelled) setIncomingFriendRequestCount(data.incoming.length);
-      } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
+      let data;
+      try { data = await socialService.fetchFriends(); }
+      catch { return; } // Oturum/ağ geçici sorunu — bir sonraki periyotta tekrar dener.
+      if (cancelled) return;
+      setIncomingFriendRequestCount(data.incoming.length);
+      const unread = new Set(data.friends.filter((f) => f.lastMessageAt && f.lastMessageAt > (dmSeenAt[f.accountId] || 0)).map((f) => f.accountId));
+      setDmUnreadIds(unread);
+      // Yeni mesajı olan bir arkadaş henüz açık sekme değilse otomatik
+      // eklenir — kullanıcı Arkadaşlar'a hiç girmeden de gelen mesajı
+      // Sohbet'te görebilsin diye (bkz. yukarıdaki kullanıcı isteği).
+      if (unread.size > 0) {
+        setOpenDmTabs((tabs) => {
+          const existingIds = new Set(tabs.map((x) => x.accountId));
+          const toAdd = data.friends.filter((f) => unread.has(f.accountId) && !existingIds.has(f.accountId));
+          return toAdd.length ? [...tabs, ...toAdd.map((f) => ({ accountId: f.accountId, name: f.name }))] : tabs;
+        });
+      }
     };
     check();
     const id = setInterval(check, 10000);
     return () => { cancelled = true; clearInterval(id); };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dmSeenAt]);
   const friendsNotice = incomingFriendRequestCount > 0 && tab !== "friends";
 
-  const notifications = { captain: captainNotice, character: characterNotice, inventory: inventoryNotice, chat: chatNotice, friends: friendsNotice };
+  const openDm = (friend) => {
+    setOpenDmTabs((tabs) => (tabs.some((x) => x.accountId === friend.accountId) ? tabs : [...tabs, { accountId: friend.accountId, name: friend.name }]));
+    setPendingActiveDm(friend.accountId);
+    setTab("chat");
+  };
+  const closeDmTab = (accountId) => {
+    setOpenDmTabs((tabs) => tabs.filter((x) => x.accountId !== accountId));
+    // Kapatmak "şimdilik gördüm" demek — hemen ardından tekrar "okunmadı"
+    // olarak geri gelmesin diye görüldü sayılıyor.
+    setDmSeenAt((seen) => ({ ...seen, [accountId]: Date.now() }));
+  };
+  const markDmSeen = (accountId, timestamp) => {
+    setDmSeenAt((seen) => ({ ...seen, [accountId]: Math.max(seen[accountId] || 0, timestamp) }));
+  };
+
+  const notifications = { captain: captainNotice, character: characterNotice, inventory: inventoryNotice, chat: chatNotice || dmUnreadIds.size > 0, friends: friendsNotice };
 
   return (
     <div className="game-hub" style={styles.hubRoot}>
@@ -222,10 +264,15 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
           <ClanTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
         )}
         {tab === "chat" && (
-          <ChatTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast} />
+          <ChatTab
+            player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast}
+            openDmTabs={openDmTabs} dmUnreadIds={dmUnreadIds} pendingActiveDm={pendingActiveDm}
+            onConsumePendingActiveDm={() => setPendingActiveDm(null)}
+            onCloseDm={closeDmTab} onSeenDm={markDmSeen}
+          />
         )}
         {tab === "friends" && (
-          <FriendsPanel player={player} pushToast={pushToast} />
+          <FriendsPanel player={player} pushToast={pushToast} dmUnreadIds={dmUnreadIds} onOpenDm={openDm} />
         )}
         {tab === "character" && (
           <CharacterTab player={player} setPlayer={setPlayer} cls={cls} maxHp={maxHp} def={def} atk={atk} pushToast={pushToast} onChangeCharacter={onChangeCharacter} onReplayTutorial={reopenTutorial} />

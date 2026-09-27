@@ -1,19 +1,32 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, ShieldCheck, HelpCircle, Wand2 } from "lucide-react";
+import { Send, ShieldCheck, HelpCircle, Wand2, X } from "lucide-react";
 import { styles } from "../styles";
 import * as chatService from "../services/chatService";
+import * as socialService from "../services/socialService";
 import { parseGmCommand, executeGmCommand, tryGmUnlock } from "../utils/gmCommands";
 import { displayClassName } from "../utils/player";
 import GmItemPanel from "./GmItemPanel";
 import Avatar from './Avatar';
 import {playerAvatarId} from '../data/avatars';
-import { useTranslation } from "../i18n/LanguageContext";
+import { useTranslation, formatServerError } from "../i18n/LanguageContext";
 
-// Kullanıcı isteği: "Arkadaşlar için bir sekme yap" — özel mesajlaşma
-// artık burada bir alt sekme değil, kendi bottom-nav sekmesi (bkz.
-// FriendsPanel.jsx, BottomNav.jsx, Hub.jsx). Bu sekme sadece Genel Sohbet.
-export default function ChatTab({ player, setPlayer, bank, setBank, pushToast }) {
+// Kullanıcı isteği: "arkadaşlarımızla olan konuşmalarımız sohbette ek
+// sekme olarak gözükebilir... sekme gibi sonra kapatabiliriz" — Genel
+// Sohbet hep açık (kapatılamaz) ilk sekme, her açık DM (bkz. Hub.jsx#openDm)
+// yanına eklenen kapatılabilir bir sekme. Sekme listesi/görüldü durumu
+// Hub'da yaşıyor ki bu bileşen (Sohbet'ten çıkılınca ScreenPanel'in
+// key={tab} ile yeniden mount etmesi yüzünden) kaybolmasın.
+export default function ChatTab({
+  player, setPlayer, bank, setBank, pushToast,
+  openDmTabs = [], dmUnreadIds, pendingActiveDm = null, onConsumePendingActiveDm, onCloseDm, onSeenDm,
+}) {
   const { t, lang } = useTranslation();
+  const [activeDmId, setActiveDmId] = useState(pendingActiveDm);
+  useEffect(() => {
+    if (pendingActiveDm != null) onConsumePendingActiveDm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [showHelp, setShowHelp] = useState(false);
@@ -31,15 +44,16 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
     } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { if (activeDmId === null) refresh(); }, [activeDmId, refresh]);
   // Diğer oyuncuların mesajlarını görmek için periyodik yenileme.
   useEffect(() => {
+    if (activeDmId !== null) return;
     const id = setInterval(refresh, 4000);
     return () => clearInterval(id);
-  }, [refresh]);
+  }, [activeDmId, refresh]);
   useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [messages.length]);
+    if (activeDmId === null && logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [activeDmId, messages.length]);
 
   // Kullanıcı isteği: sohbette sınıf adı değil, karakterin kendi ismi görünsün.
   // Eski kayıtlarda nickname olmayabilir (bkz. utils/player.js normalize) —
@@ -76,9 +90,92 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
     refresh();
   };
 
+  // ---- DM sekmesi ----
+  const [dmMessages, setDmMessages] = useState([]);
+  const [dmInput, setDmInput] = useState("");
+  const dmLogRef = useRef(null);
+  const activeDm = openDmTabs.find((x) => x.accountId === activeDmId) || null;
+
+  const refreshDm = useCallback(async () => {
+    if (!activeDm) return;
+    try {
+      const msgs = await socialService.fetchDirectMessages(activeDm.accountId);
+      setDmMessages(msgs);
+      const lastFromThem = msgs.filter((m) => !m.mine).slice(-1)[0];
+      if (lastFromThem) onSeenDm(activeDm.accountId, lastFromThem.createdAt);
+    } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
+  }, [activeDm, onSeenDm]);
+
+  useEffect(() => { refreshDm(); }, [refreshDm]);
+  useEffect(() => {
+    if (!activeDm) return;
+    const id = setInterval(refreshDm, 4000);
+    return () => clearInterval(id);
+  }, [activeDm, refreshDm]);
+  useEffect(() => {
+    if (activeDm && dmLogRef.current) dmLogRef.current.scrollTop = dmLogRef.current.scrollHeight;
+  }, [activeDm, dmMessages.length]);
+
+  const sendDm = async () => {
+    const text = dmInput.trim();
+    if (!text || !activeDm) return;
+    setDmInput("");
+    try { await socialService.sendDirectMessage(activeDm.accountId, text, playerAvatarId(player), player.avatarFrameId); refreshDm(); }
+    catch (error) { pushToast(formatServerError(t, error), "warn"); }
+  };
+
+  const closeTab = (e, accountId) => {
+    e.stopPropagation();
+    if (activeDmId === accountId) setActiveDmId(null);
+    onCloseDm(accountId);
+  };
+
   return (
     <div className="social-chat-panel" style={styles.panelScroll}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+      {openDmTabs.length > 0 && (
+        <div className="rpg-tabs" style={{ ...styles.subtabRow, marginTop: 12 }}>
+          <button aria-pressed={activeDmId === null} onClick={() => setActiveDmId(null)} style={{ ...styles.subtabBtn, ...(activeDmId === null ? styles.subtabBtnActive : {}) }}>
+            {t("chat.subtabPublic")}
+          </button>
+          {openDmTabs.map((tabItem) => (
+            <button
+              key={tabItem.accountId} aria-pressed={activeDmId === tabItem.accountId} onClick={() => setActiveDmId(tabItem.accountId)}
+              style={{ ...styles.subtabBtn, ...(activeDmId === tabItem.accountId ? styles.subtabBtnActive : {}), display: "flex", alignItems: "center", gap: 5 }}
+            >
+              {tabItem.name}
+              {dmUnreadIds?.has(tabItem.accountId) && <span style={{ width: 6, height: 6, borderRadius: 3, background: "#C9425A", flexShrink: 0 }} />}
+              <X size={11} onClick={(e) => closeTab(e, tabItem.accountId)} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeDm ? (
+        <>
+          <div ref={dmLogRef} className="rpg-chat-log" style={{ ...styles.chatLog, marginTop: 12 }}>
+            {dmMessages.map((m) => (
+              <div key={m.id} className={`rpg-chat-msg social-message ${m.mine ? "social-message-mine" : ""}`}>
+                <Avatar id={m.avatarId} frameId={m.frameId} size={40} />
+                <div className="rpg-chat-bubble" style={{ ...styles.chatMsgBubble, ...(m.mine ? { background: "var(--gold-text)", color: "#15171E" } : {}) }}>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="rpg-chat-compose" style={styles.chatInputRow}>
+            <input
+              type="text" value={dmInput} onChange={(e) => setDmInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") sendDm(); }}
+              placeholder={t("chat.inputPlaceholderDefault")} style={styles.chatInput}
+            />
+            <button aria-label={lang === "en" ? "Send message" : "Mesaj gönder"} className="rpg-action" style={styles.tinyBtn} disabled={!dmInput.trim()} onClick={sendDm}>
+              <Send size={13} />
+            </button>
+          </div>
+        </>
+      ) : (
+      <>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: openDmTabs.length > 0 ? 8 : 12 }}>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {player.isGM && (
@@ -147,6 +244,8 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
           <Send size={13} />
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }
