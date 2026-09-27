@@ -12,7 +12,7 @@ import {playerAvatarId} from '../data/avatars';
 import { useTranslation } from "../i18n/LanguageContext";
 
 export default function ChatTab({ player, setPlayer, bank, setBank, pushToast }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [subtab, setSubtab] = useState("public"); // "public" | "friends"
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -77,12 +77,12 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
   };
 
   return (
-    <div style={styles.panelScroll}>
+    <div className="social-chat-panel" style={styles.panelScroll}>
       <div className="rpg-tabs" style={{ ...styles.subtabRow, marginTop: 12 }}>
-        <button onClick={() => setSubtab("public")} style={{ ...styles.subtabBtn, ...(subtab === "public" ? styles.subtabBtnActive : {}) }}>
+        <button aria-pressed={subtab === "public"} onClick={() => setSubtab("public")} style={{ ...styles.subtabBtn, ...(subtab === "public" ? styles.subtabBtnActive : {}) }}>
           {t("chat.subtabPublic")}
         </button>
-        <button onClick={() => setSubtab("friends")} style={{ ...styles.subtabBtn, ...(subtab === "friends" ? styles.subtabBtnActive : {}) }}>
+        <button aria-pressed={subtab === "friends"} onClick={() => setSubtab("friends")} style={{ ...styles.subtabBtn, ...(subtab === "friends" ? styles.subtabBtnActive : {}) }}>
           {t("chat.subtabFriends")}
         </button>
       </div>
@@ -129,17 +129,19 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
 
       <div ref={logRef} className="rpg-chat-log" style={styles.chatLog}>
         {messages.map((m) => (
-          <div key={m.id} className="rpg-chat-msg" style={styles.chatMsg}>
-            <div style={styles.chatMsgHeader}>
-              {!m.isSystem&&<Avatar id={m.avatarId} size={34} label={m.author}/>}
+          <div key={m.id} className={`rpg-chat-msg social-message ${m.isSystem?'social-system':''}`}>
+            {!m.isSystem&&<Avatar id={m.avatarId} size={40} label={m.author}/>}
+            <div className="social-message-content">
+            <div className="social-message-meta">
               {m.isGM && <ShieldCheck size={11} color="var(--gold-text)" />}
               <span style={{ color: m.isSystem ? "var(--text-faint)" : m.isGM ? "var(--gold-text)" : "var(--text-muted)" }}>
                 {m.isSystem ? t("chat.systemAuthor") : m.author}
               </span>
-              <span>{new Date(m.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
+              <time>{new Date(m.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</time>
             </div>
             <div className="rpg-chat-bubble" style={{ ...styles.chatMsgBubble, ...(m.isSystem ? { background: "transparent", color: "var(--text-faint)", fontStyle: "italic" } : {}) }}>
               {m.isSystem ? t(m.textKey) : m.text}
+            </div>
             </div>
           </div>
         ))}
@@ -154,7 +156,7 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
           placeholder={player.isGM ? t("chat.inputPlaceholderGm") : t("chat.inputPlaceholderDefault")}
           style={styles.chatInput}
         />
-        <button className="rpg-action" style={styles.tinyBtn} onClick={send}>
+        <button aria-label={lang === "en" ? "Send message" : "Mesaj gönder"} className="rpg-action" style={styles.tinyBtn} disabled={!input.trim()} onClick={send}>
           <Send size={13} />
         </button>
       </div>

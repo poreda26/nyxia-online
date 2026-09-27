@@ -12,6 +12,18 @@ export const PLAYER_AVATARS = [
  {id:'dusk-stalker',name:'Alaca İzci',en:'Dusk Scout',portrait:'mask',color:'#b7a0e2'},
  {id:'star-oracle',name:'Yıldız Bilgesi',en:'Star Oracle',portrait:'oracle',color:'#e3ca7e'},
  {id:'frost-seer',name:'Buz Kahini',en:'Frost Seer',portrait:'seer',color:'#82dce8'},
+ {id:'obsidian-dragon',name:'Obsidyen Ejder',en:'Obsidian Dragon',fantasy:'dragon',color:'#bc86e7'},
+ {id:'silver-wolf',name:'Gümüş Kurt',en:'Silver Wolf',fantasy:'wolf',color:'#afcde5'},
+ {id:'sun-phoenix',name:'Güneş Ankası',en:'Sun Phoenix',fantasy:'phoenix',color:'#f4b15e'},
+ {id:'grove-spirit',name:'Orman Ruhu',en:'Grove Spirit',fantasy:'treant',color:'#9ece7d'},
+ {id:'void-watcher',name:'Hiçlik Gözcüsü',en:'Void Watcher',fantasy:'eye',color:'#ca91ef'},
+ {id:'frost-lich',name:'Buz Lichi',en:'Frost Lich',fantasy:'lich',color:'#89e2ef'},
+ {id:'ember-demon',name:'Kor İblisi',en:'Ember Demon',fantasy:'demon',color:'#f08a75'},
+ {id:'tide-serpent',name:'Gelgit Yılanı',en:'Tide Serpent',fantasy:'serpent',color:'#79d4c2'},
+ {id:'moon-owl',name:'Ay Baykuşu',en:'Moon Owl',fantasy:'owl',color:'#b8b0ed'},
+ {id:'crystal-golem',name:'Kristal Golem',en:'Crystal Golem',fantasy:'golem',color:'#88bdf5'},
+ {id:'star-kitsune',name:'Yıldız Tilkisi',en:'Star Fox',fantasy:'fox',color:'#f0c89a'},
+ {id:'dusk-raven',name:'Alaca Kuzgun',en:'Dusk Raven',fantasy:'raven',color:'#a2b2d6'},
 ];
 export const CLAN_AVATARS = [
  {id:'wolf',name:'Ay Kurdu',en:'Moon Wolf',color:'#8bc9e5',path:'M24 23L39 31L50 25L61 31L76 23L70 59L50 77L30 59Z M36 43L45 48L34 49M64 43L55 48L66 49M43 59L50 65L57 59'},

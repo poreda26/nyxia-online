@@ -21,3 +21,7 @@ Sosyal test: eski SQLite şeması, eski mesaj, iki hesap, genel/özel mesaj, kla
 - Ödüller satılamaz/takaslanamaz/yükseltilemez; pazar API'si bağlı eşyaları ve özel ödül adlarını reddeder. Mevcut kayıtlar silinmez.
 - tests/first-purchase.test.js tüm özellik eşitliğini, altı ırk/sınıf görünümünü ve kayıt korunmasını kontrol eder. scripts/check-purchase-ui.mjs gerçek bileşenleri tarayıcıda yükler.
 - Gerçek ödeme entegrasyonu hâlâ ayrı iştir; bu değişiklik mevcut ödül üretimi ve önizlemesini günceller.
+
+
+## Fantastik avatarlar ve sohbet düzeni
+Oyuncu kataloğu 24 avatara çıktı: 12 yeni özgün SVG siluet (ejder, kurt, anka, orman ruhu, gözcü, lich, iblis, yılan, baykuş, golem, tilki, kuzgun). Oyuncu seçim ızgarasında isimler gizli; erişilebilir buton adları korunuyor. Genel/özel sohbette portreler 40×40, seçimde eşit kareler; 320/390/430 pikselde uzun mesajlarla taşma kontrol edildi. Yeni avatar kimlikleri için backend kataloğu da yayınlanmalı.

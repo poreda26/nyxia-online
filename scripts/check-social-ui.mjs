@@ -32,6 +32,20 @@ try{
  await page.locator('.rpg-chat-compose input').fill('Avatar test');await page.locator('.rpg-chat-compose button').click();
  await page.waitForFunction(()=>document.querySelector('.rpg-chat-msg [data-avatar="human-rogue"]'));
  assert.equal(sent.find(s=>s.path==='/api/chat/messages').body.avatarId,'human-rogue');
+ await page.getByTitle('Obsidyen Ejder',{exact:true}).click();
+ assert.equal(await page.evaluate(()=>socialPlayer.avatarId),'obsidian-dragon');
+ assert.equal(await page.locator('.portrait-picker button').count(),24);
+ assert.equal(await page.locator('.portrait-picker button').allTextContents().then(a=>a.join('').trim()),'');
+ await page.locator('.avatar-customize summary').click();
+ await page.locator('.rpg-chat-compose input').fill('Zindana birlikte girelim mi? '+ 'UzunMesaj'.repeat(15));await page.locator('.rpg-chat-compose button').click();
+ await page.locator('.rpg-chat-msg [data-avatar="obsidian-dragon"]').waitFor();
+ for(const width of [320,390,430]){
+  await page.setViewportSize({width,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'chat horizontal overflow');
+  const sizes=await page.locator('.social-message>.identity-avatar').evaluateAll(nodes=>nodes.map(n=>[n.getBoundingClientRect().width,n.getBoundingClientRect().height]));
+  assert.ok(sizes.every(([w,h])=>w===40&&h===40),'consistent message avatar size');
+  await page.screenshot({path:`output/chat-${width}.png`,fullPage:true});
+ }
  await page.evaluate(()=>socialView('clan'));await page.getByRole('button',{name:/Klan kur/i}).first().click();
  await page.locator('.clan-found-form input').fill('Ay Muhafızları');await page.getByTitle('Ejder',{exact:true}).click();await page.locator('.clan-found-form>button').click();
  await page.locator('.clan-hero [data-avatar="dragon"]').waitFor();

@@ -100,8 +100,8 @@ export default function FriendsPanel({ pushToast, player }) {
         </div>
         <div ref={logRef} className="rpg-chat-log" style={styles.chatLog}>
           {messages.map((m) => (
-            <div key={m.id} className="rpg-chat-msg" style={{ ...styles.chatMsg, alignItems: m.mine ? "flex-end" : "flex-start" }}>
-              <Avatar id={m.avatarId} size={32}/>
+            <div key={m.id} className={`rpg-chat-msg social-message ${m.mine ? "social-message-mine" : ""}`}>
+              <Avatar id={m.avatarId} size={40}/>
               <div className="rpg-chat-bubble" style={{ ...styles.chatMsgBubble, ...(m.mine ? { background: "var(--gold-text)", color: "#15171E" } : {}) }}>
                 {m.text}
               </div>

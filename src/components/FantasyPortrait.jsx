@@ -1,0 +1,25 @@
+// Hand-authored silhouettes keep each fantasy portrait readable at chat size.
+const forms={
+ dragon:{face:'M23 24L14 8L38 22L50 16L62 22L86 8L77 39L70 68L50 83L30 68Z',detail:'M24 34L39 40L33 49L20 46M76 34L61 40L67 49L80 46M35 58L50 52L65 58L60 73H40Z M43 64H46M54 64H57',eyes:'M32 43L43 47M57 47L68 43'},
+ wolf:{face:'M22 47L18 11L40 27L50 23L60 27L82 11L78 47L85 58L69 62L64 76L50 85L36 76L31 62L15 58Z',detail:'M27 28L33 40M73 28L67 40M36 60L50 55L64 60L50 72Z M50 72V79',eyes:'M29 49L42 52M58 52L71 49'},
+ phoenix:{face:'M50 12L61 27L78 18L70 40L88 32L76 63L60 74L50 86L40 74L24 63L12 32L30 40L22 18L39 27Z',detail:'M50 20V45M25 47L39 62M75 47L61 62M50 52L59 63L50 73L41 63Z',eyes:'M32 47L43 50M57 50L68 47'},
+ treant:{face:'M27 34L16 25L14 9L23 20L36 22L34 8L46 29L58 27L69 9L67 25L82 14L76 35L70 70L57 83L35 76Z',detail:'M34 37L39 59L34 69M63 34L57 61L64 70M43 69Q50 65 57 69M49 35L46 56L53 58',eyes:'M33 48L43 50M56 48L65 44'},
+ eye:{face:'M50 13L61 27L77 26L76 41L89 51L76 63L75 77L60 75L50 88L39 75L23 77L24 63L11 51L24 40L23 26L39 27Z',detail:'M20 51Q50 18 80 51Q50 84 20 51Z M61 51A11 17 0 1 0 39 51A11 17 0 1 0 61 51Z',eyes:'M50 39V63'},
+ lich:{face:'M23 39L20 10L38 28L50 9L62 28L80 10L77 39L70 68L60 72L59 84H41L40 72L30 68Z',detail:'M26 38L50 32L74 38M46 57L50 52L54 57L52 64H48Z M38 70H62M44 72V82M50 72V84M56 72V82',eyes:'M32 48L42 50M58 50L68 48'},
+ demon:{face:'M29 35Q8 24 17 8L25 23L39 27L50 22L61 27L75 23L83 8Q92 24 71 35L73 60L63 76L50 85L37 76L27 60Z',detail:'M35 59L43 63L50 59L57 63L65 59L59 73H41Z M43 63V69M57 63V69M50 30V40',eyes:'M31 44L43 49M57 49L69 44'},
+ serpent:{face:'M50 15Q81 17 83 43L70 60L77 83L50 76L23 83L30 60L17 43Q19 17 50 15Z',detail:'M24 38L36 42L40 62L50 69L60 62L64 42L76 38M30 29L50 23L70 29M42 59H58M50 69V81L45 85M50 81L55 85',eyes:'M30 46L41 49M59 49L70 46'},
+ owl:{face:'M20 12L42 25H58L80 12L76 41L81 63L66 79L50 86L34 79L19 63L24 41Z',detail:'M48 47A15 18 0 1 0 18 47A15 18 0 1 0 48 47Z M82 47A15 18 0 1 0 52 47A15 18 0 1 0 82 47Z M50 49L57 60L50 69L43 60Z M35 72L41 77M65 72L59 77',eyes:'M33 42V51M67 42V51'},
+ golem:{face:'M21 35L34 15L58 10L78 30L83 61L67 83L40 88L18 65Z',detail:'M34 15L40 37L21 35M40 37L58 10M40 37L69 39L78 30M40 37L32 64L40 88M69 39L67 83M32 64L52 70L69 60',eyes:'M30 48L41 51M57 49L71 46'},
+ fox:{face:'M20 44L14 8L39 27L50 23L61 27L86 8L80 44L88 53L68 67L50 85L32 67L12 53Z',detail:'M22 22L30 41M78 22L70 41M23 55L38 55L50 71L62 55L77 55M44 73L50 78L56 73M50 31L46 41L50 46L54 41Z',eyes:'M28 47L41 51M59 51L72 47'},
+ raven:{face:'M31 26L49 12L73 25L77 43L69 59L81 83L57 76L39 85L26 66L21 42Z',detail:'M53 42L84 57L57 64L46 57Z M31 33L43 28M29 46L39 39M31 59L41 50M38 74L46 64M60 23L65 32',eyes:'M48 37L60 40'},
+};
+export default function FantasyPortrait({art,uid}){
+ const f=forms[art.fantasy],metal=`${uid}-fantasy-metal`,halo=`${uid}-halo`;
+ return <svg viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id={halo}><stop stopColor={art.color} stopOpacity=".42"/><stop offset="1" stopColor="#0c101c"/></radialGradient><linearGradient id={metal} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#e0e9ee"/><stop offset=".35" stopColor={art.color}/><stop offset="1" stopColor="#24283e"/></linearGradient></defs>
+ <path d="M0 0H100V100H0Z" fill={`url(#${halo})`}/><circle cx="50" cy="50" r="43" fill="none" stroke={art.color} strokeOpacity=".4"/>
+ <path d="M9 100L22 82L50 73L78 82L91 100" fill="#202637" stroke={art.color} strokeOpacity=".55"/>
+ <path d={f.face} fill={`url(#${metal})`} stroke="#131b2b" strokeWidth="3" strokeLinejoin="round"/>
+ <path d={f.detail} fill="#172132" fillOpacity=".55" stroke={art.color} strokeWidth="1.6" strokeLinejoin="round"/>
+ <path d={f.eyes} fill="none" stroke={art.color} strokeWidth="7" opacity=".35"/><path d={f.eyes} fill="none" stroke="#f4f7e9" strokeWidth="2.5" strokeLinecap="round"/>
+ <path d="M50 89L54 93L50 97L46 93Z" fill={art.color}/></svg>;
+}
