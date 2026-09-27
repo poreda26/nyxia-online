@@ -20,6 +20,7 @@ import { warzoneSection } from "./sections/warzone";
 const base = {
   tr: {
     common: {
+      notNow: "Şimdi Değil",
       paperdollPreviewTitle: "Kuşanılan silahla karakter önizlemesi",
       paperdollSlot: {
         earring1: "Küpe 1", necklace: "Kolye", earring2: "Küpe 2",
@@ -207,6 +208,7 @@ const base = {
       enterDungeon: "Zindana Gir",
       mapBoss: "Harita Sonu Boss",
       mapBossDesc: "Günde bir kez. Normal ödüllere ek garanti Muhafız Sandığı verir.",
+      mapBossReadyTitle: "{name} ortaya çıktı!",
       goToBoss: "Boss'a Git", defeatedToday: "Bugün Yenildi",
       gateTitle: "Kapı · Bölge Seç", gateDesc: "Başka bir haritaya ışınlanmak {cost} altın tutar.",
       mapLocked: "{map} kilitli", mapLockedDesc: "Bu bölgeye girmek için Lv.{level} olman gerekiyor.",
@@ -314,6 +316,7 @@ const base = {
   },
   en: {
     common: {
+      notNow: "Not Now",
       paperdollPreviewTitle: "Character preview with equipped weapon",
       paperdollSlot: {
         earring1: "Earring 1", necklace: "Necklace", earring2: "Earring 2",
@@ -497,6 +500,7 @@ const base = {
       enterDungeon: "Enter Dungeon",
       mapBoss: "Map Boss",
       mapBossDesc: "Once a day. Grants a guaranteed Guardian Chest on top of normal rewards.",
+      mapBossReadyTitle: "{name} appeared!",
       goToBoss: "Go to Boss", defeatedToday: "Defeated Today",
       gateTitle: "Gate · Choose a Region", gateDesc: "Teleporting to another region costs {cost} gold.",
       mapLocked: "{map} is locked", mapLockedDesc: "You need to be Lv.{level} to enter this region.",
