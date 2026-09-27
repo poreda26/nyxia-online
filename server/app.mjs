@@ -57,7 +57,11 @@ async function serveStatic(res, staticDir, reqPath) {
 
 const stallActive = (row, now) => !!row && now < row.listed_at + row.duration_hours * 3600000;
 // Klan Dungeon malzeme anahtarı -> klan hazinesi kolonu (bkz. clans tablosu migrasyonu).
-const CLAN_MATERIAL_COLUMN = { rootFragment: 'treasury_root_fragment', midBossTrophy: 'treasury_midboss_trophy', twilightEssence: 'treasury_twilight_essence', finalBossTrophy: 'treasury_finalboss_trophy' };
+// Mantıksal malzeme anahtarı (wood/silver/iron/gold, bkz. data/clanDungeon.js)
+// -> fiziksel DB kolonu. Kolon adları eski isimlerden kalma (root_fragment vb.)
+// ama tamamen içsel/görünmez bir detay — hiçbir API yanıtı ham kolon adını
+// döndürmüyor, bu yüzden yeniden adlandırmaya (ve migrasyona) gerek yok.
+const CLAN_MATERIAL_COLUMN = { wood: 'treasury_root_fragment', silver: 'treasury_midboss_trophy', iron: 'treasury_twilight_essence', goldBar: 'treasury_finalboss_trophy' };
 
 // Client backups are deliberately separate from future authoritative game state.
 export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null } = {}) {
@@ -692,8 +696,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           buildingLevel: clan.building_level,
           treasury: {
             gold: clan.treasury_gold, diamonds: clan.treasury_diamonds, np: clan.treasury_np,
-            rootFragment: clan.treasury_root_fragment, midBossTrophy: clan.treasury_midboss_trophy,
-            twilightEssence: clan.treasury_twilight_essence, finalBossTrophy: clan.treasury_finalboss_trophy,
+            wood: clan.treasury_root_fragment, silver: clan.treasury_midboss_trophy,
+            iron: clan.treasury_twilight_essence, goldBar: clan.treasury_finalboss_trophy,
           },
           myRole: membership.role, myDonatedNp: membership.donated_np,
           members,

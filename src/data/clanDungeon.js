@@ -61,26 +61,37 @@ export function clanDungeonStage(index) {
 }
 
 // 4 malzeme, zindanın kendi 4 doğal aşama bandına bağlı: erken normal
-// canavarlar (1-9) → Kök Parçası (şans), Mid-Boss (10) → Gözcü Nişanı
-// (garanti), geç normal canavarlar (11-19) → Alacakaranlık Özü (şans),
-// Final Boss (20) → Efendi Mührü (garanti). Renkler CLAN_BOSS_STAGES'teki
-// paletle bilerek aynı (bkz. data/clanBoss.js) — iki klan sistemi görsel
-// olarak aynı aileden hissettirsin diye.
+// canavarlar (1-9) → Odun (şans), Mid-Boss (10) → Gümüş (garanti), geç
+// normal canavarlar (11-19) → Demir (şans), Final Boss (20) → Altın Külçesi
+// (garanti) — kullanıcı isteği: "odun gümüş altın gibi 4 tane mantıklı
+// temamıza uygun malzeme", inşaat/kuşanım temalı klasik hammaddeler, Klan
+// Binası'nı yükseltmekle tematik olarak da örtüşüyor. Görselleri kullanıcı
+// kendi üretecek — ItemIcon.jsx zaten HER item kind'i için item.name'e göre
+// data/itemImages.js#itemImageFor'a bakıyor, o yüzden görsel eklenince
+// sadece o dosyaya "Odun"/"Demir"/"Gümüş"/"Altın Külçesi" girişleri eklemek
+// yeterli — burada ekstra kod değişikliği gerekmiyor.
+// NOT: anahtar "gold" DEĞİL "goldBar" — klanın gerçek "gold" (altın) para
+// birimi anahtarıyla (bkz. server/app.mjs#/api/clan/donate'in currency
+// alanı) çakışmasın diye bilerek farklı. Aynı ada iki farklı anlam (gerçek
+// altın PARA vs. bu malzeme) vermek, bağış uç noktasında hangi hazine
+// kolonunun güncelleneceğini belirsizleştirir — canlıda gerçek altın
+// bağışının yanlışlıkla malzeme hazinesine yazılmasına yol açan bir bug
+// olarak yakalandı, bu yüzden kalıcı olarak ayrı tutuluyor.
 export const CLAN_DUNGEON_MATERIALS = {
-  rootFragment: { key: "rootFragment", id: "clan-material-root-fragment", name: "Kök Parçası", tier: 1, color: "#8FA35E", dropChance: 0.35 },
-  midBossTrophy: { key: "midBossTrophy", id: "clan-material-midboss-trophy", name: "Gözcü Nişanı", tier: 2, color: "#C97A3D", dropChance: 1 },
-  twilightEssence: { key: "twilightEssence", id: "clan-material-twilight-essence", name: "Alacakaranlık Özü", tier: 3, color: "#6FD1E0", dropChance: 0.35 },
-  finalBossTrophy: { key: "finalBossTrophy", id: "clan-material-finalboss-trophy", name: "Efendi Mührü", tier: 4, color: "#A34FD9", dropChance: 1 },
+  wood: { key: "wood", id: "clan-material-wood", name: "Odun", tier: 1, color: "#8B5A2B", dropChance: 0.35 },
+  silver: { key: "silver", id: "clan-material-silver", name: "Gümüş", tier: 2, color: "#B8C2CC", dropChance: 1 },
+  iron: { key: "iron", id: "clan-material-iron", name: "Demir", tier: 3, color: "#8C92AC", dropChance: 0.35 },
+  goldBar: { key: "goldBar", id: "clan-material-gold-bar", name: "Altın Külçesi", tier: 4, color: "#D4AF6A", dropChance: 1 },
 };
 
 // Sunucuda çağrılıyor (bkz. server/app.mjs'teki attack endpoint'i) — şans
 // otoriter olsun diye Math.random() burada, istemci "düştü" diyemiyor.
 export function rollClanDungeonMaterial(stageIndex) {
   let key;
-  if (stageIndex === MID_BOSS_INDEX) key = "midBossTrophy";
-  else if (stageIndex === FINAL_BOSS_INDEX) key = "finalBossTrophy";
-  else if (stageIndex < MID_BOSS_INDEX) key = "rootFragment";
-  else key = "twilightEssence";
+  if (stageIndex === MID_BOSS_INDEX) key = "silver";
+  else if (stageIndex === FINAL_BOSS_INDEX) key = "goldBar";
+  else if (stageIndex < MID_BOSS_INDEX) key = "wood";
+  else key = "iron";
   const def = CLAN_DUNGEON_MATERIALS[key];
   return { key, dropped: Math.random() < def.dropChance };
 }
@@ -90,8 +101,8 @@ export function rollClanDungeonMaterial(stageIndex) {
 // seviyesi için 4 farklı malzeme istesin". Ucuz/erken malzemeler yüksek
 // seviyede de daha bol isteniyor, nadir boss ganimetleri her zaman az.
 export const CLAN_BUILDING_MATERIAL_COST = {
-  2: { rootFragment: 60, midBossTrophy: 15, twilightEssence: 10, finalBossTrophy: 3 },
-  3: { rootFragment: 120, midBossTrophy: 40, twilightEssence: 30, finalBossTrophy: 8 },
-  4: { rootFragment: 200, midBossTrophy: 80, twilightEssence: 70, finalBossTrophy: 20 },
-  5: { rootFragment: 320, midBossTrophy: 140, twilightEssence: 130, finalBossTrophy: 45 },
+  2: { wood: 60, silver: 15, iron: 10, goldBar: 3 },
+  3: { wood: 120, silver: 40, iron: 30, goldBar: 8 },
+  4: { wood: 200, silver: 80, iron: 70, goldBar: 20 },
+  5: { wood: 320, silver: 140, iron: 130, goldBar: 45 },
 };
