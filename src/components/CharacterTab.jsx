@@ -1,5 +1,5 @@
 import {equippedStatBonus} from '../utils/player';
-import Avatar,{PlayerAvatarPicker} from './Avatar';
+import Avatar from './Avatar';
 import './ProgressionPanels.css';
 import { useState, useRef, useEffect } from "react";
 import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award, Gem } from "lucide-react";
@@ -112,7 +112,6 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         )}
       </div>
 
-      <PlayerAvatarPicker player={player} setPlayer={setPlayer}/>
 
       {onReplayTutorial && (
         <button

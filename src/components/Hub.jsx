@@ -152,7 +152,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   return (
     <div className="game-hub" style={styles.hubRoot}>
       <TopBar
-        player={player} cls={cls} maxHp={maxHp} def={def} atk={atk}
+        player={player} setPlayer={setPlayer} cls={cls} maxHp={maxHp} def={def} atk={atk}
         dailyLoginAvailable={dailyLoginAvailable}
         onOpenDailyLogin={() => setDailyLoginOpen(true)}
         onOpenSettings={onOpenSettings}

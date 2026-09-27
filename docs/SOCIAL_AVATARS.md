@@ -25,3 +25,12 @@ Sosyal test: eski SQLite şeması, eski mesaj, iki hesap, genel/özel mesaj, kla
 
 ## Fantastik avatarlar ve sohbet düzeni
 Oyuncu kataloğu 24 avatara çıktı: 12 yeni özgün SVG siluet (ejder, kurt, anka, orman ruhu, gözcü, lich, iblis, yılan, baykuş, golem, tilki, kuzgun). Oyuncu seçim ızgarasında isimler gizli; erişilebilir buton adları korunuyor. Genel/özel sohbette portreler 40×40, seçimde eşit kareler; 320/390/430 pikselde uzun mesajlarla taşma kontrol edildi. Yeni avatar kimlikleri için backend kataloğu da yayınlanmalı.
+
+
+## Portre dolabı ve elmas kozmetikleri
+- Oyuncu avatarını değiştiren tek giriş TopBar sol üst portresidir. Karakter ve sohbet ekranları yalnızca gösterir; klan armasını değiştirme ayrı klan özelliği olarak kalır.
+- Modal iki sekmelidir: Avatarlar / Çerçeveler. Son 12 raster avatar 250 elmas, önceki 24 ücretsizdir. 16 SVG çerçevenin her biri 250 elmas; çerçevesiz görünüm ücretsizdir.
+- Seçim önizlemedir; ücret yalnızca açıkça “250 ◆ · Satın al ve kuşan” ile düşer. Sahip olunan seçenek yeniden ücret alınmadan kuşanılır. Yetersiz bakiye ve tekrar tıklamalar korunur.
+- ownedAvatars, ownedAvatarFrames, avatarFrameId mevcut karakter kaydı ve yedekleme akışında saklanır. Oyun değerleri değişmez. Elmas işlemleri mevcut oyun ekonomisi gibi istemci karakter durumu üzerinden yapılır; sunucu otoriteli bir ekonomi uygulandığı iddia edilmez.
+- Çerçeve mesajla birlikte gönderilir; SQLite chat_messages/direct_messages frame_id sütunları eklemeli migrasyonla açılır. Eski mesajlar çerçevesiz kalır, yeni genel/özel mesajlar ve klan üye listesi çerçeveyi taşır. Backend de güncellenmelidir.
+- Testler: tests/avatar-cosmetics.test.mjs; tests/social-avatars.test.mjs; scripts/check-social-ui.mjs (satın alma, tek giriş, portre+çerçeve mesajı ve 320/390/430 ekranlar).

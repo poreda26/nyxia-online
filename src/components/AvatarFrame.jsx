@@ -1,0 +1,7 @@
+import {useId} from 'react';
+import {AVATAR_FRAMES} from '../data/avatarFrames';
+export default function AvatarFrame({id}){
+ const uid=useId(),frame=AVATAR_FRAMES.find(f=>f.id===id);
+ if(!frame)return null;
+ return <svg className="avatar-frame-art" viewBox="0 0 100 100" aria-hidden="true" data-frame={id}><defs><linearGradient id={uid} x2=".8" y2="1"><stop stopColor="#fff9dc"/><stop offset=".35" stopColor={frame.color}/><stop offset=".65" stopColor="#70523e"/><stop offset="1" stopColor={frame.color}/></linearGradient><mask id={`${uid}-rim`}><rect width="100" height="100" fill="white"/><rect x="17" y="17" width="66" height="66" rx="12" fill="black"/></mask></defs><rect x="10" y="10" width="80" height="80" rx="19" fill="none" stroke="#15131c" strokeWidth="7"/><rect x="10" y="10" width="80" height="80" rx="19" fill="none" stroke={`url(#${uid})`} strokeWidth="4"/><rect x="14" y="14" width="72" height="72" rx="15" fill="none" stroke={frame.color} strokeWidth=".8"/><path mask={`url(#${uid}-rim)`} d={frame.crown+' '+frame.sides} fill={`url(#${uid})`} stroke="#3b2c37" strokeWidth="1" strokeLinejoin="round"/><path d="M11 18L16 11L21 16L16 22Z M79 16L84 11L89 18L84 22Z M11 82L16 78L21 84L16 89Z M79 84L84 78L89 82L84 89Z" fill={frame.color} stroke="#fff6d1" strokeWidth=".8"/><path d="M22 12H34M66 12H78M22 88H34M66 88H78M12 25V36M12 64V75M88 25V36M88 64V75" stroke="#fff4d2" strokeWidth=".7" fill="none" opacity=".75"/><path className="avatar-frame-spark" d="M16 7V17M11 12H21M84 83V93M79 88H89" fill="none" stroke="#fff7dc" strokeWidth="1.2"/></svg>;
+}

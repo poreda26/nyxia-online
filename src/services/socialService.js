@@ -9,4 +9,4 @@ export const declineFriendRequest = (id) => call(`social/friends/${id}/decline`,
 export const removeFriend = (accountId) => call(`social/friends/${accountId}`, "DELETE");
 
 export const fetchDirectMessages = (accountId) => call(`social/messages/${accountId}`, "GET");
-export const sendDirectMessage = (accountId, text, avatarId) => call(`social/messages/${accountId}`, "POST", { text, avatarId });
+export const sendDirectMessage = (accountId, text, avatarId, frameId) => call(`social/messages/${accountId}`, "POST", { text, avatarId, frameId:frameId||null });

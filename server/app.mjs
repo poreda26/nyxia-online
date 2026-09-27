@@ -1,3 +1,4 @@
+import {validAvatarFrame} from '../src/data/avatarFrames.js';
 import {FIRST_PURCHASE_WEAPONS} from '../src/data/firstPurchaseWeapons.js';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
@@ -105,6 +106,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   // Additive migrations preserve existing messages and memberships.
   for(const [table,fallback] of [['chat_messages','human-warrior'],['direct_messages','human-warrior'],['clans','wolf']]){
     if(!db.prepare(`PRAGMA table_info(${table})`).all().some(c=>c.name==='avatar_id'))db.exec(`ALTER TABLE ${table} ADD COLUMN avatar_id TEXT NOT NULL DEFAULT '${fallback}'`);
+    if(table!=='clans'&&!db.prepare(`PRAGMA table_info(${table})`).all().some(c=>c.name==='frame_id'))db.exec(`ALTER TABLE ${table} ADD COLUMN frame_id TEXT`);
   }
   const chatRateLimit = makeRateLimiter(20);
   const bossAttackRateLimit = makeRateLimiter(60);
@@ -192,8 +194,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         } catch (error) { db.exec('ROLLBACK'); throw error; }
       }
       if (path === '/api/chat/messages' && req.method === 'GET') {
-        const rows = db.prepare('SELECT id,author,text,is_gm,created_at,avatar_id FROM chat_messages ORDER BY id DESC LIMIT 100').all().reverse();
-        return send(200, rows.map(r => ({ id: r.id, author: r.author, text: r.text, isGM: !!r.is_gm, createdAt: r.created_at, avatarId:r.avatar_id })));
+        const rows = db.prepare('SELECT id,author,text,is_gm,created_at,avatar_id,frame_id FROM chat_messages ORDER BY id DESC LIMIT 100').all().reverse();
+        return send(200, rows.map(r => ({ id: r.id, author: r.author, text: r.text, isGM: !!r.is_gm, createdAt: r.created_at, avatarId:r.avatar_id,frameId:r.frame_id||null })));
       }
       if (path === '/api/chat/messages' && req.method === 'POST') {
         chatRateLimit(account.id);
@@ -205,10 +207,12 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const createdAt = Date.now();
         const avatarId=body.avatarId??'human-warrior';
         if(!validPlayerAvatar(avatarId))throw fail(400,'INVALID_AVATAR');
-        db.prepare('INSERT INTO chat_messages(author,text,is_gm,created_at,avatar_id) VALUES(?,?,?,?,?)').run(author, text, isGm ? 1 : 0, createdAt,avatarId);
+        const frameId=body.frameId??null;
+        if(!validAvatarFrame(frameId))throw fail(400,'INVALID_AVATAR');
+        db.prepare('INSERT INTO chat_messages(author,text,is_gm,created_at,avatar_id,frame_id) VALUES(?,?,?,?,?,?)').run(author, text, isGm ? 1 : 0, createdAt,avatarId,frameId);
         const id = db.prepare('SELECT last_insert_rowid() AS id').get().id;
         db.prepare('DELETE FROM chat_messages WHERE id <= (SELECT MAX(id) - 200 FROM chat_messages)').run();
-        return send(200, { id, author, text, isGM: isGm, createdAt,avatarId });
+        return send(200, { id, author, text, isGM: isGm, createdAt,avatarId,frameId });
       }
       // Faz 3 — paylaşımlı pazar. Hesap başına tek tezgah (bkz. market_stalls'ın
       // PRIMARY KEY'i). `sellerId` = market_stalls.account = accounts.id: takma
@@ -507,8 +511,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (dmMatch && req.method === 'GET') {
         const otherId = Number(dmMatch[1]);
         if (!areFriends(account.id, otherId)) throw fail(403, 'NOT_FRIENDS');
-        const rows = db.prepare('SELECT id, from_account, text, created_at, avatar_id FROM direct_messages WHERE (from_account=? AND to_account=?) OR (from_account=? AND to_account=?) ORDER BY id DESC LIMIT 100').all(account.id, otherId, otherId, account.id).reverse();
-        return send(200, rows.map(r => ({ id: r.id, mine: r.from_account === account.id, text: r.text, createdAt: r.created_at,avatarId:r.avatar_id })));
+        const rows = db.prepare('SELECT id, from_account, text, created_at, avatar_id,frame_id FROM direct_messages WHERE (from_account=? AND to_account=?) OR (from_account=? AND to_account=?) ORDER BY id DESC LIMIT 100').all(account.id, otherId, otherId, account.id).reverse();
+        return send(200, rows.map(r => ({ id: r.id, mine: r.from_account === account.id, text: r.text, createdAt: r.created_at,avatarId:r.avatar_id,frameId:r.frame_id||null })));
       }
       if (dmMatch && req.method === 'POST') {
         const otherId = Number(dmMatch[1]);
@@ -520,9 +524,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const createdAt = Date.now();
         const avatarId=body.avatarId??'human-warrior';
         if(!validPlayerAvatar(avatarId))throw fail(400,'INVALID_AVATAR');
-        db.prepare('INSERT INTO direct_messages(from_account,to_account,text,created_at,avatar_id) VALUES(?,?,?,?,?)').run(account.id, otherId, text, createdAt,avatarId);
+        const frameId=body.frameId??null;
+        if(!validAvatarFrame(frameId))throw fail(400,'INVALID_AVATAR');
+        db.prepare('INSERT INTO direct_messages(from_account,to_account,text,created_at,avatar_id,frame_id) VALUES(?,?,?,?,?,?)').run(account.id, otherId, text, createdAt,avatarId,frameId);
         const id = db.prepare('SELECT last_insert_rowid() AS id').get().id;
-        return send(200, { id, mine: true, text, createdAt,avatarId });
+        return send(200, { id, mine: true, text, createdAt,avatarId,frameId });
       }
       // Faz 6 — gerçek çok-oyunculu klan. Kuruluş maliyeti (elmas) oyundaki
       // HER ekonomi hareketi gibi istemcide düşülüyor (bkz. dosyanın en
@@ -577,7 +583,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
               main = chars.reduce((best, c) => (!best || (c.level || 0) > (best.level || 0) ? c : best), null);
             } catch { /* bozuk yedek — hesap adına düş */ }
           }
-          return { accountId: r.accountId, name: main?.nickname || r.accountName, avatarId:playerAvatarId(main),cls: main?.class || null, level: main?.level || 0, role: r.role, joinedAt: r.joinedAt, donatedNp: r.donatedNp };
+          return { accountId: r.accountId, name: main?.nickname || r.accountName, avatarId:playerAvatarId(main),frameId:validAvatarFrame(main?.avatarFrameId)?main?.avatarFrameId||null:null,cls: main?.class || null, level: main?.level || 0, role: r.role, joinedAt: r.joinedAt, donatedNp: r.donatedNp };
         });
         return send(200, { clan: {
           id: clan.id, name: clan.name, color: clan.color, avatarId:clan.avatar_id,createdAt: clan.created_at,

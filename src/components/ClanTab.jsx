@@ -529,7 +529,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
           const MIcon = clsDef?.icon || Shield;
           return (
             <div key={m.accountId} className="rpg-row" style={styles.itemRow}>
-              <Avatar id={m.avatarId} size={40}/>
+              <Avatar id={m.avatarId} frameId={m.frameId} size={40}/>
               <div className="clan-member-name">
                 <div style={{ fontSize: 12 }}>{m.name}{m.level > 0 ? ` · Lv.${m.level}` : ""}</div>
                 <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{roleLabel(m.role)}</div>

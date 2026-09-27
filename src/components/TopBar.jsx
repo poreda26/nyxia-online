@@ -1,3 +1,5 @@
+import Avatar from './Avatar';
+import AvatarWardrobe from './AvatarWardrobe';
 import './TopBar.css';
 import { useState, useEffect } from "react";
 import { Coins, Crown, Gem, Gift, Plus, ScrollText, Settings, Swords, Shield, Heart } from "lucide-react";
@@ -16,7 +18,7 @@ function formatMmSs(ms) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, onOpenSettings, onOpenDiamondShop }) {
+export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, onOpenSettings, onOpenDiamondShop }) {
   const { t, lang } = useTranslation();
   // Aktif takviyelerin geri sayımı gerçek zamana (Date.now()) bağlı — bkz.
   // utils/boosts.js, premium ile aynı "duvar saati" deseni. Bu, o değeri
@@ -31,15 +33,14 @@ export default function TopBar({ player, cls, maxHp, def, atk, dailyLoginAvailab
   const atCap = player.level >= MAX_LEVEL;
   const need = xpToNext(player.level);
   const pct = atCap ? 100 : Math.min(100, (player.xp / need) * 100);
-  const Icon = cls.icon;
+  const [avatarOpen,setAvatarOpen]=useState(false);
   const premiumTier = activePremiumTier(player);
   const title = activeTitleInfo(player);
   return (
     <div className="game-topbar" style={styles.topBar}>
+      {avatarOpen&&<AvatarWardrobe player={player} setPlayer={setPlayer} onClose={()=>setAvatarOpen(false)}/>}
       <div className="hud-main" style={styles.topBarRow}>
-        <div className="hud-class-medallion" style={{...styles.classBadge, "--class-color":cls.color}}>
-          <Icon size={26} color={cls.color} strokeWidth={2} />
-        </div>
+        <button className="hud-avatar-button" aria-label={lang==='en'?'Change avatar':'Avatarı değiştir'} onClick={()=>setAvatarOpen(true)}><Avatar player={player} size={44}/></button>
         <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
           <div className="hud-identity">
             <span style={{ fontFamily: "var(--font-display)", fontSize: 14, letterSpacing: 0.3, display: "flex", alignItems: "center", gap: 5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

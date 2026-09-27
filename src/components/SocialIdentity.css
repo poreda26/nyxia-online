@@ -27,3 +27,18 @@
 .social-chat-panel .rpg-chat-compose button{min-width:44px;min-height:44px;border-radius:12px;background:linear-gradient(135deg,#c19a5f,#846037);color:#fff3d5;display:flex;align-items:center;justify-content:center}
 .social-chat-panel .rpg-chat-compose button:disabled{opacity:.45;cursor:default}
 @media(max-width:360px){.portrait-picker>div{gap:5px}.portrait-picker button{padding:4px;min-height:60px}.portrait-picker .identity-avatar{width:48px!important;height:48px!important}.social-chat-panel .rpg-chat-log{padding:8px!important}}
+
+.identity-avatar.identity-framed{position:relative;overflow:visible;border:0;isolation:isolate}
+.identity-framed>img,.identity-framed>svg:not(.avatar-frame-art){border-radius:inherit;overflow:hidden}
+.identity-avatar>.avatar-frame-art{position:absolute;inset:-12.5%;width:125%;height:125%;max-width:none;pointer-events:none;z-index:1;filter:drop-shadow(0 1px 2px #0008)}
+.game-hub .hud-main>.hud-avatar-button,.hud-avatar-button{padding:4px!important;width:54px!important;height:54px!important;min-width:54px!important;overflow:visible;border:0;cursor:pointer;background:transparent!important;display:flex;align-items:center;justify-content:center}
+.avatar-wardrobe{box-sizing:border-box;width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 32px);padding:16px;border:1px solid #a98b56;border-radius:20px;background:linear-gradient(145deg,#242535,#101822);color:#eee3ce;box-shadow:0 18px 70px #000a;overflow:hidden}
+.avatar-wardrobe[open]{display:flex;flex-direction:column;gap:16px}.avatar-wardrobe::backdrop{background:#040713c9;backdrop-filter:blur(4px)}
+.avatar-wardrobe header{display:flex;align-items:center;justify-content:space-between;gap:8px}.avatar-wardrobe h2{font:18px var(--font-display);margin:0}.avatar-wardrobe header button{background:none;color:#edd8b3;border:0;min-width:40px;min-height:40px;cursor:pointer}
+.wardrobe-preview{display:flex;align-items:center;gap:22px;padding:8px 10px;flex-shrink:0}.wardrobe-preview p{font-size:11px;line-height:1.5;color:#a8b2c2;margin:6px 0}.wardrobe-preview strong{font-size:13px;color:#cfb6ff}
+.wardrobe-tabs{display:flex;gap:8px}.wardrobe-tabs button{flex:1;min-height:40px;background:#121a27;color:#b9c4d2;border:1px solid #475369;border-radius:10px;cursor:pointer}.wardrobe-tabs button[aria-pressed=true]{color:#f5dfb2;border-color:#d1a864;background:#4b3b28}
+.wardrobe-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;overflow-y:auto;min-height:0;padding:8px 4px;overscroll-behavior:contain}.wardrobe-grid button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-height:91px;padding:10px 3px 5px;border:1px solid #354354;border-radius:12px;background:#111925;color:#c1badb;cursor:pointer}.wardrobe-grid button[aria-pressed=true]{border-color:#e8be78;background:#443622}.wardrobe-grid small{font-size:10px}
+.avatar-wardrobe footer button{width:100%;min-height:46px;border:1px solid #d9ac6e;border-radius:12px;background:linear-gradient(110deg,#b88949,#77532d);color:#fff2d9;font-weight:600;cursor:pointer}.avatar-wardrobe footer button:disabled{opacity:.5;cursor:default}.avatar-wardrobe footer{flex-shrink:0}.avatar-wardrobe button:focus-visible{outline:2px solid #fff1b5;outline-offset:2px}
+@media(max-width:360px){.avatar-wardrobe{padding:12px;gap:12px}.wardrobe-grid{gap:6px}.wardrobe-grid .identity-avatar{width:44px!important;height:44px!important}}
+
+.avatar-frame-spark{animation:avatar-frame-glint 3.6s ease-in-out infinite}@keyframes avatar-frame-glint{0%,100%{opacity:.25}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.avatar-frame-spark{animation:none}}
