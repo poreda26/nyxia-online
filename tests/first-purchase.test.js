@@ -26,6 +26,6 @@ for(const [cls,reward] of Object.entries(FIRST_PURCHASE_WEAPONS)) test(`${cls}: 
  }
 });
 test('distinct selectable identities and crests',()=>{
- assert.equal(PLAYER_AVATARS.length,24);assert.equal(CLAN_AVATARS.length,12);
+ assert.equal(PLAYER_AVATARS.length,36);assert.equal(CLAN_AVATARS.length,12);
  for(const list of [PLAYER_AVATARS,CLAN_AVATARS]) assert.equal(new Set(list.map(a=>a.id)).size,list.length);
 });

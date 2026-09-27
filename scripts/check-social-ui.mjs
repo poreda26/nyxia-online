@@ -20,6 +20,8 @@ try{
  await page.goto('http://127.0.0.1:5177/nyxia-online/social-audit.html');
  await page.evaluate(async()=>{const r=await import('/nyxia-online/@react-refresh');r.default.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>t=>t;window.__vite_plugin_react_preamble_installed__=true;await import('/nyxia-online/tests/social-ui.jsx')});
  await page.locator('.battle-figure').waitFor();await page.evaluate(()=>Promise.all([...document.querySelectorAll('svg image')].map(i=>new Promise(ok=>{const im=new Image();im.onload=ok;im.src=i.getAttribute('href')}))));
+ await page.locator('.portrait-picker img').evaluateAll(imgs=>Promise.all(imgs.map(img=>{img.loading='eager';return img.decode()})));
+ assert.equal(await page.locator('.portrait-picker img').count(),12);
  await page.screenshot({path:'output/avatars-and-giant.png',fullPage:true});
  const alphaStyle=await page.addStyleTag({content:'*{animation:none!important;transition:none!important}html,body,#root,#root>div{background:transparent!important}.battle-figure{filter:none!important}'});
  const {data,info}=await sharp(await page.locator('.battle-figure').screenshot({omitBackground:true})).ensureAlpha().raw().toBuffer({resolveWithObject:true});
@@ -34,7 +36,7 @@ try{
  assert.equal(sent.find(s=>s.path==='/api/chat/messages').body.avatarId,'human-rogue');
  await page.getByTitle('Obsidyen Ejder',{exact:true}).click();
  assert.equal(await page.evaluate(()=>socialPlayer.avatarId),'obsidian-dragon');
- assert.equal(await page.locator('.portrait-picker button').count(),24);
+ assert.equal(await page.locator('.portrait-picker button').count(),36);
  assert.equal(await page.locator('.portrait-picker button').allTextContents().then(a=>a.join('').trim()),'');
  await page.locator('.avatar-customize summary').click();
  await page.locator('.rpg-chat-compose input').fill('Zindana birlikte girelim mi? '+ 'UzunMesaj'.repeat(15));await page.locator('.rpg-chat-compose button').click();
