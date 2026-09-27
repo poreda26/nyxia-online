@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Send, ShieldCheck, HelpCircle, Wand2 } from "lucide-react";
 import { styles } from "../styles";
-import SectionLabel from "./shared/SectionLabel";
 import * as chatService from "../services/chatService";
 import { parseGmCommand, executeGmCommand, tryGmUnlock } from "../utils/gmCommands";
 import { displayClassName } from "../utils/player";
 import GmItemPanel from "./GmItemPanel";
-import FriendsPanel from "./FriendsPanel";
 import Avatar from './Avatar';
 import {playerAvatarId} from '../data/avatars';
 import { useTranslation } from "../i18n/LanguageContext";
 
+// Kullanıcı isteği: "Arkadaşlar için bir sekme yap" — özel mesajlaşma
+// artık burada bir alt sekme değil, kendi bottom-nav sekmesi (bkz.
+// FriendsPanel.jsx, BottomNav.jsx, Hub.jsx). Bu sekme sadece Genel Sohbet.
 export default function ChatTab({ player, setPlayer, bank, setBank, pushToast }) {
   const { t, lang } = useTranslation();
-  const [subtab, setSubtab] = useState("public"); // "public" | "friends"
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [showHelp, setShowHelp] = useState(false);
@@ -78,22 +78,9 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
 
   return (
     <div className="social-chat-panel" style={styles.panelScroll}>
-      <div className="rpg-tabs" style={{ ...styles.subtabRow, marginTop: 12 }}>
-        <button aria-pressed={subtab === "public"} onClick={() => setSubtab("public")} style={{ ...styles.subtabBtn, ...(subtab === "public" ? styles.subtabBtnActive : {}) }}>
-          {t("chat.subtabPublic")}
-        </button>
-        <button aria-pressed={subtab === "friends"} onClick={() => setSubtab("friends")} style={{ ...styles.subtabBtn, ...(subtab === "friends" ? styles.subtabBtnActive : {}) }}>
-          {t("chat.subtabFriends")}
-        </button>
-      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
 
-      {subtab === "friends" ? (
-        <FriendsPanel pushToast={pushToast} player={player}/>
-      ) : (
-      <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {player.isGM && (
             <button onClick={() => setShowGmPanel((v) => !v)} style={{ background: "none", border: "none", color: showGmPanel ? "var(--gold-text)" : "var(--text-faint)", cursor: "pointer" }} title={t("chat.gmItemPanelTitle")}>
               <Wand2 size={16} />
@@ -103,6 +90,7 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
             <HelpCircle size={16} />
           </button>
         </div>
+        <span style={{ fontSize: 9, color: "var(--text-faint)" }}>{t("chat.messageTtlHint")}</span>
       </div>
 
       {showGmPanel && player.isGM && (
@@ -159,8 +147,6 @@ export default function ChatTab({ player, setPlayer, bank, setBank, pushToast })
           <Send size={13} />
         </button>
       </div>
-      </>
-      )}
     </div>
   );
 }

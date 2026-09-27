@@ -24,6 +24,7 @@ export const socialSection = {
       gmUnlocked: "GM yetkisi açıldı.",
       inputPlaceholderGm: "Mesaj yaz ya da /yardım...",
       inputPlaceholderDefault: "Mesaj yaz...",
+      messageTtlHint: "Mesajlar 7 gün sonra otomatik silinir.",
       subtabPublic: "Genel",
       subtabFriends: "Arkadaşlar",
       friends: {
@@ -38,6 +39,9 @@ export const socialSection = {
         listTitle: "Arkadaşlar",
         emptyTitle: "Henüz arkadaşın yok",
         emptySubtitle: "Kullanıcı adıyla arkadaş ekleyip özel mesajlaşabilirsin.",
+        suggestionsTitle: "Önerilen Arkadaşlar",
+        mutualFriends: "{count} ortak arkadaş",
+        limitReached: "En fazla {max} arkadaşın olabilir.",
       },
     },
     clan: {
@@ -140,6 +144,7 @@ export const socialSection = {
       gmUnlocked: "GM authority unlocked.",
       inputPlaceholderGm: "Type a message or /yardım...",
       inputPlaceholderDefault: "Type a message...",
+      messageTtlHint: "Messages are automatically deleted after 7 days.",
       subtabPublic: "Public",
       subtabFriends: "Friends",
       friends: {
@@ -154,6 +159,9 @@ export const socialSection = {
         listTitle: "Friends",
         emptyTitle: "No friends yet",
         emptySubtitle: "Add a friend by username to start a private chat.",
+        suggestionsTitle: "Suggested Friends",
+        mutualFriends: "{count} mutual friends",
+        limitReached: "You can have at most {max} friends.",
       },
     },
     clan: {

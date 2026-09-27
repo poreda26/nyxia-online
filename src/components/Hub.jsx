@@ -14,6 +14,7 @@ import { weeklyQuestProgress } from "../utils/weeklyQuests";
 import { MAP_COLLECTIONS, collectionProgress } from "../utils/collection";
 import { canClaimDailyLogin } from "../utils/dailyLogin";
 import * as chatService from "../services/chatService";
+import * as socialService from "../services/socialService";
 import { styles } from "../styles";
 import TopBar from "./TopBar";
 import BottomNav from "./BottomNav";
@@ -22,6 +23,7 @@ import InventoryTab from "./InventoryTab";
 import MarketTab from "./MarketTab";
 import UpgradeTab from "./UpgradeTab";
 import ChatTab from "./ChatTab";
+import FriendsPanel from "./FriendsPanel";
 import CharacterTab from "./CharacterTab";
 import CaptainTab from "./CaptainTab";
 import WarzoneTab from "./WarzoneTab";
@@ -147,7 +149,26 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
     return () => { cancelled = true; clearInterval(id); };
   }, [tab, chatSeenCount]);
 
-  const notifications = { captain: captainNotice, character: characterNotice, inventory: inventoryNotice, chat: chatNotice };
+  // Arkadaşlık isteği bildirimi — kullanıcı isteği: "Arkadaşlar için bir
+  // sekme yap." Sohbet'in "görülen sayı" mantığından farklı: bekleyen
+  // istek sayısı zaten kendiliğinden bir kuyruk, Arkadaşlar sekmesi
+  // açıkken (tab değiştiği an) nokta otomatik söner.
+  const [incomingFriendRequestCount, setIncomingFriendRequestCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const data = await socialService.fetchFriends();
+        if (!cancelled) setIncomingFriendRequestCount(data.incoming.length);
+      } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
+    };
+    check();
+    const id = setInterval(check, 10000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+  const friendsNotice = incomingFriendRequestCount > 0 && tab !== "friends";
+
+  const notifications = { captain: captainNotice, character: characterNotice, inventory: inventoryNotice, chat: chatNotice, friends: friendsNotice };
 
   return (
     <div className="game-hub" style={styles.hubRoot}>
@@ -202,6 +223,9 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         )}
         {tab === "chat" && (
           <ChatTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast} />
+        )}
+        {tab === "friends" && (
+          <FriendsPanel player={player} pushToast={pushToast} />
         )}
         {tab === "character" && (
           <CharacterTab player={player} setPlayer={setPlayer} cls={cls} maxHp={maxHp} def={def} atk={atk} pushToast={pushToast} onChangeCharacter={onChangeCharacter} onReplayTutorial={reopenTutorial} />

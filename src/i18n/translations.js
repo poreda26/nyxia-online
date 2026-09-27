@@ -104,6 +104,8 @@ const base = {
         CLAN_BUILDING_MAX_LEVEL: "Klan Binası zaten en üst seviyede.",
         INVALID_DONATION: "Geçerli bir miktar gir.",
         INVALID_TARGET: "Geçersiz hedef.",
+        FRIEND_LIMIT_REACHED: "En fazla 50 arkadaşın olabilir.",
+        TARGET_FRIEND_LIMIT_REACHED: "Bu kişinin arkadaş listesi dolu.",
         TOO_MANY_ATTEMPTS: "Çok fazla deneme yaptın, biraz bekle.",
       },
     },
@@ -135,7 +137,7 @@ const base = {
     },
     nav: {
       battle: "Savaş", inventory: "Envanter", market: "Pazar", upgrade: "Yükselt",
-      captain: "Kaptan", clan: "Klan", warzone: "Savaş Alanı", chat: "Sohbet", character: "Karakter",
+      captain: "Kaptan", clan: "Klan", warzone: "Savaş Alanı", chat: "Sohbet", friends: "Arkadaşlar", character: "Karakter",
     },
     settings: {
       title: "Ayarlar", musicVolume: "Müzik Sesi", sfxVolume: "Efekt Sesi",
@@ -384,6 +386,8 @@ const base = {
         CLAN_BUILDING_MAX_LEVEL: "The Clan Building is already at max level.",
         INVALID_DONATION: "Enter a valid amount.",
         INVALID_TARGET: "Invalid target.",
+        FRIEND_LIMIT_REACHED: "You can have at most 50 friends.",
+        TARGET_FRIEND_LIMIT_REACHED: "That person's friend list is full.",
         TOO_MANY_ATTEMPTS: "Too many attempts — wait a bit.",
       },
     },
@@ -415,7 +419,7 @@ const base = {
     },
     nav: {
       battle: "Battle", inventory: "Inventory", market: "Market", upgrade: "Upgrade",
-      captain: "Captain", clan: "Clan", warzone: "Warzone", chat: "Chat", character: "Character",
+      captain: "Captain", clan: "Clan", warzone: "Warzone", chat: "Chat", friends: "Friends", character: "Character",
     },
     settings: {
       title: "Settings", musicVolume: "Music Volume", sfxVolume: "Effects Volume",

@@ -19,6 +19,7 @@ import { bossSchedule } from '../src/utils/warzoneBoss.js';
 import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_COLORS } from '../src/data/clan.js';
 import { CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from '../src/data/clanBoss.js';
 import {validPlayerAvatar,validClanAvatar,playerAvatarId} from '../src/data/avatars.js';
+import { FRIEND_MAX_COUNT, CHAT_MESSAGE_TTL_MS, DM_MESSAGE_TTL_MS } from '../src/data/social.js';
 
 const scrypt = promisify(derive);
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -210,6 +211,10 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const frameId=body.frameId??null;
         if(!validAvatarFrame(frameId))throw fail(400,'INVALID_AVATAR');
         db.prepare('INSERT INTO chat_messages(author,text,is_gm,created_at,avatar_id,frame_id) VALUES(?,?,?,?,?,?)').run(author, text, isGm ? 1 : 0, createdAt,avatarId,frameId);
+        // Kullanıcı isteği: sohbet kalıcı bir arşiv değil — 200 mesajlık
+        // tavanın yanı sıra artık zamana göre de temizleniyor (bkz.
+        // data/social.js#CHAT_MESSAGE_TTL_MS), sistemi yormasın diye.
+        db.prepare('DELETE FROM chat_messages WHERE created_at < ?').run(Date.now() - CHAT_MESSAGE_TTL_MS);
         const id = db.prepare('SELECT last_insert_rowid() AS id').get().id;
         db.prepare('DELETE FROM chat_messages WHERE id <= (SELECT MAX(id) - 200 FROM chat_messages)').run();
         return send(200, { id, author, text, isGM: isGm, createdAt,avatarId,frameId });
@@ -437,6 +442,18 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       // Faz 6 — arkadaş listesi. Hesap adı (accounts.name) ile hedefleniyor,
       // karakter takma adıyla DEĞİL — takma ad hesaplar arası benzersiz
       // değil (bkz. yukarıdaki market notu), hesap adı ise öyle.
+      const friendCount = id => db.prepare('SELECT COUNT(*) AS c FROM friendships WHERE account_a=? OR account_b=?').get(id, id).c;
+      // Bir hesabın "ana karakteri" — düello rakibi/klan üyesi seçiminde
+      // kullanılan AYNI sezgi (en yüksek seviyeli karakter), tutarlılık için
+      // burada da tekrarlanıyor (bkz. /api/warzone/duel/opponent, /api/clan/mine).
+      const mainCharacterOf = row => {
+        if (!row?.data) return null;
+        try {
+          const parsed = JSON.parse(row.data);
+          const chars = Array.isArray(parsed?.characters) ? parsed.characters.filter(Boolean) : [];
+          return chars.reduce((best, c) => (!best || (c.level || 0) > (best.level || 0) ? c : best), null);
+        } catch { return null; }
+      };
       if (path === '/api/social/friends' && req.method === 'GET') {
         const friendRows = db.prepare(`SELECT accounts.id AS id, accounts.name AS name FROM friendships
           JOIN accounts ON accounts.id = CASE WHEN friendships.account_a=? THEN friendships.account_b ELSE friendships.account_a END
@@ -448,6 +465,49 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           incoming: incoming.map(r => ({ id: r.id, fromAccountId: r.fromId, fromName: r.fromName, createdAt: r.createdAt })),
           outgoing: outgoing.map(r => ({ id: r.id, toAccountId: r.toId, toName: r.toName, createdAt: r.createdAt })),
         });
+      }
+      // Kullanıcı isteği: "arkadaş önerilerinin gözüktüğü bir sistem olsun."
+      // Önce ortak arkadaş sayısına göre sıralanmış aday (arkadaşının
+      // arkadaşı) listesi, yetmezse gerçekten oynanmış (backup'ı olan) en
+      // son aktif hesaplarla dolduruluyor — hiçbir zaman zaten arkadaş
+      // olunan, bekleyen isteği olan ya da kendisi olan biri önerilmiyor.
+      if (path === '/api/social/suggestions' && req.method === 'GET') {
+        const friendIds = db.prepare('SELECT account_a,account_b FROM friendships WHERE account_a=? OR account_b=?').all(account.id, account.id)
+          .map(r => (r.account_a === account.id ? r.account_b : r.account_a));
+        const excludeIds = new Set([account.id, ...friendIds]);
+        for (const r of db.prepare('SELECT from_account,to_account FROM friend_requests WHERE from_account=? OR to_account=?').all(account.id, account.id)) {
+          excludeIds.add(r.from_account); excludeIds.add(r.to_account);
+        }
+        const mutualCounts = new Map();
+        if (friendIds.length) {
+          const placeholders = friendIds.map(() => '?').join(',');
+          const rows = db.prepare(`SELECT account_a,account_b FROM friendships WHERE account_a IN (${placeholders}) OR account_b IN (${placeholders})`).all(...friendIds, ...friendIds);
+          for (const r of rows) {
+            for (const candidate of [r.account_a, r.account_b]) {
+              if (excludeIds.has(candidate)) continue;
+              mutualCounts.set(candidate, (mutualCounts.get(candidate) || 0) + 1);
+            }
+          }
+        }
+        const SUGGESTION_LIMIT = 10;
+        let candidateIds = [...mutualCounts.entries()].sort((x, y) => y[1] - x[1]).map(([id]) => id);
+        if (candidateIds.length < SUGGESTION_LIMIT) {
+          const have = new Set([...excludeIds, ...candidateIds]);
+          const filler = db.prepare('SELECT backups.account AS id FROM backups ORDER BY backups.updated DESC LIMIT 60').all()
+            .map(r => r.id).filter(id => !have.has(id));
+          candidateIds = [...candidateIds, ...filler];
+        }
+        candidateIds = candidateIds.slice(0, SUGGESTION_LIMIT);
+        const result = candidateIds.map(id => {
+          const accRow = db.prepare('SELECT name FROM accounts WHERE id=?').get(id);
+          const main = mainCharacterOf(db.prepare('SELECT data FROM backups WHERE account=?').get(id));
+          return {
+            accountId: id, accountName: accRow.name, name: main?.nickname || accRow.name,
+            avatarId: playerAvatarId(main), cls: main?.class || null, level: main?.level || 0,
+            mutualFriends: mutualCounts.get(id) || 0,
+          };
+        });
+        return send(200, result);
       }
       // İki yönlü bekleyen istek varsa (B zaten A'ya istek göndermiş) yeni bir
       // bekleyen istek daha açmak yerine doğrudan arkadaşlığı kur — Discord
@@ -462,8 +522,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (target.id === account.id) throw fail(400, 'CANNOT_FRIEND_SELF');
         const [a, b] = account.id < target.id ? [account.id, target.id] : [target.id, account.id];
         if (db.prepare('SELECT 1 FROM friendships WHERE account_a=? AND account_b=?').get(a, b)) throw fail(409, 'ALREADY_FRIENDS');
+        // Kullanıcı isteği: "Maksimum 50 arkadaşımız olabilir."
+        if (friendCount(account.id) >= FRIEND_MAX_COUNT) throw fail(409, 'FRIEND_LIMIT_REACHED');
         const reverse = db.prepare('SELECT id FROM friend_requests WHERE from_account=? AND to_account=?').get(target.id, account.id);
         if (reverse) {
+          if (friendCount(target.id) >= FRIEND_MAX_COUNT) throw fail(409, 'TARGET_FRIEND_LIMIT_REACHED');
           db.exec('BEGIN IMMEDIATE');
           try {
             db.prepare('DELETE FROM friend_requests WHERE id=?').run(reverse.id);
@@ -483,6 +546,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         try {
           const reqRow = db.prepare('SELECT * FROM friend_requests WHERE id=? AND to_account=?').get(id, account.id);
           if (!reqRow) throw fail(404, 'REQUEST_NOT_FOUND');
+          if (friendCount(account.id) >= FRIEND_MAX_COUNT) throw fail(409, 'FRIEND_LIMIT_REACHED');
+          if (friendCount(reqRow.from_account) >= FRIEND_MAX_COUNT) throw fail(409, 'TARGET_FRIEND_LIMIT_REACHED');
           const [a, b] = reqRow.from_account < account.id ? [reqRow.from_account, account.id] : [account.id, reqRow.from_account];
           db.prepare('INSERT OR IGNORE INTO friendships(account_a,account_b,created_at) VALUES(?,?,?)').run(a, b, Date.now());
           db.prepare('DELETE FROM friend_requests WHERE id=?').run(id);
@@ -527,6 +592,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const frameId=body.frameId??null;
         if(!validAvatarFrame(frameId))throw fail(400,'INVALID_AVATAR');
         db.prepare('INSERT INTO direct_messages(from_account,to_account,text,created_at,avatar_id,frame_id) VALUES(?,?,?,?,?,?)').run(account.id, otherId, text, createdAt,avatarId,frameId);
+        db.prepare('DELETE FROM direct_messages WHERE created_at < ?').run(Date.now() - DM_MESSAGE_TTL_MS);
         const id = db.prepare('SELECT last_insert_rowid() AS id').get().id;
         return send(200, { id, mine: true, text, createdAt,avatarId,frameId });
       }
