@@ -1,3 +1,4 @@
+import webpush from 'web-push';
 import { createAdmin } from './admin.mjs';
 import {validAvatarFrame} from '../src/data/avatarFrames.js';
 import {FIRST_PURCHASE_WEAPONS} from '../src/data/firstPurchaseWeapons.js';
@@ -26,12 +27,52 @@ import { FRIEND_MAX_COUNT, CHAT_MESSAGE_TTL_MS, DM_MESSAGE_TTL_MS } from '../src
 // saatiyle 00:00 sıfırlanma. Aşama gücü/malzeme tanımları istemciyle aynı
 // kaynaktan (bkz. Faz 4/6'daki aynı ilke).
 import { TOTAL_STAGES, CLAN_DUNGEON_DAILY_ENTRIES, CLAN_DUNGEON_COOLDOWN_MS, CLAN_DUNGEON_LOCK_TIMEOUT_MS, clanDungeonStage, rollClanDungeonMaterial, CLAN_BUILDING_MATERIAL_COST } from '../src/data/clanDungeon.js';
+// Kullanıcı isteği: "telefona bildirim gönderme sistemini kurmanı
+// istiyorum... inaktif oyuncu geri çağırma... etkinlik hatırlatması...
+// arkadaş/mesaj bildirimi... ayarlardan aç/kapa." Native (Capacitor/FCM)
+// gerçek bir seçenek değil — android/ klasörü sadece yerel test amaçlı
+// (appId "com.rpgmarket.testapp", google-services.json hiç yok, Play
+// Store'da değil) ve FCM için kullanıcının ayrı bir Firebase projesi
+// kurup bana kimlik bilgisi vermesi gerekirdi. Bunun yerine VAPID tabanlı
+// Web Push (tarayıcı Notification API + Service Worker) — anahtarlar
+// kendi kendine üretiliyor, dışarıdan hiçbir hesap gerekmiyor, ve asıl
+// oyuncu kitlesi zaten tarayıcıdan oynuyor (nyxia.sametcantas.com).
+// SCHEDULED_EVENTS saf veri (bkz. Faz 4 notu) — server/app.mjs'in
+// kullandığı istanbul-saat matematiği utils/scheduledEvents.js#eventPhase
+// ile AYNI ama o dosya kendi ../utils/player importunu uzantısız yaptığı
+// için (bkz. bu kod tabanındaki bilinen, kasıtlı ele alınmamış src/
+// genelindeki uzantısız-import sorunu) sunucudan güvenle import edilemiyor
+// — bu yüzden sadece o tek formül burada (aşağıdaki scheduledEventPreopenAt)
+// kasıtlı olarak yeniden yazıldı, veri (saat/dakika/preOpenMinutes) yine
+// tek kaynaktan (bu import) geliyor.
+import { SCHEDULED_EVENTS } from '../src/data/scheduledEvents.js';
 import { todayKey } from '../src/utils/day.js';
 
 const scrypt = promisify(derive);
 const hash = value => createHash('sha256').update(value).digest('hex');
 const fail = (status, code) => Object.assign(new Error(code), { status });
 const LIMIT = 2 * 1024 * 1024;
+// Push bildirimleri prod'da systemd unit'ine env olarak eklenen VAPID
+// anahtarlarıyla çalışır (bkz. deploy notları) — hiçbir zaman koda/git'e
+// yazılmaz. Anahtarlar yoksa (yerel dev, testler) PUSH_ENABLED false kalır
+// ve tüm push çağrıları sessizce no-op olur — özellik varlığı isteğe bağlı.
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:nyxia-online@example.com';
+const PUSH_ENABLED = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+if (PUSH_ENABLED) webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+const PUSH_CHECK_INTERVAL_MS = Number(process.env.PUSH_CHECK_INTERVAL_MS) || 60 * 1000;
+const INACTIVITY_DAYS = 3;
+const INACTIVITY_RESEND_COOLDOWN_DAYS = 7;
+const ISTANBUL_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;
+function scheduledEventPreopenAt(event, now) {
+  const ist = new Date(now + ISTANBUL_UTC_OFFSET_MS);
+  const istanbulLocalAsUtc = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate(), event.hour, event.minute, 0, 0);
+  return (istanbulLocalAsUtc - ISTANBUL_UTC_OFFSET_MS) - event.preOpenMinutes * 60000;
+}
+function istanbulDateKeyAt(now) {
+  return new Date(now + ISTANBUL_UTC_OFFSET_MS).toISOString().slice(0, 10);
+}
 const MARKET_DURATIONS_HOURS = new Set([1, 3, 6, 12, 24]);
 const MARKET_STALL_MAX_ITEMS = 10;
 const MARKET_MAX_PRICE = 999999999;
@@ -84,7 +125,12 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS clan_members(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), clan_id INTEGER NOT NULL REFERENCES clans(id), role TEXT NOT NULL, joined_at INTEGER NOT NULL, donated_np INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS clan_invites(id INTEGER PRIMARY KEY AUTOINCREMENT, clan_id INTEGER NOT NULL REFERENCES clans(id), from_account INTEGER NOT NULL REFERENCES accounts(id), to_account INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, UNIQUE(clan_id,to_account));
     CREATE TABLE IF NOT EXISTS clan_dungeon_state(clan_id INTEGER PRIMARY KEY REFERENCES clans(id), day_key TEXT NOT NULL, stage_index INTEGER NOT NULL DEFAULT 1, monster_hp INTEGER NOT NULL DEFAULT 0, completed INTEGER NOT NULL DEFAULT 0, locked_by INTEGER REFERENCES accounts(id), locked_by_name TEXT, locked_until INTEGER);
-    CREATE TABLE IF NOT EXISTS clan_dungeon_attempts(account_id INTEGER NOT NULL REFERENCES accounts(id), day_key TEXT NOT NULL, entries_used INTEGER NOT NULL DEFAULT 0, first_entry_at INTEGER, PRIMARY KEY(account_id,day_key));`);
+    CREATE TABLE IF NOT EXISTS clan_dungeon_attempts(account_id INTEGER NOT NULL REFERENCES accounts(id), day_key TEXT NOT NULL, entries_used INTEGER NOT NULL DEFAULT 0, first_entry_at INTEGER, PRIMARY KEY(account_id,day_key));
+    CREATE TABLE IF NOT EXISTS clan_dungeon_log(id INTEGER PRIMARY KEY AUTOINCREMENT, clan_id INTEGER NOT NULL REFERENCES clans(id), day_key TEXT NOT NULL, account_name TEXT NOT NULL, stage_index INTEGER NOT NULL, damage INTEGER NOT NULL, killed INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS push_subscriptions(account_id INTEGER NOT NULL REFERENCES accounts(id), endpoint TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY(account_id,endpoint));
+    CREATE TABLE IF NOT EXISTS push_prefs(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), inactivity INTEGER NOT NULL DEFAULT 1, events INTEGER NOT NULL DEFAULT 1, social INTEGER NOT NULL DEFAULT 1);
+    CREATE TABLE IF NOT EXISTS push_inactivity_sent(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), sent_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS push_event_sent(event_id TEXT NOT NULL, day_key TEXT NOT NULL, PRIMARY KEY(event_id,day_key));`);
   // Başlangıçta bir kerelik temizlik — hafta öncesinin boss kayıtları hiç
   // kullanılmayacak, DB'nin sınırsız büyümesini önler.
   {
@@ -96,6 +142,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     // değilse sil" — dünün giriş hakkı/cooldown'u zaten hiçbir zaman tekrar
     // okunmayacak.
     db.prepare('DELETE FROM clan_dungeon_attempts WHERE day_key <> ?').run(todayKey());
+    db.prepare('DELETE FROM clan_dungeon_log WHERE day_key <> ?').run(todayKey());
+    // push_event_sent kendi İstanbul-saatli gün anahtarını kullanıyor
+    // (yukarıdaki todayKey() cihaz/sunucu yerel tarihi, farklı bir biçim) —
+    // karıştırılmasın diye ayrı bir silme.
+    db.prepare('DELETE FROM push_event_sent WHERE day_key <> ?').run(istanbulDateKeyAt(Date.now()));
   }
   // Ters proxy arkasında (Caddy) her istek soket düzeyinde AYNI adresten
   // (proxy'nin kendisinden) geliyor — X-Forwarded-For'a körü körüne
@@ -150,6 +201,70 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     try { return JSON.parse(Buffer.concat(chunks).toString()); } catch { throw fail(400, 'INVALID_JSON'); }
   };
   const admin = createAdmin(db, { read, fail });
+  // Push bildirimleri — bkz. dosyanın en üstündeki VAPID/kapsam notu. Bir
+  // hesabın kendi tercihi (push_prefs) kategoriyi kapatmışsa hiç gönderilmez;
+  // tercih hiç kaydedilmemişse varsayılan açık (satır yoksa `prefs` null,
+  // `!prefs || prefs[category]` true kalır). 404/410 (abonelik artık geçersiz
+  // — kullanıcı bildirimleri kapattı/tarayıcı verisini sildi) sessizce o
+  // aboneliği siler, başka bir hata akışı bozmasın diye yutulur.
+  async function sendPush(accountId, category, payload) {
+    if (!PUSH_ENABLED) return;
+    const prefs = db.prepare('SELECT * FROM push_prefs WHERE account_id=?').get(accountId);
+    if (prefs && !prefs[category]) return;
+    const subs = db.prepare('SELECT * FROM push_subscriptions WHERE account_id=?').all(accountId);
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload));
+      } catch (error) {
+        if (error.statusCode === 404 || error.statusCode === 410) {
+          db.prepare('DELETE FROM push_subscriptions WHERE account_id=? AND endpoint=?').run(accountId, sub.endpoint);
+        }
+      }
+    }
+  }
+  // Kullanıcı isteği: "Bir süre oyuna girmeyen oyuncuları oyuna çekebilmek
+  // için Karakterin Seni Özledi! gibi olabilir." INACTIVITY_DAYS'ten uzun
+  // süredir hiç kayıt (backup) göndermemiş VE en az bir push aboneliği olan
+  // hesaplara, INACTIVITY_RESEND_COOLDOWN_DAYS'te bir defadan fazla olmayacak
+  // şekilde gönderilir (push_inactivity_sent aynı hesaba spam'i önlüyor).
+  async function runInactivityCheck() {
+    const now = Date.now();
+    const cutoff = now - INACTIVITY_DAYS * 86400000;
+    const cooldownCutoff = now - INACTIVITY_RESEND_COOLDOWN_DAYS * 86400000;
+    const rows = db.prepare(`
+      SELECT DISTINCT b.account AS id FROM backups b
+      JOIN push_subscriptions ps ON ps.account_id = b.account
+      LEFT JOIN push_inactivity_sent pis ON pis.account_id = b.account
+      WHERE b.updated < ? AND (pis.sent_at IS NULL OR pis.sent_at < ?)
+    `).all(cutoff, cooldownCutoff);
+    for (const row of rows) {
+      await sendPush(row.id, 'inactivity', { title: 'Karakterin seni özledi!', body: "Nyxia Online'da yeni maceralar seni bekliyor — bir uğra!", tag: 'inactivity', url: '/' });
+      db.prepare('INSERT INTO push_inactivity_sent(account_id,sent_at) VALUES(?,?) ON CONFLICT(account_id) DO UPDATE SET sent_at=excluded.sent_at').run(row.id, now);
+    }
+  }
+  // Kullanıcı isteği: "Etkinlik zamanları etkinlikten bir kaç dakika
+  // öncesinde bildirim düşebilir." SCHEDULED_EVENTS'in kendi preOpenMinutes
+  // penceresi zaten "bir kaç dakika önce" anlamına geliyor (bkz. dosyanın
+  // üstündeki not) — o pencereye girilen ilk kontrolde, o günün ilk (ve tek)
+  // bildirimi gönderilir (push_event_sent aynı gün için tekrarı engeller).
+  async function runEventReminderCheck() {
+    const now = Date.now();
+    const dayKey = istanbulDateKeyAt(now);
+    for (const event of SCHEDULED_EVENTS) {
+      if (now < scheduledEventPreopenAt(event, now)) continue;
+      if (db.prepare('SELECT 1 FROM push_event_sent WHERE event_id=? AND day_key=?').get(event.id, dayKey)) continue;
+      db.prepare('INSERT OR IGNORE INTO push_event_sent(event_id,day_key) VALUES(?,?)').run(event.id, dayKey);
+      const rows = db.prepare(`
+        SELECT DISTINCT ps.account_id AS id FROM push_subscriptions ps
+        LEFT JOIN push_prefs pp ON pp.account_id = ps.account_id
+        WHERE pp.events IS NULL OR pp.events = 1
+      `).all();
+      for (const row of rows) {
+        await sendPush(row.id, 'events', { title: `${event.name} birazdan başlıyor!`, body: `${event.preOpenMinutes} dakika içinde etkinlik alanı açılıyor.`, tag: `event-${event.id}`, url: '/' });
+      }
+    }
+  }
+  const pushInterval = PUSH_ENABLED ? setInterval(() => { runInactivityCheck().catch(() => {}); runEventReminderCheck().catch(() => {}); }, PUSH_CHECK_INTERVAL_MS) : null;
   const cookie = (token, age) => `nyxia_session=${token}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=${age}${secure ? '; Secure' : ''}`;
   const server = createServer(async (req, res) => {
     const send = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(body)); };
@@ -576,10 +691,14 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
             db.prepare('INSERT OR IGNORE INTO friendships(account_a,account_b,created_at) VALUES(?,?,?)').run(a, b, Date.now());
             db.exec('COMMIT');
           } catch (error) { db.exec('ROLLBACK'); throw error; }
+          const accepterName = mainCharacterOf(db.prepare('SELECT data FROM backups WHERE account=?').get(account.id))?.nickname || account.name;
+          sendPush(target.id, 'social', { title: 'Yeni arkadaş!', body: `${accepterName} ile artık arkadaşsınız.`, tag: 'friend', url: '/' }).catch(() => {});
           return send(200, { status: 'accepted' });
         }
         try { db.prepare('INSERT INTO friend_requests(from_account,to_account,created_at) VALUES(?,?,?)').run(account.id, target.id, Date.now()); }
         catch (error) { if (error.code?.startsWith('ERR_SQLITE')) throw fail(409, 'REQUEST_ALREADY_SENT'); throw error; }
+        const requesterName = mainCharacterOf(db.prepare('SELECT data FROM backups WHERE account=?').get(account.id))?.nickname || account.name;
+        sendPush(target.id, 'social', { title: 'Yeni arkadaşlık isteği', body: `${requesterName} seni arkadaş olarak eklemek istiyor.`, tag: 'friend-request', url: '/' }).catch(() => {});
         return send(200, { status: 'pending' });
       }
       const friendAcceptMatch = path.match(/^\/api\/social\/friends\/(\d+)\/accept$/);
@@ -637,6 +756,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         db.prepare('INSERT INTO direct_messages(from_account,to_account,text,created_at,avatar_id,frame_id) VALUES(?,?,?,?,?,?)').run(account.id, otherId, text, createdAt,avatarId,frameId);
         db.prepare('DELETE FROM direct_messages WHERE created_at < ?').run(Date.now() - DM_MESSAGE_TTL_MS);
         const id = db.prepare('SELECT last_insert_rowid() AS id').get().id;
+        const senderName = mainCharacterOf(db.prepare('SELECT data FROM backups WHERE account=?').get(account.id))?.nickname || account.name;
+        sendPush(otherId, 'social', { title: senderName, body: text.slice(0, 120), tag: `dm-${account.id}`, url: '/' }).catch(() => {});
         return send(200, { id, mine: true, text, createdAt,avatarId,frameId });
       }
       // Faz 6 — gerçek çok-oyunculu klan. Kuruluş maliyeti (elmas) oyundaki
@@ -884,8 +1005,16 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           dayKey: row.day_key, stageIndex: row.stage_index, totalStages: TOTAL_STAGES,
           stage: clanDungeonStage(row.stage_index), monsterHp: row.monster_hp, completed: !!row.completed,
           locked: !!row.locked_by, lockedByMe: row.locked_by === account.id, lockedByName: row.locked_by_name || null,
+          lockedUntil: row.locked_until || null,
           attempts: dungeonAttemptsInfo(account.id),
         });
+      }
+      if (path === '/api/clan/dungeon/log' && req.method === 'GET') {
+        const membership = myMembership();
+        if (!membership) throw fail(409, 'NOT_IN_CLAN');
+        const rows = db.prepare('SELECT id,account_name,stage_index,damage,killed,created_at FROM clan_dungeon_log WHERE clan_id=? AND day_key=? ORDER BY id DESC LIMIT 30')
+          .all(membership.clan_id, todayKey());
+        return send(200, rows.map(r => ({ id: r.id, name: r.account_name, stageIndex: r.stage_index, damage: r.damage, killed: !!r.killed, createdAt: r.created_at })));
       }
       if (path === '/api/clan/dungeon/enter' && req.method === 'POST') {
         const membership = myMembership();
@@ -913,6 +1042,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const fresh = clanDungeonRow(membership.clan_id);
         return send(200, {
           stageIndex: fresh.stage_index, stage: clanDungeonStage(fresh.stage_index), monsterHp: fresh.monster_hp,
+          lockedUntil: fresh.locked_until || null,
           attempts: dungeonAttemptsInfo(account.id),
         });
       }
@@ -931,7 +1061,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           if (!Number.isSafeInteger(damage) || damage <= 0 || damage > stage.hp * DUNGEON_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
           const hp = Math.max(0, row.monster_hp - damage);
           let droppedMaterial = null;
-          if (hp <= 0) {
+          const killed = hp <= 0;
+          if (killed) {
             const roll = rollClanDungeonMaterial(row.stage_index);
             if (roll.dropped) droppedMaterial = roll.key;
             if (row.stage_index >= TOTAL_STAGES) {
@@ -948,11 +1079,17 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           } else {
             db.prepare('UPDATE clan_dungeon_state SET monster_hp=?, locked_until=? WHERE clan_id=?').run(hp, Date.now() + CLAN_DUNGEON_LOCK_TIMEOUT_MS, membership.clan_id);
           }
+          // Kullanıcı isteği: "Klan paneline basit bir log ekranı koy: 'Ahmet,
+          // 3. Canavara 45.000 hasar vurdu.'" — klan içi rekabet/heyecan için.
+          const logName = mainCharacterOf(db.prepare('SELECT data FROM backups WHERE account=?').get(account.id))?.nickname || account.name;
+          db.prepare('INSERT INTO clan_dungeon_log(clan_id,day_key,account_name,stage_index,damage,killed,created_at) VALUES(?,?,?,?,?,?,?)')
+            .run(membership.clan_id, row.day_key, logName, row.stage_index, damage, killed ? 1 : 0, Date.now());
           db.exec('COMMIT');
           const fresh = clanDungeonRow(membership.clan_id);
           return send(200, {
             stageIndex: fresh.stage_index, stage: clanDungeonStage(fresh.stage_index), monsterHp: fresh.monster_hp,
-            completed: !!fresh.completed, stageCleared: hp <= 0, droppedMaterial,
+            lockedUntil: fresh.locked_until || null,
+            completed: !!fresh.completed, stageCleared: killed, droppedMaterial,
           });
         } catch (error) { db.exec('ROLLBACK'); throw error; }
       }
@@ -962,10 +1099,49 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL, locked_by_name=NULL, locked_until=NULL WHERE clan_id=? AND locked_by=?').run(membership.clan_id, account.id);
         return send(200, { ok: true });
       }
+      // Push bildirimleri — kullanıcı isteği: "Ayarlar kısmında bu
+      // bildirimleri istediği gibi açıp kapatabilir." vapid-key public,
+      // istemcinin abone olurken PushManager.subscribe'a vermesi gerekiyor
+      // (kendisi bir sır değil — tersi, özel anahtar, hiçbir zaman dışarı
+      // verilmiyor).
+      if (path === '/api/push/vapid-key' && req.method === 'GET') {
+        return send(200, { publicKey: VAPID_PUBLIC_KEY, enabled: PUSH_ENABLED });
+      }
+      if (path === '/api/push/subscribe' && req.method === 'POST') {
+        const body = await read(req);
+        const endpoint = typeof body?.endpoint === 'string' ? body.endpoint.slice(0, 2000) : '';
+        const p256dh = typeof body?.keys?.p256dh === 'string' ? body.keys.p256dh : '';
+        const auth = typeof body?.keys?.auth === 'string' ? body.keys.auth : '';
+        if (!endpoint || !p256dh || !auth) throw fail(400, 'INVALID_SUBSCRIPTION');
+        db.prepare(`INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at) VALUES(?,?,?,?,?)
+          ON CONFLICT(account_id,endpoint) DO UPDATE SET p256dh=excluded.p256dh, auth=excluded.auth`)
+          .run(account.id, endpoint, p256dh, auth, Date.now());
+        return send(200, { ok: true });
+      }
+      if (path === '/api/push/unsubscribe' && req.method === 'POST') {
+        const body = await read(req);
+        const endpoint = typeof body?.endpoint === 'string' ? body.endpoint : '';
+        db.prepare('DELETE FROM push_subscriptions WHERE account_id=? AND endpoint=?').run(account.id, endpoint);
+        return send(200, { ok: true });
+      }
+      if (path === '/api/push/prefs' && req.method === 'GET') {
+        const row = db.prepare('SELECT * FROM push_prefs WHERE account_id=?').get(account.id);
+        return send(200, { inactivity: row ? !!row.inactivity : true, events: row ? !!row.events : true, social: row ? !!row.social : true });
+      }
+      if (path === '/api/push/prefs' && req.method === 'PUT') {
+        const body = await read(req);
+        const inactivity = body?.inactivity ? 1 : 0;
+        const events = body?.events ? 1 : 0;
+        const social = body?.social ? 1 : 0;
+        db.prepare(`INSERT INTO push_prefs(account_id,inactivity,events,social) VALUES(?,?,?,?)
+          ON CONFLICT(account_id) DO UPDATE SET inactivity=excluded.inactivity, events=excluded.events, social=excluded.social`)
+          .run(account.id, inactivity, events, social);
+        return send(200, { ok: true });
+      }
       throw fail(404, 'NOT_FOUND');
     } catch (error) { send(error.status || 500, { error: error.status ? error.message : 'SERVER_ERROR' }); }
   });
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;
-  return { server, close: () => new Promise(resolve => server.close(() => { db.close(); resolve(); })) };
+  return { server, close: () => new Promise(resolve => { if (pushInterval) clearInterval(pushInterval); server.close(() => { db.close(); resolve(); }); }) };
 }

@@ -13,6 +13,9 @@ import { WEEKLY_QUESTS } from "../data/weeklyQuests";
 import { weeklyQuestProgress } from "../utils/weeklyQuests";
 import { MAP_COLLECTIONS, collectionProgress } from "../utils/collection";
 import { canClaimDailyLogin } from "../utils/dailyLogin";
+import { canFightMapBoss } from "../utils/mapBoss";
+import { buildMapBoss } from "../data/mapBosses";
+import { findMap, highestUnlockedMap } from "../data/maps";
 import * as chatService from "../services/chatService";
 import * as socialService from "../services/socialService";
 import { styles } from "../styles";
@@ -32,12 +35,14 @@ import TutorialModal from "./TutorialModal";
 import DailyLoginModal from "./DailyLoginModal";
 import DiamondShopModal from "./DiamondShopModal";
 import FirstPurchaseOfferModal from "./FirstPurchaseOfferModal";
+import EventReadyModal from "./EventReadyModal";
+import MonsterPortrait from "./MonsterPortrait";
 import RewardChest from './icons/RewardChest';
 import ScheduledEventBanner from "./ScheduledEventBanner";
 import WarzoneBossBanner from "./WarzoneBossBanner";
 
 export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings, unlockedSlots, onUnlockSlot }) {
-  const { t } = useTranslation();
+  const { t, tm } = useTranslation();
   const cls = CLASSES[player.class];
   const { atk } = totalStats(player);
   const def = playerDef(player);
@@ -79,6 +84,23 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   const handleBuyFirstPurchaseOffer = () => {
     pushToast(t("diamondShop.comingSoonToast"), "default");
   };
+
+  // Kullanıcı isteği: "Bir etkinlik açıldığı zaman oyuncu bu etkinliğe
+  // katılma şartlarını sağlıyorsa ekrana bir bildirim gibi widget açılıp
+  // katılmak isteyip istemediği sorulmalı" — ilk uygulama: Harita Sonu Boss.
+  // canFightMapBoss günlük bir bayrak (bkz. utils/mapBoss.js), bu yüzden
+  // her Hub mount'unda (oturum başına, tıpkı dailyLoginOpen/tutorialOpen
+  // gibi) yeniden true'ya seedleniyor — kapatılırsa o oturumda bir daha
+  // çıkmaz, ertesi gün (yeni bir mount'ta) tekrar sorar. EventReadyModal.jsx
+  // olay-bağımsız/genel bir bileşen — World Boss açılışı, Klan Dungeon
+  // boşalması gibi başka "hazır, katılmak ister misin?" anları da aynı
+  // bileşeni kendi state bayraklarıyla kullanabilir.
+  const mapBossMap = player.level >= findMap(player.currentMapId).levelMin
+    ? findMap(player.currentMapId)
+    : highestUnlockedMap(player.level);
+  const mapBoss = buildMapBoss(mapBossMap);
+  const mapBossCheck = canFightMapBoss(player, mapBossMap.id);
+  const [mapBossReadyOpen, setMapBossReadyOpen] = useState(mapBossCheck.ok);
 
   // Kullanıcı isteği: "Savaş Alanından çıkmak istediğinde emin misin? diye
   // sor." — WarzoneTab, ışınlandıktan sonra (entered=true) bu bayrağı
@@ -304,6 +326,17 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
 
       {firstPurchaseOfferOpen && !tutorialOpen && !dailyLoginOpen && !firstPurchaseClaimed && (
         <FirstPurchaseOfferModal player={player} onBuy={handleBuyFirstPurchaseOffer} onClose={() => setFirstPurchaseOfferOpen(false)} />
+      )}
+
+      {mapBossReadyOpen && !tutorialOpen && !dailyLoginOpen && !firstPurchaseOfferOpen && mapBossCheck.ok && (
+        <EventReadyModal
+          portrait={<div className="monster-mini-portrait"><MonsterPortrait monster={mapBoss} label={tm(mapBoss)} /></div>}
+          title={t("battle.mapBossReadyTitle", { name: tm(mapBoss) })}
+          description={t("battle.mapBossDesc")}
+          confirmLabel={t("battle.goToBoss")}
+          onConfirm={() => { setMapBossReadyOpen(false); setTab("battle"); }}
+          onDismiss={() => setMapBossReadyOpen(false)}
+        />
       )}
 
       {diamondShopOpen && (

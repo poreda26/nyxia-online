@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { SCHEDULED_EVENTS } from "../data/scheduledEvents";
+import { SCHEDULED_EVENT_ICONS } from "../data/scheduledEventIcons";
 import { eventPhase, scheduledEventProgress, creditScheduledEventTicks } from "../utils/scheduledEvents";
 import ScheduledEventModal from "./ScheduledEventModal";
 import { useTranslation } from "../i18n/LanguageContext";
@@ -65,7 +66,7 @@ export default function ScheduledEventBanner({ player, setPlayer, pushToast }) {
       {visibleEvents.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 14px 0" }}>
           {visibleEvents.map(({ event, phase, start, end }) => {
-            const Icon = event.icon;
+            const Icon = SCHEDULED_EVENT_ICONS[event.id];
             const progress = scheduledEventProgress(player, event);
             const label = phase === "preopen"
               ? t("scheduledEvent.bannerPreopen", { event: eventName(event), countdown: fmtCountdown(start - now) })
