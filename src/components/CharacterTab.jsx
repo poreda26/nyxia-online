@@ -112,6 +112,8 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         )}
       </div>
 
+      <PlayerAvatarPicker player={player} setPlayer={setPlayer}/>
+
       {onReplayTutorial && (
         <button
           className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", marginBottom: 12 }}
@@ -310,7 +312,6 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
 
       {subtab === "cosmetics" && (
         <>
-          <PlayerAvatarPicker player={player} setPlayer={setPlayer}/>
           <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 10px" }}>
             {t("character.cosmetics.intro")}
           </p>

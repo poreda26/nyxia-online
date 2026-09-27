@@ -17,5 +17,5 @@ export function AvatarPicker({value,onChange,clan=false,disabled=false}){
 }
 export function PlayerAvatarPicker({player,setPlayer}){
  const {lang}=useTranslation();
- return <details className="avatar-customize"><summary><Avatar player={player}/><span>{lang==='en'?'Character avatar':'Karakter avatarı'}<small>{lang==='en'?'Choose your portrait for chat':'Sohbette görünecek portreni seç'}</small></span><b>✦</b></summary><AvatarPicker value={playerAvatarId(player)} onChange={avatarId=>setPlayer(p=>({...p,avatarId}))}/></details>;
+ return <details className="avatar-customize"><summary><Avatar player={player}/><span>{lang==='en'?'Change avatar':'Avatarı değiştir'}<small>{lang==='en'?'All 12 avatars are free · tap to choose':'12 avatarın tamamı ücretsiz · seçmek için dokun'}</small></span><b>✦</b></summary><AvatarPicker value={playerAvatarId(player)} onChange={avatarId=>setPlayer(p=>({...p,avatarId}))}/></details>;
 }
