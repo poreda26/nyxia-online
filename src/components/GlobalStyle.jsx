@@ -4,7 +4,7 @@ import './RewardPanels.css';
 export default function GlobalStyle() {
   useEffect(()=>{
     const viewport=window.visualViewport;
-    const update=()=>{if(viewport&&viewport.scale!==1)return;document.documentElement.style.setProperty('--app-height',`${Math.round(viewport?.height||window.innerHeight)}px`);};
+    const update=()=>{if(viewport&&viewport.scale!==1)return;const height=Math.round(viewport?.height||window.innerHeight);document.documentElement.style.setProperty('--app-height',`${height}px`);document.documentElement.dataset.shortViewport=height<480?'true':'false';};
     update();viewport?.addEventListener('resize',update);window.addEventListener('resize',update);
     return ()=>{viewport?.removeEventListener('resize',update);window.removeEventListener('resize',update);};
   },[]);

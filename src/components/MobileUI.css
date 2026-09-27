@@ -7,3 +7,27 @@ html[data-effects=low] .wing-sparks,html[data-effects=low] .wing-radiance,html[d
 @media(max-width:359px){.game-hub .hud-main{gap:5px!important}.hud-main>button{min-width:36px;min-height:36px}.rpg-tabs button{padding-left:6px!important;padding-right:6px!important;font-size:10px!important}.captain-greeting{gap:8px!important}.captain-greeting p{font-size:11px!important}}
 @media(max-height:480px) and (orientation:landscape){.dock-button{min-height:49px;gap:2px}.dock-medallion{width:32px;height:32px}.dock-medallion svg{width:26px;height:26px}.dock-rail{padding-top:5px}.dock-gems{display:none}.game-topbar{padding-top:6px!important;padding-bottom:6px!important}.hud-lower{margin-top:4px!important}.equipment-layout{height:280px}.battle-mobile .battle-scene{min-height:180px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.notice-window,.notice-copy{white-space:normal!important;overflow:visible!important;transform:none!important}}
+
+/* The conversation log owns scrolling; the composer stays inside the visible screen. */
+[data-screen="chat"]{display:flex;flex-direction:column;overflow:hidden!important;min-width:0}
+[data-screen="chat"]>div{display:flex;flex:1;flex-direction:column;min-height:0;min-width:0}
+[data-screen="chat"] .social-chat-panel{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;overflow:hidden;padding-bottom:0!important;gap:8px}
+[data-screen="chat"] .rpg-chat-log{height:auto!important;min-height:0!important;flex:1; margin:0!important}
+[data-screen="chat"] .rpg-chat-compose{flex-shrink:0;margin:0!important;padding:4px 0 max(6px,env(safe-area-inset-bottom))!important}
+.conversation-rail{display:flex;align-items:stretch;gap:7px;overflow-x:auto;overflow-y:hidden;flex-shrink:0;min-width:0;padding:3px 0 7px;scrollbar-width:thin;overscroll-behavior-x:contain;scroll-snap-type:x proximity}
+.conversation-rail button{font:inherit;cursor:pointer;color:var(--text-muted);border:0;background:transparent;min-height:44px}
+.conversation-public,.conversation-chip{flex:0 0 auto;display:flex;align-items:center;border:1px solid #6e624b!important;border-radius:12px;background:linear-gradient(135deg,#252c38,#171d28)!important;scroll-snap-align:start}
+.conversation-public{padding:0 12px;gap:7px}.conversation-chip{max-width:210px}
+.conversation-select{display:flex;align-items:center;gap:7px;padding:0 7px 0 10px;min-width:0}.conversation-select span{max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.conversation-select svg{flex-shrink:0}.conversation-select i{width:7px;height:7px;background:#ed8090;border-radius:50%;box-shadow:0 0 7px #df516b;flex-shrink:0}
+.conversation-close{display:flex;align-items:center;justify-content:center;width:40px;min-width:40px;border-left:1px solid #9b875230!important;border-radius:0 12px 12px 0}
+.conversation-rail .is-active{border-color:#d6b071!important;background:linear-gradient(135deg,#5a472f,#332b25)!important}.conversation-rail .is-active button,.conversation-public.is-active{color:#ffe4b5}
+.conversation-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-shrink:0;padding:2px 2px 6px}.conversation-heading>span{display:flex;gap:6px;align-items:center;min-width:0}.conversation-heading strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.conversation-heading small{font-size:10px;color:var(--text-muted);white-space:nowrap}
+.conversation-tools{flex-shrink:0;gap:8px}.conversation-tools>span{font-size:10px!important;text-align:right}.conversation-tools button{width:36px;min-height:36px;display:flex;align-items:center;justify-content:center}
+.conversation-empty{display:flex;flex:1;flex-direction:column;justify-content:center;align-items:center;gap:12px;color:var(--text-muted);font-size:12px;text-align:center;padding:18px}.dm-time{display:block;font-size:9px;color:var(--text-muted);text-align:right;margin-top:5px}
+.friends-panel{min-width:0}.friends-panel .rpg-row{gap:9px!important;padding:10px!important;min-width:0}.friends-panel .rpg-row>div{min-width:0;overflow-wrap:anywhere}.friends-panel .rpg-action{min-width:42px;min-height:44px;flex-shrink:0}.friends-panel input{min-width:0;width:100%;font-size:16px!important}.friends-panel .rpg-card{border-radius:16px!important}.friends-panel .rpg-row .identity-avatar{margin:4px;flex-shrink:0}
+@media(max-height:480px){[data-screen="chat"] .conversation-heading,[data-screen="chat"] .conversation-tools{display:none}[data-screen="chat"] .social-chat-panel{gap:4px}.conversation-rail{padding-bottom:3px}}
+
+html[data-short-viewport=true] .game-hub:has([data-screen="chat"]) .hud-lower{display:none}
+html[data-short-viewport=true] [data-screen="chat"] .conversation-heading,html[data-short-viewport=true] [data-screen="chat"] .conversation-tools{display:none}
+html[data-short-viewport=true] [data-screen="chat"] .social-chat-panel{padding-top:6px!important;gap:4px;box-sizing:border-box}
+html[data-short-viewport=true] [data-screen="chat"] .rpg-chat-log{padding:6px!important}

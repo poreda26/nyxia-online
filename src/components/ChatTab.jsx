@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, ShieldCheck, HelpCircle, Wand2, X } from "lucide-react";
+import { Send, ShieldCheck, HelpCircle, Wand2, X, Globe2, MessageCircle } from "lucide-react";
 import { styles } from "../styles";
 import * as chatService from "../services/chatService";
 import * as socialService from "../services/socialService";
@@ -23,7 +23,7 @@ export default function ChatTab({
   const { t, lang } = useTranslation();
   const [activeDmId, setActiveDmId] = useState(pendingActiveDm);
   useEffect(() => {
-    if (pendingActiveDm != null) onConsumePendingActiveDm();
+    if (pendingActiveDm != null) onConsumePendingActiveDm?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -92,17 +92,23 @@ export default function ChatTab({
 
   // ---- DM sekmesi ----
   const [dmMessages, setDmMessages] = useState([]);
-  const [dmInput, setDmInput] = useState("");
+  const [dmDrafts,setDmDrafts]=useState({});
+  const dmInput=dmDrafts[activeDmId]||"";
+  const setDmInput=value=>setDmDrafts(d=>({...d,[activeDmId]:value}));
   const dmLogRef = useRef(null);
   const activeDm = openDmTabs.find((x) => x.accountId === activeDmId) || null;
+
+  const currentDm=useRef(activeDmId);currentDm.current=activeDmId;
+  useEffect(()=>{setDmMessages([])},[activeDmId]);
 
   const refreshDm = useCallback(async () => {
     if (!activeDm) return;
     try {
       const msgs = await socialService.fetchDirectMessages(activeDm.accountId);
+      if(currentDm.current!==activeDm.accountId)return;
       setDmMessages(msgs);
       const lastFromThem = msgs.filter((m) => !m.mine).slice(-1)[0];
-      if (lastFromThem) onSeenDm(activeDm.accountId, lastFromThem.createdAt);
+      if (lastFromThem) onSeenDm?.(activeDm.accountId, lastFromThem.createdAt);
     } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
   }, [activeDm, onSeenDm]);
 
@@ -121,43 +127,36 @@ export default function ChatTab({
     if (!text || !activeDm) return;
     setDmInput("");
     try { await socialService.sendDirectMessage(activeDm.accountId, text, playerAvatarId(player), player.avatarFrameId); refreshDm(); }
-    catch (error) { pushToast(formatServerError(t, error), "warn"); }
+    catch (error) { setDmDrafts(d=>({...d,[activeDm.accountId]:d[activeDm.accountId]||text}));pushToast(formatServerError(t, error), "warn"); }
   };
 
   const closeTab = (e, accountId) => {
     e.stopPropagation();
     if (activeDmId === accountId) setActiveDmId(null);
-    onCloseDm(accountId);
+    onCloseDm?.(accountId);
   };
 
   return (
     <div className="social-chat-panel" style={styles.panelScroll}>
-      {openDmTabs.length > 0 && (
-        <div className="rpg-tabs" style={{ ...styles.subtabRow, marginTop: 12 }}>
-          <button aria-pressed={activeDmId === null} onClick={() => setActiveDmId(null)} style={{ ...styles.subtabBtn, ...(activeDmId === null ? styles.subtabBtnActive : {}) }}>
-            {t("chat.subtabPublic")}
-          </button>
-          {openDmTabs.map((tabItem) => (
-            <button
-              key={tabItem.accountId} aria-pressed={activeDmId === tabItem.accountId} onClick={() => setActiveDmId(tabItem.accountId)}
-              style={{ ...styles.subtabBtn, ...(activeDmId === tabItem.accountId ? styles.subtabBtnActive : {}), display: "flex", alignItems: "center", gap: 5 }}
-            >
-              {tabItem.name}
-              {dmUnreadIds?.has(tabItem.accountId) && <span style={{ width: 6, height: 6, borderRadius: 3, background: "#C9425A", flexShrink: 0 }} />}
-              <X size={11} onClick={(e) => closeTab(e, tabItem.accountId)} />
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="conversation-rail" aria-label={lang==='en'?'Conversations':'Konuşmalar'}>
+        <button className={`conversation-public ${activeDmId===null?'is-active':''}`} aria-pressed={activeDmId===null} onClick={()=>setActiveDmId(null)}><Globe2 size={18}/><span>{t('chat.subtabPublic')}</span></button>
+        {openDmTabs.map(thread=><div key={thread.accountId} className={`conversation-chip ${activeDmId===thread.accountId?'is-active':''}`}>
+          <button className="conversation-select" aria-pressed={activeDmId===thread.accountId} onClick={()=>setActiveDmId(thread.accountId)} title={thread.name}><MessageCircle size={16}/><span>{thread.name}</span>{dmUnreadIds?.has(thread.accountId)&&<i aria-label={lang==='en'?'Unread message':'Okunmamış mesaj'}/>}</button>
+          <button className="conversation-close" aria-label={`${thread.name} ${lang==='en'?'close conversation':'konuşmasını kapat'}`} onClick={e=>closeTab(e,thread.accountId)}><X size={15}/></button>
+        </div>)}
+      </div>
+      {activeDm&&<div className="conversation-heading"><span><MessageCircle size={14}/><strong>{activeDm.name}</strong></span><small>{lang==='en'?'Private conversation':'Özel konuşma'}</small></div>}
 
       {activeDm ? (
         <>
-          <div ref={dmLogRef} className="rpg-chat-log" style={{ ...styles.chatLog, marginTop: 12 }}>
+          <div role="log" aria-label={lang==='en'?'Private messages':'Özel mesajlar'} ref={dmLogRef} className="rpg-chat-log" style={{ ...styles.chatLog, marginTop: 12 }}>
+            {!dmMessages.length&&<div className="conversation-empty"><MessageCircle size={28}/><span>{lang==='en'?'Start a conversation with your friend.':'Arkadaşınla sohbet etmeye başla.'}</span></div>}
             {dmMessages.map((m) => (
               <div key={m.id} className={`rpg-chat-msg social-message ${m.mine ? "social-message-mine" : ""}`}>
                 <Avatar id={m.avatarId} frameId={m.frameId} size={40} />
                 <div className="rpg-chat-bubble" style={{ ...styles.chatMsgBubble, ...(m.mine ? { background: "var(--gold-text)", color: "#15171E" } : {}) }}>
                   {m.text}
+                  <time className="dm-time">{new Date(m.createdAt).toLocaleTimeString(lang==='en'?'en-GB':'tr-TR',{hour:'2-digit',minute:'2-digit'})}</time>
                 </div>
               </div>
             ))}
@@ -165,7 +164,7 @@ export default function ChatTab({
           <div className="rpg-chat-compose" style={styles.chatInputRow}>
             <input
               type="text" value={dmInput} onChange={(e) => setDmInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") sendDm(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) sendDm(); }}
               placeholder={t("chat.inputPlaceholderDefault")} style={styles.chatInput}
             />
             <button aria-label={lang === "en" ? "Send message" : "Mesaj gönder"} className="rpg-action" style={styles.tinyBtn} disabled={!dmInput.trim()} onClick={sendDm}>
@@ -175,7 +174,7 @@ export default function ChatTab({
         </>
       ) : (
       <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: openDmTabs.length > 0 ? 8 : 12 }}>
+      <div className="conversation-tools" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {player.isGM && (
@@ -236,7 +235,7 @@ export default function ChatTab({
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) send(); }}
           placeholder={player.isGM ? t("chat.inputPlaceholderGm") : t("chat.inputPlaceholderDefault")}
           style={styles.chatInput}
         />

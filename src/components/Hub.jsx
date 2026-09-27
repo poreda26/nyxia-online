@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { LogOut } from "lucide-react";
 import { hasClaimedFirstPurchaseBonus } from "../utils/firstPurchaseBonus";
 import { useTranslation } from "../i18n/LanguageContext";
@@ -206,9 +206,9 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
     // olarak geri gelmesin diye görüldü sayılıyor.
     setDmSeenAt((seen) => ({ ...seen, [accountId]: Date.now() }));
   };
-  const markDmSeen = (accountId, timestamp) => {
-    setDmSeenAt((seen) => ({ ...seen, [accountId]: Math.max(seen[accountId] || 0, timestamp) }));
-  };
+  const markDmSeen = useCallback((accountId, timestamp) => {
+    setDmSeenAt(seen => (seen[accountId] || 0) >= timestamp ? seen : { ...seen, [accountId]: timestamp });
+  }, []);
 
   const notifications = { captain: captainNotice, character: characterNotice, inventory: inventoryNotice, chat: chatNotice || dmUnreadIds.size > 0, friends: friendsNotice };
 
