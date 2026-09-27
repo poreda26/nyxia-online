@@ -73,6 +73,7 @@ export function statsAtLevel(item, level) {
 // eşyanın mevcut (kök seviyeden gelen) değeri korunur; ikisinde de eşya
 // her zaman tam dayanıklılıkla kurulur (currentDurability = durability).
 export function applyLevelData(item, level) {
+  if (item.upgradeLocked) return item;
   // statsAtLevel level'i en az 1'e sabitler (levels dizisi 1-index'li) — bu
   // yüzden level<=0 için hiç çağrılmamalı, yoksa +1'in gerçek verisi "+0"
   // etiketiyle döner (silah/zırhta hiç fark edilmemiş bir bug, çünkü onlar

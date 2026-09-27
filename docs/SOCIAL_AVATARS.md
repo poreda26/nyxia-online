@@ -10,3 +10,14 @@
 Kontroller: `node --test tests/social-avatars.test.mjs tests/server.test.mjs tests/armor-appearance.test.mjs`, `node scripts/check-social-ui.mjs`, `node scripts/check-weapon-neck.mjs`, `node scripts/check-composed-grips.mjs warrior`, `npm run test:world`, `npm run build`.
 
 Sosyal test: eski SQLite şeması, eski mesaj, iki hesap, genel/özel mesaj, klan daveti/üyeliği, lider yetkisi, geçersiz avatar ve sunucu yeniden başlatması. Tarayıcı testi gerçek bileşenleri kullanır; API çağrıları ayrı test yanıtlarına yönlendirilir, canlı oyunculara mesaj gönderilmez. 320/390/430 px ekranlarda yatay taşma kontrol edilir. Genel dünya testindeki eski takı API çağrıları, GitHub'dan alınan yeni üç kutulu forge sürümünün dışa açtığı API ile güncellendi.
+
+
+## Ek avatarlar ve ilk ödeme silahları
+- 12 oyuncu avatarı ve 12 klan arması; yeni altı portre SVG, yeni altı arma farklı simgelerdir.
+- Kurucu Topuzu: Totem Topuzu +7 görünümü, Kırıcı Gürz +3 özellikleri.
+- Şafak Kanadı: Yelkanat +7 görünümü, Boynuz Arbalet +3 özellikleri.
+- Yıldız Yemini: Cennetbahçe +7 görünümü, Demir Uçlu Asa +3 özellikleri.
+- Gerçek upgradeLevel 3 kalır; +7 yalnızca görseldir. Referans eşyanın gereksinimleri dahil tüm oyun değerleri korunur. Zırh ödülleri değişmedi.
+- Ödüller satılamaz/takaslanamaz/yükseltilemez; pazar API'si bağlı eşyaları ve özel ödül adlarını reddeder. Mevcut kayıtlar silinmez.
+- tests/first-purchase.test.js tüm özellik eşitliğini, altı ırk/sınıf görünümünü ve kayıt korunmasını kontrol eder. scripts/check-purchase-ui.mjs gerçek bileşenleri tarayıcıda yükler.
+- Gerçek ödeme entegrasyonu hâlâ ayrı iştir; bu değişiklik mevcut ödül üretimi ve önizlemesini günceller.

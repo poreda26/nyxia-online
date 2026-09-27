@@ -1,3 +1,4 @@
+import {FIRST_PURCHASE_WEAPONS} from '../src/data/firstPurchaseWeapons.js';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, createHash, scrypt as derive, timingSafeEqual } from 'node:crypto';
@@ -236,6 +237,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       if (path === '/api/market/stall/items' && req.method === 'POST') {
         const body = await read(req);
+        if (body?.item?.noTrade || Object.values(FIRST_PURCHASE_WEAPONS).some(w=>w.name===body?.item?.name)) return send(400, {error:'ITEM_BOUND'});
         const price = Number(body?.price);
         if (!body?.item || typeof body.item !== 'object' || !Number.isSafeInteger(price) || price <= 0 || price > MARKET_MAX_PRICE) throw fail(400, 'INVALID_LISTING');
         db.exec('BEGIN IMMEDIATE');

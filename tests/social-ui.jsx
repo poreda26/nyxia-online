@@ -1,3 +1,6 @@
+import {buildBonusGear} from '../src/utils/firstPurchaseBonus';
+import CharacterFigure from '../src/components/CharacterFigure';
+import ItemIcon from '../src/components/ItemIcon';
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {LanguageProvider} from '../src/i18n/LanguageContext';
@@ -16,7 +19,7 @@ function App({view}){
  window.socialPlayer=player;
  const art=battleVisualFor({id:'nadas_devi'});
  return <LanguageProvider lang="tr" setLang={()=>{}}><GlobalStyle/><div style={{width:'100%',maxWidth:430,margin:'auto',padding:12,boxSizing:'border-box',fontFamily:'var(--font-body)',color:'var(--text-primary)',background:'var(--bg-panel)'}}>
- {view==='clan'?<ClanTab player={player} setPlayer={setPlayer} pushToast={()=>{}}/>:view==='chat'?<ChatTab player={player} setPlayer={setPlayer} bank={[]} setBank={()=>{}} pushToast={()=>{}}/>:<><AvatarPicker value="human-warrior" onChange={()=>{}}/><AvatarPicker clan value="wolf" onChange={()=>{}}/><div style={{width:300,height:300}}><MonsterFigure rect={art.rect} outline={art.clip} label="Nadas Devi" source={actors} size={art.size}/></div></>}
+ {view==='rewards'?<>{['warrior','rogue','mage'].flatMap(cls=>['human','karus'].map(race=>{const gear=buildBonusGear(cls),weapon=gear.find(i=>i.kind==='weapon'),p={...initialPlayer(cls,race,'Test'),equipped:{mainHand:weapon,...Object.fromEntries(gear.filter(i=>i.kind==='armor').map(i=>[i.slot,i]))}};return <section key={cls+race}><h3>{race} — {weapon.name}</h3><ItemIcon item={weapon} size={70}/><div style={{height:350}}><CharacterFigure player={p}/></div></section>}))}</>:view==='clan'?<ClanTab player={player} setPlayer={setPlayer} pushToast={()=>{}}/>:view==='chat'?<ChatTab player={player} setPlayer={setPlayer} bank={[]} setBank={()=>{}} pushToast={()=>{}}/>:<><AvatarPicker value="human-warrior" onChange={()=>{}}/><AvatarPicker clan value="wolf" onChange={()=>{}}/><div style={{width:300,height:300}}><MonsterFigure rect={art.rect} outline={art.clip} label="Nadas Devi" source={actors} size={art.size}/></div></>}
  </div></LanguageProvider>;
 }
 window.socialView=view=>root.render(<App key={view} view={view}/>);

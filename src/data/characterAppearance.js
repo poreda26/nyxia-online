@@ -1,3 +1,4 @@
+import {weaponVisualItem} from './firstPurchaseWeapons';
 import manifest from './characterWeaponManifest.json';
 import atlasFrames from './characterAtlasFrames.json';
 
@@ -11,7 +12,7 @@ export function characterArmorLook(){return 'base';}
 export function characterAppearance(player,looks=CHARACTER_LOOKS){
  const cls=['warrior','rogue','mage'].includes(player?.class)?player.class:'warrior';
  const race=player?.race==='karus'?'karus':'human';
- const weapon=player?.equipped?.mainHand;
+ const weapon=weaponVisualItem(player?.equipped?.mainHand);
  const weaponName=weapon?(aliases[cls]?.[weapon.name]||weapon.name):'__unarmed__';
  const armorLook=characterArmorLook(player);
  const look=looks[armorLook]||looks.base;

@@ -1,7 +1,9 @@
+import {weaponVisualItem} from './firstPurchaseWeapons';
 import {CASTER_WEAPONS} from './casterWeapons.js';
 export const ELEMENT_COLORS = Object.freeze({poison:'#dc65ff',flame:'#ff731c',lightning:'#65deff',ice:'#6ce7ff'});
 const normalize = key => key === 'glacier' ? 'ice' : key;
 export function weaponEffects(weapon) {
+ weapon=weaponVisualItem(weapon);
  if (!weapon || !(Number(weapon.upgradeLevel) >= 7)) return [];
  const template=CASTER_WEAPONS.find(w=>w.name===weapon.name);
  const staff=weapon.weaponType==='staff'||weapon.cls==='mage'||!!template;

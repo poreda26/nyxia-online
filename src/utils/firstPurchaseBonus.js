@@ -1,9 +1,10 @@
+import { FIRST_PURCHASE_WEAPONS } from '../data/firstPurchaseWeapons';
 // İlk Ödeme Bonusu — kullanıcı isteği: gerçek parayla (₺49,99, bkz.
 // data/diamondPacks.js'teki aynı "priceLabel = referans, henüz IAP yok"
 // deseni) satın alınan, hesap başına TEK SEFERLİK bir başlangıç paketi.
 // İçerik: Elmasla satılan 6 takviye parşömeninin (data/boostScrolls.js)
 // her birinden 3'er tane + satın alınan karakterin sınıfına göre TAM bir
-// Tier 1 +6 zırh seti (5 parça) ve Tier 1 +6 silah — hepsi kullanıcı
+// Tier 1 +6 zırh seti (5 parça) ve özel görünümlü +3 silah — hepsi kullanıcı
 // isteğiyle takas edilemez/satılamaz/yükseltilemez (noTrade:true; bkz.
 // components/MarketTab.jsx#sellableItems, UpgradeTab.jsx#handleBagTap,
 // InventoryTab.jsx'in zaten var olan sell/bulk-sell noTrade kontrolleri).
@@ -21,18 +22,13 @@ export const FIRST_PURCHASE_BONUS_PRICE_LABEL = "₺49,99";
 export const FIRST_PURCHASE_BONUS_SCROLL_COUNT = 3;
 export const FIRST_PURCHASE_BONUS_ITEM_TIER = 1;
 export const FIRST_PURCHASE_BONUS_UPGRADE_LEVEL = 6;
-// Kullanıcı isteği: silah zırhtan bir kademe daha güçlü görünsün — T1
-// havuzunun en düşük (index 0) silahı değil, ondan bir üstteki (index 1)
-// silah, ve +6 değil +7'de verilsin. +7 aynı zamanda weaponEffects.js'in
-// parlama eşiği (>=7) — StarterWeaponIcon zaten bunu otomatik uyguluyor,
-// ayrı bir efekt kablolamasına gerek yok.
-export const FIRST_PURCHASE_BONUS_WEAPON_UPGRADE_LEVEL = 7;
+// Weapon stats remain +3; the separate appearance registry renders +7.
 
 export function hasClaimedFirstPurchaseBonus(player) {
   return !!player.firstPurchaseBonusClaimed;
 }
 
-// Sınıfa göre 5 zırh parçası + 1 silah, hepsi Tier 1 +6 ve bağlı (noTrade).
+// Sınıfa göre T1 +6 zırh ve bağlı +3 özellikli özel silah.
 // Ayrıca export ediliyor — kullanıcı isteği: "itemlerin görsellerini
 // gösterelim... üzerine tıklandığında itemleri görebilelim" — mağaza
 // kartları/promo widget'ı bunu SADECE ÖNİZLEME için (grant etmeden, gerçek
@@ -43,11 +39,11 @@ export function buildBonusGear(cls) {
     const piece = gmBuildArmor(cls, slot, FIRST_PURCHASE_BONUS_ITEM_TIER, FIRST_PURCHASE_BONUS_UPGRADE_LEVEL);
     if (piece) items.push({ ...piece, noTrade: true });
   }
-  // Kalkanlar hariç, sadece gerçek T1 silahlar arasından bir üsttekini seç.
-  const tier1Weapons = gmWeaponTemplates(cls).filter((w) => w.tier === FIRST_PURCHASE_BONUS_ITEM_TIER && !w.id.startsWith("s"));
-  const weaponTemplate = tier1Weapons[1] || tier1Weapons[0];
-  const weapon = weaponTemplate && gmBuildWeaponById(cls, weaponTemplate.id, FIRST_PURCHASE_BONUS_WEAPON_UPGRADE_LEVEL);
-  if (weapon) items.push({ ...weapon, noTrade: true });
+  const reward = FIRST_PURCHASE_WEAPONS[cls];
+  const template = gmWeaponTemplates(cls).find(w => w.name === reward?.reference);
+  const weapon = template && gmBuildWeaponById(cls, template.id, 3);
+  if (weapon) items.push({ ...weapon, name: reward.name, noTrade: true, upgradeLocked: true,
+    lore: `${reward.appearance} +7 görünümü; ${reward.reference} +3 özellikleri. Satılamaz, takaslanamaz, yükseltilemez.` });
   return items;
 }
 

@@ -14,8 +14,8 @@ test('avatar migration, public/private messages, clan selection and leader-only 
  try{
   await listen();const a=await call('register','POST',{name:'avataralice',password:'long-test-password'}),b=await call('register','POST',{name:'avatarbob',password:'long-test-password'});
   const oldRows=await call('chat/messages','GET',null,a.cookie);assert.equal(oldRows.body[0].text,'kept');assert.equal(oldRows.body[0].avatarId,'human-warrior');
-  assert.equal((await call('chat/messages','POST',{author:'Alice',text:'hello',avatarId:'karus-mage'},a.cookie)).status,200);
-  assert.equal((await call('chat/messages','GET',null,b.cookie)).body.at(-1).avatarId,'karus-mage');
+  assert.equal((await call('chat/messages','POST',{author:'Alice',text:'hello',avatarId:'frost-seer'},a.cookie)).status,200);
+  assert.equal((await call('chat/messages','GET',null,b.cookie)).body.at(-1).avatarId,'frost-seer');
   assert.equal((await call('chat/messages','POST',{author:'Alice',text:'bad',avatarId:'https://other/image'},a.cookie)).status,400);
   await call('social/friends/request','POST',{name:'avatarbob'},a.cookie);await call('social/friends/request','POST',{name:'avataralice'},b.cookie);
   const friend=(await call('social/friends','GET',null,a.cookie)).body.friends[0];
@@ -27,9 +27,10 @@ test('avatar migration, public/private messages, clan selection and leader-only 
   await call(`clan/invites/${invite.id}/accept`,'POST',{},b.cookie);
   assert.equal((await call('clan/avatar','PATCH',{avatarId:'moon'},b.cookie)).status,403);
   assert.equal((await call('clan/avatar','PATCH',{avatarId:'unknown'},a.cookie)).status,400);
-  assert.equal((await call('clan/avatar','PATCH',{avatarId:'phoenix'},a.cookie)).status,200);
+  assert.equal((await call('clan/avatar','PATCH',{avatarId:'griffin'},a.cookie)).status,200);
+  for(const name of ['Kurucu Topuzu','Şafak Kanadı','Yıldız Yemini']) assert.equal((await call('market/stall/items','POST',{item:{id:'bound-test',name,noTrade:false},price:100},a.cookie)).status,400);
   await api.close();api=createApi({database,origin,secure:false});await listen();
-  assert.equal((await call('clan/mine','GET',null,b.cookie)).body.clan.avatarId,'phoenix');
-  assert.equal((await call('chat/messages','GET',null,b.cookie)).body.at(-1).avatarId,'karus-mage');
+  assert.equal((await call('clan/mine','GET',null,b.cookie)).body.clan.avatarId,'griffin');
+  assert.equal((await call('chat/messages','GET',null,b.cookie)).body.at(-1).avatarId,'frost-seer');
  }finally{await api.close();rmSync(dir,{recursive:true});}
 });

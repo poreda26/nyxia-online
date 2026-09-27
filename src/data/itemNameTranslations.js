@@ -7,6 +7,9 @@
 // render time when lang === "en"; any item without an entry falls back to
 // its stored (Turkish) name, so a missed entry never renders blank/broken.
 export const WEAPON_NAME_EN = {
+  "Kurucu Topuzu": "Founder's Mace",
+  "Şafak Kanadı": "Dawnwing",
+  "Yıldız Yemini": "Star Oath",
   // Warrior (data/warriorWeapons.js)
   "Gökdev Baltası": "Sky Giant's Axe",
   "Kara Diken": "Black Thorn",
@@ -90,6 +93,9 @@ export const STARTER_ACCESSORY_NAME_EN = {
 // grade line) — keyed by the same Turkish weapon name as WEAPON_NAME_EN,
 // since only T6/unique weapons carry lore.
 export const WEAPON_LORE_EN = {
+  "Kurucu Topuzu": "Totem Mace +7 appearance, Crusher Mace +3 stats. Cannot be sold, traded or upgraded.",
+  "Şafak Kanadı": "Windwing +7 appearance, Horn Crossbow +3 stats. Cannot be sold, traded or upgraded.",
+  "Yıldız Yemini": "Heaven Garden +7 appearance, Iron-Tipped Staff +3 stats. Cannot be sold, traded or upgraded.",
   "Gökdev Baltası": "*Forged by giants, this axe is too heavy to swing with one hand — but for the one who can lift it, it falls as fast as lightning.*",
   "Buzul Kıran": "*It once belonged to a king — now only one as strong as a king can wield it.*",
   "Fırtına Ustası": "*Forged from the storm itself — with every swing, the sky falls silent for a moment.*",

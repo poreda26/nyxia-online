@@ -1,3 +1,4 @@
+import {weaponVisualItem} from '../data/firstPurchaseWeapons';
 import JewelArt from './icons/JewelArt';
 import ScrollArt from './icons/ScrollArt';
 import RewardChest from './icons/RewardChest';
@@ -12,6 +13,7 @@ import StarterWeaponIcon from './StarterWeaponIcon';
 import {weaponIconArt} from '../data/starterWeaponArt';
 
 export default function ItemIcon({ item, size = 16, color = "currentColor", strokeWidth = 1.6 }) {
+  item=weaponVisualItem(item);
   if(item.kind==='accessory')return <JewelArt item={item} size={size}/>;
   if(['scroll','bonusScroll','boostScroll','accessoryScroll'].includes(item.kind))return <ScrollArt item={item} size={size}/>;
   if(item.kind==='chest')return <RewardChest size={size} tier={item.tier} special={item.special}/>;

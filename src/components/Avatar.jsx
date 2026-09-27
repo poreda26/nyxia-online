@@ -1,3 +1,4 @@
+import PortraitArt from './PortraitArt';
 import {useId} from 'react';
 import actors from '../assets/battle/actors-v1.png';
 import {PLAYER_AVATARS,CLAN_AVATARS,playerAvatarId} from '../data/avatars';
@@ -7,7 +8,7 @@ export default function Avatar({id,player,clan=false,size=44,label}){
  const uid=useId(),catalog=clan?CLAN_AVATARS:PLAYER_AVATARS;
  const art=catalog.find(a=>a.id===(id||playerAvatarId(player)))||catalog[0];
  return <span className={`identity-avatar ${clan?'identity-crest':''}`} style={{width:size,height:size,'--identity-color':art.color}} role="img" aria-label={label||art.name} data-avatar={art.id}>
-  {clan?<svg viewBox="0 0 100 110" aria-hidden="true"><defs><linearGradient id={uid} x2=".8" y2="1"><stop stopColor="#fff0cc"/><stop offset=".5" stopColor={art.color}/><stop offset="1" stopColor="#6d4b30"/></linearGradient></defs><path d="M9 12L50 3L91 12V62Q87 87 50 105Q13 87 9 62Z" fill="#101824" stroke={`url(#${uid})`} strokeWidth="3"/><path d="M16 19L50 11L84 19V61Q78 82 50 95Q22 82 16 61Z" fill={art.color} fillOpacity=".12" stroke={art.color} strokeOpacity=".4"/><path d={art.path} fill={`url(#${uid})`} fillOpacity=".5" stroke={`url(#${uid})`} strokeWidth="2.7" strokeLinejoin="round"/><path d="M43 88L50 82L57 88L50 95Z" fill={`url(#${uid})`}/></svg>:<svg viewBox={art.rect.join(' ')} aria-hidden="true"><image href={actors} width="1448" height="1086"/></svg>}
+  {clan?<svg viewBox="0 0 100 110" aria-hidden="true"><defs><linearGradient id={uid} x2=".8" y2="1"><stop stopColor="#fff0cc"/><stop offset=".5" stopColor={art.color}/><stop offset="1" stopColor="#6d4b30"/></linearGradient></defs><path d="M9 12L50 3L91 12V62Q87 87 50 105Q13 87 9 62Z" fill="#101824" stroke={`url(#${uid})`} strokeWidth="3"/><path d="M16 19L50 11L84 19V61Q78 82 50 95Q22 82 16 61Z" fill={art.color} fillOpacity=".12" stroke={art.color} strokeOpacity=".4"/><path d={art.path} fill={`url(#${uid})`} fillOpacity=".5" stroke={`url(#${uid})`} strokeWidth="2.7" strokeLinejoin="round"/><path d="M43 88L50 82L57 88L50 95Z" fill={`url(#${uid})`}/></svg>:art.portrait?<PortraitArt art={art} uid={uid}/>:<svg viewBox={art.rect.join(' ')} aria-hidden="true"><image href={actors} width="1448" height="1086"/></svg>}
  </span>;
 }
 export function AvatarPicker({value,onChange,clan=false,disabled=false}){
