@@ -1,5 +1,6 @@
 import { CheckCircle2, X } from "lucide-react";
 import { eventPhase, eventTotalTicks, scheduledEventProgress, canJoinScheduledEvent, joinScheduledEvent } from "../utils/scheduledEvents";
+import { SCHEDULED_EVENT_ICONS } from "../data/scheduledEventIcons";
 import { styles } from "../styles";
 import BarTrack from "./shared/BarTrack";
 import { useTranslation } from "../i18n/LanguageContext";
@@ -20,7 +21,7 @@ function fmtCountdown(ms) {
 export default function ScheduledEventModal({ event, player, setPlayer, pushToast, now, onClose }) {
   const { t } = useTranslation();
   const eventName = t(`scheduledEvent.eventName.${event.id}`);
-  const Icon = event.icon;
+  const Icon = SCHEDULED_EVENT_ICONS[event.id];
   const { phase, start, end } = eventPhase(event, now);
   const progress = scheduledEventProgress(player, event);
   const joinCheck = canJoinScheduledEvent(player, event, now);

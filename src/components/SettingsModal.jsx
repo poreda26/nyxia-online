@@ -2,9 +2,11 @@ import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import TutorialModal from './TutorialModal';
 import './SettingsPanel.css';
-import { Settings, X, Volume2, VolumeX, Languages, SunMedium } from "lucide-react";
+import { Settings, X, Volume2, VolumeX, Languages, SunMedium, Bell, BellOff } from "lucide-react";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
+import { isPushSupported, notificationPermission, getCurrentPushSubscription, enablePushNotifications, disablePushNotifications } from "../utils/pushNotifications";
+import { fetchPushPrefs, updatePushPrefs } from "../services/pushService";
 
 // Ses ayarları — App.jsx'teki müzik/efekt motorlarına doğrudan bağlı (bkz.
 // audio/bgMusic.js, audio/sfx.js). Hesaba değil cihaza bağlı bir tercih
@@ -100,6 +102,98 @@ function ThemeRow({ theme, onThemeChange, t }) {
 function Toggle({label,description,value,onChange}){
  return <label className="preference-toggle"><span><strong>{label}</strong><small>{description}</small></span><input type="checkbox" role="switch" checked={!!value} onChange={e=>onChange(e.target.checked)}/><i aria-hidden="true"/></label>;
 }
+
+// Kullanıcı isteği: "telefona bildirim gönderme sistemini kurmanı
+// istiyorum... Ayarlar kısmında bu bildirimleri istediği gibi açıp
+// kapatabilir." Bu bölüm kendi durumunu kendi yönetiyor (App.jsx'ten hiçbir
+// prop almıyor) — abonelik/izin durumu hesaba değil TARAYICIYA bağlı, bu
+// yüzden audio/haptics gibi App.jsx'in localStorage tercih torbasına
+// (preferences/onPreferenceChange) girmiyor; kategori tercihleri de
+// (inactivity/events/social) sunucuda hesap başına tutuluyor (bkz.
+// services/pushService.js), cihaza değil.
+function NotificationsSection({ tr, t }) {
+  const [status, setStatus] = useState("checking"); // checking | unsupported | off | denied | on
+  const [prefs, setPrefs] = useState({ inactivity: true, events: true, social: true });
+  const [busy, setBusy] = useState(false);
+
+  const refresh = async () => {
+    if (!isPushSupported()) { setStatus("unsupported"); return; }
+    const permission = notificationPermission();
+    if (permission === "denied") { setStatus("denied"); return; }
+    const subscription = await getCurrentPushSubscription();
+    if (!subscription) { setStatus("off"); return; }
+    setStatus("on");
+    try { setPrefs(await fetchPushPrefs()); } catch { /* geçici ağ hatası — mevcut varsayılanlar kalır */ }
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const handleEnable = async () => {
+    if (busy) return;
+    setBusy(true);
+    const result = await enablePushNotifications();
+    setBusy(false);
+    if (!result.ok) { setStatus(result.reason === "denied" ? "denied" : "off"); return; }
+    await refresh();
+  };
+  const handleDisable = async () => {
+    if (busy) return;
+    setBusy(true);
+    await disablePushNotifications();
+    setBusy(false);
+    setStatus("off");
+  };
+  const handlePrefChange = async (key, value) => {
+    const next = { ...prefs, [key]: value };
+    setPrefs(next);
+    try { await updatePushPrefs(next); } catch { /* geçici ağ hatası — bir sonraki açılışta sunucudaki eski değer geri yüklenir */ }
+  };
+
+  return (
+    <>
+      <div className="settings-group">
+        <h3>{tr ? "Bildirimler" : "Notifications"}</h3>
+        {status === "checking" && <p>{tr ? "Kontrol ediliyor…" : "Checking…"}</p>}
+        {status === "unsupported" && (
+          <p>{tr ? "Bu tarayıcı push bildirimini desteklemiyor. iPhone'da Safari'de çalışması için siteyi \"Ana Ekrana Ekle\" ile eklemen gerekir (iOS 16.4+) — bu, kodla aşılamayan bir Apple kısıtı." : "This browser doesn't support push notifications. On iPhone Safari, add the site to your Home Screen first (iOS 16.4+) — that's an Apple platform limit, not something we can code around."}</p>
+        )}
+        {status === "denied" && (
+          <p>{tr ? "Bildirim izni tarayıcı ayarlarından reddedilmiş. Açmak için tarayıcının site ayarlarından izni değiştirmen gerekiyor." : "Notification permission was denied in the browser. Re-enable it from the browser's site settings to turn this back on."}</p>
+        )}
+        {status === "off" && (
+          <button className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} disabled={busy} onClick={handleEnable}>
+            <Bell size={13} /> {busy ? (tr ? "Açılıyor…" : "Enabling…") : (tr ? "Bildirimleri Aç" : "Enable Notifications")}
+          </button>
+        )}
+        {status === "on" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#5FA8A0", marginBottom: 10 }}>
+              <Bell size={13} /> {tr ? "Bildirimler açık" : "Notifications are on"}
+            </div>
+            <Toggle
+              label={tr ? "İnaktiflik hatırlatması" : "Inactivity reminders"}
+              description={tr ? "Bir süredir oyuna girmediysen hatırlatma alırsın." : "Get a nudge if you haven't played in a while."}
+              value={prefs.inactivity} onChange={(v) => handlePrefChange("inactivity", v)}
+            />
+            <Toggle
+              label={tr ? "Etkinlik hatırlatmaları" : "Event reminders"}
+              description={tr ? "Zamanlı etkinlikler başlamadan birkaç dakika önce bildirim alırsın." : "Get notified a few minutes before scheduled events start."}
+              value={prefs.events} onChange={(v) => handlePrefChange("events", v)}
+            />
+            <Toggle
+              label={tr ? "Arkadaş ve mesaj bildirimleri" : "Friend & message notifications"}
+              description={tr ? "Yeni bir özel mesaj ya da arkadaşlık isteği geldiğinde bildirim alırsın." : "Get notified about new DMs and friend requests."}
+              value={prefs.social} onChange={(v) => handlePrefChange("social", v)}
+            />
+            <button className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} disabled={busy} onClick={handleDisable}>
+              <BellOff size={13} /> {busy ? (tr ? "Kapatılıyor…" : "Disabling…") : (tr ? "Bildirimleri Kapat" : "Disable Notifications")}
+            </button>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
 export default function SettingsModal({
  musicVolume,musicMuted,onMusicVolumeChange,onToggleMusicMute,
  sfxVolume,sfxMuted,onSfxVolumeChange,onToggleSfxMute,
@@ -128,7 +222,7 @@ export default function SettingsModal({
  return createPortal(<div className="settings-overlay" style={styles.modalOverlay} onClick={onClose}>
   <section ref={panel} className="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-heading" onClick={e=>e.stopPropagation()}>
    <header><div className="settings-seal"><Settings size={26}/></div><div><small>NYXIA ONLINE</small><h2 id="settings-heading">{t('settings.title')}</h2></div><button className="settings-close" aria-label={tr?'Kapat':'Close'} onClick={onClose}><X size={20}/></button></header>
-   <nav className="settings-tabs">{[['sound','Ses ve titreşim','Sound & touch'],['display','Görünüm','Display'],['help','Oyun rehberi','Game guide']].map(([id,local,en])=><button key={id} aria-pressed={section===id} onClick={()=>setSection(id)}>{tr?local:en}</button>)}</nav>
+   <nav className="settings-tabs">{[['sound','Ses ve titreşim','Sound & touch'],['display','Görünüm','Display'],['notifications','Bildirimler','Notifications'],['help','Oyun rehberi','Game guide']].map(([id,local,en])=><button key={id} aria-pressed={section===id} onClick={()=>setSection(id)}>{tr?local:en}</button>)}</nav>
    <div className="settings-content">
     {section==='sound'&&<>
      <div className="settings-group"><h3>{tr?'Ses seviyeleri':'Audio levels'}</h3><VolumeRow label={t('settings.musicVolume')} volume={musicVolume} muted={musicMuted} onVolumeChange={onMusicVolumeChange} onToggleMute={onToggleMusicMute} t={t}/><VolumeRow label={t('settings.sfxVolume')} volume={sfxVolume} muted={sfxMuted} onVolumeChange={onSfxVolumeChange} onToggleMute={onToggleSfxMute} t={t}/></div>
@@ -140,6 +234,7 @@ export default function SettingsModal({
      <div className="settings-group"><Toggle label={tr?'Hareketi azalt':'Reduce motion'} description={tr?'Kanat hareketleri, ekran sarsıntısı ve dekoratif animasyonları durdurur.':'Stops wing motion, screen shake and decorative animations.'} value={preferences.reducedMotion} onChange={v=>onPreferenceChange('reducedMotion',v)}/><Toggle label={tr?'Yüksek kontrast':'High contrast'} description={tr?'Küçük yazılar ve panel kenarlarını belirginleştirir.':'Makes muted text and panel borders clearer.'} value={preferences.highContrast} onChange={v=>onPreferenceChange('highContrast',v)}/></div>
      <div className="settings-group"><h3>{tr?'Efekt yoğunluğu':'Visual effects'}</h3><p>{tr?'Düşük mod, parıltı ve parçacıkları azaltır.':'Low mode reduces glow and particles.'}</p><div className="settings-options">{[['full','Tam','Full'],['low','Düşük','Low']].map(([id,local,en])=><button key={id} aria-pressed={(preferences.effects||'full')===id} onClick={()=>onPreferenceChange('effects',id)}>{tr?local:en}</button>)}</div></div>
     </>}
+    {section==='notifications'&&<NotificationsSection tr={tr} t={t}/>}
     {section==='help'&&<>
      <div className="settings-group"><h3>{tr?'Maceraya başlarken':'Getting started'}</h3><p>{tr?'Savaş, envanter, pazar ve yükseltme ekranlarını Kaptan ile tekrar keşfet.':'Explore battle, inventory, market and upgrades with the Captain.'}</p><button className="settings-guide" onClick={()=>setTutorial(true)}>{tr?'Oyun rehberini aç':'Open game guide'}</button></div>
      <div className="settings-group"><h3>{tr?'Kayıt ve gizlilik':'Saves & privacy'}</h3><p>{tr?'Bu beta sürümünde oyun ilerlemen bu cihazın yerel depolamasında tutulur. Tarayıcı verilerini silmek veya uygulamayı kaldırmak kaydını silebilir. Henüz bulut kayıt yoktur.':'This beta stores progress locally on this device. Clearing browser data or uninstalling the app may delete your save. Cloud saves are not available yet.'}</p><p>{tr?'Dil, ses ve görünüm tercihlerin de cihaza özeldir.':'Language, audio and display preferences are device-specific.'}</p></div>

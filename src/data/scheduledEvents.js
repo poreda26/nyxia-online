@@ -1,5 +1,3 @@
-import { Sparkles } from "lucide-react";
-
 // Belirli saatlerde her gün tekrarlayan dünya etkinlikleri — hour/minute
 // HER ZAMAN İSTANBUL saatine göre (bkz. utils/scheduledEvents.js'in üstündeki
 // not, cihazın kendi saat dilimi ne olursa olsun aynı anda açılır). Kullanıcı
@@ -12,7 +10,6 @@ export const SCHEDULED_EVENTS = [
   {
     id: "noon_exp_rush",
     name: "Öğlen EXP Rush",
-    icon: Sparkles,
     color: "#D4AF6A",
     hour: 12, minute: 30, // günlük başlama saati (İSTANBUL saati)
     preOpenMinutes: 5, // etkinlik alanı bu kadar erken açılır (geri sayımla)
