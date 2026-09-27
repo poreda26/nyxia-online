@@ -1,3 +1,4 @@
+import { createAdmin } from './admin.mjs';
 import {validAvatarFrame} from '../src/data/avatarFrames.js';
 import {FIRST_PURCHASE_WEAPONS} from '../src/data/firstPurchaseWeapons.js';
 import { createServer } from 'node:http';
@@ -47,7 +48,7 @@ async function serveStatic(res, staticDir, reqPath) {
   for (const candidate of [target, join(staticDir, 'index.html')]) {
     try {
       const body = await readFile(candidate);
-      res.writeHead(200, { 'Content-Type': MIME[extname(candidate)] || 'application/octet-stream', 'Cache-Control': candidate.endsWith('index.html') ? 'no-store' : 'public, max-age=31536000, immutable' });
+      res.writeHead(200, { 'Content-Type': MIME[extname(candidate)] || 'application/octet-stream', 'Cache-Control': candidate.endsWith('.html') ? 'no-store' : 'public, max-age=31536000, immutable' });
       return res.end(body);
     } catch { /* dosya yok, sıradaki adaya (SPA fallback) düş */ }
   }
@@ -144,6 +145,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     }
     try { return JSON.parse(Buffer.concat(chunks).toString()); } catch { throw fail(400, 'INVALID_JSON'); }
   };
+  const admin = createAdmin(db, { read, fail });
   const cookie = (token, age) => `nyxia_session=${token}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=${age}${secure ? '; Secure' : ''}`;
   const server = createServer(async (req, res) => {
     const send = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(body)); };
@@ -182,6 +184,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           const candidate = await scrypt(body.password, account?.salt || 'invalid-account-salt', 64);
           if (!account || !timingSafeEqual(candidate, Buffer.from(account.password, 'hex'))) throw fail(401, 'INVALID_CREDENTIALS');
         }
+        if(admin.blocked(account.id)) throw fail(403, 'ACCOUNT_BLOCKED');
         const token = randomBytes(32).toString('hex');
         db.prepare('DELETE FROM sessions WHERE expires < ?').run(Date.now());
         db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), account.id, Date.now() + 7 * 86400000);
@@ -191,6 +194,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       const token = /(?:^|;\s*)nyxia_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || '')?.[1];
       const account = token && db.prepare('SELECT accounts.id,accounts.name FROM sessions JOIN accounts ON accounts.id=sessions.account WHERE token=? AND expires>?').get(hash(token), Date.now());
       if (!account) throw fail(401, 'LOGIN_REQUIRED');
+      if(admin.blocked(account.id)) throw fail(403,'ACCOUNT_BLOCKED');
+      if(path.startsWith('/api/admin/')) return await admin.handle(req,path,account,send);
       if (path === '/api/me' && req.method === 'GET') return send(200, { name: account.name });
       if (path === '/api/logout' && req.method === 'POST') {
         db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));

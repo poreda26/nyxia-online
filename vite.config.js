@@ -5,5 +5,5 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: '/nyxia-online/',
   plugins: [react()],
-  build: {rollupOptions: {input: ['index.html']}},
+  build: {rollupOptions: {input: ['index.html', 'owner.html']}},
 })

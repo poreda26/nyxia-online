@@ -16,7 +16,7 @@ import { FRIEND_MAX_COUNT } from '../data/social';
 // kendisi artık burada değil, Sohbet'te bir sekme (bkz. ChatTab.jsx,
 // Hub.jsx#openDm) — "Mesaj" butonu oraya yönlendiriyor.
 export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [friends, setFriends] = useState([]);
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
@@ -73,7 +73,7 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
   };
 
   return (
-    <div style={styles.panelScroll}>
+    <div className="friends-panel" style={styles.panelScroll}>
       <div className="rpg-card" style={styles.itemDetailCard}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <UserPlus size={16} color="var(--gold-text)" strokeWidth={1.6} />
@@ -102,7 +102,7 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {suggestions.map((s) => (
               <div key={s.accountId} className="rpg-row" style={styles.itemRow}>
-                <Avatar id={s.avatarId} size={28} />
+                <Avatar id={s.avatarId} size={40} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12 }}>{s.name}{s.level > 0 ? ` · Lv.${s.level}` : ""}</div>
                   {s.mutualFriends > 0 && (
@@ -157,8 +157,8 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
                 {f.name}
                 {dmUnreadIds?.has(f.accountId) && <span style={{ width: 6, height: 6, borderRadius: 3, background: "#C9425A", flexShrink: 0 }} />}
               </div>
-              <button className="rpg-action" style={styles.tinyBtn} onClick={() => onOpenDm(f)}><MessageCircle size={12} /></button>
-              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => handleRemove(f.accountId)}><X size={12} /></button>
+              <button className="rpg-action" style={styles.tinyBtn} aria-label={`${f.name} — ${lang==='en'?'Send message':'Mesaj gönder'}`} onClick={() => onOpenDm(f)}><MessageCircle size={12} /></button>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} aria-label={`${f.name} — ${lang==='en'?'Remove friend':'Arkadaşlıktan çıkar'}`} onClick={() => handleRemove(f.accountId)}><X size={12} /></button>
             </div>
           ))}
         </div>
