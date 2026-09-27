@@ -31,6 +31,7 @@ export function itemSubLabel(item, lang = "tr") {
   if (item.kind === "raceScroll") return lang === "en" ? "Race Change" : "Irk Değiştirme";
   if (item.kind === "jobScroll") return lang === "en" ? "Class Change" : "Sınıf Değiştirme";
   if (item.kind === "bonusScroll") return lang === "en" ? "Upgrade Bonus" : "Yükseltme Bonusu";
+  if (item.kind === "clanMaterial") return lang === "en" ? "Clan Dungeon Material" : "Klan Zindanı Malzemesi";
   if (item.weaponType) return WEAPON_TYPE_LABEL[lang]?.[item.weaponType];
   if (item.weaponSlot === "twoHand") return lang === "en" ? "Two-Handed" : "Çift El";
   if (item.weaponSlot === "mainHand") return lang === "en" ? "Main Hand" : "Ana El";
@@ -40,7 +41,7 @@ export function itemSubLabel(item, lang = "tr") {
 // Potions and scrolls are pure consumables — no atk/def/hp stats, so the
 // bag detail panel shows just their weight instead of an empty stat line.
 export function isConsumable(item) {
-  return item.kind === "accessoryScroll" || item.kind === "potion" || item.kind === "scroll" || item.kind === "raceScroll" || item.kind === "jobScroll" || item.kind === "bonusScroll" || item.kind === "boostScroll";
+  return item.kind === "accessoryScroll" || item.kind === "potion" || item.kind === "scroll" || item.kind === "raceScroll" || item.kind === "jobScroll" || item.kind === "bonusScroll" || item.kind === "boostScroll" || item.kind === "clanMaterial";
 }
 
 export function itemStatLabel(item) {

@@ -3,12 +3,13 @@ import MenuEmblem from './icons/MenuEmblem';
 import Avatar,{AvatarPicker} from './Avatar';
 import {updateClanAvatar} from '../services/clanService';
 import { useState, useEffect, useCallback } from "react";
-import { Shield, LogOut, Plus, ChevronUp, ChevronDown, UserX, Swords, Coins, Gem, Flag, Landmark, Skull, Lock, Clock, Mail } from "lucide-react";
+import { Shield, LogOut, Plus, ChevronUp, ChevronDown, UserX, Coins, Gem, Flag, Landmark, Skull, Lock, Clock, Mail } from "lucide-react";
 import { CLASSES } from "../data/classes";
 import { RACES } from "../data/races";
 import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS, CLAN_COLORS } from "../data/clan";
 import { CLAN_BOSS_STAGES, CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from "../data/clanBoss";
-import { onlineCountFor, clanExpBonus, canStartDungeon, startDungeon, clanLeaderboardFor } from "../utils/clan";
+import { CLAN_BUILDING_MATERIAL_COST, CLAN_DUNGEON_MATERIALS } from "../data/clanDungeon";
+import { onlineCountFor, clanExpBonus, clanLeaderboardFor } from "../utils/clan";
 import {
   unlockedBossStages, openClanBoss, bossTimeLeftMs, bossCurrentHp, bossMaxHp,
   canPlayerAttackBoss, attackClanBoss, isClanBossActive,
@@ -23,6 +24,7 @@ import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import BarTrack from "./shared/BarTrack";
 import EmptyState from "./shared/EmptyState";
+import ClanDungeonPanel from "./ClanDungeonPanel";
 import { useTranslation, formatReason, formatServerError } from "../i18n/LanguageContext";
 
 const fmt = (n) => Math.round(n).toLocaleString("tr-TR");
@@ -33,10 +35,13 @@ const fmtClock = (ms) => {
 
 // Sunucudan gelen /api/clan/mine yanıtını, player.clan'ın eski (bkz. git
 // geçmişi) yerel biçimine eşler — utils/clanBoss.js ve utils/clan.js'in
-// klanla ilgili geri kalan yerel hesapları (EXP bonusu, Klan Zindanı/Boss —
-// kasıtlı olarak kapsam dışı bırakıldı, bkz. bu dosyanın altındaki not)
-// hiç değişmeden aynı alanları okumaya devam edebilsin diye. dungeon/boss
-// SUNUCUDA yok (yerel kalmaya devam ediyor) — önceki değerleri koru.
+// klanla ilgili geri kalan yerel hesapları (EXP bonusu, Klan Boss — kasıtlı
+// olarak kapsam dışı bırakıldı, bkz. bu dosyanın altındaki not) hiç
+// değişmeden aynı alanları okumaya devam edebilsin diye. boss SUNUCUDA yok
+// (yerel kalmaya devam ediyor) — önceki değeri koru. Klan Dungeon (yeni,
+// 20 aşamalı) tamamen sunucuda yaşıyor (bkz. ClanDungeonPanel.jsx), burada
+// hiç taşınmıyor — eski yerel "Klan Zindanı" placeholder'ı bu yüzden
+// tamamen kaldırıldı (utils/clan.js#canStartDungeon/startDungeon).
 function mergeClanResponse(player, serverClan) {
   if (!serverClan) return { ...player, clan: null };
   return {
@@ -52,7 +57,6 @@ function mergeClanResponse(player, serverClan) {
       treasury: serverClan.treasury,
       buildingLevel: serverClan.buildingLevel,
       myNpDonated: serverClan.myDonatedNp,
-      dungeon: player.clan?.dungeon || { lastStartedDay: null, startedBy: null },
       boss: player.clan?.boss || null,
     },
   };
@@ -65,7 +69,7 @@ function mergeClanResponse(player, serverClan) {
 // ve Klan Boss (utils/clanBoss.js) kasıtlı olarak bu kapsamın DIŞINDA
 // bırakıldı — ikisi de kendi paylaşımlı simülasyonunu (Dünya Canavarı'nınki
 // gibi) gerektirir, ayrı bir kapsam kararı; şimdilik eskisi gibi yerel kalıyor.
-export default function ClanTab({ player, setPlayer, pushToast }) {
+export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast }) {
   const { t,lang } = useTranslation();
   const roleLabel = (role) => t(`clan.role.${role}`);
   const stageName = (stage) => (stage ? t(`clan.bossStage.${stage.id}.name`) : "");
@@ -75,6 +79,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   const [donateNpInput, setDonateNpInput] = useState("");
   const [donateGoldInput, setDonateGoldInput] = useState("");
   const [donateDiamondInput, setDonateDiamondInput] = useState("");
+  const [donateMaterialInputs, setDonateMaterialInputs] = useState({});
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [lbRace, setLbRace] = useState(player.race);
   const [invites, setInvites] = useState([]);
@@ -188,13 +193,6 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     catch (error) { pushToast(formatServerError(t, error), "warn"); }
   };
 
-  const handleStartDungeon = () => {
-    const result = startDungeon(player);
-    if (!result.started) { pushToast(formatReason(t, result), "warn"); return; }
-    setPlayer(result.player);
-    pushToast(t("clan.toastDungeonStarted"), "loot");
-  };
-
   const handleDonate = async (currency, rawAmount, clearInput) => {
     const amount = parseInt(rawAmount, 10);
     if (!Number.isFinite(amount) || amount <= 0) { pushToast(formatReason(t, { reason: "enterValidAmount" }, "clan.toastDonateFailed"), "warn"); return; }
@@ -212,6 +210,28 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
     const toastKey = currency === "np" ? "clan.toastDonatedNp" : currency === "gold" ? "clan.toastDonatedGold" : "clan.toastDonatedDiamonds";
     pushToast(t(toastKey, { amount: fmt(amount) }), "loot");
     clearInput();
+    refresh();
+  };
+
+  // Klan Dungeon malzemeleri — çantadaki yığından tamamı ya da bir kısmı
+  // klan hazinesine bağışlanabiliyor, altın/elmas/NP ile AYNI akış (kendi
+  // düşüşü istemcide, bkz. yukarıdaki handleDonate).
+  const handleDonateMaterial = async (materialKey, rawAmount) => {
+    const amount = parseInt(rawAmount, 10);
+    const stack = player.inventory.find((it) => it.kind === "clanMaterial" && it.materialKey === materialKey);
+    const owned = stack?.count || 0;
+    if (!Number.isFinite(amount) || amount <= 0) { pushToast(formatReason(t, { reason: "enterValidAmount" }, "clan.toastDonateFailed"), "warn"); return; }
+    if (owned < amount) { pushToast(t("clan.toastDonateFailed"), "warn"); return; }
+    try {
+      await donateToClan(materialKey, amount);
+    } catch (error) { pushToast(formatServerError(t, error, "clan.toastDonateFailed"), "warn"); return; }
+    setPlayer((p) => ({
+      ...p,
+      inventory: p.inventory
+        .map((it) => (it.id === stack.id ? { ...it, count: it.count - amount } : it))
+        .filter((it) => it.id !== stack.id || it.count > 0),
+    }));
+    pushToast(t("clan.toastDonatedMaterial", { amount: fmt(amount), material: CLAN_DUNGEON_MATERIALS[materialKey].name }), "loot");
     refresh();
   };
 
@@ -329,14 +349,19 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
   const isLeader = clan.role === "leader";
   const isOfficerOrLeader = clan.role === "leader" || clan.role === "officer";
   const officerCount = clan.members.filter((m) => m.role === "officer").length;
-  const dungeonReady = canStartDungeon(player);
   const canManageDungeon = isOfficerOrLeader;
   const nextBuildingCost = CLAN_BUILDING_UPGRADE_COST[clan.buildingLevel + 1];
+  const nextMaterialCost = CLAN_BUILDING_MATERIAL_COST[clan.buildingLevel + 1];
+  const materialsShort = nextMaterialCost
+    ? Object.entries(nextMaterialCost).filter(([key, need]) => (clan.treasury[key] || 0) < need)
+    : [];
   const buildingCheck = !nextBuildingCost
     ? { ok: false }
     : clan.treasury.gold < nextBuildingCost.gold || clan.treasury.diamonds < nextBuildingCost.diamonds
       ? { ok: false, reason: "treasuryNeedsCost", reasonVars: { gold: nextBuildingCost.gold, diamonds: nextBuildingCost.diamonds } }
-      : { ok: true };
+      : materialsShort.length > 0
+        ? { ok: false, reason: "treasuryNeedsMaterials" }
+        : { ok: true };
   const unlocked = unlockedBossStages(clan);
   const bossActive = isClanBossActive(clan);
   const activeStage = clan.boss ? CLAN_BOSS_STAGES.find((s) => s.id === clan.boss.stageId) : null;
@@ -391,17 +416,36 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Coins size={11} color="var(--gold-text)" /> {fmt(clan.treasury.gold)}g</span>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Gem size={11} color="#8B6FC9" /> {fmt(clan.treasury.diamonds)}</span>
         </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6, fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+          {Object.entries(CLAN_DUNGEON_MATERIALS).map(([key, def]) => (
+            <span key={key} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 3, background: def.color, flexShrink: 0 }} /> {fmt(clan.treasury[key] || 0)}
+            </span>
+          ))}
+        </div>
 
         {canManageDungeon && (
           nextBuildingCost ? (
-            <button
-              className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(!buildingCheck.ok ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }}
-              disabled={!buildingCheck.ok}
-              onClick={handleUpgradeBuilding}
-              title={!buildingCheck.ok ? formatReason(t, buildingCheck) : undefined}
-            >
-              {t("clan.upgradeBuildingBtn", { level: clan.buildingLevel + 1, gold: fmt(nextBuildingCost.gold), diamonds: fmt(nextBuildingCost.diamonds) })}
-            </button>
+            <>
+              <button
+                className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(!buildingCheck.ok ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }}
+                disabled={!buildingCheck.ok}
+                onClick={handleUpgradeBuilding}
+                title={!buildingCheck.ok ? formatReason(t, buildingCheck) : undefined}
+              >
+                {t("clan.upgradeBuildingBtn", { level: clan.buildingLevel + 1, gold: fmt(nextBuildingCost.gold), diamonds: fmt(nextBuildingCost.diamonds) })}
+              </button>
+              {nextMaterialCost && (
+                <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 6 }}>
+                  {t("clan.materialsRequiredLabel")}{" "}
+                  {Object.entries(nextMaterialCost).map(([key, need], i) => (
+                    <span key={key} style={{ color: (clan.treasury[key] || 0) < need ? "#E8A5AF" : "var(--text-muted)" }}>
+                      {i > 0 ? " · " : ""}{fmt(clan.treasury[key] || 0)}/{fmt(need)} {CLAN_DUNGEON_MATERIALS[key].name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>{t("clan.buildingMaxed")}</div>
           )
@@ -416,6 +460,27 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
             <input type="number" min="1" placeholder={t("clan.donateGoldPlaceholder")} value={donateGoldInput} onChange={(e) => setDonateGoldInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
             <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleDonate("gold", donateGoldInput, () => setDonateGoldInput(""))}>{t("clan.donateBtn")}</button>
           </div>
+          {Object.entries(CLAN_DUNGEON_MATERIALS).map(([key, def]) => {
+            const owned = player.inventory.find((it) => it.kind === "clanMaterial" && it.materialKey === key)?.count || 0;
+            if (owned <= 0) return null;
+            return (
+              <div key={key} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ width: 6, height: 6, borderRadius: 3, background: def.color, flexShrink: 0 }} />
+                <input
+                  type="number" min="1" max={owned} placeholder={`${def.name} (${owned})`}
+                  value={donateMaterialInputs[key] || ""}
+                  onChange={(e) => setDonateMaterialInputs((s) => ({ ...s, [key]: e.target.value }))}
+                  style={{ ...styles.numInput, width: "auto", flex: 1 }}
+                />
+                <button
+                  className="rpg-action" style={styles.tinyBtn}
+                  onClick={() => { handleDonateMaterial(key, donateMaterialInputs[key]); setDonateMaterialInputs((s) => ({ ...s, [key]: "" })); }}
+                >
+                  {t("clan.donateBtn")}
+                </button>
+              </div>
+            );
+          })}
           <div style={{ display: "flex", gap: 6 }}>
             <input type="number" min="1" placeholder={t("clan.donateDiamondPlaceholder")} value={donateDiamondInput} onChange={(e) => setDonateDiamondInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
             <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleDonate("diamonds", donateDiamondInput, () => setDonateDiamondInput(""))}>{t("clan.donateBtn")}</button>
@@ -497,30 +562,7 @@ export default function ClanTab({ player, setPlayer, pushToast }) {
         )}
       </div>
 
-      <div className="rpg-card" style={styles.itemDetailCard}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Swords size={18} color="#C9425A" strokeWidth={1.6} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14 }}>{t("clan.dungeonTitle")}</div>
-            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
-              {clan.dungeon.lastStartedDay ? t("clan.dungeonStartedBy", { name: clan.dungeon.startedBy }) : t("clan.dungeonNotStarted")}
-            </div>
-          </div>
-        </div>
-        {canManageDungeon ? (
-          <button
-            className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(!dungeonReady ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }}
-            disabled={!dungeonReady}
-            onClick={handleStartDungeon}
-          >
-            {dungeonReady ? t("clan.dungeonStartBtn") : t("clan.dungeonAlreadyStarted")}
-          </button>
-        ) : (
-          <button className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10 }} onClick={() => pushToast(t("clan.toastDungeonComingSoon"), "default")}>
-            {t("clan.dungeonJoinBtn")}
-          </button>
-        )}
-      </div>
+      <ClanDungeonPanel player={player} setPlayer={setPlayer} cls={cls} atk={atk} def={def} pushToast={pushToast} />
 
       <SectionLabel>{t("clan.membersTitle")}</SectionLabel>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

@@ -1,4 +1,5 @@
 import { potionName } from "../data/potions";
+import { CLAN_DUNGEON_MATERIALS } from "../data/clanDungeon";
 import { uid } from "./random";
 
 export const BAG_COLUMNS = 8;
@@ -158,6 +159,25 @@ export function makeAccessoryScrollStack(count = 1) {
     weight: 0.5,
     stackable: true,
     stackKey: ACCESSORY_SCROLL_ID,
+  };
+}
+
+// Klan Dungeon malzemeleri (bkz. data/clanDungeon.js#CLAN_DUNGEON_MATERIALS)
+// — normal pot/parşömen yığınlarıyla aynı desen, ama noTrade YOK (kullanıcı
+// isteği: "ticarete açık olacak"), bu yüzden Pazar'da normal şekilde listelenebiliyor.
+export function makeClanMaterialStack(materialKey, count = 1) {
+  const def = CLAN_DUNGEON_MATERIALS[materialKey];
+  return {
+    id: `clanMaterial:${materialKey}`,
+    kind: "clanMaterial",
+    materialKey,
+    name: def.name,
+    tier: def.tier,
+    color: def.color,
+    count,
+    weight: 0.2,
+    stackable: true,
+    stackKey: `clanMaterial:${materialKey}`,
   };
 }
 

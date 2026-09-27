@@ -2,12 +2,12 @@ import { todayKey } from "./day";
 import { CLAN_EXP_TIERS } from "../data/clan";
 
 // Faz 6 — klan üyeliği/davet/paylaşımlı hazine artık gerçek bir backend'de
-// (bkz. server/app.mjs'in /api/clan/* uçları, components/ClanTab.jsx).
-// Bu dosyada sadece SUNUCUYA hiç ihtiyacı olmayan, saf/yerel hesaplar kaldı:
-// EXP bonusu (üye sayısına bağlı basit bir formül) ve Klan Zindanı (kullanıcı
-// isteği kapsamı dışında kaldı, kendi günlük yerel durumunu koruyor). Klan
-// Boss (bkz. utils/clanBoss.js) de aynı sebepten yerel kalmaya devam ediyor —
-// ikisi de player.clan'ın ClanTab tarafından sunucudan doldurulan alanlarını
+// (bkz. server/app.mjs'in /api/clan/* uçları, components/ClanTab.jsx). Klan
+// Dungeon (20 aşamalı, bkz. ClanDungeonPanel.jsx) da tamamen sunucuda yaşıyor.
+// Bu dosyada sadece SUNUCUYA hiç ihtiyacı olmayan, saf/yerel bir hesap kaldı:
+// EXP bonusu (üye sayısına bağlı basit bir formül). Klan Boss (bkz.
+// utils/clanBoss.js) da aynı sebepten yerel kalmaya devam ediyor — ikisi de
+// player.clan'ın ClanTab tarafından sunucudan doldurulan alanlarını
 // (treasury, buildingLevel, role, members) okumaya devam ediyor, format
 // değişmedi.
 
@@ -43,20 +43,3 @@ export function clanLeaderboardFor(race, player) {
 }
 
 export { todayKey };
-
-export function canStartDungeon(player) {
-  if (!player.clan) return false;
-  if (player.clan.role !== "leader" && player.clan.role !== "officer") return false;
-  return player.clan.dungeon.lastStartedDay !== todayKey();
-}
-
-// İçerik henüz yok (kullanıcı ek bilgi verecek) — bu sadece günlük
-// başlatma/durum iskeleti (bkz. components/ClanTab.jsx). Kasıtlı olarak hâlâ
-// yerel: gerçek ortak bir zindan simülasyonu ayrı bir kapsam.
-export function startDungeon(player) {
-  if (!canStartDungeon(player)) return { player, started: false, reason: "clanDungeonUnavailable" };
-  return {
-    player: { ...player, clan: { ...player.clan, dungeon: { lastStartedDay: todayKey(), startedBy: player.nickname || "Sen" } } },
-    started: true,
-  };
-}

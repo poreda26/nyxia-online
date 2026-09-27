@@ -3,7 +3,7 @@ import JewelArt from './icons/JewelArt';
 import ScrollArt from './icons/ScrollArt';
 import RewardChest from './icons/RewardChest';
 import WingArt from './WingArt';
-import { FlaskConical } from "lucide-react";
+import { FlaskConical, Gem } from "lucide-react";
 import WeaponIcon from "./icons/WeaponIcon";
 import ArmorIcon from "./icons/ArmorIcon";
 import AccessoryIcon from "./icons/AccessoryIcon";
@@ -51,6 +51,9 @@ export default function ItemIcon({ item, size = 16, color = "currentColor", stro
   }
   if (item.kind === "potion") {
     return <FlaskConical size={size} color={item.potionType === "hp" ? "#C9425A" : "#4FC3D9"} strokeWidth={strokeWidth} />;
+  }
+  if (item.kind === "clanMaterial") {
+    return <Gem size={size} color={item.color || color} strokeWidth={strokeWidth} />;
   }
   return null;
 }

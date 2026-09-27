@@ -17,3 +17,13 @@ export const promoteClanMember = (accountId) => call("clan/promote", "POST", { a
 export const demoteClanMember = (accountId) => call("clan/demote", "POST", { accountId });
 export const donateToClan = (currency, amount) => call("clan/donate", "POST", { currency, amount });
 export const upgradeClanBuildingApi = () => call("clan/building/upgrade", "POST");
+
+// Klan Dungeon (Clan Raid) — kullanıcının pasted spec'i: paylaşılan aşama/HP
+// klan başına tek satırda (bkz. server/app.mjs'in aynı başlıklı bölümü),
+// kilit tek seferde 1 üyede. Hasar burada da (oyunun geri kalanıyla aynı
+// güven sınırı) istemcide hesaplanıp sunucuya bildiriliyor, sunucu sadece
+// akla yatkın bir üst sınırla kabul ediyor.
+export const fetchClanDungeon = () => call("clan/dungeon", "GET");
+export const enterClanDungeon = () => call("clan/dungeon/enter", "POST");
+export const attackClanDungeon = (damage) => call("clan/dungeon/attack", "POST", { damage });
+export const leaveClanDungeon = () => call("clan/dungeon/leave", "POST");

@@ -277,17 +277,11 @@ export function migratePlayer(player) {
     // Bu alanlar (treasury/buildingLevel/myNpDonated/boss) klan bağış/boss
     // sisteminden ÖNCE oluşturulmuş bir klanda eksik olabilir — spread sırası
     // sayesinde player.clan'daki mevcut değerler bu varsayılanların üzerine
-    // yazıyor, sadece GERÇEKTEN eksik olanlar dolduruluyor.
-    // "dungeon" eksikti burada — Klan Zindanı özelliği bazı oyuncular zaten
-    // bir klana üyeyken eklenmişti, o eski kayıtlarda player.clan.dungeon
-    // hiç yoktu. canStartDungeon(player) (bkz. utils/clan.js) koşulsuz
-    // player.clan.dungeon.lastStartedDay okuyor — bu alan eksik kalınca
-    // ClanTab'ı her render'da TypeError ile çökertiyordu (kullanıcının
-    // ısrarla bildirdiği "Klan'a tıklayınca ekran gidiyor" bug'ının asıl
-    // nedeni — bir önceki oturumdaki todayKey düzeltmesi FARKLI bir bug'dı,
-    // ikisi aynı anda vardı).
+    // yazıyor, sadece GERÇEKTEN eksik olanlar dolduruluyor. Eski yerel "Klan
+    // Zindanı" placeholder'ının "dungeon" alanı kaldırıldı (bkz. ClanTab.jsx'in
+    // ClanDungeonPanel notu) — yeni Klan Dungeon durumu tamamen sunucuda yaşıyor.
     clan: player.clan
-      ? { treasury: { np: 0, gold: 0, diamonds: 0 }, buildingLevel: 1, myNpDonated: 0, boss: null, dungeon: { lastStartedDay: null, startedBy: null }, ...player.clan }
+      ? { treasury: { np: 0, gold: 0, diamonds: 0 }, buildingLevel: 1, myNpDonated: 0, boss: null, ...player.clan }
       : null,
     autoBattle: player.autoBattle
       ? { autoSkill: false, ...player.autoBattle }

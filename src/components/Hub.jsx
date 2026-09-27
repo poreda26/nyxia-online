@@ -261,7 +261,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
           <WarzoneTab player={player} setPlayer={setPlayer} pushToast={pushToast} onEnteredChange={setWarzoneEntered} />
         )}
         {tab === "clan" && (
-          <ClanTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
+          <ClanTab player={player} setPlayer={setPlayer} cls={cls} atk={atk} def={def} pushToast={pushToast} />
         )}
         {tab === "chat" && (
           <ChatTab

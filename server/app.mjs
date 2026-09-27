@@ -20,6 +20,12 @@ import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_COLORS } from '../src/data/cl
 import { CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from '../src/data/clanBoss.js';
 import {validPlayerAvatar,validClanAvatar,playerAvatarId} from '../src/data/avatars.js';
 import { FRIEND_MAX_COUNT, CHAT_MESSAGE_TTL_MS, DM_MESSAGE_TTL_MS } from '../src/data/social.js';
+// Klan Dungeon (Clan Raid) — kullanıcının pasted spec'i: 20 aşamalı, paylaşılan
+// HP havuzu, tek seferde 1 üye kilidi, günlük 2 giriş/20dk bekleme, sunucu
+// saatiyle 00:00 sıfırlanma. Aşama gücü/malzeme tanımları istemciyle aynı
+// kaynaktan (bkz. Faz 4/6'daki aynı ilke).
+import { TOTAL_STAGES, CLAN_DUNGEON_DAILY_ENTRIES, CLAN_DUNGEON_COOLDOWN_MS, CLAN_DUNGEON_LOCK_TIMEOUT_MS, clanDungeonStage, rollClanDungeonMaterial, CLAN_BUILDING_MATERIAL_COST } from '../src/data/clanDungeon.js';
+import { todayKey } from '../src/utils/day.js';
 
 const scrypt = promisify(derive);
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -49,6 +55,8 @@ async function serveStatic(res, staticDir, reqPath) {
 }
 
 const stallActive = (row, now) => !!row && now < row.listed_at + row.duration_hours * 3600000;
+// Klan Dungeon malzeme anahtarı -> klan hazinesi kolonu (bkz. clans tablosu migrasyonu).
+const CLAN_MATERIAL_COLUMN = { rootFragment: 'treasury_root_fragment', midBossTrophy: 'treasury_midboss_trophy', twilightEssence: 'treasury_twilight_essence', finalBossTrophy: 'treasury_finalboss_trophy' };
 
 // Client backups are deliberately separate from future authoritative game state.
 export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null } = {}) {
@@ -69,13 +77,20 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS direct_messages(id INTEGER PRIMARY KEY AUTOINCREMENT, from_account INTEGER NOT NULL REFERENCES accounts(id), to_account INTEGER NOT NULL REFERENCES accounts(id), text TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS clans(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, color TEXT NOT NULL, founder_account INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, building_level INTEGER NOT NULL DEFAULT 1, treasury_gold INTEGER NOT NULL DEFAULT 0, treasury_diamonds INTEGER NOT NULL DEFAULT 0, treasury_np INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS clan_members(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), clan_id INTEGER NOT NULL REFERENCES clans(id), role TEXT NOT NULL, joined_at INTEGER NOT NULL, donated_np INTEGER NOT NULL DEFAULT 0);
-    CREATE TABLE IF NOT EXISTS clan_invites(id INTEGER PRIMARY KEY AUTOINCREMENT, clan_id INTEGER NOT NULL REFERENCES clans(id), from_account INTEGER NOT NULL REFERENCES accounts(id), to_account INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, UNIQUE(clan_id,to_account));`);
+    CREATE TABLE IF NOT EXISTS clan_invites(id INTEGER PRIMARY KEY AUTOINCREMENT, clan_id INTEGER NOT NULL REFERENCES clans(id), from_account INTEGER NOT NULL REFERENCES accounts(id), to_account INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, UNIQUE(clan_id,to_account));
+    CREATE TABLE IF NOT EXISTS clan_dungeon_state(clan_id INTEGER PRIMARY KEY REFERENCES clans(id), day_key TEXT NOT NULL, stage_index INTEGER NOT NULL DEFAULT 1, monster_hp INTEGER NOT NULL DEFAULT 0, completed INTEGER NOT NULL DEFAULT 0, locked_by INTEGER REFERENCES accounts(id), locked_by_name TEXT, locked_until INTEGER);
+    CREATE TABLE IF NOT EXISTS clan_dungeon_attempts(account_id INTEGER NOT NULL REFERENCES accounts(id), day_key TEXT NOT NULL, entries_used INTEGER NOT NULL DEFAULT 0, first_entry_at INTEGER, PRIMARY KEY(account_id,day_key));`);
   // Başlangıçta bir kerelik temizlik — hafta öncesinin boss kayıtları hiç
   // kullanılmayacak, DB'nin sınırsız büyümesini önler.
   {
     const cutoff = Date.now() - 7 * 86400000;
     db.prepare('DELETE FROM boss_contributions WHERE spawn_at < ?').run(cutoff);
     db.prepare('DELETE FROM boss_fights WHERE spawn_at < ?').run(cutoff);
+    // day_key ("Thu Jan 01 1970" gibi toDateString çıktısı) alfabetik sırayla
+    // kronolojik sıralanmıyor, bu yüzden < karşılaştırması yerine "bugün
+    // değilse sil" — dünün giriş hakkı/cooldown'u zaten hiçbir zaman tekrar
+    // okunmayacak.
+    db.prepare('DELETE FROM clan_dungeon_attempts WHERE day_key <> ?').run(todayKey());
   }
   // Ters proxy arkasında (Caddy) her istek soket düzeyinde AYNI adresten
   // (proxy'nin kendisinden) geliyor — X-Forwarded-For'a körü körüne
@@ -108,6 +123,12 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   for(const [table,fallback] of [['chat_messages','human-warrior'],['direct_messages','human-warrior'],['clans','wolf']]){
     if(!db.prepare(`PRAGMA table_info(${table})`).all().some(c=>c.name==='avatar_id'))db.exec(`ALTER TABLE ${table} ADD COLUMN avatar_id TEXT NOT NULL DEFAULT '${fallback}'`);
     if(table!=='clans'&&!db.prepare(`PRAGMA table_info(${table})`).all().some(c=>c.name==='frame_id'))db.exec(`ALTER TABLE ${table} ADD COLUMN frame_id TEXT`);
+  }
+  // Klan Dungeon malzeme hazinesi — bina yükseltmesi artık altın/elmasın
+  // yanında bu 4 malzeyi de istiyor (bkz. data/clanDungeon.js#CLAN_BUILDING_MATERIAL_COST).
+  // Bağış akışı gold/diamonds/np ile birebir aynı (bkz. /api/clan/donate).
+  for (const col of ['treasury_root_fragment', 'treasury_midboss_trophy', 'treasury_twilight_essence', 'treasury_finalboss_trophy']) {
+    if (!db.prepare('PRAGMA table_info(clans)').all().some(c => c.name === col)) db.exec(`ALTER TABLE clans ADD COLUMN ${col} INTEGER NOT NULL DEFAULT 0`);
   }
   const chatRateLimit = makeRateLimiter(20);
   const bossAttackRateLimit = makeRateLimiter(60);
@@ -664,7 +685,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         return send(200, { clan: {
           id: clan.id, name: clan.name, color: clan.color, avatarId:clan.avatar_id,createdAt: clan.created_at,
           buildingLevel: clan.building_level,
-          treasury: { gold: clan.treasury_gold, diamonds: clan.treasury_diamonds, np: clan.treasury_np },
+          treasury: {
+            gold: clan.treasury_gold, diamonds: clan.treasury_diamonds, np: clan.treasury_np,
+            rootFragment: clan.treasury_root_fragment, midBossTrophy: clan.treasury_midboss_trophy,
+            twilightEssence: clan.treasury_twilight_essence, finalBossTrophy: clan.treasury_finalboss_trophy,
+          },
           myRole: membership.role, myDonatedNp: membership.donated_np,
           members,
         } });
@@ -773,9 +798,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (!membership) throw fail(409, 'NOT_IN_CLAN');
         const body = await read(req);
         const amount = Number(body?.amount);
-        const currency = ['gold', 'diamonds', 'np'].includes(body?.currency) ? body.currency : null;
+        const currency = ['gold', 'diamonds', 'np', ...Object.keys(CLAN_MATERIAL_COLUMN)].includes(body?.currency) ? body.currency : null;
         if (!currency || !Number.isSafeInteger(amount) || amount <= 0) throw fail(400, 'INVALID_DONATION');
-        const column = currency === 'gold' ? 'treasury_gold' : currency === 'diamonds' ? 'treasury_diamonds' : 'treasury_np';
+        const column = CLAN_MATERIAL_COLUMN[currency] || (currency === 'gold' ? 'treasury_gold' : currency === 'diamonds' ? 'treasury_diamonds' : 'treasury_np');
         db.exec('BEGIN IMMEDIATE');
         try {
           db.prepare(`UPDATE clans SET ${column} = ${column} + ? WHERE id=?`).run(amount, membership.clan_id);
@@ -795,11 +820,135 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           const clan = db.prepare('SELECT * FROM clans WHERE id=?').get(membership.clan_id);
           if (clan.building_level >= CLAN_BUILDING_MAX_LEVEL) throw fail(409, 'CLAN_BUILDING_MAX_LEVEL');
           const cost = CLAN_BUILDING_UPGRADE_COST[clan.building_level + 1];
+          const materialCost = CLAN_BUILDING_MATERIAL_COST[clan.building_level + 1];
           if (clan.treasury_gold < cost.gold || clan.treasury_diamonds < cost.diamonds) throw fail(409, 'TREASURY_NEEDS_COST');
-          db.prepare('UPDATE clans SET building_level=building_level+1, treasury_gold=treasury_gold-?, treasury_diamonds=treasury_diamonds-? WHERE id=?').run(cost.gold, cost.diamonds, clan.id);
+          for (const [key, column] of Object.entries(CLAN_MATERIAL_COLUMN)) {
+            if (clan[column] < materialCost[key]) throw fail(409, 'TREASURY_NEEDS_MATERIALS');
+          }
+          const materialSets = Object.entries(CLAN_MATERIAL_COLUMN).map(([key, column]) => `${column}=${column}-${materialCost[key]}`).join(',');
+          db.prepare(`UPDATE clans SET building_level=building_level+1, treasury_gold=treasury_gold-?, treasury_diamonds=treasury_diamonds-?, ${materialSets} WHERE id=?`).run(cost.gold, cost.diamonds, clan.id);
           db.exec('COMMIT');
           return send(200, { buildingLevel: clan.building_level + 1 });
         } catch (error) { db.exec('ROLLBACK'); throw error; }
+      }
+      // Klan Dungeon — kullanıcının pasted spec'i. Aşama/HP klan başına TEK
+      // satır (paylaşılan can havuzu); satır her okunduğunda gün değiştiyse
+      // (todayKey()) lazy olarak sıfırlanıyor (cron gerekmiyor, boss_fights'ın
+      // spawn_at anahtarına dayanmasıyla aynı ilke). Kilit zaman aşımı,
+      // websocket'siz mimaride gerçek "bağlantı koptu" tespitinin yerini tutuyor.
+      const clanDungeonRow = (clanId) => {
+        const today = todayKey();
+        let row = db.prepare('SELECT * FROM clan_dungeon_state WHERE clan_id=?').get(clanId);
+        if (!row || row.day_key !== today) {
+          const stage1 = clanDungeonStage(1);
+          db.prepare(`INSERT INTO clan_dungeon_state(clan_id,day_key,stage_index,monster_hp,completed,locked_by,locked_by_name,locked_until) VALUES(?,?,1,?,0,NULL,NULL,NULL)
+            ON CONFLICT(clan_id) DO UPDATE SET day_key=excluded.day_key, stage_index=1, monster_hp=excluded.monster_hp, completed=0, locked_by=NULL, locked_by_name=NULL, locked_until=NULL`)
+            .run(clanId, today, stage1.hp);
+          row = db.prepare('SELECT * FROM clan_dungeon_state WHERE clan_id=?').get(clanId);
+        }
+        if (row.locked_by && row.locked_until && Date.now() > row.locked_until) {
+          db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL, locked_by_name=NULL, locked_until=NULL WHERE clan_id=?').run(clanId);
+          row = { ...row, locked_by: null, locked_by_name: null, locked_until: null };
+        }
+        return row;
+      };
+      const clanDungeonAttempts = (accountId) => {
+        const today = todayKey();
+        return db.prepare('SELECT * FROM clan_dungeon_attempts WHERE account_id=? AND day_key=?').get(accountId, today)
+          || { account_id: accountId, day_key: today, entries_used: 0, first_entry_at: null };
+      };
+      const dungeonAttemptsInfo = (accountId) => {
+        const row = clanDungeonAttempts(accountId);
+        const entriesLeft = Math.max(0, CLAN_DUNGEON_DAILY_ENTRIES - row.entries_used);
+        let cooldownRemainingMs = 0;
+        if (row.entries_used === 1 && row.first_entry_at) cooldownRemainingMs = Math.max(0, (row.first_entry_at + CLAN_DUNGEON_COOLDOWN_MS) - Date.now());
+        return { entriesUsed: row.entries_used, entriesLeft, cooldownRemainingMs };
+      };
+      if (path === '/api/clan/dungeon' && req.method === 'GET') {
+        const membership = myMembership();
+        if (!membership) throw fail(409, 'NOT_IN_CLAN');
+        const row = clanDungeonRow(membership.clan_id);
+        return send(200, {
+          dayKey: row.day_key, stageIndex: row.stage_index, totalStages: TOTAL_STAGES,
+          stage: clanDungeonStage(row.stage_index), monsterHp: row.monster_hp, completed: !!row.completed,
+          locked: !!row.locked_by, lockedByMe: row.locked_by === account.id, lockedByName: row.locked_by_name || null,
+          attempts: dungeonAttemptsInfo(account.id),
+        });
+      }
+      if (path === '/api/clan/dungeon/enter' && req.method === 'POST') {
+        const membership = myMembership();
+        if (!membership) throw fail(409, 'NOT_IN_CLAN');
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          const row = clanDungeonRow(membership.clan_id);
+          if (row.completed) throw fail(409, 'DUNGEON_COMPLETE');
+          if (row.locked_by && row.locked_by !== account.id) throw fail(409, 'LOCKED_BY_OTHER');
+          if (!row.locked_by) {
+            const attempts = clanDungeonAttempts(account.id);
+            if (attempts.entries_used >= CLAN_DUNGEON_DAILY_ENTRIES) throw fail(409, 'ENTRIES_EXHAUSTED');
+            if (attempts.entries_used === 1 && attempts.first_entry_at && Date.now() < attempts.first_entry_at + CLAN_DUNGEON_COOLDOWN_MS) throw fail(409, 'COOLDOWN_ACTIVE');
+            const nextUsed = attempts.entries_used + 1;
+            const nextFirstAt = attempts.entries_used === 0 ? Date.now() : attempts.first_entry_at;
+            db.prepare(`INSERT INTO clan_dungeon_attempts(account_id,day_key,entries_used,first_entry_at) VALUES(?,?,?,?)
+              ON CONFLICT(account_id,day_key) DO UPDATE SET entries_used=excluded.entries_used, first_entry_at=excluded.first_entry_at`)
+              .run(account.id, attempts.day_key, nextUsed, nextFirstAt);
+            const displayName = mainCharacterOf(db.prepare('SELECT data FROM backups WHERE account=?').get(account.id))?.nickname || account.name;
+            db.prepare('UPDATE clan_dungeon_state SET locked_by=?, locked_by_name=?, locked_until=? WHERE clan_id=?')
+              .run(account.id, displayName, Date.now() + CLAN_DUNGEON_LOCK_TIMEOUT_MS, membership.clan_id);
+          }
+          db.exec('COMMIT');
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
+        const fresh = clanDungeonRow(membership.clan_id);
+        return send(200, {
+          stageIndex: fresh.stage_index, stage: clanDungeonStage(fresh.stage_index), monsterHp: fresh.monster_hp,
+          attempts: dungeonAttemptsInfo(account.id),
+        });
+      }
+      if (path === '/api/clan/dungeon/attack' && req.method === 'POST') {
+        const membership = myMembership();
+        if (!membership) throw fail(409, 'NOT_IN_CLAN');
+        const body = await read(req);
+        const damage = Number(body?.damage);
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          const row = clanDungeonRow(membership.clan_id);
+          if (row.completed) throw fail(409, 'DUNGEON_COMPLETE');
+          if (row.locked_by !== account.id) throw fail(403, 'NOT_YOUR_TURN');
+          const stage = clanDungeonStage(row.stage_index);
+          const DUNGEON_HIT_CAP_RATIO = 0.5; // bkz. World Boss'taki aynı ilke — tek vuruş canavar canının yarısını aşamaz
+          if (!Number.isSafeInteger(damage) || damage <= 0 || damage > stage.hp * DUNGEON_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
+          const hp = Math.max(0, row.monster_hp - damage);
+          let droppedMaterial = null;
+          if (hp <= 0) {
+            const roll = rollClanDungeonMaterial(row.stage_index);
+            if (roll.dropped) droppedMaterial = roll.key;
+            if (row.stage_index >= TOTAL_STAGES) {
+              // Zindan bugünlük bitti — herkese açılsın diye kilit tamamen kalkıyor.
+              db.prepare('UPDATE clan_dungeon_state SET monster_hp=0, completed=1, locked_by=NULL, locked_by_name=NULL, locked_until=NULL WHERE clan_id=?').run(membership.clan_id);
+            } else {
+              // Bir "giriş" tek bir canavarla sınırlı değil — oyuncu ayrılana/
+              // zaman aşımına uğrayana/zindanı bitirene kadar aynı girişle
+              // sıradaki canavara devam eder (kilidi elinde tutar), yoksa her
+              // aşama geçişinde günlük 2 giriş hakkından biri boşa harcanırdı.
+              const nextStage = clanDungeonStage(row.stage_index + 1);
+              db.prepare('UPDATE clan_dungeon_state SET stage_index=stage_index+1, monster_hp=?, locked_until=? WHERE clan_id=?').run(nextStage.hp, Date.now() + CLAN_DUNGEON_LOCK_TIMEOUT_MS, membership.clan_id);
+            }
+          } else {
+            db.prepare('UPDATE clan_dungeon_state SET monster_hp=?, locked_until=? WHERE clan_id=?').run(hp, Date.now() + CLAN_DUNGEON_LOCK_TIMEOUT_MS, membership.clan_id);
+          }
+          db.exec('COMMIT');
+          const fresh = clanDungeonRow(membership.clan_id);
+          return send(200, {
+            stageIndex: fresh.stage_index, stage: clanDungeonStage(fresh.stage_index), monsterHp: fresh.monster_hp,
+            completed: !!fresh.completed, stageCleared: hp <= 0, droppedMaterial,
+          });
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
+      }
+      if (path === '/api/clan/dungeon/leave' && req.method === 'POST') {
+        const membership = myMembership();
+        if (!membership) throw fail(409, 'NOT_IN_CLAN');
+        db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL, locked_by_name=NULL, locked_until=NULL WHERE clan_id=? AND locked_by=?').run(membership.clan_id, account.id);
+        return send(200, { ok: true });
       }
       throw fail(404, 'NOT_FOUND');
     } catch (error) { send(error.status || 500, { error: error.status ? error.message : 'SERVER_ERROR' }); }
