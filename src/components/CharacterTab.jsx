@@ -1,3 +1,4 @@
+import AchievementsPanel from './AchievementsPanel';
 import {equippedStatBonus} from '../utils/player';
 import Avatar from './Avatar';
 import './ProgressionPanels.css';
@@ -264,50 +265,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
         </>
       )}
 
-      {subtab === "achievements" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {player.activeTitle && (
-            <button
-              className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
-              onClick={() => pickTitle(null)}
-            >
-              <X size={11} /> {t("character.achievements.removeTitleBtn")}
-            </button>
-          )}
-          {ACHIEVEMENTS.map((a) => {
-            const unlocked = isAchievementUnlocked(player, a);
-            const active = player.activeTitle === a.id;
-            const AIcon = a.icon;
-            const goal=a.target||1;
-            const value=a.type==="kills"?Object.values(player.monsterKills||{}).reduce((sum,n)=>sum+n,0):a.type==="level"?player.level:a.type==="counter"?(player.milestones?.[a.counter]||0):unlocked?1:0;
-            return (
-              <div key={a.id} className={`rpg-card achievement-card ${active?"is-active":""}`} style={{ ...styles.itemDetailCard, opacity: unlocked ? 1 : 0.85, ...(active ? { borderColor: `${a.color}88` } : {}) }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 8, background: unlocked ? `${a.color}22` : "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <AIcon size={27} color={a.color} strokeWidth={1.6}/>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, color: unlocked ? "var(--text-primary)" : "var(--text-faint)" }}>{t(`character.achievements.${a.id}.name`)}</div>
-                    <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{t(`character.achievements.${a.id}.desc`)}</div><div className="achievement-progress"><meter min="0" max={goal} value={Math.min(value,goal)}/><span>{Math.min(value,goal)} / {goal} {!unlocked&&<Lock size={10}/>}</span></div>
-                    {unlocked && (
-                      <div style={{ fontSize: 9, color: a.color, fontFamily: "var(--font-mono)", marginTop: 3 }}>{t("character.achievements.titleLabel", { title: t(`character.achievements.${a.id}.title`) })}</div>
-                    )}
-                  </div>
-                  {unlocked && (
-                    <button
-                      className="rpg-action" style={{ ...styles.tinyBtn, flexShrink: 0, ...(active ? { background: a.color, color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-muted)" }) }}
-                      disabled={active}
-                      onClick={() => pickTitle(a.id)}
-                    >
-                      {active ? <><Award size={11} /> {t("character.achievements.usingTitleBtn")}</> : t("character.achievements.useTitleBtn")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {subtab === "achievements" && <AchievementsPanel player={player} onTitle={pickTitle}/>}
 
       {subtab === "cosmetics" && (
         <>

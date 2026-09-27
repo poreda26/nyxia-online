@@ -1,3 +1,5 @@
+import {prepareWarzoneAction,buildHuntMonster} from '../utils/warzoneCombat';
+import WarzoneSkills from './WarzoneSkills';
 import './WarzoneTab.css';
 import { varyDamage } from '../utils/combat';
 import PracticeDuel from './PracticeDuel';
@@ -97,6 +99,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // tutuluyor çünkü aynı anda birden fazla boss aktif olabiliyor.
   const [huntVisual, setHuntVisual] = useState({ id: 0, type: "", label: "" });
   const [bossVisuals, setBossVisuals] = useState({});
+  const [bossEffects,setBossEffects]=useState({});
   // Faz 4 — { [bossId]: { hp, maxHp, resolved, myDamage, totalDamage } },
   // SUNUCUDAN geliyor (bkz. services/warzoneBossService.js). Sadece "active"
   // fazdaki bosslar için bir kayıt var; server periyodik olarak yenileniyor
@@ -222,14 +225,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       // çağrısındaki opts) yönetiliyor. Çarpanın kendisi artık admin.html'de
       // bir override varsa onu kullanıyor (bkz. utils/dropConfig.js#getWarzoneHuntConfig).
       const huntPowerMult = getWarzoneHuntConfig().powerMult;
-      const hp = Math.round(template.hp * huntPowerMult);
-      const monster = {
-        ...template,
-        hp,
-        maxHp: hp,
-        atk: Math.round(template.atk * huntPowerMult),
-        def: Math.round(template.def * huntPowerMult),
-      };
+      const monster=buildHuntMonster(template,huntPowerMult);
       setWz((prev) => (prev.searching ? { ...prev, searching: null, hunt: { monster, potionCooldowns: { hp: 0, mp: 0 }, log: [t("warzone.log.huntAppeared", { monster: monster.name })] } } : prev));
     }, wz.searching.durationMs);
     return () => clearTimeout(timer);
@@ -339,26 +335,27 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // başka gerçek oyuncular da aynı düşüşü görüyor. Boss ölürse ödül HER
   // ZAMAN bana gitmez (ağırlıklı çekiliş sunucuda, bkz. server/app.mjs) —
   // kazanırsam loot-claims yoklamasıyla (yukarıdaki effect) ayrıca gelir.
-  const attackBoss = async (bossId) => {
+  const attackBoss = async (bossId,skillId=null) => {
     const rawBoss = WARZONE_BOSSES.find((b) => b.id === bossId);
     const boss = rawBoss && effectiveBoss(rawBoss);
     const activeState = sharedBosses[bossId];
     if (lockRef.current || !boss || !activeState || activeState.resolved || player.hp <= 0) return;
+    const effectKey=`${bossId}:${bossSchedule(boss,now).spawnAt}`;
+    const action=prepareWarzoneAction(player,{...boss,hp:activeState.hp,maxHp:activeState.maxHp},bossEffects[effectKey],skillId);
+    if(action.error){pushToast(action.error,'warn');return;}
     lockRef.current = true;
-    setBossVisuals((bv) => ({ ...bv, [bossId]: { id: (bv[bossId]?.id || 0) + 1, type: "attack", label: t("battle.actionAttack") } }));
-    const isCrit = Math.random() < cls.crit;
+    setBossVisuals((bv) => ({ ...bv, [bossId]: { id: (bv[bossId]?.id || 0) + 1, type: action.skill?"skill":"attack", skillId, label: action.skill?.name||t("battle.actionAttack") } }));
+    const isCrit = !action.skill && Math.random() < cls.crit;
     // Gerçek KO'nun DEX→Hit/Evasion Rate mantığı (bkz. utils/combat.js#
     // hitChance, BattleTab.jsx#attack'taki aynı desen) — boss'un gerçek bir
     // DEX'i yok, kendi ATK'si vekil.
-    const playerHitsBoss = rollHit(player.stats.dex, boss.atk, player.level);
-    const dmg = playerHitsBoss
-      ? varyDamage(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), boss.def, MONSTER_DEF_K))
-      : 0;
+    const playerHitsBoss = action.skill?true:rollHit(player.stats.dex, boss.atk, player.level);
+    const dmg = action.damage + (action.skill?0:playerHitsBoss ? Math.round(varyDamage(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), boss.def, MONSTER_DEF_K))*action.atkMult) : 0);
     setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], outgoing: { hit: playerHitsBoss, damage: dmg, crit: isCrit } } }));
-    if(playerHitsBoss)playHit({crit:isCrit,cls:player.class});else playMiss();
+    if(action.skill)playSkill(action.skill,player.class);else if(playerHitsBoss)playHit({crit:isCrit,cls:player.class});else playMiss();
 
     let bossSurvived = true;
-    if (playerHitsBoss && dmg > 0) {
+    if (dmg > 0) {
       try {
         const result = await warzoneBossService.attackBoss(bossId, dmg);
         setSharedBosses((prev) => ({
@@ -379,19 +376,22 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
         return;
       }
     } else {
-      setWz((prev) => ({ ...prev, log: [...prev.log, t("warzone.log.youMissedBoss", { boss: tm(boss) })].slice(-24) }));
+      setWz((prev) => ({ ...prev, log: [...prev.log, action.skill?`${action.skill.name}: Etki uygulandı`:t("warzone.log.youMissedBoss", { boss: tm(boss) })].slice(-24) }));
     }
 
+    setBossEffects(prev=>({...prev,[effectKey]:action.state}));
+    setPlayer(p=>({...p,mp:Math.max(0,p.mp-(action.skill?.mpCost||0)),hp:Math.min(playerMaxHp(p),p.hp+action.heal)}));
+    if(action.heal)setBossVisuals(bv=>({...bv,[bossId]:{...bv[bossId],outgoing:{hit:true,heal:true,damage:action.heal}}}));
     if (bossSurvived) {
       // Boss hâlâ ayaktaysa oyuncuya karşılık verir.
       const bossSetReduction = armorSetDamageReduction(player, "monster");
       const bossHitsPlayer = rollHit(boss.atk, player.stats.dex, player.level);
       const counter = bossHitsPlayer
-        ? Math.max(1, Math.round(mitigate(boss.atk, def, PLAYER_DEF_K) * (1 - bossSetReduction) + rand(-2, 3)))
+        ? Math.max(1, Math.round(mitigate(boss.atk, def*action.defMult, PLAYER_DEF_K) * (1 - bossSetReduction) + rand(-2, 3)))
         : 0;
       setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], incoming: { hit: bossHitsPlayer, damage: counter } } }));
       if(bossHitsPlayer)playHurt();else playMiss();
-      const wouldDie = player.hp - counter <= 0;
+      const wouldDie = action.player.hp - counter <= 0;
       setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - counter) }));
       setWz((prev) => ({ ...prev, log: [...prev.log, bossHitsPlayer ? t("warzone.log.bossHitYou", { boss: tm(boss), dmg: counter }) : t("warzone.log.bossMissedYou", { boss: tm(boss) })].slice(-24) }));
       if (wouldDie) {
@@ -608,15 +608,19 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       potionResult = usePotion(player, potionKind, potionTier);
       if (potionResult.reason) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
     }
+    const skillId=!isPotion?actionType:null;
+    const action=prepareWarzoneAction(potionResult?.player||player,wz.hunt.monster,wz.hunt.effects,skillId);
+    if(action.error){pushToast(action.error,'warn');return;}
     lockRef.current = true;
-    setHuntVisual((v) => ({ id: v.id + 1, type: isPotion ? "potion" : "attack", label: isPotion ? (potionKind === "hp" ? t("battle.actionHpPotion") : t("battle.actionMpPotion")) : t("battle.actionAttack") }));
+    setHuntVisual((v) => ({ id: v.id + 1, type: isPotion ? "potion" : action.skill?"skill":"attack", skillId, label: isPotion ? (potionKind === "hp" ? t("battle.actionHpPotion") : t("battle.actionMpPotion")) : t("battle.actionAttack") }));
     if(isPotion)playPotion();
 
     const monster = wz.hunt.monster;
     const potionCooldowns = Object.fromEntries(Object.entries(wz.hunt.potionCooldowns).map(([k, v]) => [k, Math.max(0, v - 1)]));
     let log = [...wz.hunt.log];
-    let monsterHp = monster.hp;
-    let currentHp = player.hp;
+    let monsterHp = Math.max(0,monster.hp-action.damage);
+    let currentHp = action.player.hp;
+    setPlayer(action.player);
 
     if (isPotion) {
       potionCooldowns[potionKind] = POTION_COOLDOWN_TURNS;
@@ -624,11 +628,15 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       currentHp = potionResult.player.hp;
       log.push(potionKind === "hp" ? t("warzone.log.potionUsedHp", { healed: potionResult.healed }) : t("warzone.log.potionUsedMp", { healed: potionResult.healed }));
       if (potionKind === "hp" && potionResult.healed > 0) setHuntVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: potionResult.healed } }));
+    } else if(action.skill){
+      log.push(`${action.skill.name}: ${action.heal?`+${action.heal} HP`:action.damage?`${action.damage} hasar`:'Etki uygulandı'}`);
+      setHuntVisual(v=>({...v,label:action.skill.name,outgoing:{hit:true,heal:!!action.heal,damage:action.heal||action.damage}}));
+      playSkill(action.skill,player.class);
     } else {
       const isCrit = Math.random() < cls.crit;
       const playerHits = rollHit(player.stats.dex, monster.atk, player.level);
       const dmg = playerHits
-        ? varyDamage(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K))
+        ? Math.round(varyDamage(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K))*action.atkMult)
         : 0;
       monsterHp = Math.max(0, monsterHp - dmg);
       log.push(!playerHits ? t("warzone.log.huntMissed", { monster: monster.name }) : isCrit ? t("warzone.log.huntCrit", { monster: monster.name, dmg }) : t("warzone.log.huntHit", { monster: monster.name, dmg }));
@@ -639,7 +647,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     if (monsterHp <= 0) {
       setWz((prev) => ({ ...prev, hunt: null, log: [...prev.log, t("warzone.log.huntDefeated", { monster: monster.name })].slice(-24) }));
       const huntCfg = getWarzoneHuntConfig();
-      const result = grantMonsterReward(player, monster, CRIMSON_MAP, { goldMult: huntCfg.goldMult, dropMult: huntCfg.dropMult });
+      const result = grantMonsterReward(action.player, monster, CRIMSON_MAP, { goldMult: huntCfg.goldMult, dropMult: huntCfg.dropMult });
       setPlayer(result.player);
       pushToast(result.drops.map(formatHuntDrop).join("  ·  "), result.tone);
       if (result.levelUp) { setLevelUpInfo(result.levelUp); playLevelUp(); }
@@ -650,7 +658,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     const setReduction = armorSetDamageReduction(player, "monster");
     const monsterHits = rollHit(monster.atk, player.stats.dex, player.level);
     const mdmg = monsterHits
-      ? Math.max(1, Math.round(mitigate(monster.atk, def, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
+      ? Math.max(1, Math.round(mitigate(monster.atk, def*action.defMult, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
       : 0;
     setHuntVisual((v) => ({ ...v, incoming: { hit: monsterHits, damage: mdmg } }));
     if(monsterHits)playHurt();else playMiss();
@@ -658,7 +666,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     log.push(monsterHits ? t("warzone.log.huntHitYou", { monster: monster.name, dmg: mdmg }) : t("warzone.log.huntMissedYou", { monster: monster.name }));
 
     setPlayer((p) => ({ ...p, hp: Math.max(0, currentHp - mdmg) }));
-    setWz((prev) => ({ ...prev, hunt: { ...prev.hunt, monster: { ...monster, hp: monsterHp }, potionCooldowns, log: log.slice(-24) } }));
+    setWz((prev) => ({ ...prev, hunt: { ...prev.hunt, monster: { ...monster, hp: monsterHp }, effects:action.state, potionCooldowns, log: log.slice(-24) } }));
 
     if (wouldDie) {
       setTimeout(() => {
@@ -770,6 +778,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
                         {t("warzone.bossWindowLeft", { time: fmtMmSs(sched.msUntilDespawn) })}
                       </div>
 
+                      <WarzoneSkills player={player} state={bossEffects[`${boss.id}:${bossSchedule(boss,now).spawnAt}`]} onUse={id=>attackBoss(boss.id,id)} disabled={playerDead}/>
                       <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 6, background: boss.color, opacity: playerDead ? 0.5 : 1 }} onClick={() => attackBoss(boss.id)} disabled={playerDead}>
                         <Swords size={14} /> {t("warzone.attack")}
                       </button>
@@ -926,6 +935,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
               <Zap size={14} color="#4FC3D9" /> {wz.hunt.potionCooldowns.mp > 0 ? wz.hunt.potionCooldowns.mp : (mpPotion?.count || 0)}
             </button>
           </div>
+          <WarzoneSkills player={player} state={wz.hunt.effects} onUse={huntAction} disabled={playerDead}/>
           <button style={styles.ghostBtn} onClick={abandonHunt}>
             <LogOut size={13} /> {t("warzone.huntAbandon")}
           </button>

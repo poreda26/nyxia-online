@@ -250,7 +250,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast,
               const qty = qtyFor(key);
               return (
                 <div key={tier} className="rpg-row" style={{ ...styles.itemRow, borderColor: "#C9425A44", flexWrap: "wrap" }}>
-                  <FlaskConical size={18} color="#C9425A" />
+                  <ItemIcon item={{kind:"potion",potionType:"hp",tier}} size={42}/>
                   <div style={{ flex: 1, minWidth: 90 }}>
                     <div style={{ fontSize: 13 }}>{potionName("hp", tier, lang)}</div>
                     <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("shop.hpRestoreDesc", { amount })}</div>
@@ -271,7 +271,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast,
               const qty = qtyFor(key);
               return (
                 <div key={tier} className="rpg-row" style={{ ...styles.itemRow, borderColor: "#4FC3D944", flexWrap: "wrap" }}>
-                  <FlaskConical size={18} color="#4FC3D9" />
+                  <ItemIcon item={{kind:"potion",potionType:"mp",tier}} size={42}/>
                   <div style={{ flex: 1, minWidth: 90 }}>
                     <div style={{ fontSize: 13 }}>{potionName("mp", tier, lang)}</div>
                     <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("shop.mpRestoreDesc", { amount })}</div>

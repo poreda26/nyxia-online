@@ -132,6 +132,10 @@ export const characterSection = {
         m13: { name: "Arkane Kıyamet" },
       },
       achievements: {
+        veteran_hunter: {name:"Bin İz",desc:"Toplam 1.000 canavar öldür.",title:"Usta Avcı"},
+        endless_hunt: {name:"Bitmeyen Av",desc:"Toplam 5.000 canavar öldür.",title:"Yaban Efsanesi"},
+        vault_keeper: {name:"Mahzen Bekçisi",desc:"100 sandık aç.",title:"Hazine Muhafızı"},
+        arena_veteran: {name:"Meydanın Efendisi",desc:"Savaş Alanında 50 düello kazan.",title:"Düello Ustası"},
         removeTitleBtn: "Unvanı Kaldır",
         useTitleBtn: "Unvanı Kullan",
         usingTitleBtn: "Kullanılıyor",
@@ -267,6 +271,10 @@ export const characterSection = {
         m13: { name: "Arcane Apocalypse" },
       },
       achievements: {
+        veteran_hunter: {name:"Veteran Hunter",desc:"Kill 1,000 monsters.",title:"Veteran Hunter"},
+        endless_hunt: {name:"Endless Hunt",desc:"Kill 5,000 monsters.",title:"Wild Legend"},
+        vault_keeper: {name:"Vault Keeper",desc:"Open 100 chests.",title:"Treasure Guardian"},
+        arena_veteran: {name:"Arena Veteran",desc:"Win 50 Warzone duels.",title:"Duel Master"},
         removeTitleBtn: "Remove Title",
         useTitleBtn: "Use Title",
         usingTitleBtn: "In Use",

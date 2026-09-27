@@ -25,4 +25,8 @@ export const ACHIEVEMENTS = [
   { id: "clan_founder", name: "Klan Kurucusu", title: "Klan Kurucusu", desc: "Kendi klanını kur.", icon: Shield, color: "#5FA8A0", type: "flag", flag: "hasFoundedClan" },
   { id: "warzone_hero", name: "Savaş Alanı Kahramanı", title: "Savaş Alanı Kahramanı", desc: "Savaş Alanı'nda 10 düello kazan.", icon: Swords, color: "#C9425A", type: "counter", counter: "duelsWon", target: 10 },
   { id: "treasure_hunter", name: "Hazine Avcısı", title: "Hazine Avcısı", desc: "25 sandık aç.", icon: Gift, color: "#D4AF6A", type: "counter", counter: "chestsOpened", target: 25 },
+  {id:"veteran_hunter",name:"Bin İz",title:"Usta Avcı",desc:"Toplam 1.000 canavar öldür.",icon:Skull,color:"#D4AF6A",type:"kills",target:1000},
+  {id:"endless_hunt",name:"Bitmeyen Av",title:"Yaban Efsanesi",desc:"Toplam 5.000 canavar öldür.",icon:Skull,color:"#D4AF6A",type:"kills",target:5000},
+  {id:"vault_keeper",name:"Mahzen Bekçisi",title:"Hazine Muhafızı",desc:"100 sandık aç.",icon:Gift,color:"#D4AF6A",type:"counter",target:100,counter:"chestsOpened"},
+  {id:"arena_veteran",name:"Meydanın Efendisi",title:"Düello Ustası",desc:"Savaş Alanında 50 düello kazan.",icon:Swords,color:"#D4AF6A",type:"counter",target:50,counter:"duelsWon"},
 ];
