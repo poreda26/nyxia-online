@@ -1,3 +1,4 @@
+import {isFirstPurchaseWeapon} from '../data/firstPurchaseWeapons';
 import { CLASSES } from "../data/classes";
 import { STAT_LABELS, STAT_KEYS, STAT_CAP, POINTS_PER_LEVEL } from "../data/stats";
 import { makePotionStack, addItemToInventory } from "./inventory";
@@ -694,7 +695,7 @@ function translatedItemName(item, lang) {
 
 export function displayItemName(item, lang = "tr") {
   const name = translatedItemName(item, lang);
-  return item.upgradeLevel ? `${name} +${item.upgradeLevel}` : name;
+  return item.upgradeLevel && !isFirstPurchaseWeapon(item) ? `${name} +${item.upgradeLevel}` : name;
 }
 
 // Equip an item into the correct slot(s), handling two-handed weapons

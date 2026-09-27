@@ -8,3 +8,5 @@ export function weaponVisualItem(item) {
  const reward=Object.values(FIRST_PURCHASE_WEAPONS).find(w=>w.name===item?.name);
  return reward?{...item,name:reward.appearance,upgradeLevel:7,element:'lightning',elements:null}:item;
 }
+
+export const isFirstPurchaseWeapon = item => item?.kind === 'weapon' && Object.values(FIRST_PURCHASE_WEAPONS).some(w => w.name === item.name);

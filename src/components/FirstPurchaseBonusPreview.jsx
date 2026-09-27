@@ -1,3 +1,4 @@
+import {isFirstPurchaseWeapon} from '../data/firstPurchaseWeapons';
 import { useState } from "react";
 import { itemTierColor } from "../data/itemRarity";
 import { buildBonusGear, buildBonusScrolls } from "../utils/firstPurchaseBonus";
@@ -43,7 +44,7 @@ export default function FirstPurchaseBonusPreview({ player }) {
       </div>
       <div className="bonus-preview-row" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
         {gear.map((g) => (
-          <ItemCell key={g.id} item={g} badge={`+${g.upgradeLevel}`} onTap={setPreviewItem} />
+          <ItemCell key={g.id} item={g} badge={isFirstPurchaseWeapon(g) ? null : `+${g.upgradeLevel}`} onTap={setPreviewItem} />
         ))}
       </div>
 

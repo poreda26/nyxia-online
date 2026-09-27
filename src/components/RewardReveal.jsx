@@ -1,3 +1,4 @@
+import {isFirstPurchaseWeapon} from '../data/firstPurchaseWeapons';
 import ItemIcon from './ItemIcon';
 import ItemTooltip from './ItemTooltip';
 import {itemTierColor} from '../data/itemRarity';
@@ -11,7 +12,7 @@ export default function RewardReveal({item}) {
   <div className="reward-art" aria-label={t("inventory.rewardArtLabel")}>
    <span className="reward-ring" aria-hidden="true"/>
    <ItemIcon item={item} size={132} color={color}/>
-   <span className="reward-plus">+{item.upgradeLevel||0}</span>
+   {!isFirstPurchaseWeapon(item) && <span className="reward-plus">+{item.upgradeLevel||0}</span>}
   </div>
   <div className="reward-stats"><ItemTooltip item={item}/></div>
  </div>;

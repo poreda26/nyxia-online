@@ -1,3 +1,4 @@
+import {isFirstPurchaseWeapon} from '../data/firstPurchaseWeapons';
 import { useState, useRef, useEffect } from "react";
 import { Ban, Check } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
@@ -101,7 +102,7 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
               {item && item.stackable && (item.count || 1) > 1 && (
                 <span style={styles.bagSlotBadge}>{item.count}</span>
               )}
-              {item && !item.stackable && item.upgradeLevel > 0 && (
+              {item && !item.stackable && item.upgradeLevel > 0 && !isFirstPurchaseWeapon(item) && (
                 <span style={styles.bagSlotBadge}>+{item.upgradeLevel}</span>
               )}
               {locked && <Ban size={10} color="#E8A5AF" style={{ position: "absolute", top: 3, left: 3 }} />}
