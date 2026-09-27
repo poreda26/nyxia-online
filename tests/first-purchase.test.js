@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildBonusGear} from '../src/utils/firstPurchaseBonus';
-import {gmBuildWeaponById,gmWeaponTemplates} from '../src/utils/loot';
-import {FIRST_PURCHASE_WEAPONS,weaponVisualItem} from '../src/data/firstPurchaseWeapons';
-import {characterAppearance} from '../src/data/characterAppearance';
-import {weaponEffects} from '../src/data/weaponEffects';
-import {rebalanceSavedWeapon} from '../src/data/balancedWeapons';
-import {applyLevelData} from '../src/utils/upgrade';
-import {PLAYER_AVATARS,CLAN_AVATARS} from '../src/data/avatars';
+import {buildBonusGear} from '../src/utils/firstPurchaseBonus.js';
+import {gmBuildWeaponById,gmWeaponTemplates} from '../src/utils/loot.js';
+import {FIRST_PURCHASE_WEAPONS,weaponVisualItem} from '../src/data/firstPurchaseWeapons.js';
+import {characterAppearance} from '../src/data/characterAppearance.js';
+import {weaponEffects} from '../src/data/weaponEffects.js';
+import {rebalanceSavedWeapon} from '../src/data/balancedWeapons.js';
+import {applyLevelData} from '../src/utils/upgrade.js';
+import {PLAYER_AVATARS,CLAN_AVATARS} from '../src/data/avatars.js';
 for(const [cls,reward] of Object.entries(FIRST_PURCHASE_WEAPONS)) test(`${cls}: bound reward has reference +3 stats and source +7 art`,()=>{
  const gear=buildBonusGear(cls),item=gear.find(i=>i.kind==='weapon');
  const template=gmWeaponTemplates(cls).find(w=>w.name===reward.reference);
