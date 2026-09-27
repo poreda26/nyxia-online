@@ -27,3 +27,4 @@ export const fetchClanDungeon = () => call("clan/dungeon", "GET");
 export const enterClanDungeon = () => call("clan/dungeon/enter", "POST");
 export const attackClanDungeon = (damage) => call("clan/dungeon/attack", "POST", { damage });
 export const leaveClanDungeon = () => call("clan/dungeon/leave", "POST");
+export const fetchClanDungeonLog = () => call("clan/dungeon/log", "GET");

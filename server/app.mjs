@@ -84,7 +84,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS clan_members(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), clan_id INTEGER NOT NULL REFERENCES clans(id), role TEXT NOT NULL, joined_at INTEGER NOT NULL, donated_np INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS clan_invites(id INTEGER PRIMARY KEY AUTOINCREMENT, clan_id INTEGER NOT NULL REFERENCES clans(id), from_account INTEGER NOT NULL REFERENCES accounts(id), to_account INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, UNIQUE(clan_id,to_account));
     CREATE TABLE IF NOT EXISTS clan_dungeon_state(clan_id INTEGER PRIMARY KEY REFERENCES clans(id), day_key TEXT NOT NULL, stage_index INTEGER NOT NULL DEFAULT 1, monster_hp INTEGER NOT NULL DEFAULT 0, completed INTEGER NOT NULL DEFAULT 0, locked_by INTEGER REFERENCES accounts(id), locked_by_name TEXT, locked_until INTEGER);
-    CREATE TABLE IF NOT EXISTS clan_dungeon_attempts(account_id INTEGER NOT NULL REFERENCES accounts(id), day_key TEXT NOT NULL, entries_used INTEGER NOT NULL DEFAULT 0, first_entry_at INTEGER, PRIMARY KEY(account_id,day_key));`);
+    CREATE TABLE IF NOT EXISTS clan_dungeon_attempts(account_id INTEGER NOT NULL REFERENCES accounts(id), day_key TEXT NOT NULL, entries_used INTEGER NOT NULL DEFAULT 0, first_entry_at INTEGER, PRIMARY KEY(account_id,day_key));
+    CREATE TABLE IF NOT EXISTS clan_dungeon_log(id INTEGER PRIMARY KEY AUTOINCREMENT, clan_id INTEGER NOT NULL REFERENCES clans(id), day_key TEXT NOT NULL, account_name TEXT NOT NULL, stage_index INTEGER NOT NULL, damage INTEGER NOT NULL, killed INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);`);
   // Başlangıçta bir kerelik temizlik — hafta öncesinin boss kayıtları hiç
   // kullanılmayacak, DB'nin sınırsız büyümesini önler.
   {
@@ -96,6 +97,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     // değilse sil" — dünün giriş hakkı/cooldown'u zaten hiçbir zaman tekrar
     // okunmayacak.
     db.prepare('DELETE FROM clan_dungeon_attempts WHERE day_key <> ?').run(todayKey());
+    db.prepare('DELETE FROM clan_dungeon_log WHERE day_key <> ?').run(todayKey());
   }
   // Ters proxy arkasında (Caddy) her istek soket düzeyinde AYNI adresten
   // (proxy'nin kendisinden) geliyor — X-Forwarded-For'a körü körüne
@@ -881,8 +883,16 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           dayKey: row.day_key, stageIndex: row.stage_index, totalStages: TOTAL_STAGES,
           stage: clanDungeonStage(row.stage_index), monsterHp: row.monster_hp, completed: !!row.completed,
           locked: !!row.locked_by, lockedByMe: row.locked_by === account.id, lockedByName: row.locked_by_name || null,
+          lockedUntil: row.locked_until || null,
           attempts: dungeonAttemptsInfo(account.id),
         });
+      }
+      if (path === '/api/clan/dungeon/log' && req.method === 'GET') {
+        const membership = myMembership();
+        if (!membership) throw fail(409, 'NOT_IN_CLAN');
+        const rows = db.prepare('SELECT id,account_name,stage_index,damage,killed,created_at FROM clan_dungeon_log WHERE clan_id=? AND day_key=? ORDER BY id DESC LIMIT 30')
+          .all(membership.clan_id, todayKey());
+        return send(200, rows.map(r => ({ id: r.id, name: r.account_name, stageIndex: r.stage_index, damage: r.damage, killed: !!r.killed, createdAt: r.created_at })));
       }
       if (path === '/api/clan/dungeon/enter' && req.method === 'POST') {
         const membership = myMembership();
@@ -910,6 +920,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const fresh = clanDungeonRow(membership.clan_id);
         return send(200, {
           stageIndex: fresh.stage_index, stage: clanDungeonStage(fresh.stage_index), monsterHp: fresh.monster_hp,
+          lockedUntil: fresh.locked_until || null,
           attempts: dungeonAttemptsInfo(account.id),
         });
       }
@@ -928,7 +939,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           if (!Number.isSafeInteger(damage) || damage <= 0 || damage > stage.hp * DUNGEON_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
           const hp = Math.max(0, row.monster_hp - damage);
           let droppedMaterial = null;
-          if (hp <= 0) {
+          const killed = hp <= 0;
+          if (killed) {
             const roll = rollClanDungeonMaterial(row.stage_index);
             if (roll.dropped) droppedMaterial = roll.key;
             if (row.stage_index >= TOTAL_STAGES) {
@@ -945,11 +957,17 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           } else {
             db.prepare('UPDATE clan_dungeon_state SET monster_hp=?, locked_until=? WHERE clan_id=?').run(hp, Date.now() + CLAN_DUNGEON_LOCK_TIMEOUT_MS, membership.clan_id);
           }
+          // Kullanıcı isteği: "Klan paneline basit bir log ekranı koy: 'Ahmet,
+          // 3. Canavara 45.000 hasar vurdu.'" — klan içi rekabet/heyecan için.
+          const logName = mainCharacterOf(db.prepare('SELECT data FROM backups WHERE account=?').get(account.id))?.nickname || account.name;
+          db.prepare('INSERT INTO clan_dungeon_log(clan_id,day_key,account_name,stage_index,damage,killed,created_at) VALUES(?,?,?,?,?,?,?)')
+            .run(membership.clan_id, row.day_key, logName, row.stage_index, damage, killed ? 1 : 0, Date.now());
           db.exec('COMMIT');
           const fresh = clanDungeonRow(membership.clan_id);
           return send(200, {
             stageIndex: fresh.stage_index, stage: clanDungeonStage(fresh.stage_index), monsterHp: fresh.monster_hp,
-            completed: !!fresh.completed, stageCleared: hp <= 0, droppedMaterial,
+            lockedUntil: fresh.locked_until || null,
+            completed: !!fresh.completed, stageCleared: killed, droppedMaterial,
           });
         } catch (error) { db.exec('ROLLBACK'); throw error; }
       }

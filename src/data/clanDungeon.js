@@ -14,14 +14,29 @@ export const FINAL_BOSS_INDEX = 20;
 
 export const CLAN_DUNGEON_DAILY_ENTRIES = 2;
 export const CLAN_DUNGEON_COOLDOWN_MS = 20 * 60 * 1000; // 1. giriş sonrası 2. giriş için bekleme
-// Gerçek "bağlantı koptu" tespiti yok (websocket'siz, oturum bazlı istek-cevap
-// mimarisi) — bir oyuncu zindanı kilitleyip sayfayı kapatırsa kilidin sonsuza
-// kadar takılı kalmaması için bu süre sonunda otomatik açılıyor (bkz.
-// server/app.mjs'teki kilit kontrolü).
-export const CLAN_DUNGEON_LOCK_TIMEOUT_MS = 5 * 60 * 1000;
+// Kullanıcı isteği: "Aynı anda tek kişi gireceği için, bir oyuncu dungeon'a
+// girip hiç vurmadan ekranı açık bırakabilir veya bilerek sırayı işgal
+// edebilir... savaş alanına mutlaka 60-90 saniyelik sert bir sayaç koy" —
+// eskiden 5 dakikaydı (gerçek "bağlantı koptu" tespiti yok, websocket'siz
+// oturum bazlı istek-cevap mimarisi, bu süre onun yerini tutuyor), artık
+// çok daha sert: her saldırı bu süreyi yeniliyor (bkz. server/app.mjs'teki
+// attack/enter kilit güncellemeleri), aktif dövüşen biri hiç atılmıyor —
+// sadece gerçekten atalet eden/bağlantısı kopan biri bu kadar kısa sürede
+// dışarı düşüyor.
+export const CLAN_DUNGEON_LOCK_TIMEOUT_MS = 90 * 1000;
 
-const BASE_MONSTER = { hp: 400, atk: 22, def: 18, xp: 60, goldMin: 15, goldMax: 30 };
-const STAGE_GROWTH = 1.15; // her aşamada ~%15 güçlenme (bileşik)
+// Kullanıcı isteği: "40 kişilik klanda 10 kişi girmezse 15-20. canavarlara
+// ulaşmak imkansız hale gelebilir... ortalama 20-25 aktif oyuncunun zindanı
+// bitirebileceği bir zorluk dengesi koy." Eski kalibrasyon (hp:400,
+// growth:1.15) tek güçlü bir oyuncunun final boss'u bile ~10-15 vuruşta TEK
+// GİRİŞTE solo bitirebileceği kadar düşüktü — bu, "klan üyelerinin iş
+// birliği yaparak ilerlediği" ruhuna aykırıydı. Taban HP ve büyüme oranı
+// yükseltildi: toplam 20 aşamanın kümülatif can havuzu artık tek bir güçlü
+// karakterin (hatta günün 2 giriş hakkını art arda kullanan birkaç güçlü
+// karakterin) tek başına bitiremeyeceği, onlarca farklı vuruşu/girişi
+// gerektiren bir toplama dönüşüyor — gerçek çok-oyunculu katkı gerektiriyor.
+const BASE_MONSTER = { hp: 800, atk: 24, def: 20, xp: 60, goldMin: 15, goldMax: 30 };
+const STAGE_GROWTH = 1.22; // her aşamada ~%22 güçlenme (bileşik) — eskiden 1.15
 const MID_BOSS_BONUS_MULT = 1.6;
 const FINAL_BOSS_BONUS_MULT = 2.4;
 

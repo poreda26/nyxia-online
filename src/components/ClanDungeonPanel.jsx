@@ -1,20 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Swords, LogOut, Lock, Users } from "lucide-react";
+import { Swords, LogOut, Lock, Users, ScrollText } from "lucide-react";
 import { styles } from "../styles";
 import BarTrack from "./shared/BarTrack";
 import MenuEmblem from "./icons/MenuEmblem";
 import { useTranslation, formatServerError } from "../i18n/LanguageContext";
-import { fetchClanDungeon, enterClanDungeon, attackClanDungeon, leaveClanDungeon } from "../services/clanService";
+import { fetchClanDungeon, enterClanDungeon, attackClanDungeon, leaveClanDungeon, fetchClanDungeonLog } from "../services/clanService";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit, varyDamage } from "../utils/combat";
 import { wingDexBonus } from "../data/wings";
 import { applyDeathPenalty } from "../utils/player";
 import { addItemToInventory, makeClanMaterialStack } from "../utils/inventory";
-import { CLAN_DUNGEON_MATERIALS } from "../data/clanDungeon";
+import { CLAN_DUNGEON_MATERIALS, MID_BOSS_INDEX, FINAL_BOSS_INDEX } from "../data/clanDungeon";
 
 const fmtClock = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
+const fmtNum = (n) => Math.round(n).toLocaleString("tr-TR");
 
 // Klan Dungeon (Clan Raid) — kullanıcının pasted spec'i. Hasar bu oyunun geri
 // kalanıyla AYNI güven sınırında: istemci BattleTab'daki gerçek iki taraflı
@@ -26,20 +27,38 @@ const fmtClock = (ms) => {
 export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pushToast }) {
   const { t, lang } = useTranslation();
   const [state, setState] = useState(null);
+  const [log, setLog] = useState([]);
   const [busy, setBusy] = useState(false);
   const attackingRef = useRef(false);
   const stateRef = useRef(null);
   stateRef.current = state;
 
   const refresh = useCallback(async () => {
-    try { setState(await fetchClanDungeon()); } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
+    try {
+      const [nextState, nextLog] = await Promise.all([fetchClanDungeon(), fetchClanDungeonLog()]);
+      setState(nextState);
+      setLog(nextLog);
+    } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  // Kullanıcı isteği: "Klan panelinde canavarın can barı canlı dolsun/
+  // boşalsın" — websocket yok, bu yüzden sık polling ile "canlı" hissi
+  // taklit ediliyor (eskiden 6sn'deydi, çok daha çabuk hissettirsin diye 3sn'ye indirildi).
   useEffect(() => {
-    const id = setInterval(refresh, 6000);
+    const id = setInterval(refresh, 3000);
     return () => clearInterval(id);
   }, [refresh]);
+
+  // Kilit sayacı (bkz. dungeonLockCountdown) saniyede bir tazeleniyor —
+  // sunucudan tekrar veri çekmiyor, sadece Date.now()'a göre yeniden çiziyor
+  // (aynı desen ClanTab.jsx'teki Klan Boss geri sayımında da var).
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (!state?.lockedUntil) return;
+    const id = setInterval(() => forceTick((tk) => tk + 1), 1000);
+    return () => clearInterval(id);
+  }, [state?.lockedUntil]);
 
   // Sekmeden çıkarken (ScreenPanel'in key={tab} ile yeniden mount etmesi
   // yüzünden) kilidi elde tutuyorsak sunucuya bırakıyoruz — yoksa klanın
@@ -118,7 +137,14 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
 
   if (!state) return <div className="clan-status" role="status">{lang === "en" ? "Loading dungeon…" : "Zindan yükleniyor…"}</div>;
 
-  const { stage, monsterHp, completed, locked, lockedByMe, lockedByName, attempts, stageIndex, totalStages } = state;
+  const { stage, monsterHp, completed, locked, lockedByMe, lockedByName, lockedUntil, attempts, stageIndex, totalStages } = state;
+  const lockRemainingMs = lockedUntil ? Math.max(0, lockedUntil - Date.now()) : 0;
+
+  const logLine = (entry) => {
+    if (!entry.killed) return t("clan.dungeonLogHit", { name: entry.name, stage: entry.stageIndex, damage: fmtNum(entry.damage) });
+    const isBoss = entry.stageIndex === MID_BOSS_INDEX || entry.stageIndex === FINAL_BOSS_INDEX;
+    return t(isBoss ? "clan.dungeonLogKillBoss" : "clan.dungeonLogKill", { name: entry.name, stage: entry.stageIndex });
+  };
 
   return (
     <div className="rpg-card" style={styles.itemDetailCard}>
@@ -138,14 +164,26 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
       {completed ? (
         <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>{t("clan.dungeonCompletedToday")}</div>
       ) : locked && !lockedByMe ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, color: "var(--text-muted)" }}>
-          <Lock size={13} /> {t("clan.dungeonLockedBy", { name: lockedByName })}
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
+            <Lock size={13} /> {t("clan.dungeonLockedBy", { name: lockedByName })}
+          </div>
+          {lockRemainingMs > 0 && (
+            <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 4 }}>
+              {t("clan.dungeonLockCountdown", { time: fmtClock(lockRemainingMs) })}
+            </div>
+          )}
         </div>
       ) : lockedByMe ? (
         <div style={{ marginTop: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <MenuEmblem name="dungeon" size={32} />
             <div style={{ flex: 1, fontSize: 13, color: stage.isBoss ? "#D4AF6A" : "var(--text-primary)" }}>{stage.name}</div>
+            {lockRemainingMs > 0 && (
+              <span style={{ fontSize: 10, color: lockRemainingMs < 20000 ? "#E8A5AF" : "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+                {fmtClock(lockRemainingMs)}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 6 }}>
             {t("clan.dungeonMonsterHp")}: {Math.round(monsterHp)}/{stage.hp}
@@ -176,6 +214,23 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
           )}
         </>
       )}
+
+      <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-faint)", marginBottom: 6 }}>
+          <ScrollText size={12} /> {t("clan.dungeonLogTitle")}
+        </div>
+        {log.length === 0 ? (
+          <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("clan.dungeonLogEmpty")}</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 160, overflowY: "auto" }}>
+            {log.map((entry) => (
+              <div key={entry.id} style={{ fontSize: 10, color: entry.killed ? "var(--gold-text)" : "var(--text-muted)", lineHeight: 1.5 }}>
+                {logLine(entry)}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
