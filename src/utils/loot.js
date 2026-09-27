@@ -1,3 +1,4 @@
+import {LOOT_ADMIN_CATALOG} from '../data/lootAdminCatalog.js';
 import { CLASSES } from "../data/classes";
 import { SLOTS } from "../data/armor";
 import { WEAPON_CATALOG } from "../data/weapons";
@@ -11,7 +12,7 @@ import { weaponIconKey } from "../data/weaponIcons";
 import { rand, pick, uid } from "./random";
 import { bumpedStats, applyLevelData, MAX_UPGRADE_LEVEL } from "./upgrade";
 import { STARTING_WEAPONS } from "../data/startingWeapons";
-import { getChestConfig } from "./dropConfig";
+import { getDropConfig, getChestConfig } from "./dropConfig";
 
 // Hiçbir eşya +0 doğmuyor — her üretici bu sarmalayıcıdan geçiyor.
 // Gerçek KO ekran görüntüsünden birebir `levels` dizisi taşıyan eşyalar
@@ -269,7 +270,9 @@ export function rollMapLoot(tierId, mapTier = tierId) {
 // is the ONLY path to a Tier 6 "Eşsiz" item outside a GM /silah grant, and
 // even here the odds are deliberately brutal (3%) so a unique stays unique.
 export function rollSpecialChestLoot(playerClass) {
-  if(Math.random()<.01)return rollAccessory(6);
+  const table=getDropConfig().chestTables?.special;
+  if(table?.length)return rollConfiguredLoot(table);
+  if(Math.random()<(getChestConfig().specialAccessoryChance??.01))return rollAccessory(6);
   const { specialUniqueChance } = getChestConfig();
   if (maxWeaponTier(playerClass) >= 6 && Math.random() < specialUniqueChance) {
     // Katalog eşya-eşya yeniden dolduruluyor — bu sınıfın T6'sı henüz
@@ -354,4 +357,21 @@ export function gmBuildAccessory(slot, tier, level, name = null) {
   const a = gmAccessoryTemplates(slot).find((x) => x.tier === tier && (!name || x.name === name));
   if (!a) return null;
   return a.upgradeLocked ? buildAccessoryFromTemplate(a, tier, slot) : applyUpgradeLevel(buildAccessoryFromTemplate(a, tier, slot), level);
+}
+
+// Published weighted tables select exactly one item, using the real builders.
+export function rollConfiguredLoot(table) {
+  const total=table.reduce((sum,x)=>sum+x.weight,0);
+  let choice=Math.random()*total,entry=table[table.length-1];
+  for(const row of table){choice-=row.weight;if(choice<0){entry=row;break;}}
+  const item=LOOT_ADMIN_CATALOG.find(x=>x.key===entry.key);
+  if(!item)return null;
+  if(item.kind==='armor')return gmBuildArmor(item.class,item.slot,item.tier,entry.level);
+  if(item.kind==='accessory')return gmBuildAccessory(item.slot,item.tier,entry.level,item.name);
+  const index=(item.kind==='shield'?WARRIOR_SHIELDS:weaponTableFor(item.class)).findIndex(w=>w.name===item.name);
+  return gmBuildWeaponById(item.class,(item.kind==='shield'?'s':'w')+index,entry.level);
+}
+export function rollChestLoot(tier) {
+ const table=getDropConfig().chestTables?.[String(tier)];
+ return table?.length?rollConfiguredLoot(table):rollLoot(tier);
 }

@@ -1,7 +1,7 @@
-import { WARRIOR_WEAPONS as warrior, WEAPON_TYPE_ICON, WEAPON_TYPE_SPEED, WEAPON_TYPE_RANGE } from './warriorWeapons';
-import { ROGUE_WEAPONS as rogue } from './rogueWeapons';
-import { CASTER_WEAPONS as mage } from './casterWeapons';
-import {ORIGINAL_WEAPONS} from './originalWeapons';
+import { WARRIOR_WEAPONS as warrior, WEAPON_TYPE_ICON, WEAPON_TYPE_SPEED, WEAPON_TYPE_RANGE } from './warriorWeapons.js';
+import { ROGUE_WEAPONS as rogue } from './rogueWeapons.js';
+import { CASTER_WEAPONS as mage } from './casterWeapons.js';
+import {ORIGINAL_WEAPONS} from './originalWeapons.js';
 
 // Nyxia progression, independent of reference-game numbers. Names remain
 // stable asset keys. Upgrade success/destruction rules are unchanged.

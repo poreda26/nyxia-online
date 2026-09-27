@@ -1,3 +1,5 @@
+import {applyLiveDropConfig} from './utils/dropConfig';
+import {call as callGameApi} from './utils/api';
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { initialPlayer, migratePlayer, BANK_PAGES, MAX_GOLD, formatGold } from "./utils/player";
@@ -56,6 +58,13 @@ export default function App() {
 
   // Original streamed music and procedural SFX; independent device settings.
   // Keep gesture retries for autoplay/interruption recovery on mobile browsers.
+  useEffect(()=>{
+    let disposed=false;
+    const refresh=async()=>{try{const rules=await callGameApi('drop-settings','GET');if(!disposed)applyLiveDropConfig(rules.data);}catch{/* offline: keep last successful rules */}};
+    refresh();const timer=setInterval(refresh,30000);
+    const visible=()=>{if(!document.hidden)refresh();};document.addEventListener('visibilitychange',visible);
+    return()=>{disposed=true;clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
+  },[username]);
   const musicRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioSettings, setAudioSettings] = useState(loadSettings);

@@ -199,7 +199,10 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       const account = token && db.prepare('SELECT accounts.id,accounts.name FROM sessions JOIN accounts ON accounts.id=sessions.account WHERE token=? AND expires>?').get(hash(token), Date.now());
       if (!account) throw fail(401, 'LOGIN_REQUIRED');
       if(admin.blocked(account.id)) throw fail(403,'ACCOUNT_BLOCKED');
+      admin.touch(account.id);
       if(path.startsWith('/api/admin/')) return await admin.handle(req,path,account,send);
+      if(path === '/api/drop-settings' && req.method==='GET')return send(200,admin.drops.get());
+      if(req.method==='POST' && (path==='/api/chat/messages'||/^\/api\/social\/messages\/\d+$/.test(path)) && admin.muted(account.id))throw fail(403,'ACCOUNT_MUTED');
       if (path === '/api/me' && req.method === 'GET') return send(200, { name: account.name });
       if (path === '/api/logout' && req.method === 'POST') {
         db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));

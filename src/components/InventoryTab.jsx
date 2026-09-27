@@ -4,7 +4,7 @@ import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, ArrowDo
 import { itemTierColor, tierName } from "../data/itemRarity";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
-import { rollLoot, rollSpecialChestLoot } from "../utils/loot";
+import { rollChestLoot, rollSpecialChestLoot } from "../utils/loot";
 import {
   equipItem, unequipItem, sellPrice, displayItemName, clampPlayerHp, discountedRepairCost, repairItem, canChangeJob, changeJob,
   totalEquippedRepairCost, repairAllEquipped, MAX_GOLD, formatGold,
@@ -235,7 +235,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
   const openChest = (chest) => {
     setOpeningChest({ chest, phase: "shaking", result: null });
     setTimeout(() => {
-      const item = chest.special ? rollSpecialChestLoot(player.class) : rollLoot(chest.tier);
+      const item = chest.special ? rollSpecialChestLoot(player.class) : rollChestLoot(chest.tier);
       const afterChestRemoved = {
         ...player,
         chests: player.chests.filter((c) => c.id !== chest.id),
@@ -273,7 +273,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     const gained = [];
     let failed = 0;
     for (const chest of p.chests) {
-      const item = chest.special ? rollSpecialChestLoot(p.class) : rollLoot(chest.tier);
+      const item = chest.special ? rollSpecialChestLoot(p.class) : rollChestLoot(chest.tier);
       if (!item) continue;
       const addResult = addItemToInventory(p, item);
       p = addResult.player;

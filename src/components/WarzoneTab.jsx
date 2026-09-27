@@ -21,7 +21,7 @@ import { awardNationalPoint, penalizeNationalPoint } from "../utils/nationalPoin
 import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
 import { premiumNpLossReduction } from "../utils/premium";
 import { leaderboardFor } from "../utils/leaderboard";
-import { rollLoot } from "../utils/loot";
+import { rollConfiguredLoot, rollLoot } from "../utils/loot";
 import { grantMonsterReward } from "../utils/monsterRewards";
 import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty, armorSetDamageReduction, clampGold, formatGold } from "../utils/player";
@@ -421,7 +421,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       np.gold = clampGold(np.gold + goldGain);
       drops = [t("warzone.drop.gold", { amount: formatGold(np.gold - goldBefore) })];
       if (Math.random() < boss.equipDropChance * wingMultiplier(p, "drop")) {
-        const item = rollLoot(boss.lootTier);
+        const item = boss.loot?.length ? rollConfiguredLoot(boss.loot) : rollLoot(boss.lootTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
         if (item) {

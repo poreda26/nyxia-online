@@ -1,6 +1,6 @@
 import { wingMultiplier } from '../data/wings';
 import { rand, uid } from "./random";
-import { rollMapLoot } from "./loot";
+import { rollConfiguredLoot, rollMapLoot } from "./loot";
 import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, clampGold, formatGold } from "./player";
 import { addItemToInventory } from "./inventory";
 import { premiumExpMultiplier, premiumDropMultiplier } from "./premium";
@@ -84,7 +84,7 @@ export function grantMonsterReward(p, m, map, opts = {}) {
 
   if (Math.random() < rewardCfg.dropChance * dropMult) {
     const dropTier = pickDropTier(map.tier);
-    const item = rollMapLoot(dropTier, map.tier);
+    const item = rewardCfg.loot?.length ? rollConfiguredLoot(rewardCfg.loot) : rollMapLoot(dropTier, map.tier);
     if (item) {
       const addResult = addItemToInventory(np, item);
       np = addResult.player;
@@ -102,8 +102,10 @@ export function grantMonsterReward(p, m, map, opts = {}) {
   }
   if (m.mapBoss) {
     np = registerMapBossDefeat(np, map.id);
-    np.chests.push({ id: uid(), tier: map.tier });
-    drops.push({ type: "guardChest", tier: map.tier });
+    for(let i=0;i<rewardCfg.guaranteedChests;i++){
+      np.chests.push({ id: uid(), tier: rewardCfg.guaranteedChestTier });
+      drops.push({ type: "guardChest", tier: rewardCfg.guaranteedChestTier });
+    }
   }
 
   const levelBefore = p.level;

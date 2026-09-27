@@ -65,6 +65,7 @@ export default function ChatTab({
     if (!text) return;
     setInput("");
 
+    try {
     const parsed = parseGmCommand(text);
 
     if (parsed && !player.isGM && tryGmUnlock(parsed)) {
@@ -88,6 +89,7 @@ export default function ChatTab({
 
     await chatService.sendMessage(displayName, text, player.isGM, playerAvatarId(player), player.avatarFrameId);
     refresh();
+    } catch(e) { setInput(text);pushToast(e.code==='ACCOUNT_MUTED'?'Sohbet yetkin geçici olarak kapatıldı.':'Mesaj gönderilemedi.','warn'); }
   };
 
   // ---- DM sekmesi ----
@@ -127,7 +129,7 @@ export default function ChatTab({
     if (!text || !activeDm) return;
     setDmInput("");
     try { await socialService.sendDirectMessage(activeDm.accountId, text, playerAvatarId(player), player.avatarFrameId); refreshDm(); }
-    catch (error) { setDmDrafts(d=>({...d,[activeDm.accountId]:d[activeDm.accountId]||text}));pushToast(formatServerError(t, error), "warn"); }
+    catch (error) { setDmDrafts(d=>({...d,[activeDm.accountId]:d[activeDm.accountId]||text}));pushToast(error.code==='ACCOUNT_MUTED'?'Sohbet yetkin geçici olarak kapatıldı.':formatServerError(t, error), "warn"); }
   };
 
   const closeTab = (e, accountId) => {
