@@ -1,3 +1,5 @@
+import {getActiveCharacterKey} from '../utils/api';
+import {mergeClanResponse} from '../utils/clanResponse';
 import RankBadge from './shared/RankBadge';
 import MenuEmblem from './icons/MenuEmblem';
 import Avatar,{AvatarPicker} from './Avatar';
@@ -42,26 +44,6 @@ const fmtClock = (ms) => {
 // 20 aşamalı) tamamen sunucuda yaşıyor (bkz. ClanDungeonPanel.jsx), burada
 // hiç taşınmıyor — eski yerel "Klan Zindanı" placeholder'ı bu yüzden
 // tamamen kaldırıldı (utils/clan.js#canStartDungeon/startDungeon).
-function mergeClanResponse(player, serverClan) {
-  if (!serverClan) return { ...player, clan: null };
-  return {
-    ...player,
-    clan: {
-      id: serverClan.id,
-      name: serverClan.name,
-      color: serverClan.color,
-      avatarId:serverClan.avatarId||'wolf',
-      role: serverClan.myRole,
-      createdAt: serverClan.createdAt,
-      members: serverClan.members,
-      treasury: serverClan.treasury,
-      buildingLevel: serverClan.buildingLevel,
-      myNpDonated: serverClan.myDonatedNp,
-      boss: player.clan?.boss || null,
-    },
-  };
-}
-
 // Kullanıcı isteği: "arkadaş ekleme - özel sohbet - klan daveti vb.
 // özellikleri ekle" + "klanı da tam çok-oyunculu yap" — klan üyeliği/davet/
 // paylaşımlı hazine artık server/app.mjs'in /api/clan/* uçlarında gerçek
@@ -90,7 +72,9 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
 
   const refresh = useCallback(async () => {
     try {
+      const characterKey=getActiveCharacterKey();
       const { clan } = await fetchMyClan();
+      if(characterKey!==getActiveCharacterKey())return;
       setPlayer((p) => mergeClanResponse(p, clan));
       setInvites(clan ? [] : await fetchClanInvites());
       setLoadError(false);
@@ -145,7 +129,7 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
   const connectionStatus=loadError?<div className="clan-status" role="status">{lang==='en'?'Clan server could not be reached.':'Klan sunucusuna ulaşılamadı.'}<button onClick={refresh}>{lang==='en'?'Retry':'Tekrar dene'}</button></div>:!loaded?<div className="clan-status" role="status">{lang==='en'?'Loading clan…':'Klan bilgileri yükleniyor…'}</div>:null;
 
   const handleInvite = async () => {
-    const name = inviteInput.trim().toLowerCase();
+    const name = inviteInput.trim();
     if (!name) return;
     try {
       await inviteToClan(name);
@@ -178,18 +162,18 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
     refresh();
   };
 
-  const handleKick = async (accountId) => {
-    try { await kickClanMember(accountId); refresh(); }
+  const handleKick = async (accountId,characterKey) => {
+    try { await kickClanMember(accountId,characterKey); refresh(); }
     catch (error) { pushToast(formatServerError(t, error), "warn"); }
   };
 
-  const handlePromote = async (accountId) => {
-    try { await promoteClanMember(accountId); refresh(); }
+  const handlePromote = async (accountId,characterKey) => {
+    try { await promoteClanMember(accountId,characterKey); refresh(); }
     catch (error) { pushToast(formatServerError(t, error), "warn"); }
   };
 
-  const handleDemote = async (accountId) => {
-    try { await demoteClanMember(accountId); refresh(); }
+  const handleDemote = async (accountId,characterKey) => {
+    try { await demoteClanMember(accountId,characterKey); refresh(); }
     catch (error) { pushToast(formatServerError(t, error), "warn"); }
   };
 
@@ -570,7 +554,7 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
           const clsDef = m.cls ? CLASSES[m.cls] : null;
           const MIcon = clsDef?.icon || Shield;
           return (
-            <div key={m.accountId} className="rpg-row" style={styles.itemRow}>
+            <div key={m.accountId+":"+m.characterKey} className="rpg-row" style={styles.itemRow}>
               <Avatar id={m.avatarId} frameId={m.frameId} size={40}/>
               <div className="clan-member-name">
                 <div style={{ fontSize: 12 }}>{m.name}{m.level > 0 ? ` · Lv.${m.level}` : ""}</div>
@@ -579,20 +563,20 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
               {isLeader && m.role !== "leader" && (
                 <>
                   {m.role === "officer" ? (
-                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDemote(m.accountId)} title={t("clan.demoteTitle")}>
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDemote(m.accountId,m.characterKey)} title={t("clan.demoteTitle")}>
                       <ChevronDown size={11} />
                     </button>
                   ) : (
                     <button
                       className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: officerCount >= CLAN_MAX_OFFICERS ? 0.4 : 1 }}
                       disabled={officerCount >= CLAN_MAX_OFFICERS}
-                      onClick={() => handlePromote(m.accountId)}
+                      onClick={() => handlePromote(m.accountId,m.characterKey)}
                       title={t("clan.promoteTitle")}
                     >
                       <ChevronUp size={11} />
                     </button>
                   )}
-                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => handleKick(m.accountId)} title={t("clan.kickTitle")}>
+                  <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => handleKick(m.accountId,m.characterKey)} title={t("clan.kickTitle")}>
                     <UserX size={11} />
                   </button>
                 </>

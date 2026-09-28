@@ -1,3 +1,6 @@
+import {mergeClanResponse} from './utils/clanResponse';
+import {fetchMyClan} from './services/clanService';
+import {setActiveCharacterKey} from './utils/api';
 import {applyLiveDropConfig} from './utils/dropConfig';
 import {call as callGameApi} from './utils/api';
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -304,7 +307,8 @@ export default function App() {
     // üzerine eklensin, karakterin üstünde kalmış eski/bayat değere değil.
     const migrated = { ...migratePlayer(account.characters[slotIndex]), diamonds: account.diamonds };
     const { player: rolled, diamondsAwarded, rank } = applyWeeklyRollover(migrated);
-    setPlayer(rolled);
+    setActiveCharacterKey(rolled.id||`slot:${slotIndex}`);
+    setPlayer({...rolled,clan:null,clanBossArchive:{...rolled.clanBossArchive,...(rolled.clan?.boss?{[rolled.clan.id]:rolled.clan.boss}:{})}});
     setActiveSlot(slotIndex);
     setTab("battle");
     setScreen("hub");
@@ -312,6 +316,14 @@ export default function App() {
       pushToast(translateWith(audioSettings.language, "app.warzoneRankReward", { rank, diamonds: diamondsAwarded }), "loot");
     }
   };
+
+  useEffect(()=>{
+    if(screen!=='hub'||activeSlot===null)return;
+    let alive=true;
+    const refresh=()=>fetchMyClan().then(({clan})=>{if(alive)setPlayer(p=>mergeClanResponse(p,clan));}).catch(()=>{});
+    refresh();const timer=setInterval(refresh,8000);
+    return ()=>{alive=false;clearInterval(timer);};
+  },[screen,activeSlot]);
 
   const handleCreate = (slotIndex) => {
     setActiveSlot(slotIndex);
@@ -321,13 +333,14 @@ export default function App() {
   const handleChooseClass = (cls, nickname) => {
     // Yeni karakter de hesabın paylaşılan elmas havuzunu miras alır — 0'dan
     // başlamaz, aynı account.diamonds'ı görür (bkz. handlePlay'deki aynı not).
-    const p = { ...initialPlayer(cls, account.race, nickname), diamonds: account.diamonds };
+    const p = { ...initialPlayer(cls, account.race, nickname), id:uid(), diamonds: account.diamonds };
     saveCharacterSlot(username, activeSlot, p);
     setAccount((a) => {
       const characters = [...a.characters];
       characters[activeSlot] = p;
       return { ...a, characters };
     });
+    setActiveCharacterKey(p.id);
     setPlayer(p);
     setTab("battle");
     setScreen("hub");
@@ -339,7 +352,18 @@ export default function App() {
   // (bkz. CharacterSelectScreen'in canAfford kontrolü, artık account.diamonds
   // kullanıyor) — o yüzden burada AÇIKÇA düşülmesi gerekiyor, yoksa silme
   // bedavaya gelirdi.
-  const handleDelete = (slotIndex) => {
+  const deletingRef=useRef(false);
+  const handleDelete = async (slotIndex) => {
+    if(deletingRef.current)return;
+    deletingRef.current=true;
+    try{
+    const character=account.characters[slotIndex];
+    if(!character)return;
+    try{
+      const {clan}=await fetchMyClan(character.id||`slot:${slotIndex}`);
+      if(clan){pushToast('Karakteri silmeden önce klanından ayrılmalısın.','warn');return;}
+    }catch{pushToast('Klan bilgisi doğrulanamadı. Lütfen tekrar dene.','warn');return;}
+
     if (account.diamonds < CHARACTER_DELETE_COST_DIAMONDS) return;
     const nextDiamonds = account.diamonds - CHARACTER_DELETE_COST_DIAMONDS;
     deleteCharacterSlot(username, slotIndex);
@@ -349,6 +373,7 @@ export default function App() {
       characters[slotIndex] = null;
       return { ...a, characters, diamonds: nextDiamonds };
     });
+    }finally{deletingRef.current=false;}
   };
 
   // 3. karakter slotu artık hesabın paylaşılan elmas havuzundan açılıyor —

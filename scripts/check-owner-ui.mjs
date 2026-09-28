@@ -29,7 +29,15 @@ for(const [width,height] of [[1440,1000],[390,844],[320,568]]){
  await page.getByText('Gelişmiş kayıt düzenleyici',{exact:false}).click();await page.getByLabel('Karakter kayıt JSON').fill('{bad');
  await page.getByLabel('İşlem açıklaması').fill('test');await page.getByRole('button',{name:'Değişiklikleri kaydet',exact:true}).click();await page.getByText('JSON geçersiz.',{exact:false}).waitFor();
  await page.getByRole('button',{name:'Drop ve sandıklar',exact:true}).click();await page.getByRole('button',{name:'Sandıklar',exact:true}).click();
+ await page.getByLabel('Tür filtresi').selectOption('armor');
+ assert.ok(await page.locator('.loot-tile-grid[aria-label="Drop eşyaları"] .loot-tile').count()>0);
+ await page.getByLabel('Tier filtresi').selectOption('6');
+ assert.equal(await page.locator('.loot-tile-grid[aria-label="Drop eşyaları"] .loot-tile').count(),0);
+ await page.getByLabel('Tier filtresi').selectOption('');await page.getByLabel('Tür filtresi').selectOption('');
  await page.locator('.loot-tile-grid[aria-label="Drop eşyaları"] .loot-tile').first().click();
+ await page.getByLabel('Havuz oranı yüzde').fill('12.5');await page.getByLabel('Havuz oranı yüzde').press('Enter');
+ assert.equal(await page.locator('.loot-tile.selected small').innerText(),'%12.50');
+
  await page.getByRole('button',{name:'Listeden çıkar',exact:true}).click();
  await page.getByText('ÖZEL HAVUZ',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Eşya ekle',exact:true}).click();

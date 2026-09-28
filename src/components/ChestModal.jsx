@@ -14,7 +14,7 @@ export default function ChestModal({ state, onClose, playerClass }) {
   const { chest, phase, result } = state;
   useEffect(()=>{playChest(phase==='reveal');},[phase]);
   const color = itemTierColor(chest.tier);
-  const isLocked = result && result.kind === "armor" && result.class !== playerClass;
+  const isLocked = result && ["armor","weapon"].includes(result.kind) && !!(result.class||result.cls) && (result.class||result.cls) !== playerClass;
   return (
     <div style={styles.modalOverlay} onClick={phase === "reveal" ? onClose : undefined}>
       <div className="reward-modal" style={styles.modalCard} onClick={(e) => e.stopPropagation()}>

@@ -3,7 +3,7 @@ import { rand, uid } from "./random";
 import { rollConfiguredLoot, rollMapLoot } from "./loot";
 import { xpToNext, xpLevelPenaltyMultiplier, MAX_LEVEL, playerMaxHp, playerMaxMp, clampGold, formatGold } from "./player";
 import { addItemToInventory } from "./inventory";
-import { premiumExpMultiplier, premiumDropMultiplier } from "./premium";
+import { premiumExpMultiplier, premiumDropMultiplier, premiumGoldMultiplier } from "./premium";
 import { clanExpMultiplier } from "./clan";
 import { eventExpMultiplier } from "./events";
 import { boostMultiplier } from "./boosts";
@@ -34,7 +34,7 @@ export function grantMonsterReward(p, m, map, opts = {}) {
   const rewardCfg = getMonsterRewardConfig(m, map);
   const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p) * boostMultiplier(p, "exp") * wingMultiplier(p, "exp");
   const dropMult = premiumDropMultiplier(p) * (opts.dropMult ?? 1) * wingMultiplier(p, "drop");
-  const goldMult = boostMultiplier(p, "gold") * (opts.goldMult ?? 1);
+  const goldMult = premiumGoldMultiplier(p) * boostMultiplier(p, "gold") * (opts.goldMult ?? 1);
   let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
   const killsBefore = np.monsterKills[m.id] || 0;
   np.monsterKills[m.id] = killsBefore + 1;

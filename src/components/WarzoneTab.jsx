@@ -1,3 +1,4 @@
+import EncounterScreen from './EncounterScreen';
 import {prepareWarzoneAction,buildHuntMonster} from '../utils/warzoneCombat';
 import WarzoneSkills from './WarzoneSkills';
 import './WarzoneTab.css';
@@ -21,7 +22,7 @@ import * as warzoneBossService from "../services/warzoneBossService";
 import * as warzoneDuelService from "../services/warzoneDuelService";
 import { awardNationalPoint, penalizeNationalPoint } from "../utils/nationalPoint";
 import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
-import { premiumNpLossReduction } from "../utils/premium";
+import { premiumNpLossReduction,premiumGoldMultiplier,premiumDropMultiplier } from "../utils/premium";
 import { leaderboardFor } from "../utils/leaderboard";
 import { rollConfiguredLoot, rollLoot } from "../utils/loot";
 import { grantMonsterReward } from "../utils/monsterRewards";
@@ -88,6 +89,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   const maxHp = playerMaxHp(player);
   const maxMp = playerMaxMp(player);
 
+  const [encounterBoss,setEncounterBoss]=useState(null);
   const [subtab, setSubtab] = useState("alan");
   const [wz, setWz] = useState(() => freshWz());
   const [entered, setEntered] = useState(false);
@@ -416,11 +418,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     let drops = [];
     setPlayer((p) => {
       let np = { ...p, inventory: [...p.inventory], chests: [...p.chests] };
-      const goldGain = rand(boss.bonusGoldMin, boss.bonusGoldMax);
+      const goldGain = Math.round(rand(boss.bonusGoldMin, boss.bonusGoldMax)*premiumGoldMultiplier(np));
       const goldBefore = np.gold;
       np.gold = clampGold(np.gold + goldGain);
       drops = [t("warzone.drop.gold", { amount: formatGold(np.gold - goldBefore) })];
-      if (Math.random() < boss.equipDropChance * wingMultiplier(p, "drop")) {
+      if (Math.random() < boss.equipDropChance * wingMultiplier(p, "drop") * premiumDropMultiplier(p)) {
         const item = Array.isArray(boss.loot) ? rollConfiguredLoot(boss.loot) : rollLoot(boss.lootTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
@@ -430,11 +432,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
           drops.push(res.added ? t("warzone.drop.itemDropped", { name: item.name }) : t("warzone.drop.itemDropFailed", { name: item.name, reason: t(REASON_KEY[res.reason] || res.reason) }));
         }
       }
-      if (Math.random() < boss.chestDropChance * wingMultiplier(p, "drop")) {
+      if (Math.random() < boss.chestDropChance * wingMultiplier(p, "drop") * premiumDropMultiplier(p)) {
         np.chests.push({ id: uid(), tier: boss.lootTier });
         drops.push(t("warzone.drop.chestDropped", { tier: tierName(lang, boss.lootTier) }));
       }
-      if (Math.random() < boss.scrollDropChance * wingMultiplier(p, "drop")) {
+      if (Math.random() < boss.scrollDropChance * wingMultiplier(p, "drop") * premiumDropMultiplier(p)) {
         const scroll = makeScrollStack(boss.lootTier, 1);
         const res = addItemToInventory(np, scroll);
         np = res.player;
@@ -742,7 +744,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
                   )}
 
                   {active && (
-                    <>
+                    <><button style={{...styles.primaryBtn,width:'100%',marginTop:12}} onClick={()=>setEncounterBoss(boss.id)}>{lang==='en'?'Enter battle':'Savaşa katıl'}</button>
+                    {encounterBoss===boss.id&&<EncounterScreen title={tm(boss)} onLeave={()=>setEncounterBoss(null)}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
                         <span>{t("warzone.totalDamage", { dmg: state.totalDamage })}</span>
                         <span>{t("warzone.yourDamage", { dmg: state.myDamage })}</span>
@@ -782,7 +785,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
                       <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 6, background: boss.color, opacity: playerDead ? 0.5 : 1 }} onClick={() => attackBoss(boss.id)} disabled={playerDead}>
                         <Swords size={14} /> {t("warzone.attack")}
                       </button>
-                    </>
+                    </EncounterScreen>}</>
                   )}
                 </div>
               );
@@ -802,7 +805,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       )}
 
       {subtab === "alan" && wz.duel && (
-        <div className="battle-mobile" style={{ ...styles.battleArena, marginTop: 12 }}>
+        <EncounterScreen title={lang==='en'?'Duel':'Karşılaşma'} onLeave={()=>wz.duel.finished?endDuel():setConfirmingRetreat(true)}><div className="battle-mobile" style={{ ...styles.battleArena, marginTop: 12 }}>
           <DuelScene player={player} ghost={wz.duel.ghost} duel={wz.duel} visual={duelVisual} shake={null} />
 
           <div ref={logRef} style={styles.combatLog}>
@@ -837,7 +840,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
               </div>
             </div>
           )}
-        </div>
+        </div></EncounterScreen>
       )}
 
       {subtab === "av" && !wz.hunt && !wz.searching && (
@@ -874,7 +877,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       )}
 
       {subtab === "av" && wz.hunt && (
-        <div className={hasBattleScene(wz.hunt.monster) ? "battle-mobile" : ""} style={{ ...styles.battleArena, marginTop: 12 }}>
+        <EncounterScreen title={wz.hunt.monster.name} onLeave={abandonHunt}><div className={hasBattleScene(wz.hunt.monster) ? "battle-mobile" : ""} style={{ ...styles.battleArena, marginTop: 12 }}>
           {hasBattleScene(wz.hunt.monster) ? (
             <BattleScene
               player={player}
@@ -939,7 +942,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
           <button style={styles.ghostBtn} onClick={abandonHunt}>
             <LogOut size={13} /> {t("warzone.huntAbandon")}
           </button>
-        </div>
+        </div></EncounterScreen>
       )}
 
       {subtab === "siralama" && (

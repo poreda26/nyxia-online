@@ -1,14 +1,19 @@
+import {usePotion,bestAvailablePotionTier} from '../utils/potions';
+import {getActiveCharacterKey} from '../utils/api';
+import EncounterScreen from './EncounterScreen';
+import BattleScene from './BattleScene';
+import WarzoneSkills from './WarzoneSkills';
+import {prepareWarzoneAction} from '../utils/warzoneCombat';
+import './WarzoneTab.css';
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Swords, LogOut, Lock, Users, ScrollText } from "lucide-react";
+import { Swords, Lock, Users, ScrollText, Heart, Zap } from "lucide-react";
 import { styles } from "../styles";
-import BarTrack from "./shared/BarTrack";
-import MenuEmblem from "./icons/MenuEmblem";
 import DungeonEncounter from './DungeonEncounter';
 import { useTranslation, formatServerError } from "../i18n/LanguageContext";
 import { fetchClanDungeon, enterClanDungeon, attackClanDungeon, leaveClanDungeon, fetchClanDungeonLog } from "../services/clanService";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit, varyDamage } from "../utils/combat";
 import { wingDexBonus } from "../data/wings";
-import { applyDeathPenalty } from "../utils/player";
+import { applyDeathPenalty,armorSetDamageReduction,playerMaxHp,playerMaxMp } from "../utils/player";
 import { addItemToInventory, makeClanMaterialStack } from "../utils/inventory";
 import { CLAN_DUNGEON_MATERIALS, MID_BOSS_INDEX, FINAL_BOSS_INDEX } from "../data/clanDungeon";
 
@@ -30,14 +35,21 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
   const [state, setState] = useState(null);
   const [log, setLog] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [effects,setEffects]=useState({});
+  const [visual,setVisual]=useState({id:0,type:null});
+  const [entering,setEntering]=useState(false);
+  const [defeated,setDefeated]=useState(false);
+  const lastAttack=useRef(0);
   const attackingRef = useRef(false);
   const stateRef = useRef(null);
+  const characterKeyRef=useRef(getActiveCharacterKey());
   stateRef.current = state;
 
   const refresh = useCallback(async () => {
     try {
       const [nextState, nextLog] = await Promise.all([fetchClanDungeon(), fetchClanDungeonLog()]);
       setState(nextState);
+      if(!nextState.lockedByMe)setDefeated(false);
       setLog(nextLog);
     } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
   }, []);
@@ -65,15 +77,16 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
   // yüzünden) kilidi elde tutuyorsak sunucuya bırakıyoruz — yoksa klanın
   // geri kalanı 5 dakikalık zaman aşımı dolana kadar bekler.
   useEffect(() => () => {
-    if (stateRef.current?.lockedByMe) leaveClanDungeon().catch(() => {});
+    if (stateRef.current?.lockedByMe) leaveClanDungeon(characterKeyRef.current).catch(() => {});
   }, []);
 
+  useEffect(()=>{setEffects({});setVisual({id:0,type:null});},[state?.stageIndex]);
   const handleEnter = async () => {
     if (busy) return;
     setBusy(true);
-    try { await enterClanDungeon(); await refresh(); }
+    try { setEntering(true);await enterClanDungeon(); await refresh(); }
     catch (error) { pushToast(formatServerError(t, error), "warn"); await refresh(); }
-    finally { setBusy(false); }
+    finally { setBusy(false);setEntering(false); }
   };
 
   const handleLeave = async () => {
@@ -84,56 +97,43 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
     finally { setBusy(false); }
   };
 
-  const handleAttack = async () => {
-    if (attackingRef.current || !state?.lockedByMe || player.hp <= 0) return;
-    attackingRef.current = true;
-    setBusy(true);
-    try {
-      const stageMon = state.stage;
-      const isCrit = Math.random() < cls.crit;
-      const playerDex = player.stats.dex + wingDexBonus(player);
-      const playerHits = rollHit(playerDex, stageMon.atk, player.level);
-      const rawDmg = playerHits ? varyDamage(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), stageMon.def, MONSTER_DEF_K)) : 0;
-
-      if (rawDmg > 0) {
-        const capped = Math.min(rawDmg, Math.floor(stageMon.hp * 0.5));
-        try {
-          const res = await attackClanDungeon(capped);
-          if (res.droppedMaterial) {
-            const matDef = CLAN_DUNGEON_MATERIALS[res.droppedMaterial];
-            setPlayer((p) => addItemToInventory(p, makeClanMaterialStack(res.droppedMaterial, 1)).player);
-            pushToast(t("clan.toastMaterialDropped", { material: matDef.name }), "loot");
-          }
-          if (res.stageCleared) {
-            pushToast(res.completed ? t("clan.toastDungeonCompleted") : t("clan.toastStageCleared", { index: state.stageIndex }), "loot");
-          }
-        } catch (error) {
-          pushToast(formatServerError(t, error), "warn");
-          await refresh();
-          return;
-        }
-      }
-
-      // Canavarın karşılık vuruşu — BattleTab'daki aynı iki taraflı çarpışma
-      // ilkesi, oyuncunun kendi HP'si zaten istemcide otoriter (bkz. dosyanın
-      // en üstündeki genel güven notu).
-      const monsterHits = rollHit(stageMon.atk, playerDex, player.level);
-      const mdmg = monsterHits ? Math.max(1, Math.round(mitigate(stageMon.atk, def, PLAYER_DEF_K))) : 0;
-      if (mdmg > 0) {
-        const nextHp = Math.max(0, player.hp - mdmg);
-        if (nextHp <= 0) {
-          setPlayer((p) => applyDeathPenalty(p).player);
-          pushToast(t("clan.toastDefeated"), "warn");
-          try { await leaveClanDungeon(); } catch { /* zaten kilidimiz yoksa önemsiz */ }
-        } else {
-          setPlayer((p) => ({ ...p, hp: nextHp }));
-        }
-      }
-      await refresh();
-    } finally {
-      attackingRef.current = false;
-      setBusy(false);
+  const handleAttack = async (actionId=null) => {
+    if(defeated||attackingRef.current||!state?.lockedByMe||player.hp<=0||Date.now()-lastAttack.current<900)return;
+    const stageMon=state.stage;
+    const potionKind=actionId==='potion_hp'?'hp':actionId==='potion_mp'?'mp':null;
+    const skillId=potionKind?null:actionId;
+    let potion=null;
+    if(potionKind){
+      if((effects.potionCooldowns?.[potionKind]||0)>0)return;
+      const tier=bestAvailablePotionTier(player,potionKind);
+      if(!tier||player[potionKind]>=(potionKind==='hp'?playerMaxHp(player):playerMaxMp(player)))return;
+      potion=usePotion(player,potionKind,tier);if(potion.reason)return;
     }
+    const action=prepareWarzoneAction(potion?.player||player,{...stageMon,hp:state.monsterHp,maxHp:stageMon.hp},effects,skillId);
+    if(action.error){pushToast(action.error,'warn');return;}
+    attackingRef.current=true;setBusy(true);lastAttack.current=Date.now();
+    try{
+      const playerDex=player.stats.dex+wingDexBonus(player),isCrit=Math.random()<cls.crit;
+      const hit=!!skillId||rollHit(playerDex,stageMon.atk,player.level);
+      const basic=skillId||potionKind?0:hit?varyDamage(mitigate((cls.atk+atk*.9)*action.atkMult*(isCrit?1.8:1),stageMon.def,MONSTER_DEF_K)):0;
+      const damage=Math.min(Math.max(0,Math.round(basic+action.damage)),Math.floor(stageMon.hp*.5));
+      const res=await attackClanDungeon(damage);
+      const enemyHit=!res.stageCleared&&rollHit(stageMon.atk,playerDex,player.level);
+      const incoming=enemyHit?Math.max(1,Math.round(mitigate(stageMon.atk,def*action.defMult,PLAYER_DEF_K)*(1-armorSetDamageReduction(player,"monster")))):0;
+      let next={...action.player,hp:Math.max(0,action.player.hp-incoming)};
+      if(res.droppedMaterial){next=addItemToInventory(next,makeClanMaterialStack(res.droppedMaterial,1)).player;pushToast(t('clan.toastMaterialDropped',{material:CLAN_DUNGEON_MATERIALS[res.droppedMaterial].name}),'loot');}
+      if(res.stageCleared)pushToast(res.completed?t('clan.toastDungeonCompleted'):t('clan.toastStageCleared',{index:state.stageIndex}),'loot');
+      const potionCooldowns=Object.fromEntries(Object.entries(effects.potionCooldowns||{}).map(([k,v])=>[k,Math.max(0,v-1)]));
+      if(potionKind)potionCooldowns[potionKind]=2;
+      setEffects({...action.state,potionCooldowns});
+      setVisual({id:Date.now(),skillId,label:action.skill?.name||(potionKind?(potionKind==='hp'?'Can İksiri':'Mana İksiri'):t('clan.dungeonAttackBtn')),type:potionKind?'potion':action.skill?.effect.type||'attack',outgoing:{hit,crit:isCrit&&!skillId&&!potionKind,damage:potion?.healed||action.heal||Math.min(damage,state.monsterHp),heal:!!potionKind||action.heal>0},incoming:res.stageCleared?null:{hit:enemyHit,damage:incoming}});
+      const died=next.hp<=0;
+      if(died){next=applyDeathPenalty(next).player;setDefeated(true);pushToast(t('clan.toastDefeated'),'warn');}
+      setPlayer(next);
+      if(died)await leaveClanDungeon();
+      await refresh();
+    }catch(error){pushToast(formatServerError(t,error),'warn');await refresh();}
+    finally{attackingRef.current=false;setBusy(false);}
   };
 
   if (!state) return <div className="clan-status" role="status">{lang === "en" ? "Loading dungeon…" : "Zindan yükleniyor…"}</div>;
@@ -162,6 +162,8 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
         <span>{t("clan.dungeonEntriesLeft", { count: attempts.entriesLeft })}</span>
       </div>
 
+      {entering&&<EncounterScreen title={lang==='en'?'Entering dungeon':'Zindana giriliyor'} busy onLeave={()=>{}}><p className="encounter-status">{lang==='en'?'Waiting for the server…':'Sunucudan giriş onayı bekleniyor…'}</p></EncounterScreen>}
+      {lockedByMe&&!completed&&<EncounterScreen title={stage.name} onLeave={handleLeave} busy={busy}><div className="battle-mobile"><BattleScene player={player} monster={{...stage,visualSourceId:stage.isFinalBoss?'dungeon_crimson_battlefront_boss':stage.isMidBoss?'dungeon_ruined_sanctuary_boss':undefined,id:stage.isFinalBoss?'dungeon_crimson_battlefront_boss':stage.isMidBoss?'dungeon_ruined_sanctuary_boss':`dungeon_ashen_canyon_${stageIndex}`}} battle={{monsterHp,monsterMaxHp:stage.hp}} map={{name:lang==='en'?'Clan Dungeon':'Klan Zindanı'}} visual={visual}/></div><WarzoneSkills player={player} state={effects} onUse={handleAttack} disabled={defeated||busy||player.hp<=0}/><button className="rpg-action" style={{...styles.primaryBtn,background:cls.color,width:'100%',marginTop:14}} disabled={defeated||busy||player.hp<=0} onClick={()=>handleAttack()}><Swords size={16}/>{t('clan.dungeonAttackBtn')}</button><div style={{display:'flex',gap:8,marginTop:10}}>{['hp','mp'].map(kind=><button key={kind} style={{...styles.potionBtn,flex:1}} disabled={defeated||busy||player.hp<=0||!bestAvailablePotionTier(player,kind)||(effects.potionCooldowns?.[kind]||0)>0||player[kind]>=(kind==='hp'?playerMaxHp(player):playerMaxMp(player))} onClick={()=>handleAttack('potion_'+kind)}>{kind==='hp'?<Heart size={15}/>:<Zap size={15}/>} {kind.toUpperCase()} {(effects.potionCooldowns?.[kind]||0)>0?`${effects.potionCooldowns[kind]} tur`:player.inventory.filter(i=>i.kind==='potion'&&i.potionType===kind).reduce((n,i)=>n+(i.count||0),0)}</button>)}</div><p className="encounter-status">{stageIndex} / {totalStages} · {fmtClock(lockRemainingMs)}</p></EncounterScreen>}
       {stage&&<DungeonEncounter stage={stage} hp={monsterHp} index={stageIndex} total={totalStages} completed={completed}/>}
       {completed ? (
         <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>{t("clan.dungeonCompletedToday")}</div>
@@ -177,32 +179,7 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
           )}
         </div>
       ) : lockedByMe ? (
-        <div style={{ marginTop: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <MenuEmblem name="dungeon" size={32} />
-            <div style={{ flex: 1, fontSize: 13, color: stage.isBoss ? "#D4AF6A" : "var(--text-primary)" }}>{stage.name}</div>
-            {lockRemainingMs > 0 && (
-              <span style={{ fontSize: 10, color: lockRemainingMs < 20000 ? "#E8A5AF" : "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
-                {fmtClock(lockRemainingMs)}
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 6 }}>
-            {t("clan.dungeonMonsterHp")}: {Math.round(monsterHp)}/{stage.hp}
-          </div>
-          <BarTrack pct={(monsterHp / stage.hp) * 100} color="#C9425A" />
-          <div style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)", marginTop: 8 }}>
-            {t("clan.dungeonYourHp")}: {Math.round(player.hp)}
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button className="rpg-action" style={{ ...styles.tinyBtn, flex: 1, ...(busy || player.hp <= 0 ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }} disabled={busy || player.hp <= 0} onClick={handleAttack}>
-              {t("clan.dungeonAttackBtn")}
-            </button>
-            <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} disabled={busy} onClick={handleLeave}>
-              <LogOut size={12} />
-            </button>
-          </div>
-        </div>
+        <p className="encounter-status">{lang==='en'?'Battle in progress':'Karşılaşma devam ediyor'}</p>
       ) : (
         <>
           {attempts.entriesLeft === 0 ? (

@@ -12,6 +12,8 @@
     "test:world": "node tests/run-world-tests.mjs",
     "test:balance": "node scripts/check-balance.mjs",
     "test:warzone": "node scripts/run-bundled-test.mjs warzone",
+    "test:rewards": "node scripts/run-bundled-test.mjs reward-safety",
+    "test:clans": "node --test tests/character-clans.test.mjs",
     "test:admin-loot": "node scripts/run-bundled-test.mjs admin-loot"
   },
   "dependencies": {

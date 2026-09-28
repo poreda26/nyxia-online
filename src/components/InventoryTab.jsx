@@ -1,17 +1,17 @@
+import {openChestSafely,openChestsSafely} from '../utils/chests';
 import RewardChest from './icons/RewardChest';
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, ArrowDownToLine, X, ListChecks, Coins, Gem, Plus } from "lucide-react";
 import { itemTierColor, tierName } from "../data/itemRarity";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";
-import { rollChestLoot, rollSpecialChestLoot } from "../utils/loot";
 import {
   equipItem, unequipItem, sellPrice, displayItemName, clampPlayerHp, discountedRepairCost, repairItem, canChangeJob, changeJob,
   totalEquippedRepairCost, repairAllEquipped, MAX_GOLD, formatGold,
 } from "../utils/player";
 import { isConsumable } from "../utils/itemDisplay";
 import { newlyUnlocked } from "../utils/achievements";
-import { BAG_SLOTS, addItemToInventory, depositToBank, withdrawFromBank, buyExtraBankPage, EXTRA_BANK_PAGE_COST_DIAMONDS, MAX_BANK_PAGES } from "../utils/inventory";
+import { BAG_SLOTS, depositToBank, withdrawFromBank, buyExtraBankPage, EXTRA_BANK_PAGE_COST_DIAMONDS, MAX_BANK_PAGES } from "../utils/inventory";
 import { useBoostScroll } from "../utils/boosts";
 import { boostScrollDef } from "../data/boostScrolls";
 import { learnFreeSkills } from "../utils/skills";
@@ -232,58 +232,27 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     if ((item.count || 1) <= 1) setSelectedId(null);
   };
 
-  const openChest = (chest) => {
-    setOpeningChest({ chest, phase: "shaking", result: null });
-    setTimeout(() => {
-      const item = chest.special ? rollSpecialChestLoot(player.class) : rollChestLoot(chest.tier);
-      const afterChestRemoved = {
-        ...player,
-        chests: player.chests.filter((c) => c.id !== chest.id),
-        milestones: { ...player.milestones, chestsOpened: (player.milestones?.chestsOpened || 0) + 1 },
-      };
-      const reportUnlocks = (finalPlayer) => newlyUnlocked(player, finalPlayer).forEach((a) => pushToast(t("inventory.achievementUnlocked", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
-      // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
-      // hiçbir eşya yoksa item null gelir, sandığı yine de boşalt ama
-      // hiçbir şey eklemeye çalışma.
-      if (!item) {
-        setPlayer(afterChestRemoved);
-        setOpeningChest({ chest, phase: "reveal", result: null });
-        reportUnlocks(afterChestRemoved);
-        return;
-      }
-      const addResult = addItemToInventory(afterChestRemoved, item);
-      const finalPlayer = addResult.added ? { ...addResult.player, hasNewItemNotice: true } : addResult.player;
-      setPlayer(finalPlayer);
-      setOpeningChest({ chest, phase: "reveal", result: item });
-      if (!addResult.added) pushToast(t("inventory.itemWonButReason", { item: displayItemName(item, lang), reason: formatReason(t, addResult) }), "warn");
-      reportUnlocks(finalPlayer);
-    }, 950);
+  const chestBusy=useRef(false),chestTimer=useRef(null);
+  useEffect(()=>()=>clearTimeout(chestTimer.current),[]);
+  const chestWarning=reason=>pushToast(reason==='bagFull'?(lang==='en'?'Inventory full. Chest kept.':'Envanter dolu. Sandık açılmadı.'):(lang==='en'?'Cannot collect reward. Chest kept; check carrying capacity.':'Ödül alınamadı. Sandık korundu; taşıma kapasiteni kontrol et.'),'warn');
+  const openChest = chest => {
+    if(chestBusy.current)return;
+    const result=openChestSafely(player,chest.id);
+    if(!result.opened){chestWarning(result.reason);return;}
+    chestBusy.current=true;
+    setPlayer(result.player);
+    setOpeningChest({chest,phase:'shaking',result:null});
+    chestTimer.current=setTimeout(()=>setOpeningChest({chest,phase:'reveal',result:result.item}),950);
+    newlyUnlocked(player,result.player).forEach(a=>pushToast(t('inventory.achievementUnlocked',{name:t(`character.achievements.${a.id}.name`),title:t(`character.achievements.${a.id}.title`)}),'level'));
   };
-
-  const closeChestModal = () => setOpeningChest(null);
-
-  // Toplu kutu açma — kullanıcı isteği: "elimizde fazla kutu olduğu zaman
-  // açmak problem olabiliyor." Tek tek açmanın shake/reveal animasyonunu
-  // (bkz. openChest) onlarca kutu için tekrarlamak pratik değil, o yüzden
-  // hepsi anında (animasyonsuz) çözülüp tek bir özet listesi gösteriliyor.
-  const openAllChests = () => {
-    if (player.chests.length === 0) return;
-    const openedCount = player.chests.length;
-    let p = player;
-    const gained = [];
-    let failed = 0;
-    for (const chest of p.chests) {
-      const item = chest.special ? rollSpecialChestLoot(p.class) : rollChestLoot(chest.tier);
-      if (!item) continue;
-      const addResult = addItemToInventory(p, item);
-      p = addResult.player;
-      if (addResult.added) gained.push(item); else failed++;
-    }
-    p = { ...p, chests: [], milestones: { ...p.milestones, chestsOpened: (p.milestones?.chestsOpened || 0) + openedCount } };
-    if (gained.length > 0) p.hasNewItemNotice = true;
-    setPlayer(p);
-    setBulkChestResult({ items: gained, failed });
-    newlyUnlocked(player, p).forEach((a) => pushToast(t("inventory.achievementUnlocked", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
+  const closeChestModal=()=>{clearTimeout(chestTimer.current);chestBusy.current=false;setOpeningChest(null);};
+  const openAllChests=()=>{
+    if(chestBusy.current)return;
+    const result=openChestsSafely(player);
+    if(result.reason)chestWarning(result.reason);
+    if(!result.items.length)return;
+    chestBusy.current=true;setPlayer(result.player);setBulkChestResult({items:result.items,failed:0});
+    newlyUnlocked(player,result.player).forEach(a=>pushToast(t('inventory.achievementUnlocked',{name:t(`character.achievements.${a.id}.name`),title:t(`character.achievements.${a.id}.title`)}),'level'));
   };
 
   const selectedItem = subtab === "bank"
@@ -464,7 +433,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
             )}
           </div>
 
-          <BankGrid
+          <BankGrid playerClass={player.class}
             items={bank[bankPage]}
             selectedId={selectedId}
             onItemTap={(item) => { setSelectedEquipSlot(null); setSelectedId((cur) => (cur === item.id ? null : item.id)); }}
@@ -569,7 +538,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                         </button>
                       ))
                     )
-                  ) : selectedItem.kind === "armor" && selectedItem.class !== player.class ? (
+                  ) : ["armor","weapon"].includes(selectedItem.kind) && !!(selectedItem.class||selectedItem.cls) && (selectedItem.class||selectedItem.cls) !== player.class ? (
                     <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-faint)" }} disabled>
                       <Ban size={11} /> {t("inventory.locked")}
                     </button>
@@ -620,7 +589,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
       )}
 
       {bulkChestResult && (
-        <BulkChestModal result={bulkChestResult} onClose={() => setBulkChestResult(null)} />
+        <BulkChestModal result={bulkChestResult} onClose={() => {chestBusy.current=false;setBulkChestResult(null);}} />
       )}
     </div>
   );

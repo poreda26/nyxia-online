@@ -19,6 +19,7 @@ export function premiumDaysLeft(player) {
   return Math.max(0, Math.ceil((player.premium.expiresAt - Date.now()) / DAY_MS));
 }
 
+export function premiumGoldMultiplier(player) { return activePremiumTier(player)?.goldMult ?? 1; }
 export function premiumExpMultiplier(player) { return activePremiumTier(player)?.expMult ?? 1; }
 export function premiumDropMultiplier(player) { return activePremiumTier(player)?.dropMult ?? 1; }
 export function premiumSellMultiplier(player) { return activePremiumTier(player)?.sellMult ?? 1; }

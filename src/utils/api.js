@@ -7,11 +7,14 @@ const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 // Diğer servislerin (ör. chatService.js) aynı fetch/CORS/çerez mantığını
 // tekrarlamadan gerçek backend'e konuşabilmesi için dışa açık.
-export async function call(path, method, body) {
+let activeCharacterKey=null;
+export function getActiveCharacterKey(){return activeCharacterKey;}
+export function setActiveCharacterKey(key){activeCharacterKey=key;}
+export async function call(path, method, body, characterKey=activeCharacterKey) {
   const res = await fetch(`${API_BASE}/api/${path}`, {
     method,
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(path.startsWith("clan")&&characterKey?{"X-Character-Key":characterKey}:{}) },
     ...(method === "GET" ? {} : { body: JSON.stringify(body ?? {}) }),
   });
   let data = {};

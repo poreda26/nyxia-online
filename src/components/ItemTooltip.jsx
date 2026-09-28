@@ -144,7 +144,7 @@ export default function ItemTooltip({ item, player, unmetReqs = [] }) {
       {classLock && (
         <div style={{ fontSize: 10, color: CLASSES[classLock].color, marginTop: 6 }}>
           -{CLASSES[classLock].name}
-          {item.kind === "armor" && player && item.class !== player.class && (
+          {player && classLock !== player.class && (
             <span style={{ color: "#E8A5AF" }}> · {t("itemTooltip.notUsableByYou")}</span>
           )}
         </div>

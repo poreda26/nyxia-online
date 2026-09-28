@@ -63,7 +63,7 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
         {slots.map((item, i) => {
           const isBulkSelected = !!item && !!bulkSelectedIds && bulkSelectedIds.has(item.id);
           const isSelected = isBulkSelected || (!!item && item.id === selectedId);
-          const locked = !!item && item.kind === "armor" && item.class !== player.class;
+          const locked = !!item && ["armor","weapon"].includes(item.kind) && !!(item.class || item.cls) && (item.class || item.cls) !== player.class;
           const isDragSource = dragIndex === i;
           const isDragTarget = dragOverIndex === i && dragIndex !== null && dragIndex !== i;
           return (
@@ -105,7 +105,7 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
               {item && !item.stackable && item.upgradeLevel > 0 && !isFirstPurchaseWeapon(item) && (
                 <span style={styles.bagSlotBadge}>+{item.upgradeLevel}</span>
               )}
-              {locked && <Ban size={10} color="#E8A5AF" style={{ position: "absolute", top: 3, left: 3 }} />}
+              {locked && <Ban aria-label="Başka sınıfa ait" size={14} color="#E8A5AF" style={{ position: "absolute", top: 3, left: 3 }} />}
               {isBulkSelected && (
                 <span style={{ position: "absolute", top: 3, right: 3, width: 14, height: 14, borderRadius: 7, background: "#5FA8A0", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Check size={9} color="#0B0C10" strokeWidth={3} />

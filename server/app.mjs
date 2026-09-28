@@ -1,3 +1,4 @@
+import {migrateCharacterClans,savedCharacters,characterKey,primaryCharacter} from './clan-characters.mjs';
 import webpush from 'web-push';
 import { createAdmin } from './admin.mjs';
 import {validAvatarFrame} from '../src/data/avatarFrames.js';
@@ -131,6 +132,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS push_prefs(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), inactivity INTEGER NOT NULL DEFAULT 1, events INTEGER NOT NULL DEFAULT 1, social INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE IF NOT EXISTS push_inactivity_sent(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), sent_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS push_event_sent(event_id TEXT NOT NULL, day_key TEXT NOT NULL, PRIMARY KEY(event_id,day_key));`);
+  migrateCharacterClans(db);
   // Başlangıçta bir kerelik temizlik — hafta öncesinin boss kayıtları hiç
   // kullanılmayacak, DB'nin sınırsız büyümesini önler.
   {
@@ -277,7 +279,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Character-Key');
         return send(204, null);
       }
       if (req.method !== 'GET' && (req.headers.origin !== origin || !req.headers['content-type']?.startsWith('application/json'))) throw fail(403, 'INVALID_REQUEST_ORIGIN');
@@ -335,6 +337,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         try {
           const current = db.prepare('SELECT revision FROM backups WHERE account=?').get(account.id)?.revision || 0;
           if (current !== body.revision) throw fail(409, 'BACKUP_CONFLICT');
+          const keys=body.data.characters.map((c,i)=>c?characterKey(c,i):null).filter(Boolean);
+          if(new Set(keys).size!==keys.length)throw fail(400,'DUPLICATE_CHARACTER_ID');
+          for(const member of db.prepare('SELECT character_key FROM clan_members WHERE account_id=?').all(account.id)){
+            if(!keys.includes(member.character_key))throw fail(409,'LEAVE_CLAN_BEFORE_DELETING_CHARACTER');
+          }
           const revision = current + 1, data = JSON.stringify(body.data), now = Date.now();
           db.prepare('INSERT INTO backup_history VALUES(?,?,?,?)').run(account.id, revision, data, now);
           db.prepare('INSERT OR REPLACE INTO backups VALUES(?,?,?,?)').run(account.id, revision, data, now);
@@ -766,7 +773,13 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       // kendisini (kimin hangi klanda, hazine, davetler) otoriter tutuyor —
       // bunlar gerçek başka oyuncularla paylaşılan veri olduğu için asla
       // istemciye bırakılamaz.
-      const myMembership = () => db.prepare('SELECT * FROM clan_members WHERE account_id=?').get(account.id);
+      const characterHeader=req.headers['x-character-key'];
+      const myCharacters=path.startsWith("/api/clan")?savedCharacters(db,account.id):[];
+      const primary=primaryCharacter(db,account.id,myCharacters);
+      const myCharacterKey=characterHeader||primary.key;
+      const myCharacter=myCharacters.find((c,i)=>c&&characterKey(c,i)===myCharacterKey);
+      if(path.startsWith('/api/clan')&&characterHeader&&!myCharacter)throw fail(409,'CHARACTER_NOT_SYNCED');
+      const myMembership = () => db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=?').get(account.id,myCharacterKey);
       if(path==='/api/clan/avatar'&&req.method==='PATCH'){
         const member=myMembership();
         if(member?.role!=='leader')throw fail(403,'LEADER_REQUIRED');
@@ -790,7 +803,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
             db.prepare('INSERT INTO clans(name,color,founder_account,created_at,avatar_id) VALUES(?,?,?,?,?)').run(name, color, account.id, Date.now(),avatarId);
             clanId = db.prepare('SELECT last_insert_rowid() AS id').get().id;
           } catch (error) { if (error.code?.startsWith('ERR_SQLITE')) throw fail(409, 'CLAN_NAME_TAKEN'); throw error; }
-          db.prepare('INSERT INTO clan_members(account_id,clan_id,role,joined_at,donated_np) VALUES(?,?,?,?,0)').run(account.id, clanId, 'leader', Date.now());
+          db.prepare('INSERT INTO clan_members(account_id,character_key,clan_id,role,joined_at,donated_np) VALUES(?,?,?,?,?,0)').run(account.id,myCharacterKey, clanId, 'leader', Date.now());
           db.exec('COMMIT');
           return send(200, { clanId });
         } catch (error) { db.exec('ROLLBACK'); throw error; }
@@ -799,21 +812,21 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const membership = myMembership();
         if (!membership) return send(200, { clan: null });
         const clan = db.prepare('SELECT * FROM clans WHERE id=?').get(membership.clan_id);
-        if (!clan) { db.prepare('DELETE FROM clan_members WHERE account_id=?').run(account.id); return send(200, { clan: null }); }
+        if (!clan) { db.prepare('DELETE FROM clan_members WHERE account_id=? AND character_key=?').run(account.id,myCharacterKey); return send(200, { clan: null }); }
         // Üyenin görünen adı/sınıfı — düello rakibi seçiminde kullanılan
         // AYNI "en yüksek seviyeli karakter = ana karakter" sezgisi (bkz.
         // /api/warzone/duel/opponent), tutarlılık için tekrarlanıyor.
-        const memberRows = db.prepare('SELECT clan_members.account_id AS accountId, clan_members.role AS role, clan_members.joined_at AS joinedAt, clan_members.donated_np AS donatedNp, accounts.name AS accountName, backups.data AS data FROM clan_members JOIN accounts ON accounts.id=clan_members.account_id LEFT JOIN backups ON backups.account=clan_members.account_id WHERE clan_members.clan_id=?').all(clan.id);
+        const memberRows = db.prepare('SELECT clan_members.account_id AS accountId, clan_members.character_key AS characterKey, clan_members.role AS role, clan_members.joined_at AS joinedAt, clan_members.donated_np AS donatedNp, accounts.name AS accountName, backups.data AS data FROM clan_members JOIN accounts ON accounts.id=clan_members.account_id LEFT JOIN backups ON backups.account=clan_members.account_id WHERE clan_members.clan_id=?').all(clan.id);
         const members = memberRows.map(r => {
           let main = null;
           if (r.data) {
             try {
               const parsed = JSON.parse(r.data);
-              const chars = Array.isArray(parsed?.characters) ? parsed.characters.filter(Boolean) : [];
-              main = chars.reduce((best, c) => (!best || (c.level || 0) > (best.level || 0) ? c : best), null);
+              const chars = Array.isArray(parsed?.characters) ? parsed.characters : [];
+              main = chars.find((c,i)=>c&&characterKey(c,i)===r.characterKey);
             } catch { /* bozuk yedek — hesap adına düş */ }
           }
-          return { accountId: r.accountId, name: main?.nickname || r.accountName, avatarId:playerAvatarId(main),frameId:validAvatarFrame(main?.avatarFrameId)?main?.avatarFrameId||null:null,cls: main?.class || null, level: main?.level || 0, role: r.role, joinedAt: r.joinedAt, donatedNp: r.donatedNp };
+          return { accountId: r.accountId, characterKey:r.characterKey, name: main?.nickname || r.accountName, avatarId:playerAvatarId(main),frameId:validAvatarFrame(main?.avatarFrameId)?main?.avatarFrameId||null:null,cls: main?.class || null, level: main?.level || 0, role: r.role, joinedAt: r.joinedAt, donatedNp: r.donatedNp };
         });
         return send(200, { clan: {
           id: clan.id, name: clan.name, color: clan.color, avatarId:clan.avatar_id,createdAt: clan.created_at,
@@ -832,18 +845,23 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const membership = myMembership();
         if (!membership || (membership.role !== 'leader' && membership.role !== 'officer')) throw fail(403, 'LEADER_OFFICER_ONLY');
         const body = await read(req);
-        const name = typeof body?.name === 'string' ? body.name.trim().toLowerCase() : '';
-        const target = db.prepare('SELECT id FROM accounts WHERE name=?').get(name);
+        const name = typeof body?.name === 'string' ? body.name.trim() : '';
+        let target=null,targetCharacter=null;
+        for(const row of db.prepare('SELECT account,data FROM backups').all()){
+          const chars=JSON.parse(row.data).characters||[];const i=chars.findIndex(c=>c?.nickname?.toLocaleLowerCase('tr')===name.toLocaleLowerCase('tr'));
+          if(i>=0){if(target)throw fail(409,'AMBIGUOUS_CHARACTER_NAME');target={id:row.account};targetCharacter=characterKey(chars[i],i);}
+        }
+        if(!target){target=db.prepare('SELECT id FROM accounts WHERE name=?').get(name.toLowerCase());if(target)targetCharacter=primaryCharacter(db,target.id).key;}
         if (!target) throw fail(404, 'ACCOUNT_NOT_FOUND');
-        if (target.id === account.id) throw fail(400, 'CANNOT_INVITE_SELF');
-        if (db.prepare('SELECT 1 FROM clan_members WHERE account_id=?').get(target.id)) throw fail(409, 'TARGET_ALREADY_IN_CLAN');
+        if (target.id === account.id&&targetCharacter===myCharacterKey) throw fail(400, 'CANNOT_INVITE_SELF');
+        if (db.prepare('SELECT 1 FROM clan_members WHERE account_id=? AND character_key=?').get(target.id,targetCharacter)) throw fail(409, 'TARGET_ALREADY_IN_CLAN');
         const memberCount = db.prepare('SELECT COUNT(*) AS c FROM clan_members WHERE clan_id=?').get(membership.clan_id).c;
         if (memberCount >= CLAN_MAX_MEMBERS) throw fail(409, 'CLAN_FULL');
-        db.prepare('INSERT INTO clan_invites(clan_id,from_account,to_account,created_at) VALUES(?,?,?,?) ON CONFLICT(clan_id,to_account) DO UPDATE SET from_account=excluded.from_account, created_at=excluded.created_at').run(membership.clan_id, account.id, target.id, Date.now());
+        db.prepare('INSERT INTO clan_invites(clan_id,from_account,to_account,to_character,created_at) VALUES(?,?,?,?,?) ON CONFLICT(clan_id,to_account,to_character) DO UPDATE SET from_account=excluded.from_account, created_at=excluded.created_at').run(membership.clan_id, account.id, target.id,targetCharacter, Date.now());
         return send(200, { ok: true });
       }
       if (path === '/api/clan/invites' && req.method === 'GET') {
-        const rows = db.prepare('SELECT clan_invites.id AS id, clans.id AS clanId, clans.name AS clanName, clans.color AS clanColor, clans.avatar_id AS avatarId, accounts.name AS fromName, clan_invites.created_at AS createdAt FROM clan_invites JOIN clans ON clans.id=clan_invites.clan_id JOIN accounts ON accounts.id=clan_invites.from_account WHERE clan_invites.to_account=?').all(account.id);
+        const rows = db.prepare('SELECT clan_invites.id AS id, clans.id AS clanId, clans.name AS clanName, clans.color AS clanColor, clans.avatar_id AS avatarId, accounts.name AS fromName, clan_invites.created_at AS createdAt FROM clan_invites JOIN clans ON clans.id=clan_invites.clan_id JOIN accounts ON accounts.id=clan_invites.from_account WHERE clan_invites.to_account=? AND clan_invites.to_character=?').all(account.id,myCharacterKey);
         return send(200, rows.map(r => ({ id: r.id, clanId: r.clanId, clanName: r.clanName, clanColor: r.clanColor, avatarId:r.avatarId, fromName: r.fromName, createdAt: r.createdAt })));
       }
       const clanInviteAcceptMatch = path.match(/^\/api\/clan\/invites\/(\d+)\/accept$/);
@@ -851,21 +869,21 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (myMembership()) throw fail(409, 'ALREADY_IN_CLAN');
         db.exec('BEGIN IMMEDIATE');
         try {
-          const invite = db.prepare('SELECT * FROM clan_invites WHERE id=? AND to_account=?').get(Number(clanInviteAcceptMatch[1]), account.id);
+          const invite = db.prepare('SELECT * FROM clan_invites WHERE id=? AND to_account=? AND to_character=?').get(Number(clanInviteAcceptMatch[1]), account.id,myCharacterKey);
           if (!invite) throw fail(404, 'INVITE_NOT_FOUND');
           const memberCount = db.prepare('SELECT COUNT(*) AS c FROM clan_members WHERE clan_id=?').get(invite.clan_id).c;
           if (memberCount >= CLAN_MAX_MEMBERS) throw fail(409, 'CLAN_FULL');
-          db.prepare('INSERT INTO clan_members(account_id,clan_id,role,joined_at,donated_np) VALUES(?,?,?,?,0)').run(account.id, invite.clan_id, 'member', Date.now());
+          db.prepare('INSERT INTO clan_members(account_id,character_key,clan_id,role,joined_at,donated_np) VALUES(?,?,?,?,?,0)').run(account.id,myCharacterKey, invite.clan_id, 'member', Date.now());
           // Bir klana katılınca diğer tüm bekleyen davetler anlamsızlaşıyor
           // (aynı anda tek klanda olunabilir).
-          db.prepare('DELETE FROM clan_invites WHERE to_account=?').run(account.id);
+          db.prepare('DELETE FROM clan_invites WHERE to_account=? AND to_character=?').run(account.id,myCharacterKey);
           db.exec('COMMIT');
         } catch (error) { db.exec('ROLLBACK'); throw error; }
         return send(200, { ok: true });
       }
       const clanInviteDeclineMatch = path.match(/^\/api\/clan\/invites\/(\d+)\/decline$/);
       if (clanInviteDeclineMatch && req.method === 'POST') {
-        const result = db.prepare('DELETE FROM clan_invites WHERE id=? AND to_account=?').run(Number(clanInviteDeclineMatch[1]), account.id);
+        const result = db.prepare('DELETE FROM clan_invites WHERE id=? AND to_account=? AND to_character=?').run(Number(clanInviteDeclineMatch[1]), account.id,myCharacterKey);
         if (result.changes === 0) throw fail(404, 'INVITE_NOT_FOUND');
         return send(200, { ok: true });
       }
@@ -880,13 +898,16 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           const membership = myMembership();
           if (!membership) throw fail(409, 'NOT_IN_CLAN');
           const donatedNp = membership.donated_np;
-          db.prepare('DELETE FROM clan_members WHERE account_id=?').run(account.id);
+          db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE clan_id=? AND locked_by=? AND locked_character=?').run(membership.clan_id,account.id,myCharacterKey);
+          db.prepare('DELETE FROM clan_members WHERE account_id=? AND character_key=?').run(account.id,myCharacterKey);
           if (membership.role === 'leader') {
-            const next = db.prepare("SELECT account_id FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'officer' THEN 0 ELSE 1 END, joined_at ASC LIMIT 1").get(membership.clan_id);
-            if (next) db.prepare("UPDATE clan_members SET role='leader' WHERE account_id=?").run(next.account_id);
+            const next = db.prepare("SELECT account_id,character_key FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'officer' THEN 0 ELSE 1 END, joined_at ASC LIMIT 1").get(membership.clan_id);
+            if (next) db.prepare("UPDATE clan_members SET role='leader' WHERE account_id=? AND character_key=?").run(next.account_id,next.character_key);
             else {
-              db.prepare('DELETE FROM clans WHERE id=?').run(membership.clan_id);
               db.prepare('DELETE FROM clan_invites WHERE clan_id=?').run(membership.clan_id);
+              db.prepare('DELETE FROM clan_dungeon_log WHERE clan_id=?').run(membership.clan_id);
+              db.prepare('DELETE FROM clan_dungeon_state WHERE clan_id=?').run(membership.clan_id);
+              db.prepare('DELETE FROM clans WHERE id=?').run(membership.clan_id);
             }
           }
           db.exec('COMMIT');
@@ -898,11 +919,14 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (!membership || (membership.role !== 'leader' && membership.role !== 'officer')) throw fail(403, 'LEADER_OFFICER_ONLY');
         const body = await read(req);
         const targetId = Number(body?.accountId);
-        if (!Number.isSafeInteger(targetId) || targetId === account.id) throw fail(400, 'INVALID_TARGET');
-        const target = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND clan_id=?').get(targetId, membership.clan_id);
+        if(!Number.isSafeInteger(targetId)||targetId<1)throw fail(400,'INVALID_TARGET');
+        const targetKey=body?.characterKey||primaryCharacter(db,targetId).key;
+        if (!Number.isSafeInteger(targetId) || (targetId === account.id&&targetKey===myCharacterKey)) throw fail(400, 'INVALID_TARGET');
+        const target = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=? AND clan_id=?').get(targetId,targetKey, membership.clan_id);
         if (!target) throw fail(404, 'MEMBER_NOT_FOUND');
         if (target.role === 'leader') throw fail(400, 'CANNOT_KICK_LEADER');
-        db.prepare('DELETE FROM clan_members WHERE account_id=?').run(targetId);
+        db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE clan_id=? AND locked_by=? AND locked_character=?').run(membership.clan_id,targetId,targetKey);
+        db.prepare('DELETE FROM clan_members WHERE account_id=? AND character_key=?').run(targetId,targetKey);
         return send(200, { ok: true });
       }
       if ((path === '/api/clan/promote' || path === '/api/clan/demote') && req.method === 'POST') {
@@ -910,16 +934,18 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (!membership || membership.role !== 'leader') throw fail(403, 'LEADER_ONLY');
         const body = await read(req);
         const targetId = Number(body?.accountId);
-        const target = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND clan_id=?').get(targetId, membership.clan_id);
+        if(!Number.isSafeInteger(targetId)||targetId<1)throw fail(400,'INVALID_TARGET');
+        const targetKey=body?.characterKey||primaryCharacter(db,targetId).key;
+        const target = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=? AND clan_id=?').get(targetId,targetKey, membership.clan_id);
         if (!target || target.role === 'leader') throw fail(404, 'MEMBER_NOT_FOUND');
         if (path === '/api/clan/promote') {
           if (target.role !== 'officer') {
             const officerCount = db.prepare("SELECT COUNT(*) AS c FROM clan_members WHERE clan_id=? AND role='officer'").get(membership.clan_id).c;
             if (officerCount >= CLAN_MAX_OFFICERS) throw fail(409, 'TOO_MANY_OFFICERS');
-            db.prepare("UPDATE clan_members SET role='officer' WHERE account_id=?").run(targetId);
+            db.prepare("UPDATE clan_members SET role='officer' WHERE account_id=? AND character_key=?").run(targetId,targetKey);
           }
         } else {
-          db.prepare("UPDATE clan_members SET role='member' WHERE account_id=? AND role='officer'").run(targetId);
+          db.prepare("UPDATE clan_members SET role='member' WHERE account_id=? AND character_key=? AND role='officer'").run(targetId,targetKey);
         }
         return send(200, { ok: true });
       }
@@ -937,7 +963,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         db.exec('BEGIN IMMEDIATE');
         try {
           db.prepare(`UPDATE clans SET ${column} = ${column} + ? WHERE id=?`).run(amount, membership.clan_id);
-          if (currency === 'np') db.prepare('UPDATE clan_members SET donated_np = donated_np + ? WHERE account_id=?').run(amount, account.id);
+          if (currency === 'np') db.prepare('UPDATE clan_members SET donated_np = donated_np + ? WHERE account_id=? AND character_key=?').run(amount, account.id,myCharacterKey);
           db.exec('COMMIT');
         } catch (error) { db.exec('ROLLBACK'); throw error; }
         return send(200, { ok: true });
@@ -987,7 +1013,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       };
       const clanDungeonAttempts = (accountId) => {
         const today = todayKey();
-        return db.prepare('SELECT * FROM clan_dungeon_attempts WHERE account_id=? AND day_key=?').get(accountId, today)
+        return db.prepare('SELECT * FROM clan_dungeon_attempts WHERE account_id=? AND character_key=? AND day_key=?').get(accountId,myCharacterKey, today)
           || { account_id: accountId, day_key: today, entries_used: 0, first_entry_at: null };
       };
       const dungeonAttemptsInfo = (accountId) => {
@@ -1004,7 +1030,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         return send(200, {
           dayKey: row.day_key, stageIndex: row.stage_index, totalStages: TOTAL_STAGES,
           stage: clanDungeonStage(row.stage_index), monsterHp: row.monster_hp, completed: !!row.completed,
-          locked: !!row.locked_by, lockedByMe: row.locked_by === account.id, lockedByName: row.locked_by_name || null,
+          locked: !!row.locked_by, lockedByMe: row.locked_by === account.id&&row.locked_character===myCharacterKey, lockedByName: row.locked_by_name || null,
           lockedUntil: row.locked_until || null,
           attempts: dungeonAttemptsInfo(account.id),
         });
@@ -1023,19 +1049,19 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         try {
           const row = clanDungeonRow(membership.clan_id);
           if (row.completed) throw fail(409, 'DUNGEON_COMPLETE');
-          if (row.locked_by && row.locked_by !== account.id) throw fail(409, 'LOCKED_BY_OTHER');
+          if (row.locked_by && (row.locked_by !== account.id||row.locked_character!==myCharacterKey)) throw fail(409, 'LOCKED_BY_OTHER');
           if (!row.locked_by) {
             const attempts = clanDungeonAttempts(account.id);
             if (attempts.entries_used >= CLAN_DUNGEON_DAILY_ENTRIES) throw fail(409, 'ENTRIES_EXHAUSTED');
             if (attempts.entries_used === 1 && attempts.first_entry_at && Date.now() < attempts.first_entry_at + CLAN_DUNGEON_COOLDOWN_MS) throw fail(409, 'COOLDOWN_ACTIVE');
             const nextUsed = attempts.entries_used + 1;
             const nextFirstAt = attempts.entries_used === 0 ? Date.now() : attempts.first_entry_at;
-            db.prepare(`INSERT INTO clan_dungeon_attempts(account_id,day_key,entries_used,first_entry_at) VALUES(?,?,?,?)
-              ON CONFLICT(account_id,day_key) DO UPDATE SET entries_used=excluded.entries_used, first_entry_at=excluded.first_entry_at`)
-              .run(account.id, attempts.day_key, nextUsed, nextFirstAt);
-            const displayName = mainCharacterOf(db.prepare('SELECT data FROM backups WHERE account=?').get(account.id))?.nickname || account.name;
-            db.prepare('UPDATE clan_dungeon_state SET locked_by=?, locked_by_name=?, locked_until=? WHERE clan_id=?')
-              .run(account.id, displayName, Date.now() + CLAN_DUNGEON_LOCK_TIMEOUT_MS, membership.clan_id);
+            db.prepare(`INSERT INTO clan_dungeon_attempts(account_id,character_key,day_key,entries_used,first_entry_at) VALUES(?,?,?,?,?)
+              ON CONFLICT(account_id,character_key,day_key) DO UPDATE SET entries_used=excluded.entries_used, first_entry_at=excluded.first_entry_at`)
+              .run(account.id,myCharacterKey, attempts.day_key, nextUsed, nextFirstAt);
+            const displayName = myCharacter?.nickname || account.name;
+            db.prepare('UPDATE clan_dungeon_state SET locked_by=?, locked_character=?, locked_by_name=?, locked_until=? WHERE clan_id=?')
+              .run(account.id,myCharacterKey, displayName, Date.now() + CLAN_DUNGEON_LOCK_TIMEOUT_MS, membership.clan_id);
           }
           db.exec('COMMIT');
         } catch (error) { db.exec('ROLLBACK'); throw error; }
@@ -1055,10 +1081,10 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         try {
           const row = clanDungeonRow(membership.clan_id);
           if (row.completed) throw fail(409, 'DUNGEON_COMPLETE');
-          if (row.locked_by !== account.id) throw fail(403, 'NOT_YOUR_TURN');
+          if (row.locked_by !== account.id||row.locked_character!==myCharacterKey) throw fail(403, 'NOT_YOUR_TURN');
           const stage = clanDungeonStage(row.stage_index);
           const DUNGEON_HIT_CAP_RATIO = 0.5; // bkz. World Boss'taki aynı ilke — tek vuruş canavar canının yarısını aşamaz
-          if (!Number.isSafeInteger(damage) || damage <= 0 || damage > stage.hp * DUNGEON_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
+          if (!Number.isSafeInteger(damage) || damage < 0 || damage > stage.hp * DUNGEON_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
           const hp = Math.max(0, row.monster_hp - damage);
           let droppedMaterial = null;
           const killed = hp <= 0;
@@ -1081,7 +1107,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           }
           // Kullanıcı isteği: "Klan paneline basit bir log ekranı koy: 'Ahmet,
           // 3. Canavara 45.000 hasar vurdu.'" — klan içi rekabet/heyecan için.
-          const logName = mainCharacterOf(db.prepare('SELECT data FROM backups WHERE account=?').get(account.id))?.nickname || account.name;
+          const logName = myCharacter?.nickname || account.name;
           db.prepare('INSERT INTO clan_dungeon_log(clan_id,day_key,account_name,stage_index,damage,killed,created_at) VALUES(?,?,?,?,?,?,?)')
             .run(membership.clan_id, row.day_key, logName, row.stage_index, damage, killed ? 1 : 0, Date.now());
           db.exec('COMMIT');
@@ -1096,7 +1122,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (path === '/api/clan/dungeon/leave' && req.method === 'POST') {
         const membership = myMembership();
         if (!membership) throw fail(409, 'NOT_IN_CLAN');
-        db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL, locked_by_name=NULL, locked_until=NULL WHERE clan_id=? AND locked_by=?').run(membership.clan_id, account.id);
+        db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL, locked_by_name=NULL, locked_until=NULL WHERE clan_id=? AND locked_by=? AND locked_character=?').run(membership.clan_id, account.id,myCharacterKey);
         return send(200, { ok: true });
       }
       // Push bildirimleri — kullanıcı isteği: "Ayarlar kısmında bu
