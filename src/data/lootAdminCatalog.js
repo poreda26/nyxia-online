@@ -7,6 +7,6 @@ export const LOOT_ADMIN_CATALOG=[
  ...Object.entries(BALANCED_WEAPONS).flatMap(([cls,items])=>items.map(w=>({key:`weapon:${cls}:${w.name}`,kind:'weapon',class:cls,name:w.name,tier:w.tier}))),
  ...WARRIOR_SHIELDS.map(w=>({key:`shield:${w.name}`,kind:'shield',class:'warrior',name:w.name,tier:w.tier})),
  ...ARMOR_SETS.map(w=>({key:`armor:${w.cls}:${w.slot}:${w.tier}`,kind:'armor',class:w.cls,slot:w.slot,name:w.name,tier:w.tier})),
- ...Object.entries(ACCESSORY_SETS).flatMap(([slot,items])=>items.map(w=>({key:`accessory:${slot}:${w.name}`,kind:'accessory',slot,name:w.name,tier:w.tier,maxLevel:3}))),
- ...MAP_ACCESSORIES.map(w=>({key:`accessory:${w.slot}:${w.name}`,kind:'accessory',slot:w.slot,name:w.name,tier:w.tier,maxLevel:1})),
+ ...Object.entries(ACCESSORY_SETS).flatMap(([slot,items])=>items.map(w=>({key:`accessory:${slot}:${w.name}`,kind:'accessory',slot,name:w.name,tier:w.tier,minLevel:0,maxLevel:3}))),
+ ...MAP_ACCESSORIES.map(w=>({key:`accessory:${w.slot}:${w.name}`,kind:'accessory',slot:w.slot,name:w.name,tier:w.tier,mapTier:w.mapTier,minLevel:0,maxLevel:1})),
 ];

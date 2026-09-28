@@ -22,3 +22,10 @@ assert.ok(reward.player.inventory.some(i=>i.name===weapon.name&&i.upgradeLevel==
 for(let i=0;i<10;i++)assert.notEqual(rollMapLoot(1).upgradeLevel,7);
 applyLiveDropConfig(DEFAULT_DROP_CONFIG);assert.notEqual(rollChestLoot(1).upgradeLevel,7);
 console.log('All',LOOT_ADMIN_CATALOG.length,'catalog entries build; live chest, special chest, monster rewards and reset passed.');
+
+// Removing the final row deliberately suppresses equipment, never restores defaults.
+config.maps[map.id].monsters[monster.id].loot=[];
+applyLiveDropConfig(config);
+assert.equal(rollConfiguredLoot([]),null);
+assert.equal(grantMonsterReward(initialPlayer('warrior','elmorad','empty'),monster,map).player.inventory.length,initialPlayer('warrior','elmorad','empty').inventory.length);
+applyLiveDropConfig(DEFAULT_DROP_CONFIG);

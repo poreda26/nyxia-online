@@ -3,6 +3,7 @@ import { Swords, LogOut, Lock, Users, ScrollText } from "lucide-react";
 import { styles } from "../styles";
 import BarTrack from "./shared/BarTrack";
 import MenuEmblem from "./icons/MenuEmblem";
+import DungeonEncounter from './DungeonEncounter';
 import { useTranslation, formatServerError } from "../i18n/LanguageContext";
 import { fetchClanDungeon, enterClanDungeon, attackClanDungeon, leaveClanDungeon, fetchClanDungeonLog } from "../services/clanService";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit, varyDamage } from "../utils/combat";
@@ -161,6 +162,7 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
         <span>{t("clan.dungeonEntriesLeft", { count: attempts.entriesLeft })}</span>
       </div>
 
+      {stage&&<DungeonEncounter stage={stage} hp={monsterHp} index={stageIndex} total={totalStages} completed={completed}/>}
       {completed ? (
         <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>{t("clan.dungeonCompletedToday")}</div>
       ) : locked && !lockedByMe ? (

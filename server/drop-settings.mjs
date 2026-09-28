@@ -2,19 +2,20 @@ import {DEFAULT_DROP_CONFIG} from '../src/data/dropRules.js';
 import {LOOT_ADMIN_CATALOG} from '../src/data/lootAdminCatalog.js';
 import {MAPS} from '../src/data/maps.js';
 import {WARZONE_BOSSES} from '../src/data/warzone.js';
+import {buildSoloDungeonStages,buildDungeonStageChoices} from "../src/data/soloDungeon.js";
 const catalog=new Map(LOOT_ADMIN_CATALOG.map(x=>[x.key,x]));
-export const dropMetadata={maps:MAPS.map(m=>({id:m.id,name:m.name,monsters:[...m.monsters.map(x=>({id:x.id,name:x.name})),{id:`map_boss_${m.id}`,name:`${m.name} Muhafızı`}]})),bosses:WARZONE_BOSSES.map(b=>({id:b.id,name:b.name})),catalog:LOOT_ADMIN_CATALOG};
+export const dropMetadata={maps:MAPS.map(m=>({id:m.id,name:m.name,tier:m.tier,monsters:[...m.monsters.map(x=>({id:x.id,name:x.name})),{id:`map_boss_${m.id}`,name:`${m.name} Muhafızı`,isBoss:true},...buildSoloDungeonStages(m).flatMap((stage,i)=>stage.isBoss?[stage]:buildDungeonStageChoices(m,i)).map(x=>({id:x.id,name:x.name,isBoss:x.isBoss}))]})),bosses:WARZONE_BOSSES.map(b=>({id:b.id,name:b.name,tier:b.lootTier,visualSourceId:b.visualSourceId})),catalog:LOOT_ADMIN_CATALOG};
 export function validateDropRules(raw){
  const fail=()=>{throw Object.assign(new Error('INVALID_DROP_SETTINGS'),{status:400});};
- const table=value=>{
-  if(!Array.isArray(value)||!value.length||value.length>100)fail();
-  return value.map(x=>{const item=catalog.get(x?.key);if(!item||!Number.isFinite(x.weight)||x.weight<=0||x.weight>100000||!Number.isInteger(x.level)||x.level<1||x.level>(item.maxLevel||8))fail();return {key:x.key,weight:x.weight,level:x.level};});
+ const table=(value,allowEmpty=false)=>{
+  if(!Array.isArray(value)||(!allowEmpty&&!value.length)||value.length>300)fail();
+  return value.map(x=>{const item=catalog.get(x?.key);if(!item||!Number.isFinite(x.weight)||x.weight<=0||x.weight>100000||!Number.isInteger(x.level)||x.level<(item.minLevel??1)||x.level>(item.maxLevel??8))fail();return {key:x.key,weight:x.weight,level:x.level};});
  };
  const walk=(base,input)=>{
   if(!input||typeof input!=='object'||Array.isArray(input))fail();
   const result=structuredClone(base);
   for(const [key,v] of Object.entries(input)){
-   if(key==='loot' && (Object.hasOwn(base,'dropChance')||Object.hasOwn(base,'equipDropChance'))){result.loot=v===null?null:table(v);continue;}
+   if(key==='loot' && (Object.hasOwn(base,'dropChance')||Object.hasOwn(base,'equipDropChance'))){result.loot=v===null?null:table(v,true);continue;}
    if(!Object.hasOwn(base,key))fail();
    if(typeof base[key]==='object')result[key]=walk(base[key],v);
    else {
@@ -37,7 +38,7 @@ export function validateDropRules(raw){
 export function createDropSettings(db){
  db.exec(`CREATE TABLE IF NOT EXISTS live_drop_settings(id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL,data TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS drop_settings_history(revision INTEGER PRIMARY KEY,data TEXT NOT NULL,created_at INTEGER NOT NULL);`);
- const get=()=>{const row=db.prepare('SELECT * FROM live_drop_settings WHERE id=1').get();return {revision:row?.revision||0,data:row?JSON.parse(row.data):structuredClone(DEFAULT_DROP_CONFIG)};};
+ const get=()=>{const row=db.prepare('SELECT * FROM live_drop_settings WHERE id=1').get();return {revision:row?.revision||0,data:row?validateDropRules(JSON.parse(row.data)):structuredClone(DEFAULT_DROP_CONFIG)};};
  const save=(revision,raw)=>{const current=get();if(current.revision!==revision)throw Object.assign(new Error('DROP_CONFLICT'),{status:409});const data=validateDropRules(raw);db.prepare('INSERT OR IGNORE INTO drop_settings_history VALUES(?,?,?)').run(current.revision,JSON.stringify(current.data),Date.now());db.prepare('INSERT OR REPLACE INTO live_drop_settings VALUES(1,?,?)').run(revision+1,JSON.stringify(data));return {revision:revision+1,data};};
  return {get,save};
 }

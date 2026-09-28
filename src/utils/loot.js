@@ -361,6 +361,7 @@ export function gmBuildAccessory(slot, tier, level, name = null) {
 
 // Published weighted tables select exactly one item, using the real builders.
 export function rollConfiguredLoot(table) {
+  if(!table?.length)return null;
   const total=table.reduce((sum,x)=>sum+x.weight,0);
   let choice=Math.random()*total,entry=table[table.length-1];
   for(const row of table){choice-=row.weight;if(choice<0){entry=row;break;}}

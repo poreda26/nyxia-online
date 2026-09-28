@@ -50,4 +50,14 @@ Test: `node --test tests/admin.test.mjs tests/server.test.mjs`; üretim derlemes
 
 ## Dogrulama
 
+## Görselli drop atölyesi — 28 Eylül 2026
+
+- Hedef listesi ve eşya kutuları: normal canavarlar, harita muhafızları, her haritanın 11 solo zindan yolu/aşaması, Savaş Alanı bossları, T1–T6 ve özel sandık.
+- Katalogda isim, tier, tür ve sınıf filtresi; kutuya dokunarak +seviye/ağırlık düzenleme, kaldırma. Havuzlar hedefler arasında kopyalanabilir. Varsayılan havuzlar da gerçek dağılımlarıyla görünür; ilk değişiklik mevcut ağırlıkları korur.
+- Boş canavar havuzu `[]` ekipman dropunu kapatır; `null` varsayılana döner. Boş sandık yayınlanamaz. Altın, EXP, sandık ve parşömen şansları ayrı alanlardır. Özel sandığın varsayılanı sınıfa bağlıdır; özel liste yayınlanırsa tüm sınıflara aynı liste uygulanır.
+- Katalog ekipmanlarla sınırlıdır (247 kayıt). Klan zindanının dört malzemelik sunucu drop sistemi ve solo tamamlanma bonusu bu eşya havuzundan ayrıdır; bu ekranda düzenlenmez.
+- Klan zindanında mevcut atlaslardan tam boy canavar, boss ayrımı, can barı, statlar ve 20 aşamalı ilerleme şeridi. Yeni raster boss çizimleri imagegen kullanım limiti nedeniyle üretilemedi; mevcut görseller kullanıldı.
+- Kontroller: `node --test tests/drop-pools.test.mjs tests/admin.test.mjs`, `npm run test:admin-loot`, `npm run test:world`, `npm run build`; yerel Vite 5188 ile `node scripts/check-owner-ui.mjs` ve `node scripts/check-dungeon-ui.mjs`.
+- GitHub kaynak yayını canlı VM dağıtımı değildir; yeni frontend ile `server/drop-settings.mjs` dahil backend birlikte güncellenmelidir. Eski backend yeni zindan hedeflerini/boş havuzları reddeder.
+
 27 Eylul 2026: Owner/GM access separation, CSRF rejection, revision conflict, snapshot restore, ban and restart persistence passed. Desktop 1440px and mobile 390px/320px UI sections and invalid JSON handling passed with mock data. No live accounts changed. Run scripts/check-owner-ui.mjs against local Vite on port 5188.

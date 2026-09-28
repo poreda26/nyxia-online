@@ -421,7 +421,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       np.gold = clampGold(np.gold + goldGain);
       drops = [t("warzone.drop.gold", { amount: formatGold(np.gold - goldBefore) })];
       if (Math.random() < boss.equipDropChance * wingMultiplier(p, "drop")) {
-        const item = boss.loot?.length ? rollConfiguredLoot(boss.loot) : rollLoot(boss.lootTier);
+        const item = Array.isArray(boss.loot) ? rollConfiguredLoot(boss.loot) : rollLoot(boss.lootTier);
         // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
         // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
         if (item) {

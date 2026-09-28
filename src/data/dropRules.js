@@ -1,5 +1,6 @@
 import { MAPS } from "./maps.js";
 import { WARZONE_BOSSES, WARZONE_HUNT_POWER_MULT, WARZONE_HUNT_GOLD_MULT, WARZONE_HUNT_DROP_MULT } from "./warzone.js";
+import {buildSoloDungeonStages,buildDungeonStageChoices} from "./soloDungeon.js";
 export const DEFAULT_CHEST_WEAPON_PCT = 0.46;
 export const DEFAULT_CHEST_ARMOR_PCT = 0.46; // kalan (1 - weaponPct - armorPct) aksesuara gidiyor
 export const DEFAULT_SPECIAL_CHEST_UNIQUE_CHANCE = 0.03;
@@ -8,7 +9,7 @@ function buildDefaultDropConfig() {
   const maps = {};
   for (const map of MAPS) {
     const monsters = {};
-    for (const m of map.monsters) {
+    for (const m of [...map.monsters,...buildSoloDungeonStages(map).flatMap((stage,i)=>stage.isBoss?[stage]:buildDungeonStageChoices(map,i))]) {
       monsters[m.id] = { goldMin: m.goldMin, goldMax: m.goldMax, xp: m.xp, dropChance: map.dropChance, chestChance: map.chestChance };
     }
     const last=map.monsters.at(-1);
