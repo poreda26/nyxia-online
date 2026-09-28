@@ -98,7 +98,7 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
                 opacity: isDragSource ? 0.35 : (locked ? 0.6 : 1),
               }}
             >
-              {item && <ItemIcon item={item} size={30} color={itemTierColor(item.tier)} strokeWidth={1.5} />}
+              {item && <span data-bag-art style={{position:'absolute',inset:'7%',display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><ItemIcon item={item} size="100%" color={itemTierColor(item.tier)} strokeWidth={1.5} /></span>}
               {item && item.stackable && (item.count || 1) > 1 && (
                 <span style={styles.bagSlotBadge}>{item.count}</span>
               )}

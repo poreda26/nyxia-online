@@ -25,7 +25,7 @@ export default function BankGrid({ playerClass, items, selectedId, onItemTap }) 
               ...(isSelected ? styles.bagSlotSelected : {}),
             }}
           >
-            {item && <ItemIcon item={item} size={30} color={itemTierColor(item.tier)} strokeWidth={1.5} />}
+            {item && <span data-bag-art style={{position:'absolute',inset:'7%',display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}><ItemIcon item={item} size="100%" color={itemTierColor(item.tier)} strokeWidth={1.5} /></span>}
             {locked&&<Ban aria-label="Başka sınıfa ait" size={14} color="#E8A5AF" style={{position:"absolute",top:3,left:3}}/>}
             {item && item.stackable && (item.count || 1) > 1 && (
               <span style={styles.bagSlotBadge}>{item.count}</span>
