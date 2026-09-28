@@ -43,6 +43,7 @@ import DuelScene from "./DuelScene";
 import { getWarzoneBossConfig, getWarzoneHuntConfig } from "../utils/dropConfig";
 import { tierName } from "../data/itemRarity";
 import { useTranslation } from "../i18n/LanguageContext";
+import { accusativeName } from "../utils/turkish";
 
 // Canavar Ara'nın canavar havuzu — Crimson Battlefront'un mevcut roster'ı
 // (bkz. data/maps.js), yeni içerik üretmeden Savaş Alanı'na "en zorlu
@@ -538,7 +539,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
         const result = awardNationalPoint(updated);
         const nextPlayer = { ...result.player, milestones: { ...result.player.milestones, duelsWon: (result.player.milestones?.duelsWon || 0) + 1 } };
         setPlayer(() => nextPlayer);
-        pushToast(t("warzone.toast.duelWon", { ghost: duel.ghost.name, gain: result.gain }), "loot");
+        pushToast(t("warzone.toast.duelWon", { ghost: lang === "tr" ? accusativeName(duel.ghost.name) : duel.ghost.name, gain: result.gain }), "loot");
         const opponentAccountId = opponentAccountRef.current;
         if (opponentAccountId) warzoneDuelService.reportDuelResult(opponentAccountId, "me").catch(() => {});
         setTimeout(() => { endDuel(); lockRef.current = false; }, 700);
@@ -641,13 +642,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
         ? Math.round(varyDamage(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K))*action.atkMult)
         : 0;
       monsterHp = Math.max(0, monsterHp - dmg);
-      log.push(!playerHits ? t("warzone.log.huntMissed", { monster: monster.name }) : isCrit ? t("warzone.log.huntCrit", { monster: monster.name, dmg }) : t("warzone.log.huntHit", { monster: monster.name, dmg }));
+      log.push(!playerHits ? t("warzone.log.huntMissed", { monster: lang === "tr" ? accusativeName(monster.name) : monster.name }) : isCrit ? t("warzone.log.huntCrit", { monster: monster.name, dmg }) : t("warzone.log.huntHit", { monster: monster.name, dmg }));
       setHuntVisual((v) => ({ ...v, outgoing: { hit: playerHits, damage: dmg, crit: isCrit } }));
       if(playerHits)playHit({crit:isCrit,cls:player.class});else playMiss();
     }
 
     if (monsterHp <= 0) {
-      setWz((prev) => ({ ...prev, hunt: null, log: [...prev.log, t("warzone.log.huntDefeated", { monster: monster.name })].slice(-24) }));
+      setWz((prev) => ({ ...prev, hunt: null, log: [...prev.log, t("warzone.log.huntDefeated", { monster: lang === "tr" ? accusativeName(monster.name) : monster.name })].slice(-24) }));
       const huntCfg = getWarzoneHuntConfig();
       const result = grantMonsterReward(action.player, monster, CRIMSON_MAP, { goldMult: huntCfg.goldMult, dropMult: huntCfg.dropMult });
       setPlayer(result.player);

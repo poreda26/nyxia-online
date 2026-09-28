@@ -40,3 +40,20 @@ export function possessiveName(name) {
   const suffix = suffixFor(lastVowel(trimmed));
   return `${trimmed}'${endsInVowel ? "n" : ""}${suffix}`;
 }
+
+// Türkçe belirtme (accusative) eki — "yendin" gibi nesne alan fiillerde
+// "{ad}'ı/i/u/ü yendin" için (bkz. warzone.js, translations.js). Önceden
+// bu şablonlarda ada bakılmaksızın sabit "'i" veya "'ı" eki vardı, çoğu
+// isimde yanlıştı. Oyundaki canavar/hayalet isimlerinin neredeyse tamamı
+// "Sis Kurdu", "Nadas Devi", "Kor Salamanderi" gibi zaten 3. tekil iyelik
+// ekiyle biten tamlama — bu yüzden sesli harfle bitenlerde de (plain
+// "kapı"+"yı" gibi değil) "kapısı"+"nı" örneğindeki gibi "n" tamponu
+// doğru sonucu verir: "Sis Kurdu'nu", "Nadas Devi'ni".
+export function accusativeName(name) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return trimmed;
+  const lastChar = normalize(trimmed[trimmed.length - 1]);
+  const endsInVowel = VOWELS.includes(lastChar);
+  const suffix = suffixFor(lastVowel(trimmed)).slice(0, -1);
+  return `${trimmed}'${endsInVowel ? "n" : ""}${suffix}`;
+}

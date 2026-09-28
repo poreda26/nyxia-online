@@ -23,6 +23,7 @@ import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS } from "../data/soloDungeon";
 import { playHit, playMiss, playHurt, playLevelUp, playSkill, playPotion } from "../audio/sfx";
 import { tierName } from "../data/itemRarity";
 import { useTranslation } from "../i18n/LanguageContext";
+import { accusativeName } from "../utils/turkish";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
@@ -966,7 +967,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <Trophy size={32} color="var(--gold-text)" strokeWidth={1.3} />
             <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 18 }}>{t("battle.rematchTitle")}</div>
             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, textAlign: "center", maxWidth: 220 }}>
-              {t("battle.rematchDesc", { monster: tm(victoryMonster) })}
+              {t("battle.rematchDesc", { monster: lang === "tr" ? accusativeName(tm(victoryMonster)) : tm(victoryMonster) })}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
               <button
