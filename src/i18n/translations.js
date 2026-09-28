@@ -225,7 +225,7 @@ const base = {
       autoBattleTitle: "Otomatik Saldırı", autoBattleOn: "Açık", autoBattleOff: "Kapalı",
       autoBattlePremiumOnly: "Otomatik Saldırı bir Apex/Mythic Premium özelliğidir",
       hpPotThreshold: "HP Pot Eşiği", mpPotThreshold: "MP Pot Eşiği", autoSkill: "Otomatik Beceri Kullan",
-      rematchTitle: "Tekrar Savaş?", rematchDesc: "{monster}'i yendin. Tekrar savaşmak ister misin?",
+      rematchTitle: "Tekrar Savaş?", rematchDesc: "{monster} yendin. Tekrar savaşmak ister misin?",
       dungeonCompleteTitle: "Zindan Tamamlandı!",
       dungeonCompleteDesc: "{map} Zindan Efendisi'ni yendin — +{gold} altın ve {tier} Sandık kazandın.",
       great: "Harika!", choosePath: "Yolunu Seç", choosePathDesc: "Bir sonraki aşamaya nasıl ilerleyeceksin?",
