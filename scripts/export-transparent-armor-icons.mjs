@@ -22,4 +22,9 @@ for(const [cls,{x,y}] of Object.entries(grids)){
   await sharp(data,{raw:info}).extract({left,top,width:right-left+1,height:bottom-top+1}).resize(360,360,{fit:'contain',background:'#00000000'}).extend({top:30,bottom:30,left:30,right:30,background:'#00000000'}).png().toFile(`src/assets/items/${cls}-t${row+1}-${slots[col]}.png`);
  }
 }
+// Reviewed replacement: a connected garment instead of detached shin pieces.
+await sharp('art-source/warrior-t5-legs-transparent.png').trim({threshold:8})
+ .resize(360,360,{fit:'contain',background:'#00000000'})
+ .extend({top:30,bottom:30,left:30,right:30,background:'#00000000'})
+ .png().toFile('src/assets/items/warrior-t5-legs.png');
 console.log('Exported 50 centered transparent Warrior/Rogue inventory icons.');

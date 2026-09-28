@@ -1,9 +1,11 @@
 import {useId} from 'react';
 import {itemTierColor} from '../../data/itemRarity';
 import {boostScrollDef} from '../../data/boostScrolls';
+import SpecialScrollArt from './SpecialScrollArt';
 const marks={raceScroll:'M37 44C36 25 62 25 65 41M60 34L65 42L71 35M66 49C65 67 40 67 37 51M31 57L37 50L44 57',jobScroll:'M39 58L62 30M38 31L63 58M33 52L45 63M56 54L67 43M38 31L38 40L47 40',atk:'M40 57L61 29L65 27L64 33L45 61M38 53L49 63M40 60L36 65',def:'M39 34L51 29L64 34L61 52L51 63L41 53Z',hp:'M39 39C38 28 51 30 51 38C52 27 67 29 64 41L51 58Z',exp:'M51 27L55 39L67 42L56 47L52 60L47 48L36 44L46 39Z',gold:'M51 30L64 39L61 53L49 60L37 50L39 37Z M41 40L59 40L54 52L46 52Z',np:'M42 29L60 29L61 40L66 44L57 58L45 58L36 44L41 40Z M45 36L55 36M44 44L57 44',scroll:'M40 51L52 31L64 51M45 48L52 37L58 48M52 38V62',accessoryScroll:'M43 37L54 31L64 40L59 51L45 54L37 45Z M45 54L42 64L54 66L59 51',bonusScroll:'M51 28L56 40L69 42L59 51L61 64L50 57L39 64L41 51L32 42L46 40Z'};
 export default function ScrollArt({item={},size=48}){
  const id=useId(),kind=item.kind==='boostScroll'?item.boostId:item.kind;
+ if(['raceScroll','jobScroll','bonusScroll'].includes(item.kind))return <SpecialScrollArt item={item} size={size}/>;
  const color=item.kind==='raceScroll'?'#72e5ed':item.kind==='jobScroll'?'#efb45d':item.kind==='boostScroll'?boostScrollDef(item.boostId)?.color:item.kind==='bonusScroll'?'#edc971':item.kind==='accessoryScroll'?'#72d8bb':itemTierColor(item.tier||1);
  return <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={item.name||'Parşömen'} data-scroll-art={kind}>
  <defs><linearGradient id={`${id}-paper`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fff3d4"/><stop offset=".45" stopColor="#dbc092"/><stop offset="1" stopColor="#926642"/></linearGradient><linearGradient id={`${id}-gold`}><stop stopColor="#503521"/><stop offset=".35" stopColor="#ffe6a5"/><stop offset=".65" stopColor="#9c733d"/><stop offset="1" stopColor="#ecd2a0"/></linearGradient><radialGradient id={`${id}-seal`}><stop stopColor="#fff3c9"/><stop offset=".3" stopColor={color}/><stop offset="1" stopColor="#382338"/></radialGradient></defs>

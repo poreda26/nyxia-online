@@ -18,3 +18,11 @@ Rogue: Same transparent atlas requirements and column order, retaining the exist
 ## Verification
 
 All 50 icons rendered through the actual ItemIcon component at 320, 390 and 768px; no image failures, browser errors or horizontal overflow. Inspected the contact sheets and mobile preview. Production build passed.
+
+## Connected T5 trousers and special scrolls (2026-09-29)
+
+Replaced Warrior T5 legs with a connected armored garment, retaining ivory/gold/blue decoration. Built-in Imagegen edit source: `art-source/warrior-t5-legs-transparent.png`; exported to `src/assets/items/warrior-t5-legs.png`. Export script applies this override after the atlas so regeneration preserves the correction.
+
+Prompt: Replace the detached shin pieces with one connected pair of armored trousers: belt at the top, hips and crotch joining two articulated legs, no feet or loose codpiece. Preserve ivory enamel, engraved gold and blue shield motifs. Hollow garment, front three-quarter view, premium hand-painted RPG inventory icon, centered with transparent alpha and no backdrop, frame, text or glow.
+
+Race/job/bonus scrolls use repo-native SVG artwork in `SpecialScrollArt.jsx`. Race uses paired silhouettes, job uses sword/bow/staff symbols, bonus uses a jeweled gold crest. Centered seals and block SVG layout replace the old right-offset ribbons. Premium shop uses the same artwork. No item rules, effects or prices changed. Four icons checked through ItemIcon at 320/390/768px, including centered 32px forge/bag presentation; production build passed.

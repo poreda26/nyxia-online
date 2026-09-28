@@ -1,6 +1,6 @@
 import ScrollArt from './icons/ScrollArt';
 import {useState} from 'react';
-import {Crown,Check,Gem,Shuffle,ScrollText,Star} from 'lucide-react';
+import {Crown,Check,Gem,Star} from 'lucide-react';
 import {PREMIUM_TIERS} from '../data/premium';
 import {activePremiumTier,premiumDaysLeft,buyPremium} from '../utils/premium';
 import {addItemToInventory,makeRaceScroll,makeJobScroll,makeBonusScrollStack} from '../utils/inventory';
@@ -101,7 +101,7 @@ return <div className="premium-shop">          <div style={{ fontSize: 10, color
 
           <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>{t("shop.scrollsHeader")}</div>
           <div className="rpg-row" style={{ ...styles.itemRow, borderColor: "#8B6FC955" }}>
-            <ScrollText size={18} color="#8B6FC9" />
+            <ScrollArt item={{kind:'raceScroll',name:t('shop.raceScrollTitle')}} size={36}/>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>{t("shop.raceScrollTitle")}</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("shop.raceScrollDesc")}</div>
@@ -112,7 +112,7 @@ return <div className="premium-shop">          <div style={{ fontSize: 10, color
             <button className="rpg-action" style={styles.tinyBtn} onClick={buyRaceScroll}>{t("shop.buyShort")}</button>
           </div>
           <div className="rpg-row" style={{ ...styles.itemRow, borderColor: "#5FA8A055", marginTop: 8 }}>
-            <Shuffle size={18} color="#5FA8A0" />
+            <ScrollArt item={{kind:'jobScroll',name:t('shop.jobScrollTitle')}} size={36}/>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13 }}>{t("shop.jobScrollTitle")}</div>
               <div style={{ fontSize: 10, color: "var(--text-faint)" }}>
