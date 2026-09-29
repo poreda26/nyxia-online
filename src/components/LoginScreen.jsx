@@ -4,6 +4,7 @@ import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 import { isReservedUsername } from "../utils/storage";
 import { registerAccount, loginAccount } from "../utils/api";
+import nyxiaLogo from "../assets/brand/nyxia-logo.png";
 
 const NAME_PATTERN = /^[a-z0-9_]{3,24}$/;
 
@@ -51,6 +52,7 @@ export default function LoginScreen({ initialUsername, onLogin }) {
   return (
     <div style={styles.classSelectRoot}>
       <div style={styles.classSelectHeader}>
+        <img src={nyxiaLogo} alt="Nyxia" style={{ width: "100%", maxWidth: 240, margin: "0 auto 10px", display: "block" }} />
         <div style={styles.eyebrow}>{t("login.welcome")}</div>
         <h1 style={styles.h1}>{t(mode === "register" ? "login.registerTitle" : "login.title")}</h1>
         <p style={styles.subtext}>{t("login.subtitle")}</p>
