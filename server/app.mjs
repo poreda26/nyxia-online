@@ -282,13 +282,13 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Character-Key');
         return send(204, null);
       }
-      if (req.method !== 'GET' && (req.headers.origin !== origin || !req.headers['content-type']?.startsWith('application/json'))) throw fail(403, 'INVALID_REQUEST_ORIGIN');
+      if (req.method !== 'GET' && req.method !== 'HEAD' && (req.headers.origin !== origin || !req.headers['content-type']?.startsWith('application/json'))) throw fail(403, 'INVALID_REQUEST_ORIGIN');
       const path = new URL(req.url, 'http://localhost').pathname;
       if (!path.startsWith('/api/')) {
         if (!staticDir || req.method !== 'GET') throw fail(404, 'NOT_FOUND');
         return serveStatic(res, staticDir, path);
       }
-      if (path === '/api/health' && req.method === 'GET') return send(200, { ok: true, mode: 'account-backup', authoritative: false });
+      if (path === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')) return send(200, { ok: true, mode: 'account-backup', authoritative: false });
       if (['/api/register', '/api/login'].includes(path) && req.method === 'POST') {
         rateLimit(clientAddress(req));
         const body = await read(req);
