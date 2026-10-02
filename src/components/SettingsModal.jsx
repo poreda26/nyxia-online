@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
+import {Capacitor} from '@capacitor/core';
 import TutorialModal from './TutorialModal';
 import './SettingsPanel.css';
 import { Settings, X, Volume2, VolumeX, Languages, SunMedium, Bell, BellOff } from "lucide-react";
@@ -261,7 +262,7 @@ export default function SettingsModal({
  return createPortal(<div className="settings-overlay" style={styles.modalOverlay} onClick={onClose}>
   <section ref={panel} className="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-heading" onClick={e=>e.stopPropagation()}>
    <header><div className="settings-seal"><Settings size={26}/></div><div><small>NYXIA ONLINE</small><h2 id="settings-heading">{t('settings.title')}</h2></div><button className="settings-close" aria-label={tr?'Kapat':'Close'} onClick={onClose}><X size={20}/></button></header>
-   <nav className="settings-tabs">{[['sound','Ses ve titreşim','Sound & touch'],['display','Görünüm','Display'],['notifications','Bildirimler','Notifications'],['help','Oyun rehberi','Game guide'],...(onDeleteAccount?[['account','Hesap','Account']]:[])].map(([id,local,en])=><button key={id} aria-pressed={section===id} onClick={()=>setSection(id)}>{tr?local:en}</button>)}</nav>
+   <nav className="settings-tabs">{[['sound','Ses ve titreşim','Sound & touch'],['display','Görünüm','Display'],...(Capacitor.isNativePlatform()?[]:[['notifications','Bildirimler','Notifications']]),['help','Oyun rehberi','Game guide'],...(onDeleteAccount?[['account','Hesap','Account']]:[])].map(([id,local,en])=><button key={id} aria-pressed={section===id} onClick={()=>setSection(id)}>{tr?local:en}</button>)}</nav>
    <div className="settings-content">
     {section==='sound'&&<>
      <div className="settings-group"><h3>{tr?'Ses seviyeleri':'Audio levels'}</h3><VolumeRow label={t('settings.musicVolume')} volume={musicVolume} muted={musicMuted} onVolumeChange={onMusicVolumeChange} onToggleMute={onToggleMusicMute} t={t}/><VolumeRow label={t('settings.sfxVolume')} volume={sfxVolume} muted={sfxMuted} onVolumeChange={onSfxVolumeChange} onToggleMute={onToggleSfxMute} t={t}/></div>

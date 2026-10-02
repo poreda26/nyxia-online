@@ -1,8 +1,9 @@
-# Al-Sat & RPG Ticaret Oyunu — Proje Dokümanı
+# Nyxia Online — Proje Dokümanı
 
-2D, UI/arayüz odaklı, yürütme mekaniği olmayan, metin ve panel tabanlı mobil RPG & Pazar
-Ticaret Simülasyonu. Prototip tek dosyalık bir React bileşeni (`RPGMarketGame.jsx`) olarak
-yazıldı; tüm state React içinde tutulur (oturum boyunca kalıcı, sayfa yenilenince sıfırlanır).
+Nyxia Online, Android ve iOS için geliştirilen, menü/panel tabanlı bir mobil online RPG'dir:
+sıra tabanlı canavar savaşları, zindanlar, ekipman geliştirme, oyuncular arası pazar, klanlar,
+arkadaşlık/sohbet ve Savaş Alanı PvP'si. (Aşağıdaki sınıf/sistem tabloları ilk prototipten
+kalmadır ve güncel olmayabilir; güncel kaynak `src/data/` ve `server/` dizinleridir.)
 
 ## Ana Oyun Döngüsü
 
