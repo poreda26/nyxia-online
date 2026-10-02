@@ -16,6 +16,7 @@ import { itemTierColor, tierName } from "../data/itemRarity";
 import { buyNationalPoint, canBuyNationalPoint } from "../utils/nationalPoint";
 import { NP_RECOVERY_GOLD_COST, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
 import { useTranslation, formatReason } from "../i18n/LanguageContext";
+import { captainSubtabNotices } from "../utils/captainNotices";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import BarTrack from "./shared/BarTrack";
@@ -33,6 +34,7 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
   // DEĞİL: her sekme kendi içinde düz kaydırmalı kalıyor.
   const { t, tm, lang } = useTranslation();
   const [subtab, setSubtab] = useState("quests");
+  const notices = captainSubtabNotices(player);
   const claim = (questId) => {
     const result = claimQuest(player, questId);
     if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
@@ -115,8 +117,9 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
 
       <div className="rpg-tabs" style={styles.subtabRow}>
         {[["quests", t("captain.subtabs.quests")], ["daily", t("captain.subtabs.daily")], ["weekly", t("captain.subtabs.weekly")], ["book", t("captain.subtabs.book")]].map(([key, label]) => (
-          <button key={key} aria-selected={subtab===key} onClick={() => setSubtab(key)} style={{ ...styles.subtabBtn, ...(subtab === key ? styles.subtabBtnActive : {}) }}>
+          <button key={key} aria-selected={subtab===key} onClick={() => setSubtab(key)} style={{ ...styles.subtabBtn, position: "relative", ...(subtab === key ? styles.subtabBtnActive : {}) }}>
             {label}
+            {notices[key] && <i className="subtab-notification" role="img" aria-label={lang === "en" ? "Reward ready to claim" : "Alınabilecek ödül var"} />}
           </button>
         ))}
       </div>

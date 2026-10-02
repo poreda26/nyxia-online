@@ -189,7 +189,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // bildirdiği bug). Artık nereden geliniyorsa gelinsin (fresh seçim ya da
   // Tekrar Savaş) her yeni savaş dolu can/manayla başlıyor.
   const startBattle = (m, { preserveAutoBattle = false } = {}) => {
-    if(m.mapBoss&&!canFightMapBoss(latestPlayer.current,map.id).ok){pushToast(t('battle.bossDefeatedToday'), 'warn');return;}
+    if(m.mapBoss){const gate=canFightMapBoss(latestPlayer.current,map.id);if(!gate.ok){pushToast(t(gate.reason==='mapIncomplete'?'battle.bossMapIncomplete':'battle.bossDefeatedToday'), 'warn');return;}}
     attackLockRef.current = false;
     setMonster(m);
     setVisual({id:0,type:'',label:''});
@@ -681,14 +681,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
               <div className="monster-mini-portrait"><MonsterPortrait monster={mapBoss} label={tm(mapBoss)}/></div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13 }}>{tm(mapBoss)}</div>
-                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("battle.mapBossDesc")}</div>
+                <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{mapBossCheck.reason === "mapIncomplete" ? t("battle.bossNeedsMapDesc", { need: KILLS_TO_UNLOCK_NEXT, done: mapBossCheck.done, total: mapBossCheck.total }) : t("battle.mapBossDesc")}</div>
               </div>
               <button
                 style={{ ...styles.tinyBtn, ...(mapBossCheck.ok && !locked ? { background: "#D4AF6A", color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }) }}
                 disabled={!mapBossCheck.ok || locked}
                 onClick={() => startBattle(mapBoss)}
               >
-                {mapBossCheck.ok ? t("battle.goToBoss") : t("battle.defeatedToday")}
+                {mapBossCheck.ok ? t("battle.goToBoss") : t(mapBossCheck.reason === "mapIncomplete" ? "battle.bossNeedsMap" : "battle.defeatedToday")}
               </button>
             </div>
           </div>

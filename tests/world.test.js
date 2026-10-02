@@ -13,6 +13,7 @@ import { saveCharacterSlot, loadAccount } from '../src/utils/storage';
 import { learnFreeSkills } from '../src/utils/skills';
 import { buildMapBoss } from '../src/data/mapBosses';
 import { canFightMapBoss } from '../src/utils/mapBoss';
+import { KILLS_TO_UNLOCK_NEXT } from '../src/utils/mapProgress';
 import { buildDungeonStageChoices } from '../src/data/soloDungeon';
 import { MAP_COLLECTIONS, collectionProgress, claimCollection } from '../src/utils/collection';
 import { WEEKLY_QUESTS } from '../src/data/weeklyQuests';
@@ -298,9 +299,16 @@ test('armor layers follow each equipped slot, back view and unequip without chan
   assert.equal(armorVariant({name:'Leather Cap'}),null);
 });
 
-test('map boss is daily, uses normal rewards and grants one extra chest',()=>{
-  const p=player(),map={...WORLD.map,dropChance:0,chestChance:0},boss=buildMapBoss(map),result=grantMonsterReward(p,boss,map);
-  assert.equal(canFightMapBoss(result.player,map.id).ok,false);
+test('map boss needs a completed map, is daily, uses normal rewards and grants one extra chest',()=>{
+  const map={...WORLD.map,dropChance:0,chestChance:0},boss=buildMapBoss(map),fresh=player();
+  const gate=canFightMapBoss(fresh,map.id,map);
+  assert.deepEqual([gate.ok,gate.reason,gate.done,gate.total],[false,'mapIncomplete',0,map.monsters.length]);
+  const almost={...fresh,monsterKills:Object.fromEntries(map.monsters.map((m,i)=>[m.id,i===0?KILLS_TO_UNLOCK_NEXT-1:KILLS_TO_UNLOCK_NEXT]))};
+  assert.equal(canFightMapBoss(almost,map.id,map).ok,false);
+  const p={...fresh,monsterKills:Object.fromEntries(map.monsters.map(m=>[m.id,KILLS_TO_UNLOCK_NEXT]))};
+  assert.equal(canFightMapBoss(p,map.id,map).ok,true);
+  const result=grantMonsterReward(p,boss,map);
+  assert.equal(canFightMapBoss(result.player,map.id,map).reason,'defeatedToday');
   assert.equal(result.player.chests.length,p.chests.length+1);
   assert.equal(result.player.weeklyQuests.bosses,1);
 });

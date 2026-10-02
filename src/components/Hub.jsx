@@ -1,17 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { hasCaptainNotice } from "../utils/captainNotices";
+import { loadChatSeenId, saveChatSeenId, loadDmSeen, saveDmSeen, hasUnreadChat, latestChatId, unreadFriendIds } from "../utils/readState";
 import { LogOut } from "lucide-react";
 import { hasClaimedFirstPurchaseBonus } from "../utils/firstPurchaseBonus";
 import { useTranslation } from "../i18n/LanguageContext";
 import ScreenPanel from './ScreenPanel';
 import { CLASSES } from "../data/classes";
 import { totalStats, playerDef, playerMaxHp } from "../utils/player";
-import { MONSTER_QUESTS } from "../data/quests";
-import { questProgress, isQuestClaimed } from "../utils/quests";
-import { dailyQuestProgress } from "../utils/dailyQuests";
-import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
-import { WEEKLY_QUESTS } from "../data/weeklyQuests";
-import { weeklyQuestProgress } from "../utils/weeklyQuests";
-import { MAP_COLLECTIONS, collectionProgress } from "../utils/collection";
 import { canClaimDailyLogin } from "../utils/dailyLogin";
 import { canFightMapBoss } from "../utils/mapBoss";
 import { buildMapBoss } from "../data/mapBosses";
@@ -123,12 +118,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   // görev bitince ya da puan biriktikçe otomatik yanar. Envanter ise bir
   // "drop oldu" olayına bağlı (bkz. BattleTab#applyLoot, InventoryTab
   // #openChest), o yüzden player.hasNewItemNotice adında kalıcı bir bayrak.
-  const captainNotice = MONSTER_QUESTS
-    .filter((q) => player.level >= q.requiredLevel)
-    .some((q) => questProgress(player, q).done && !isQuestClaimed(player, q.id))
-    || DAILY_QUEST_SLOTS.some((_, i) => { const p = dailyQuestProgress(player, i); return p.done && !p.claimed; })
-    || WEEKLY_QUESTS.some((q) => { const p = weeklyQuestProgress(player, q); return p.done && !p.claimed; })
-    || MAP_COLLECTIONS.some((c) => { const p = collectionProgress(player, c); return p.done && !p.claimed; });
+  const captainNotice = hasCaptainNotice(player);
   const characterNotice = player.statPoints > 0;
   const inventoryNotice = !!player.hasNewItemNotice;
 
@@ -147,7 +137,11 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   // o yüzden "görülen sayı" da sadece bu oturumluk bir state. Sohbet sekmesi
   // açıkken her tur otomatik "görüldü" sayılır, kapalıyken sayı arttıkça
   // bildirim yanar.
-  const [chatSeenCount, setChatSeenCount] = useState(0);
+  // Okundu bilgisi artık mesaj KİMLİĞİNE dayanıyor ve cihazda saklanıyor (bkz.
+  // utils/readState.js): önceden bellekte tutulan mesaj SAYISI her oyun
+  // açılışında sıfırlandığı için okunmuş mesajlar tekrar bildirim veriyordu,
+  // ayrıca 100 mesajlık tavanda yeni mesajı da kaçırıyordu.
+  const [chatSeenId, setChatSeenId] = useState(() => loadChatSeenId(username));
   const [chatNotice, setChatNotice] = useState(false);
   useEffect(() => {
     let cancelled = false;
@@ -159,17 +153,20 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         return; // Oturum/ağ geçici sorunu — bir sonraki periyotta tekrar dener.
       }
       if (cancelled) return;
-      if (tab === "chat") {
-        setChatSeenCount(msgs.length);
+      const newest = latestChatId(msgs);
+      // Sohbet açıkken ya da bu hesapta hiç kayıt yokken (ilk açılış: eski
+      // geçmiş için sahte bildirim çıkmasın) mevcut son mesaj görülmüş sayılır.
+      if (tab === "chat" || chatSeenId === null) {
+        if (chatSeenId === null || newest > chatSeenId) { saveChatSeenId(username, newest); setChatSeenId(newest); }
         setChatNotice(false);
       } else {
-        setChatNotice(msgs.length > chatSeenCount);
+        setChatNotice(hasUnreadChat(msgs, chatSeenId));
       }
     };
     check();
     const id = setInterval(check, 4000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [tab, chatSeenCount]);
+  }, [tab, chatSeenId, username]);
 
   // Arkadaşlık isteği bildirimi — kullanıcı isteği: "Arkadaşlar için bir
   // sekme yap." Sohbet'in "görülen sayı" mantığından farklı: bekleyen
@@ -185,9 +182,11 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   // chatSeenCount ile aynı desen, sayfa yenilenince sıfırlanır — kritik
   // veri değil, sadece bildirim durumu).
   const [openDmTabs, setOpenDmTabs] = useState([]); // [{accountId, name}]
-  const [dmSeenAt, setDmSeenAt] = useState({}); // { [accountId]: timestamp }
+  const [dmSeenAt, setDmSeenAt] = useState(() => loadDmSeen(username)); // { [accountId]: timestamp } | null (ilk açılış)
   const [pendingActiveDm, setPendingActiveDm] = useState(null);
   const [dmUnreadIds, setDmUnreadIds] = useState(new Set());
+  const friendLastMessageRef = useRef({}); // { [accountId]: sunucu zamanı }
+  useEffect(() => { if (dmSeenAt) saveDmSeen(username, dmSeenAt); }, [dmSeenAt, username]);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,7 +196,11 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
       catch { return; } // Oturum/ağ geçici sorunu — bir sonraki periyotta tekrar dener.
       if (cancelled) return;
       setIncomingFriendRequestCount(data.incoming.length);
-      const unread = new Set(data.friends.filter((f) => f.lastMessageAt && f.lastMessageAt > (dmSeenAt[f.accountId] || 0)).map((f) => f.accountId));
+      friendLastMessageRef.current = Object.fromEntries(data.friends.map((f) => [f.accountId, f.lastMessageAt || 0]));
+      // Bu hesapta hiç okundu kaydı yoksa mevcut mesajlar görülmüş sayılıp
+      // tohumlanır (eski geçmiş için sahte bildirim çıkmasın).
+      if (dmSeenAt === null) { setDmSeenAt(friendLastMessageRef.current); return; }
+      const unread = new Set(unreadFriendIds(data.friends, dmSeenAt));
       setDmUnreadIds(unread);
       // Yeni mesajı olan bir arkadaş henüz açık sekme değilse otomatik
       // eklenir — kullanıcı Arkadaşlar'a hiç girmeden de gelen mesajı
@@ -226,10 +229,12 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
     setOpenDmTabs((tabs) => tabs.filter((x) => x.accountId !== accountId));
     // Kapatmak "şimdilik gördüm" demek — hemen ardından tekrar "okunmadı"
     // olarak geri gelmesin diye görüldü sayılıyor.
-    setDmSeenAt((seen) => ({ ...seen, [accountId]: Date.now() }));
+    // Sunucu zamanı kullanılır: cihaz saati ileride olsa bile sonraki gerçek
+    // mesaj "görüldü" sayılıp kaybolmaz.
+    setDmSeenAt((seen) => ({ ...(seen || {}), [accountId]: friendLastMessageRef.current[accountId] || Date.now() }));
   };
   const markDmSeen = useCallback((accountId, timestamp) => {
-    setDmSeenAt(seen => (seen[accountId] || 0) >= timestamp ? seen : { ...seen, [accountId]: timestamp });
+    setDmSeenAt(seen => (seen?.[accountId] || 0) >= timestamp ? seen : { ...(seen || {}), [accountId]: timestamp });
   }, []);
 
   const notifications = { captain: captainNotice, character: characterNotice, inventory: inventoryNotice, chat: chatNotice || dmUnreadIds.size > 0, friends: friendsNotice };

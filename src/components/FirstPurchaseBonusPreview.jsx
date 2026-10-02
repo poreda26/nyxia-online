@@ -8,7 +8,7 @@ import ItemTooltip from "./ItemTooltip";
 
 // Kullanıcı isteği: "Tier 1 +6 zırh seti ve silah yazmak yerine itemlerin
 // görsellerini gösterelim... üzerine tıklandığında itemleri görebilelim" —
-// DiamondShopModal'ın İlk Ödeme kartı ve FirstPurchaseOfferModal aynı
+// DiamondShopModal'ın Süper Fırsat Bonusu kartı ve FirstPurchaseOfferModal aynı
 // önizlemeyi paylaşıyor, o yüzden tek yerden. Buradaki eşyalar sadece
 // GÖRÜNTÜLEME amaçlı — utils/firstPurchaseBonus.js#buildBonusGear/
 // buildBonusScrolls her çağrıda taze bir uid ile üretiyor, envantere hiç
