@@ -4,6 +4,7 @@ import { createAdmin } from './admin.mjs';
 import {validAvatarFrame} from '../src/data/avatarFrames.js';
 import {FIRST_PURCHASE_WEAPONS} from '../src/data/firstPurchaseWeapons.js';
 import {maskProfanity, containsProfanity, containsProfanityLoose} from '../src/data/profanity.js';
+import {createWheel} from './wheel.mjs';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, createHash, scrypt as derive, timingSafeEqual } from 'node:crypto';
@@ -216,6 +217,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     try { return JSON.parse(Buffer.concat(chunks).toString()); } catch { throw fail(400, 'INVALID_JSON'); }
   };
   const admin = createAdmin(db, { read, fail });
+  const wheel = createWheel(db, { fail });
+  const wheelRateLimit = makeRateLimiter(20);
   // Push bildirimleri — bkz. dosyanın en üstündeki VAPID/kapsam notu. Bir
   // hesabın kendi tercihi (push_prefs) kategoriyi kapatmışsa hiç gönderilmez;
   // tercih hiç kaydedilmemişse varsayılan açık (satır yoksa `prefs` null,
@@ -320,6 +323,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       for (const [sql, params] of [
         ['DELETE FROM clan_invites WHERE from_account=? OR to_account=?', [id, id]],
+        ['DELETE FROM wheel_spins WHERE account_id=?', [id]],
         ['DELETE FROM user_blocks WHERE blocker=? OR blocked=?', [id, id]],
         ['DELETE FROM user_reports WHERE target=?', [id]],
         ['UPDATE user_reports SET reporter=NULL WHERE reporter=?', [id]],
@@ -429,6 +433,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         res.setHeader('Set-Cookie', cookie('', 0));
         return send(200, { ok: true });
       }
+      if (path === '/api/wheel' && req.method === 'GET') return send(200, wheel.status(account.id));
+      if (path === '/api/wheel/spin' && req.method === 'POST') { wheelRateLimit(account.id); return send(200, wheel.spin(account.id)); }
+      if (path === '/api/wheel/claim' && req.method === 'POST') { wheelRateLimit(account.id); return send(200, wheel.claim(account.id)); }
       if (path === '/api/backup' && req.method === 'GET') {
         const row = db.prepare('SELECT * FROM backups WHERE account=?').get(account.id);
         return send(200, { revision: row?.revision || 0, data: row ? JSON.parse(row.data) : null, trusted: false });

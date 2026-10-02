@@ -57,11 +57,13 @@ test('account deletion removes every trace, hands clans over and protects the pa
     db.prepare('INSERT INTO panel_owner VALUES(1,?)').run(db.prepare("SELECT id FROM accounts WHERE name='carol'").get().id);
     assert.equal((await call('account/delete', { method: 'POST', body: { password }, cookie: carol })).status, 409);
 
+    assert.equal((await call('wheel/spin', { method: 'POST', body: {}, cookie: alice })).status, 200);
+    assert.equal(count('SELECT COUNT(*) n FROM wheel_spins WHERE account_id=?', aliceId), 1);
     const deleted = await call('account/delete', { method: 'POST', body: { password }, cookie: alice });
     assert.equal(deleted.status, 200);
 
     // Everything tied to Alice is gone; Bob's data and the clan survive.
-    for (const [table, column] of [['sessions', 'account'], ['backups', 'account'], ['backup_history', 'account'], ['market_stalls', 'account'], ['push_prefs', 'account_id'], ['push_subscriptions', 'account_id'], ['clan_members', 'account_id'], ['account_activity', 'account']]) {
+    for (const [table, column] of [['sessions', 'account'], ['backups', 'account'], ['backup_history', 'account'], ['market_stalls', 'account'], ['push_prefs', 'account_id'], ['push_subscriptions', 'account_id'], ['clan_members', 'account_id'], ['account_activity', 'account'], ['wheel_spins', 'account_id']]) {
       assert.equal(count(`SELECT COUNT(*) n FROM ${table} WHERE ${column}=?`, aliceId), 0, table);
     }
     assert.equal(count('SELECT COUNT(*) n FROM accounts WHERE id=?', aliceId), 0);

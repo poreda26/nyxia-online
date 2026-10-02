@@ -4,19 +4,39 @@ import { addItemToInventory, makeBonusScrollStack } from "./inventory";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Client-only expiry check — the account's premium state lives in
-// localStorage same as everything else in this build, gated purely by
-// Date.now() against the stored expiresAt. Returns the tier config (not
-// just the id) so call sites never need a second lookup.
+// Satın alınan Premium (player.premium) ile Çark'tan gelen geçici Premium
+// (player.premiumBoost) AYRI tutulur: çark ödülü satın alınmış aboneliği ne
+// ezer ne kısaltır. Aktif olan ikisinden üst katman (fiyatı yüksek) sayılır.
+function activeEntry(entry) {
+  if (!entry?.tier || !entry.expiresAt || entry.expiresAt <= Date.now()) return null;
+  return PREMIUM_TIERS[entry.tier] ? entry : null;
+}
+
+function effectivePremium(player) {
+  const bought = activeEntry(player.premium);
+  const boost = activeEntry(player.premiumBoost);
+  if (!bought) return boost;
+  if (!boost) return bought;
+  return PREMIUM_TIERS[boost.tier].price > PREMIUM_TIERS[bought.tier].price ? boost : bought;
+}
+
 export function activePremiumTier(player) {
-  if (!player.premium?.tier) return null;
-  if (!player.premium.expiresAt || player.premium.expiresAt <= Date.now()) return null;
-  return PREMIUM_TIERS[player.premium.tier] || null;
+  const entry = effectivePremium(player);
+  return entry ? PREMIUM_TIERS[entry.tier] : null;
 }
 
 export function premiumDaysLeft(player) {
-  if (!activePremiumTier(player)) return 0;
-  return Math.max(0, Math.ceil((player.premium.expiresAt - Date.now()) / DAY_MS));
+  const entry = effectivePremium(player);
+  if (!entry) return 0;
+  return Math.max(0, Math.ceil((entry.expiresAt - Date.now()) / DAY_MS));
+}
+
+// Çark ödülü: aynı katman aktifse süre uzar, değilse şimdiden başlar.
+export function grantBoostPremium(player, tierId, days) {
+  if (!PREMIUM_TIERS[tierId]) return player;
+  const current = activeEntry(player.premiumBoost);
+  const base = current?.tier === tierId ? current.expiresAt : Date.now();
+  return { ...player, premiumBoost: { tier: tierId, expiresAt: base + days * DAY_MS } };
 }
 
 export function premiumGoldMultiplier(player) { return activePremiumTier(player)?.goldMult ?? 1; }

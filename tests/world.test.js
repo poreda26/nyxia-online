@@ -447,3 +447,57 @@ test('damage variation preserves mean and scales from 300 to 350 for a 325 basel
   assert.ok(new Set(rolls).size > 40);
   assert.equal(varyDamage(1, () => 0),1);
 });
+
+import { activePremiumTier, premiumDaysLeft, grantBoostPremium, buyPremium } from '../src/utils/premium';
+import { applyWheelPrize, wheelAlreadyApplied, WHEEL_SLICES } from '../src/utils/wheel';
+test('wheel premium overlay never replaces or shortens a purchased premium', () => {
+  const base = player();
+  assert.equal(activePremiumTier(base), null);
+  const DAY = 24 * 3600 * 1000;
+  const boosted = grantBoostPremium(base, 'apex', 3);
+  assert.equal(activePremiumTier(boosted).id, 'apex');
+  assert.equal(premiumDaysLeft(boosted), 3);
+  // Satın alınmış Mythic, çarktan gelen Apex'in altında kalmaz ve süresi değişmez.
+  const bought = { ...boosted, premium: { tier: 'mythic', expiresAt: Date.now() + 10 * DAY } };
+  assert.equal(activePremiumTier(bought).id, 'mythic');
+  assert.equal(premiumDaysLeft(bought), 10);
+  // Çarktan Mythic gelirse satın alınmış Apex yerine o geçerli olur; satın alınan kayıt bozulmaz.
+  const apexOwner = { ...base, premium: { tier: 'apex', expiresAt: Date.now() + 10 * DAY } };
+  const upgraded = grantBoostPremium(apexOwner, 'mythic', 1);
+  assert.equal(activePremiumTier(upgraded).id, 'mythic');
+  assert.equal(upgraded.premium.tier, 'apex');
+  // Aynı katman tekrar gelirse süre uzar.
+  const extended = grantBoostPremium(boosted, 'apex', 3);
+  assert.equal(premiumDaysLeft(extended), 6);
+  // Süresi dolunca eski satın alınmış premium geri döner.
+  const expired = { ...apexOwner, premiumBoost: { tier: 'mythic', expiresAt: Date.now() - 1 } };
+  assert.equal(activePremiumTier(expired).id, 'apex');
+  // Satın almak çark premium'unu silmez.
+  const withDiamonds = { ...boosted, diamonds: 99999 };
+  const purchase = buyPremium(withDiamonds, 'apex', [[]]);
+  assert.ok(purchase.player.premiumBoost);
+});
+
+test('wheel prizes land in the bag, fall back to the bank, and stay pending when both are full', () => {
+  const base = { ...player(), level: 30 };
+  for (const id of WHEEL_SLICES) {
+    const out = applyWheelPrize(base, [[]], id, 1000);
+    assert.ok(out.delivered, id);
+    assert.equal(out.player.wheelAppliedAt, 1000);
+  }
+  assert.equal(new Set(WHEEL_SLICES).size, 12);
+  const wings = applyWheelPrize(base, [[]], 'wing', 5);
+  assert.ok(wings.player.inventory.some((i) => i.kind === 'wings'));
+  assert.ok(wheelAlreadyApplied(wings.player, 5));
+  assert.ok(!wheelAlreadyApplied(wings.player, 6));
+  // Çanta dolu: depoya düşer.
+  const heavy = { ...base, inventory: Array.from({ length: 80 }, (_, i) => ({ id: 'fill' + i, kind: 'material', name: 'x', weight: 1000, stackable: false })) };
+  const toBank = applyWheelPrize(heavy, [[]], 'scroll_bonus', 7);
+  assert.ok(toBank.delivered && toBank.toBank);
+  assert.equal(toBank.bank[0].length, 1);
+  // Çanta ve depo dolu: ödül teslim edilmez (alınmamış kalır).
+  const fullBank = [Array.from({ length: 200 }, (_, i) => ({ id: 'b' + i, kind: 'material', name: 'x', weight: 0, stackable: false }))];
+  const stuck = applyWheelPrize(heavy, fullBank, 'scroll_bonus', 8);
+  assert.equal(stuck.delivered, false);
+  assert.equal(stuck.player.wheelAppliedAt, undefined);
+});

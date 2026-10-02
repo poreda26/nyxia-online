@@ -28,6 +28,8 @@ import WarzoneTab from "./WarzoneTab";
 import ClanTab from "./ClanTab";
 import TutorialModal from "./TutorialModal";
 import DailyLoginModal from "./DailyLoginModal";
+import WheelModal from "./WheelModal";
+import { fetchWheel } from "../services/wheelService";
 import DiamondShopModal from "./DiamondShopModal";
 import FirstPurchaseOfferModal from "./FirstPurchaseOfferModal";
 import EventReadyModal from "./EventReadyModal";
@@ -67,6 +69,18 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   const [dailyLoginOpen, setDailyLoginOpen] = useState(canClaimDailyLogin(player));
   const dailyLoginAvailable = canClaimDailyLogin(player);
   const [diamondShopOpen, setDiamondShopOpen] = useState(false);
+
+  // Günlük Çark: hak/alınmamış ödül durumu sunucudan gelir; TopBar'da nokta
+  // olarak gösterilir. Açılışta ve 5 dakikada bir tazelenir (gece yarısı yeni hak).
+  const [wheelOpen, setWheelOpen] = useState(false);
+  const [wheelReady, setWheelReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const check = () => fetchWheel().then((s) => { if (alive) setWheelReady(!!(s.canSpin || s.pending)); }).catch(() => {});
+    check();
+    const id = setInterval(check, 5 * 60 * 1000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
 
   // Kullanıcı isteği: "İlk ödeme ödülü almayan kişilere oyuna ilk girişte
   // güzel bir widget açılsın... Fırsat Kaçmaz tarzında" — dailyLoginOpen ile
@@ -245,6 +259,8 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         player={player} setPlayer={setPlayer} cls={cls} maxHp={maxHp} def={def} atk={atk}
         dailyLoginAvailable={dailyLoginAvailable}
         onOpenDailyLogin={() => setDailyLoginOpen(true)}
+        wheelAvailable={wheelReady}
+        onOpenWheel={() => setWheelOpen(true)}
         onOpenSettings={onOpenSettings}
         onOpenDiamondShop={() => setDiamondShopOpen(true)}
       />
@@ -327,6 +343,10 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
 
       {dailyLoginOpen && !tutorialOpen && (
         <DailyLoginModal player={player} setPlayer={setPlayer} pushToast={pushToast} onClose={() => setDailyLoginOpen(false)} />
+      )}
+
+      {wheelOpen && !tutorialOpen && (
+        <WheelModal player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast} onStatus={setWheelReady} onClose={() => setWheelOpen(false)} />
       )}
 
       {firstPurchaseOfferOpen && !tutorialOpen && !dailyLoginOpen && !firstPurchaseClaimed && (

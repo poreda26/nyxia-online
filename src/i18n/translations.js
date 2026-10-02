@@ -16,6 +16,7 @@ import { monstersSection } from "./sections/monsters";
 import { socialSection } from "./sections/social";
 import { upgradeSection } from "./sections/upgrade";
 import { warzoneSection } from "./sections/warzone";
+import { wheelSection } from "./sections/wheel";
 
 const base = {
   tr: {
@@ -638,11 +639,11 @@ export const translations = {
   tr: {
     ...base.tr,
     ...boostsSection.tr, ...captainSection.tr, ...characterSection.tr, ...diamondShopSection.tr, ...inventorySection.tr,
-    ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr,
+    ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr, ...wheelSection.tr,
   },
   en: {
     ...base.en,
     ...boostsSection.en, ...captainSection.en, ...characterSection.en, ...diamondShopSection.en, ...inventorySection.en,
-    ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en,
+    ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en, ...wheelSection.en,
   },
 };

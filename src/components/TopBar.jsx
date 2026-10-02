@@ -2,7 +2,7 @@ import Avatar from './Avatar';
 import AvatarWardrobe from './AvatarWardrobe';
 import './TopBar.css';
 import { useState, useEffect } from "react";
-import { Coins, Crown, Gem, Gift, Plus, ScrollText, Settings, Swords, Shield, Heart } from "lucide-react";
+import { Aperture, Coins, Crown, Gem, Gift, Plus, ScrollText, Settings, Swords, Shield, Heart } from "lucide-react";
 import { xpToNext, MAX_LEVEL, formatGold } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { activeTitleInfo } from "../utils/achievements";
@@ -18,7 +18,7 @@ function formatMmSs(ms) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, onOpenSettings, onOpenDiamondShop }) {
+export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, wheelAvailable, onOpenWheel, onOpenSettings, onOpenDiamondShop }) {
   const { t, lang } = useTranslation();
   // Aktif takviyelerin geri sayımı gerçek zamana (Date.now()) bağlı — bkz.
   // utils/boosts.js, premium ile aynı "duvar saati" deseni. Bu, o değeri
@@ -73,6 +73,16 @@ export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyL
           >
             <Gift size={16} strokeWidth={1.8} />
             {dailyLoginAvailable && <span style={{ ...styles.navNotifDot, top: 0, left: "auto", right: -1, marginLeft: 0 }} />}
+          </button>
+        )}
+        {onOpenWheel && (
+          <button
+            onClick={onOpenWheel}
+            title={t("wheel.topBar")} aria-label={t("wheel.topBar")}
+            style={{ position: "relative", background: "none", border: "none", color: wheelAvailable ? "var(--gold-text)" : "var(--text-faint)", cursor: "pointer", padding: 4, flexShrink: 0 }}
+          >
+            <Aperture size={16} strokeWidth={1.8} />
+            {wheelAvailable && <span style={{ ...styles.navNotifDot, top: 0, left: "auto", right: -1, marginLeft: 0 }} />}
           </button>
         )}
         {/* Ayarlar artık burada, satır içinde (kullanıcının bildirdiği bug:
