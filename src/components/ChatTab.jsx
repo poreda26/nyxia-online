@@ -6,6 +6,7 @@ import * as socialService from "../services/socialService";
 import { parseGmCommand, executeGmCommand, tryGmUnlock } from "../utils/gmCommands";
 import { displayClassName } from "../utils/player";
 import GmItemPanel from "./GmItemPanel";
+import ModerationMenu from "./ModerationMenu";
 import Avatar from './Avatar';
 import {playerAvatarId} from '../data/avatars';
 import { useTranslation, formatServerError } from "../i18n/LanguageContext";
@@ -147,7 +148,7 @@ export default function ChatTab({
           <button className="conversation-close" aria-label={`${thread.name} ${lang==='en'?'close conversation':'konuşmasını kapat'}`} onClick={e=>closeTab(e,thread.accountId)}><X size={15}/></button>
         </div>)}
       </div>
-      {activeDm&&<div className="conversation-heading"><span><MessageCircle size={14}/><strong>{activeDm.name}</strong></span><small>{lang==='en'?'Private conversation':'Özel konuşma'}</small></div>}
+      {activeDm&&<div className="conversation-heading"><span><MessageCircle size={14}/><strong>{activeDm.name}</strong></span><small>{lang==='en'?'Private conversation':'Özel konuşma'}</small><ModerationMenu target={{accountId:activeDm.accountId}} name={activeDm.name} pushToast={pushToast} onBlocked={()=>{setActiveDmId(null);onCloseDm?.(activeDm.accountId);}}/></div>}
 
       {activeDm ? (
         <>
@@ -160,6 +161,7 @@ export default function ChatTab({
                   {m.text}
                   <time className="dm-time">{new Date(m.createdAt).toLocaleTimeString(lang==='en'?'en-GB':'tr-TR',{hour:'2-digit',minute:'2-digit'})}</time>
                 </div>
+                {!m.mine&&<ModerationMenu target={{dmId:m.id}} name={activeDm.name} pushToast={pushToast} size={12} onBlocked={()=>{setActiveDmId(null);onCloseDm?.(activeDm.accountId);}}/>}
               </div>
             ))}
           </div>
@@ -223,6 +225,7 @@ export default function ChatTab({
                 {m.isSystem ? t("chat.systemAuthor") : m.author}
               </span>
               <time>{new Date(m.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</time>
+              {!m.isSystem&&!m.mine&&<ModerationMenu target={{messageId:m.id}} name={m.author} pushToast={pushToast} size={11} onBlocked={refresh}/>}
             </div>
             <div className="rpg-chat-bubble" style={{ ...styles.chatMsgBubble, ...(m.isSystem ? { background: "transparent", color: "var(--text-faint)", fontStyle: "italic" } : {}) }}>
               {m.isSystem ? t(m.textKey) : m.text}

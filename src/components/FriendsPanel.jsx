@@ -6,6 +6,7 @@ import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 import EmptyState from "./shared/EmptyState";
 import Avatar from './Avatar';
+import ModerationMenu from './ModerationMenu';
 import { FRIEND_MAX_COUNT } from '../data/social';
 
 // Kullanıcı isteği: "arkadaş ekleme - özel sohbet - vs - klan daveti vb.
@@ -21,6 +22,7 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [blocks, setBlocks] = useState([]);
   const [addName, setAddName] = useState("");
   const atLimit = friends.length >= FRIEND_MAX_COUNT;
 
@@ -32,6 +34,8 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
       setOutgoing(data.outgoing);
     } catch { /* geçici ağ hatası */ }
     try { setSuggestions(await socialService.fetchSuggestions()); }
+    catch { /* geçici ağ hatası */ }
+    try { setBlocks(await socialService.fetchBlocks()); }
     catch { /* geçici ağ hatası */ }
   }, []);
 
@@ -68,6 +72,12 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
   const handleRemove = async (accountId) => {
     try {
       await socialService.removeFriend(accountId);
+      refreshFriends();
+    } catch (error) { pushToast(formatServerError(t, error), "warn"); }
+  };
+  const handleUnblock = async (accountId) => {
+    try {
+      await socialService.unblockUser(accountId);
       refreshFriends();
     } catch (error) { pushToast(formatServerError(t, error), "warn"); }
   };
@@ -123,6 +133,7 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
             {incoming.map((r) => (
               <div key={r.id} className="rpg-row" style={styles.itemRow}>
                 <div style={{ flex: 1, fontSize: 12 }}>{r.fromName}</div>
+                <ModerationMenu target={{ accountId: r.fromAccountId }} name={r.fromName} pushToast={pushToast} onBlocked={refreshFriends} />
                 <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#5FA8A0" }} onClick={() => handleAccept(r.id)}><Check size={12} /></button>
                 <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDecline(r.id)}><X size={12} /></button>
               </div>
@@ -157,11 +168,26 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
                 {f.name}
                 {dmUnreadIds?.has(f.accountId) && <span style={{ width: 6, height: 6, borderRadius: 3, background: "#C9425A", flexShrink: 0 }} />}
               </div>
+              <ModerationMenu target={{ accountId: f.accountId }} name={f.name} pushToast={pushToast} onBlocked={refreshFriends} />
               <button className="rpg-action" style={styles.tinyBtn} aria-label={`${f.name} — ${lang==='en'?'Send message':'Mesaj gönder'}`} onClick={() => onOpenDm(f)}><MessageCircle size={12} /></button>
               <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} aria-label={`${f.name} — ${lang==='en'?'Remove friend':'Arkadaşlıktan çıkar'}`} onClick={() => handleRemove(f.accountId)}><X size={12} /></button>
             </div>
           ))}
         </div>
+      )}
+
+      {blocks.length > 0 && (
+        <>
+          <SectionLabel>{lang === "en" ? "Blocked players" : "Engellenen oyuncular"}</SectionLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {blocks.map((b) => (
+              <div key={b.accountId} className="rpg-row" style={styles.itemRow}>
+                <div style={{ flex: 1, fontSize: 12, color: "var(--text-muted)" }}>{b.name}</div>
+                <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-primary)" }} onClick={() => handleUnblock(b.accountId)}>{lang === "en" ? "Unblock" : "Engeli kaldır"}</button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

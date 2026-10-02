@@ -3,6 +3,7 @@ import webpush from 'web-push';
 import { createAdmin } from './admin.mjs';
 import {validAvatarFrame} from '../src/data/avatarFrames.js';
 import {FIRST_PURCHASE_WEAPONS} from '../src/data/firstPurchaseWeapons.js';
+import {maskProfanity, containsProfanity, containsProfanityLoose} from '../src/data/profanity.js';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, createHash, scrypt as derive, timingSafeEqual } from 'node:crypto';
@@ -187,6 +188,13 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     if(!db.prepare(`PRAGMA table_info(${table})`).all().some(c=>c.name==='avatar_id'))db.exec(`ALTER TABLE ${table} ADD COLUMN avatar_id TEXT NOT NULL DEFAULT '${fallback}'`);
     if(table!=='clans'&&!db.prepare(`PRAGMA table_info(${table})`).all().some(c=>c.name==='frame_id'))db.exec(`ALTER TABLE ${table} ADD COLUMN frame_id TEXT`);
   }
+  // Oyuncu-oyuncu engelleme ve şikayet (Apple 1.2 / Google UGC politikası).
+  // user_blocks oyuncunun kendi engel listesi; hesap cezaları (ban/mute) ayrı
+  // ve admin.mjs'te (account_blocks). Sohbet mesajına hesap kimliği bağlanır ki
+  // genel sohbetten şikayet/engelleme yapılabilsin; istemciye hiç verilmez.
+  db.exec(`CREATE TABLE IF NOT EXISTS user_blocks(blocker INTEGER NOT NULL REFERENCES accounts(id), blocked INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, PRIMARY KEY(blocker,blocked));
+    CREATE TABLE IF NOT EXISTS user_reports(id INTEGER PRIMARY KEY AUTOINCREMENT, reporter INTEGER REFERENCES accounts(id), target INTEGER REFERENCES accounts(id), target_name TEXT NOT NULL, context TEXT NOT NULL, content TEXT NOT NULL DEFAULT '', reason TEXT NOT NULL, details TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'open', resolved_at INTEGER, resolution TEXT);`);
+  if (!db.prepare('PRAGMA table_info(chat_messages)').all().some(c => c.name === 'account_id')) db.exec('ALTER TABLE chat_messages ADD COLUMN account_id INTEGER');
   // Klan Dungeon malzeme hazinesi — bina yükseltmesi artık altın/elmasın
   // yanında bu 4 malzeyi de istiyor (bkz. data/clanDungeon.js#CLAN_BUILDING_MATERIAL_COST).
   // Bağış akışı gold/diamonds/np ile birebir aynı (bkz. /api/clan/donate).
@@ -274,6 +282,10 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   const pushInterval = PUSH_ENABLED ? setInterval(() => { runInactivityCheck().catch(() => {}); runEventReminderCheck().catch(() => {}); }, PUSH_CHECK_INTERVAL_MS) : null;
   const cookie = (token, age) => `nyxia_session=${token}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=${age}${secure ? '; Secure' : ''}`;
   const accountDeleteRateLimit = makeRateLimiter(5);
+  const isBlocked = (blocker, blocked) => !!db.prepare('SELECT 1 FROM user_blocks WHERE blocker=? AND blocked=?').get(blocker, blocked);
+  const REPORT_REASONS = ['abuse', 'spam', 'inappropriate', 'cheating', 'other'];
+  const BLOCK_LIMIT = 200;
+  const REPORT_DAILY_LIMIT = 30;
   // Mağaza politikası (Apple 5.1.1(v), Google Play) uygulama içinden hesap
   // silmeyi şart koşuyor. Hesaba bağlı her satır tek işlemde siliniyor; klan
   // lideriyse liderlik sıradaki üyeye geçer, klanda kimse kalmazsa klan kalkar.
@@ -308,6 +320,10 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       for (const [sql, params] of [
         ['DELETE FROM clan_invites WHERE from_account=? OR to_account=?', [id, id]],
+        ['DELETE FROM user_blocks WHERE blocker=? OR blocked=?', [id, id]],
+        ['DELETE FROM user_reports WHERE target=?', [id]],
+        ['UPDATE user_reports SET reporter=NULL WHERE reporter=?', [id]],
+        ['DELETE FROM chat_messages WHERE account_id=?', [id]],
         ['DELETE FROM clan_dungeon_attempts WHERE account_id=?', [id]],
         ['DELETE FROM clan_dungeon_log WHERE account_name=?', [account.name]],
         ['DELETE FROM friend_requests WHERE from_account=? OR to_account=?', [id, id]],
@@ -364,6 +380,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (!/^[a-z0-9_]{3,24}$/.test(name) || typeof body?.password !== 'string' || body.password.length < 12 || body.password.length > 128) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
         let account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         if (path === '/api/register') {
+          if (containsProfanityLoose(name)) throw fail(400, 'NAME_NOT_ALLOWED');
           const salt = randomBytes(16).toString('hex');
           const password = (await scrypt(body.password, salt, 64)).toString('hex');
           try { db.prepare('INSERT INTO accounts(name,salt,password) VALUES(?,?,?)').run(name, salt, password); }
@@ -437,14 +454,15 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         } catch (error) { db.exec('ROLLBACK'); throw error; }
       }
       if (path === '/api/chat/messages' && req.method === 'GET') {
-        const rows = db.prepare('SELECT id,author,text,is_gm,created_at,avatar_id,frame_id FROM chat_messages ORDER BY id DESC LIMIT 100').all().reverse();
-        return send(200, rows.map(r => ({ id: r.id, author: r.author, text: r.text, isGM: !!r.is_gm, createdAt: r.created_at, avatarId:r.avatar_id,frameId:r.frame_id||null })));
+        // Engellediğim oyuncuların mesajları sunucuda süzülür.
+        const rows = db.prepare('SELECT id,author,text,is_gm,created_at,avatar_id,frame_id,account_id FROM chat_messages WHERE account_id IS NULL OR account_id NOT IN (SELECT blocked FROM user_blocks WHERE blocker=?) ORDER BY id DESC LIMIT 100').all(account.id).reverse();
+        return send(200, rows.map(r => ({ id: r.id, author: r.author, text: r.text, isGM: !!r.is_gm, createdAt: r.created_at, avatarId:r.avatar_id,frameId:r.frame_id||null, mine: r.account_id === account.id })));
       }
       if (path === '/api/chat/messages' && req.method === 'POST') {
         chatRateLimit(account.id);
         const body = await read(req);
-        const author = typeof body?.author === 'string' ? body.author.trim().slice(0, 40) : '';
-        const text = typeof body?.text === 'string' ? body.text.trim().slice(0, 500) : '';
+        const author = typeof body?.author === 'string' ? maskProfanity(body.author.trim().slice(0, 40)) : '';
+        const text = typeof body?.text === 'string' ? maskProfanity(body.text.trim().slice(0, 500)) : '';
         if (!author || !text) throw fail(400, 'INVALID_MESSAGE');
         const isGm = !!body.isGM;
         const createdAt = Date.now();
@@ -452,7 +470,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if(!validPlayerAvatar(avatarId))throw fail(400,'INVALID_AVATAR');
         const frameId=body.frameId??null;
         if(!validAvatarFrame(frameId))throw fail(400,'INVALID_AVATAR');
-        db.prepare('INSERT INTO chat_messages(author,text,is_gm,created_at,avatar_id,frame_id) VALUES(?,?,?,?,?,?)').run(author, text, isGm ? 1 : 0, createdAt,avatarId,frameId);
+        db.prepare('INSERT INTO chat_messages(author,text,is_gm,created_at,avatar_id,frame_id,account_id) VALUES(?,?,?,?,?,?,?)').run(author, text, isGm ? 1 : 0, createdAt,avatarId,frameId,account.id);
         // Kullanıcı isteği: sohbet kalıcı bir arşiv değil — 200 mesajlık
         // tavanın yanı sıra artık zamana göre de temizleniyor (bkz.
         // data/social.js#CHAT_MESSAGE_TTL_MS), sistemi yormasın diye.
@@ -654,7 +672,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (path === '/api/warzone/duel/opponent' && req.method === 'GET') {
         duelRateLimit(account.id);
         const level = Number(new URL(req.url, 'http://localhost').searchParams.get('level')) || 1;
-        const rows = db.prepare('SELECT backups.account AS account, backups.data AS data, accounts.name AS accountName FROM backups JOIN accounts ON accounts.id = backups.account WHERE backups.account != ?').all(account.id);
+        const rows = db.prepare('SELECT backups.account AS account, backups.data AS data, accounts.name AS accountName FROM backups JOIN accounts ON accounts.id = backups.account WHERE backups.account != ? AND backups.account NOT IN (SELECT blocked FROM user_blocks WHERE blocker=? UNION SELECT blocker FROM user_blocks WHERE blocked=?)').all(account.id, account.id, account.id);
         const candidates = [];
         for (const row of rows) {
           let data;
@@ -727,6 +745,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const friendIds = db.prepare('SELECT account_a,account_b FROM friendships WHERE account_a=? OR account_b=?').all(account.id, account.id)
           .map(r => (r.account_a === account.id ? r.account_b : r.account_a));
         const excludeIds = new Set([account.id, ...friendIds]);
+        for (const r of db.prepare('SELECT blocker,blocked FROM user_blocks WHERE blocker=? OR blocked=?').all(account.id, account.id)) {
+          excludeIds.add(r.blocker); excludeIds.add(r.blocked);
+        }
         for (const r of db.prepare('SELECT from_account,to_account FROM friend_requests WHERE from_account=? OR to_account=?').all(account.id, account.id)) {
           excludeIds.add(r.from_account); excludeIds.add(r.to_account);
         }
@@ -772,6 +793,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const target = db.prepare('SELECT id FROM accounts WHERE name=?').get(name);
         if (!target) throw fail(404, 'ACCOUNT_NOT_FOUND');
         if (target.id === account.id) throw fail(400, 'CANNOT_FRIEND_SELF');
+        // Engelleyen taraf bilgilendirilmez: istek sessizce düşer.
+        if (isBlocked(account.id, target.id)) throw fail(409, 'USER_BLOCKED');
+        if (isBlocked(target.id, account.id)) return send(200, { status: 'pending' });
         const [a, b] = account.id < target.id ? [account.id, target.id] : [target.id, account.id];
         if (db.prepare('SELECT 1 FROM friendships WHERE account_a=? AND account_b=?').get(a, b)) throw fail(409, 'ALREADY_FRIENDS');
         // Kullanıcı isteği: "Maksimum 50 arkadaşımız olabilir."
@@ -824,6 +848,70 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         db.prepare('DELETE FROM friendships WHERE account_a=? AND account_b=?').run(a, b);
         return send(200, { ok: true });
       }
+      // ---- Engelleme ve şikayet ----
+      // Hedef; genel sohbet mesajı (messageId), aldığım özel mesaj (dmId), klan
+      // (clanId) ya da doğrudan hesap (accountId, ör. arkadaş listesi) olabilir.
+      // İstemci hesap kimliğini sohbet mesajlarında hiç görmez; sunucu çözer.
+      const moderationTarget = (body) => {
+        if (Number.isSafeInteger(body?.messageId)) {
+          const row = db.prepare('SELECT account_id,author,text FROM chat_messages WHERE id=?').get(body.messageId);
+          if (!row?.account_id) throw fail(404, 'MESSAGE_NOT_FOUND');
+          return { id: row.account_id, content: `${row.author}: ${row.text}`, context: 'chat' };
+        }
+        if (Number.isSafeInteger(body?.dmId)) {
+          const row = db.prepare('SELECT from_account,text FROM direct_messages WHERE id=? AND to_account=?').get(body.dmId, account.id);
+          if (!row) throw fail(404, 'MESSAGE_NOT_FOUND');
+          return { id: row.from_account, content: row.text, context: 'dm' };
+        }
+        if (Number.isSafeInteger(body?.clanId)) {
+          const row = db.prepare("SELECT clans.name AS name, clan_members.account_id AS leader FROM clans JOIN clan_members ON clan_members.clan_id=clans.id AND clan_members.role='leader' WHERE clans.id=?").get(body.clanId);
+          if (!row) throw fail(404, 'CLAN_NOT_FOUND');
+          return { id: row.leader, content: `Klan: ${row.name}`, context: 'clan' };
+        }
+        if (Number.isSafeInteger(body?.accountId)) return { id: body.accountId, content: '', context: 'profile' };
+        throw fail(400, 'INVALID_TARGET');
+      };
+      if (path === '/api/social/blocks' && req.method === 'GET') {
+        return send(200, db.prepare('SELECT accounts.id AS accountId, accounts.name AS name FROM user_blocks JOIN accounts ON accounts.id=user_blocks.blocked WHERE user_blocks.blocker=? ORDER BY user_blocks.created_at DESC').all(account.id));
+      }
+      if (path === '/api/social/block' && req.method === 'POST') {
+        socialRateLimit(account.id);
+        const target = moderationTarget(await read(req));
+        if (target.id === account.id) throw fail(400, 'CANNOT_BLOCK_SELF');
+        if (!db.prepare('SELECT 1 FROM accounts WHERE id=?').get(target.id)) throw fail(404, 'ACCOUNT_NOT_FOUND');
+        if (db.prepare('SELECT COUNT(*) AS n FROM user_blocks WHERE blocker=?').get(account.id).n >= BLOCK_LIMIT) throw fail(409, 'BLOCK_LIMIT_REACHED');
+        const [a, b] = account.id < target.id ? [account.id, target.id] : [target.id, account.id];
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          db.prepare('INSERT OR IGNORE INTO user_blocks(blocker,blocked,created_at) VALUES(?,?,?)').run(account.id, target.id, Date.now());
+          db.prepare('DELETE FROM friendships WHERE account_a=? AND account_b=?').run(a, b);
+          db.prepare('DELETE FROM friend_requests WHERE (from_account=? AND to_account=?) OR (from_account=? AND to_account=?)').run(account.id, target.id, target.id, account.id);
+          db.exec('COMMIT');
+        } catch (error) { db.exec('ROLLBACK'); throw error; }
+        return send(200, { ok: true });
+      }
+      const unblockMatch = path.match(/^\/api\/social\/blocks\/(\d+)$/);
+      if (unblockMatch && req.method === 'DELETE') {
+        db.prepare('DELETE FROM user_blocks WHERE blocker=? AND blocked=?').run(account.id, Number(unblockMatch[1]));
+        return send(200, { ok: true });
+      }
+      if (path === '/api/social/report' && req.method === 'POST') {
+        socialRateLimit(account.id);
+        const body = await read(req);
+        if (!REPORT_REASONS.includes(body?.reason)) throw fail(400, 'INVALID_REASON');
+        const details = typeof body?.details === 'string' ? body.details.trim().slice(0, 300) : '';
+        const target = moderationTarget(body);
+        if (target.id === account.id) throw fail(400, 'CANNOT_REPORT_SELF');
+        const targetRow = db.prepare('SELECT name FROM accounts WHERE id=?').get(target.id);
+        if (!targetRow) throw fail(404, 'ACCOUNT_NOT_FOUND');
+        const now = Date.now();
+        if (db.prepare('SELECT COUNT(*) AS n FROM user_reports WHERE reporter=? AND created_at>?').get(account.id, now - 86400000).n >= REPORT_DAILY_LIMIT) throw fail(429, 'TOO_MANY_REPORTS');
+        // Aynı içerik için art arda şikayet tek kayıt sayılır.
+        if (!db.prepare('SELECT 1 FROM user_reports WHERE reporter=? AND target=? AND content=? AND created_at>?').get(account.id, target.id, target.content, now - 3600000)) {
+          db.prepare('INSERT INTO user_reports(reporter,target,target_name,context,content,reason,details,created_at) VALUES(?,?,?,?,?,?,?,?)').run(account.id, target.id, targetRow.name, target.context, target.content.slice(0, 600), body.reason, details, now);
+        }
+        return send(200, { ok: true });
+      }
       // Özel mesaj — sadece gerçek arkadaşlar arasında (kullanıcı isteği:
       // "özel sohbet"). Genel sohbetin aksine (chat_messages, herkese açık)
       // burası iki hesap arasındaki tek konuşmayı filtreliyor.
@@ -840,7 +928,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         dmRateLimit(account.id);
         if (!areFriends(account.id, otherId)) throw fail(403, 'NOT_FRIENDS');
         const body = await read(req);
-        const text = typeof body?.text === 'string' ? body.text.trim().slice(0, 500) : '';
+        const text = typeof body?.text === 'string' ? maskProfanity(body.text.trim().slice(0, 500)) : '';
         if (!text) throw fail(400, 'INVALID_MESSAGE');
         const createdAt = Date.now();
         const avatarId=body.avatarId??'human-warrior';
@@ -882,6 +970,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const avatarId=body?.avatarId??'wolf';
         if(!validClanAvatar(avatarId))throw fail(400,'INVALID_AVATAR');
         if (!name) throw fail(400, 'INVALID_CLAN_NAME');
+        if (containsProfanityLoose(name)) throw fail(400, 'NAME_NOT_ALLOWED');
         if (myMembership()) throw fail(409, 'ALREADY_IN_CLAN');
         db.exec('BEGIN IMMEDIATE');
         try {
@@ -941,6 +1030,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if(!target){target=db.prepare('SELECT id FROM accounts WHERE name=?').get(name.toLowerCase());if(target)targetCharacter=primaryCharacter(db,target.id).key;}
         if (!target) throw fail(404, 'ACCOUNT_NOT_FOUND');
         if (target.id === account.id&&targetCharacter===myCharacterKey) throw fail(400, 'CANNOT_INVITE_SELF');
+        if (isBlocked(account.id, target.id)) throw fail(409, 'USER_BLOCKED');
+        if (isBlocked(target.id, account.id)) return send(200, { ok: true });
         if (db.prepare('SELECT 1 FROM clan_members WHERE account_id=? AND character_key=?').get(target.id,targetCharacter)) throw fail(409, 'TARGET_ALREADY_IN_CLAN');
         const memberCount = db.prepare('SELECT COUNT(*) AS c FROM clan_members WHERE clan_id=?').get(membership.clan_id).c;
         if (memberCount >= CLAN_MAX_MEMBERS) throw fail(409, 'CLAN_FULL');

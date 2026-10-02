@@ -13,6 +13,7 @@ function errorKey(code) {
   if (code === "INVALID_CREDENTIALS") return "login.wrongCredentialsError";
   if (code === "TOO_MANY_ATTEMPTS") return "login.rateLimitedError";
   if (code === "INVALID_CREDENTIAL_FORMAT") return "login.invalidFormatError";
+  if (code === "NAME_NOT_ALLOWED") return "login.nameNotAllowedError";
   return "login.networkError";
 }
 

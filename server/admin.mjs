@@ -52,6 +52,7 @@ export function createAdmin(db, { read, fail }) {
         sessions:db.prepare('SELECT COUNT(DISTINCT account) n FROM sessions WHERE expires>?').get(Date.now()).n,
         clans:db.prepare('SELECT COUNT(*) n FROM clans').get().n,
         stalls:db.prepare('SELECT COUNT(*) n FROM market_stalls').get().n,
+        openReports:db.prepare("SELECT COUNT(*) n FROM user_reports WHERE status='open'").get().n,
         active:db.prepare('SELECT COUNT(*) n FROM account_activity WHERE last_seen>?').get(Date.now()-300000).n,
         authoritative:false
       });
@@ -64,6 +65,7 @@ export function createAdmin(db, { read, fail }) {
         return send(200,{...a,lastSeen:db.prepare('SELECT last_seen FROM account_activity WHERE account=?').get(id)?.last_seen,blocked:blocked(id),muted:muted(id),ban:db.prepare('SELECT reason,expires_at FROM account_blocks WHERE account=?').get(id),mute:db.prepare('SELECT reason,expires_at FROM account_mutes WHERE account=?').get(id),revision:b?.revision||0,data:b?JSON.parse(b.data):null,snapshots:db.prepare('SELECT id,created_at FROM admin_snapshots WHERE account=? ORDER BY id DESC LIMIT 30').all(id)});
       }
       if(path === '/api/admin/audit') return send(200,db.prepare('SELECT * FROM admin_audit ORDER BY id DESC LIMIT 200').all());
+      if(path === '/api/admin/reports') return send(200,db.prepare("SELECT r.id,r.target,r.target_name,r.context,r.content,r.reason,r.details,r.created_at,r.status,r.resolved_at,r.resolution,(SELECT name FROM accounts WHERE id=r.reporter) reporter_name FROM user_reports r ORDER BY (r.status='open') DESC, r.id DESC LIMIT 200").all());
       if(path === '/api/admin/chat') return send(200,db.prepare('SELECT id,author,text,created_at FROM chat_messages ORDER BY id DESC LIMIT 100').all());
       if(path === '/api/admin/clans') return send(200,db.prepare('SELECT c.*, (SELECT COUNT(*) FROM clan_members m WHERE m.clan_id=c.id) members FROM clans c ORDER BY id DESC LIMIT 200').all());
       if(path === '/api/admin/market') return send(200,db.prepare('SELECT account,seller_name,items,listed_at,duration_hours FROM market_stalls ORDER BY listed_at DESC LIMIT 200').all().map(r=>({...r,items:JSON.parse(r.items)})));
@@ -109,6 +111,12 @@ export function createAdmin(db, { read, fail }) {
           }
           db.prepare('DELETE FROM sessions WHERE account=?').run(id);
           audit(account.id,path+ (path.endsWith('/block')?':'+b.blocked:''),id,reason+' | saat: '+(b.hours||'kalıcı')); return {ok:true};
+        }
+        if(path === '/api/admin/report/resolve') {
+          if(!['actioned','dismissed'].includes(b.status))throw fail(400,'INVALID_STATUS');
+          const result=db.prepare("UPDATE user_reports SET status=?,resolved_at=?,resolution=? WHERE id=? AND status='open'").run(b.status,Date.now(),reason,id);
+          if(!result.changes)throw fail(404,'REPORT_NOT_FOUND');
+          audit(account.id,path+':'+b.status,id,reason);return {ok:true};
         }
         if(path === '/api/admin/chat/remove') {
           const row=db.prepare('SELECT * FROM chat_messages WHERE id=?').get(id);

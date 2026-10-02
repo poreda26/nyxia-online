@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { CLASSES } from "../data/classes";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
+import { containsProfanityLoose } from "../data/profanity";
 
 function StatPill({ label, value }) {
   return (
@@ -28,7 +29,8 @@ export default function ClassSelect({ onChoose }) {
   // eskiden "(opsiyonel)" olup boş bırakılabiliyordu, sınıf adına düşüyordu.
   const choose = (cls) => {
     const trimmed = nickname.trim();
-    if (!trimmed) { setNicknameError(true); return; }
+    if (!trimmed) { setNicknameError("required"); return; }
+    if (containsProfanityLoose(trimmed)) { setNicknameError("notAllowed"); return; }
     setConfirming(cls);
   };
   return (
@@ -48,7 +50,7 @@ export default function ClassSelect({ onChoose }) {
         style={{ ...styles.numInput, width: "100%", maxWidth: 320, alignSelf: "center", textAlign: "center", marginBottom: nicknameError ? 6 : 20, ...(nicknameError ? { borderColor: "#C9425A" } : {}) }}
       />
       {nicknameError && (
-        <div style={{ fontSize: 11, color: "#E8A5AF", textAlign: "center", marginBottom: 14 }}>{t("classSelect.nameRequired")}</div>
+        <div style={{ fontSize: 11, color: "#E8A5AF", textAlign: "center", marginBottom: 14 }}>{t(nicknameError === "notAllowed" ? "classSelect.nameNotAllowed" : "classSelect.nameRequired")}</div>
       )}
 
       <div style={styles.classGrid}>
