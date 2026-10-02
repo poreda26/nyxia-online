@@ -5,6 +5,7 @@ import { useTranslation } from "../i18n/LanguageContext";
 import { isReservedUsername } from "../utils/storage";
 import { registerAccount, loginAccount } from "../utils/api";
 import nyxiaLogo from "../assets/brand/nyxia-logo.png";
+import { LEGAL_LINKS } from "../data/legalLinks";
 
 const NAME_PATTERN = /^[a-z0-9_]{3,24}$/;
 
@@ -25,7 +26,7 @@ function errorKey(code) {
 // kullanıyor (bkz. utils/storage.js#loadAccount) — sunucu ve yerel kayıt
 // aynı anahtar üzerinden eşleşiyor.
 export default function LoginScreen({ initialUsername, onLogin }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState(initialUsername || "");
   const [password, setPassword] = useState("");
@@ -114,6 +115,12 @@ export default function LoginScreen({ initialUsername, onLogin }) {
       <p style={styles.loginCaveat}>
         {t("login.caveat")}
       </p>
+
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "4px 14px", marginTop: 14 }}>
+        {LEGAL_LINKS.map((link) => (
+          <a key={link.id} href={link.href} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--text-muted)" }}>{lang === "en" ? link.en : link.tr}</a>
+        ))}
+      </div>
     </div>
   );
 }
