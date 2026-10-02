@@ -36,7 +36,7 @@ export async function call(path, method, body, characterKey=activeCharacterKey) 
   try { data = await res.json(); } catch { /* boş gövde (ör. 204) */ }
   if (NATIVE) {
     if (res.ok && data.token && (path === "login" || path === "register")) writeToken(data.token);
-    else if (path === "logout" || (res.status === 401 && data.error === "LOGIN_REQUIRED")) writeToken(null);
+    else if (path === "logout" || (res.ok && path === "account/delete") || (res.status === 401 && data.error === "LOGIN_REQUIRED")) writeToken(null);
   }
   if (!res.ok) throw Object.assign(new Error(data.error || "REQUEST_FAILED"), { code: data.error });
   return data;
@@ -46,6 +46,7 @@ export const registerAccount = (name, password) => call("register", "POST", { na
 export const loginAccount = (name, password) => call("login", "POST", { name, password });
 export const logoutAccount = () => call("logout", "POST");
 export const fetchMe = () => call("me", "GET");
+export const deleteAccountApi = (password) => call("account/delete", "POST", { password });
 
 // Faz 2 — hesap yedeği (server/app.mjs#/api/backup). `revision` iyimser
 // eşzamanlılık kontrolü: sunucudaki güncel sürümle uyuşmayan bir PUT 409

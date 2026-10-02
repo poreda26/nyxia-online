@@ -273,6 +273,67 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   }
   const pushInterval = PUSH_ENABLED ? setInterval(() => { runInactivityCheck().catch(() => {}); runEventReminderCheck().catch(() => {}); }, PUSH_CHECK_INTERVAL_MS) : null;
   const cookie = (token, age) => `nyxia_session=${token}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=${age}${secure ? '; Secure' : ''}`;
+  const accountDeleteRateLimit = makeRateLimiter(5);
+  // Mağaza politikası (Apple 5.1.1(v), Google Play) uygulama içinden hesap
+  // silmeyi şart koşuyor. Hesaba bağlı her satır tek işlemde siliniyor; klan
+  // lideriyse liderlik sıradaki üyeye geçer, klanda kimse kalmazsa klan kalkar.
+  // Sohbet mesajları hesap kimliği tutmadığı için karakter adlarıyla silinir.
+  const deleteAccountData = (account) => {
+    const id = account.id;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      let characterNames = [];
+      try {
+        const row = db.prepare('SELECT data FROM backups WHERE account=?').get(id);
+        characterNames = (JSON.parse(row?.data || '{}').characters || []).map(c => c?.nickname).filter(n => typeof n === 'string' && n);
+      } catch { /* bozuk yedek silmeyi engellemesin */ }
+      const clanIds = new Set([
+        ...db.prepare('SELECT clan_id FROM clan_members WHERE account_id=?').all(id).map(r => r.clan_id),
+        ...db.prepare('SELECT id FROM clans WHERE founder_account=?').all(id).map(r => r.id),
+      ]);
+      db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE locked_by=?').run(id);
+      db.prepare('DELETE FROM clan_members WHERE account_id=?').run(id);
+      for (const clanId of clanIds) {
+        const remaining = db.prepare("SELECT account_id,character_key,role FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'leader' THEN 0 WHEN 'officer' THEN 1 ELSE 2 END, joined_at ASC").all(clanId);
+        if (!remaining.length) {
+          db.prepare('DELETE FROM clan_invites WHERE clan_id=?').run(clanId);
+          db.prepare('DELETE FROM clan_dungeon_log WHERE clan_id=?').run(clanId);
+          db.prepare('DELETE FROM clan_dungeon_state WHERE clan_id=?').run(clanId);
+          db.prepare('DELETE FROM clans WHERE id=?').run(clanId);
+          continue;
+        }
+        const leader = remaining[0];
+        if (leader.role !== 'leader') db.prepare("UPDATE clan_members SET role='leader' WHERE account_id=? AND character_key=?").run(leader.account_id, leader.character_key);
+        db.prepare('UPDATE clans SET founder_account=? WHERE id=? AND founder_account=?').run(leader.account_id, clanId, id);
+      }
+      for (const [sql, params] of [
+        ['DELETE FROM clan_invites WHERE from_account=? OR to_account=?', [id, id]],
+        ['DELETE FROM clan_dungeon_attempts WHERE account_id=?', [id]],
+        ['DELETE FROM clan_dungeon_log WHERE account_name=?', [account.name]],
+        ['DELETE FROM friend_requests WHERE from_account=? OR to_account=?', [id, id]],
+        ['DELETE FROM friendships WHERE account_a=? OR account_b=?', [id, id]],
+        ['DELETE FROM direct_messages WHERE from_account=? OR to_account=?', [id, id]],
+        ['DELETE FROM market_stalls WHERE account=?', [id]],
+        ['DELETE FROM boss_contributions WHERE account=?', [id]],
+        ['DELETE FROM boss_loot_claims WHERE account=?', [id]],
+        ['DELETE FROM duel_history WHERE challenger=? OR opponent=?', [id, id]],
+        ['DELETE FROM push_subscriptions WHERE account_id=?', [id]],
+        ['DELETE FROM push_prefs WHERE account_id=?', [id]],
+        ['DELETE FROM push_inactivity_sent WHERE account_id=?', [id]],
+        ['DELETE FROM backup_history WHERE account=?', [id]],
+        ['DELETE FROM backups WHERE account=?', [id]],
+        ['DELETE FROM sessions WHERE account=?', [id]],
+        ['DELETE FROM account_mutes WHERE account=?', [id]],
+        ['DELETE FROM account_blocks WHERE account=?', [id]],
+        ['DELETE FROM account_activity WHERE account=?', [id]],
+        ['DELETE FROM admin_snapshots WHERE account=?', [id]],
+        // Sohbet yazarı "Takma ad · Lv.N" biçiminde; seviye değiştiği için önek eşleşir.
+        ...characterNames.map(name => ["DELETE FROM chat_messages WHERE author LIKE ? ESCAPE '\\'", [`${name.replace(/[\\%_]/g, '\\$&')} · Lv.%`]]),
+        ['DELETE FROM accounts WHERE id=?', [id]],
+      ]) db.prepare(sql).run(...params);
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+  };
   const server = createServer(async (req, res) => {
     const send = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(body)); };
     try {
@@ -338,6 +399,18 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (path === '/api/logout' && req.method === 'POST') {
         db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));
         res.setHeader('Set-Cookie', cookie('', 0)); return send(200, { ok: true });
+      }
+      if (path === '/api/account/delete' && req.method === 'POST') {
+        accountDeleteRateLimit(account.id);
+        const body = await read(req);
+        if (typeof body?.password !== 'string') throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
+        const full = db.prepare('SELECT salt,password FROM accounts WHERE id=?').get(account.id);
+        const candidate = await scrypt(body.password, full.salt, 64);
+        if (!timingSafeEqual(candidate, Buffer.from(full.password, 'hex'))) throw fail(403, 'WRONG_PASSWORD');
+        if (db.prepare('SELECT 1 FROM panel_owner WHERE account=?').get(account.id)) throw fail(409, 'OWNER_CANNOT_DELETE');
+        deleteAccountData(account);
+        res.setHeader('Set-Cookie', cookie('', 0));
+        return send(200, { ok: true });
       }
       if (path === '/api/backup' && req.method === 'GET') {
         const row = db.prepare('SELECT * FROM backups WHERE account=?').get(account.id);

@@ -194,10 +194,48 @@ function NotificationsSection({ tr, t }) {
     </>
   );
 }
+// Mağaza politikaları (Apple 5.1.1(v), Google Play) uygulama içinden hesap
+// silmeyi zorunlu kılıyor. Şifre yeniden isteniyor: açık bir cihazdan tek
+// dokunuşla geri döndürülemez silme yapılamasın.
+const DELETE_ERRORS = {
+  WRONG_PASSWORD: ['Şifre yanlış.', 'Wrong password.'],
+  OWNER_CANNOT_DELETE: ['Panel sahibi hesabı silinemez.', 'The panel owner account cannot be deleted.'],
+  TOO_MANY_ATTEMPTS: ['Çok fazla deneme. Biraz bekleyip tekrar dene.', 'Too many attempts. Wait a bit and try again.'],
+};
+const accountButton = { padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-panel-alt)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', fontSize: 13 };
+const accountDangerButton = { ...accountButton, color: '#E8A5AF', borderColor: '#71404d', background: 'rgba(232,66,90,0.12)' };
+function AccountSection({ tr, onDeleteAccount }) {
+  const [step, setStep] = useState('idle'), [password, setPassword] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const submit = async () => {
+    if (busy || !password) return;
+    setBusy(true); setError('');
+    try { await onDeleteAccount(password); }
+    catch (err) {
+      const message = DELETE_ERRORS[err.code];
+      setError(message ? message[tr ? 0 : 1] : (tr ? 'Hesap silinemedi. Bağlantını kontrol edip tekrar dene.' : 'Could not delete the account. Check your connection and try again.'));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="settings-group">
+      <h3>{tr ? 'Hesabı sil' : 'Delete account'}</h3>
+      <p>{tr ? 'Hesabın; karakterlerin, envanterin, elmasların, arkadaşlıkların ve mesajların dahil sunucudan kalıcı olarak silinir. Bu işlem geri alınamaz. Klan lideriysen liderlik sıradaki üyeye geçer.' : 'Your account is permanently deleted from the server, including characters, inventory, diamonds, friendships and messages. This cannot be undone. If you lead a clan, leadership passes to the next member.'}</p>
+      {step === 'idle' && <button onClick={() => setStep('confirm')} style={accountDangerButton}>{tr ? 'Hesabımı sil' : 'Delete my account'}</button>}
+      {step === 'confirm' && <>
+        <input type="password" autoComplete="current-password" aria-label={tr ? 'Şifre' : 'Password'} placeholder={tr ? 'Onay için şifreni gir' : 'Enter your password to confirm'} value={password} onChange={e => { setPassword(e.target.value); setError(''); }} onKeyDown={e => { if (e.key === 'Enter') submit(); }} maxLength={128} style={{ ...styles.loginInput, width: '100%', boxSizing: 'border-box', margin: '8px 0', textAlign: 'left' }} />
+        {error && <p role="alert" style={{ color: '#E8425A' }}>{error}</p>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button disabled={busy || !password} onClick={submit} style={{ ...accountDangerButton, opacity: busy || !password ? 0.5 : 1 }}>{busy ? (tr ? 'Siliniyor…' : 'Deleting…') : (tr ? 'Kalıcı olarak sil' : 'Delete permanently')}</button>
+          <button disabled={busy} onClick={() => { setStep('idle'); setPassword(''); setError(''); }} style={accountButton}>{tr ? 'Vazgeç' : 'Cancel'}</button>
+        </div>
+      </>}
+    </div>
+  );
+}
 export default function SettingsModal({
  musicVolume,musicMuted,onMusicVolumeChange,onToggleMusicMute,
  sfxVolume,sfxMuted,onSfxVolumeChange,onToggleSfxMute,
- lang,onLangChange,theme,onThemeChange,onClose,preferences={},onPreferenceChange=()=>{},
+ lang,onLangChange,theme,onThemeChange,onClose,preferences={},onPreferenceChange=()=>{},onDeleteAccount,
 }) {
  const {t}=useTranslation(),tr=lang==='tr';
  const [section,setSection]=useState('sound'),[tutorial,setTutorial]=useState(false);
@@ -222,7 +260,7 @@ export default function SettingsModal({
  return createPortal(<div className="settings-overlay" style={styles.modalOverlay} onClick={onClose}>
   <section ref={panel} className="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-heading" onClick={e=>e.stopPropagation()}>
    <header><div className="settings-seal"><Settings size={26}/></div><div><small>NYXIA ONLINE</small><h2 id="settings-heading">{t('settings.title')}</h2></div><button className="settings-close" aria-label={tr?'Kapat':'Close'} onClick={onClose}><X size={20}/></button></header>
-   <nav className="settings-tabs">{[['sound','Ses ve titreşim','Sound & touch'],['display','Görünüm','Display'],['notifications','Bildirimler','Notifications'],['help','Oyun rehberi','Game guide']].map(([id,local,en])=><button key={id} aria-pressed={section===id} onClick={()=>setSection(id)}>{tr?local:en}</button>)}</nav>
+   <nav className="settings-tabs">{[['sound','Ses ve titreşim','Sound & touch'],['display','Görünüm','Display'],['notifications','Bildirimler','Notifications'],['help','Oyun rehberi','Game guide'],...(onDeleteAccount?[['account','Hesap','Account']]:[])].map(([id,local,en])=><button key={id} aria-pressed={section===id} onClick={()=>setSection(id)}>{tr?local:en}</button>)}</nav>
    <div className="settings-content">
     {section==='sound'&&<>
      <div className="settings-group"><h3>{tr?'Ses seviyeleri':'Audio levels'}</h3><VolumeRow label={t('settings.musicVolume')} volume={musicVolume} muted={musicMuted} onVolumeChange={onMusicVolumeChange} onToggleMute={onToggleMusicMute} t={t}/><VolumeRow label={t('settings.sfxVolume')} volume={sfxVolume} muted={sfxMuted} onVolumeChange={onSfxVolumeChange} onToggleMute={onToggleSfxMute} t={t}/></div>
@@ -235,9 +273,10 @@ export default function SettingsModal({
      <div className="settings-group"><h3>{tr?'Efekt yoğunluğu':'Visual effects'}</h3><p>{tr?'Düşük mod, parıltı ve parçacıkları azaltır.':'Low mode reduces glow and particles.'}</p><div className="settings-options">{[['full','Tam','Full'],['low','Düşük','Low']].map(([id,local,en])=><button key={id} aria-pressed={(preferences.effects||'full')===id} onClick={()=>onPreferenceChange('effects',id)}>{tr?local:en}</button>)}</div></div>
     </>}
     {section==='notifications'&&<NotificationsSection tr={tr} t={t}/>}
+    {section==='account'&&onDeleteAccount&&<AccountSection tr={tr} onDeleteAccount={onDeleteAccount}/>}
     {section==='help'&&<>
      <div className="settings-group"><h3>{tr?'Maceraya başlarken':'Getting started'}</h3><p>{tr?'Savaş, envanter, pazar ve yükseltme ekranlarını Kaptan ile tekrar keşfet.':'Explore battle, inventory, market and upgrades with the Captain.'}</p><button className="settings-guide" onClick={()=>setTutorial(true)}>{tr?'Oyun rehberini aç':'Open game guide'}</button></div>
-     <div className="settings-group"><h3>{tr?'Kayıt ve gizlilik':'Saves & privacy'}</h3><p>{tr?'Bu beta sürümünde oyun ilerlemen bu cihazın yerel depolamasında tutulur. Tarayıcı verilerini silmek veya uygulamayı kaldırmak kaydını silebilir. Henüz bulut kayıt yoktur.':'This beta stores progress locally on this device. Clearing browser data or uninstalling the app may delete your save. Cloud saves are not available yet.'}</p><p>{tr?'Dil, ses ve görünüm tercihlerin de cihaza özeldir.':'Language, audio and display preferences are device-specific.'}</p></div>
+     <div className="settings-group"><h3>{tr?'Kayıt ve gizlilik':'Saves & privacy'}</h3><p>{tr?'Oyun ilerlemen hesabına bağlı olarak sunucuda yedeklenir, cihazında da yerel bir kopya tutulur. Hesabını istediğin zaman Ayarlar > Hesap bölümünden kalıcı olarak silebilirsin.':'Your progress is backed up to the server under your account, with a local copy kept on this device. You can permanently delete your account any time from Settings > Account.'}</p><p>{tr?'Dil, ses ve görünüm tercihlerin de cihaza özeldir.':'Language, audio and display preferences are device-specific.'}</p></div>
      <div className="settings-build">NYXIA ONLINE <span>{tr?'Beta sürümü':'Beta version'}</span></div>
     </>}
    </div>

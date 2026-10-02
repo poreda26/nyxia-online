@@ -37,7 +37,7 @@ export const THIRD_SLOT_COST_DIAMONDS = 500;
 // havuzu olmadığı için bedel silinen karakterin KENDİ elmasından aranıyor.
 export const CHARACTER_DELETE_COST_DIAMONDS = 500;
 
-function emptyAccount() {
+export function emptyAccount() {
   return { race: null, characters: Array(CHARACTER_SLOTS).fill(null), bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS, diamonds: 0, bankGold: 0 };
 }
 
@@ -172,6 +172,15 @@ export function saveAccountBankGold(username, bankGold) {
   writeAccounts(accounts);
 }
 
+
+// Hesap silindiğinde bu cihazdaki kopyasını da kaldırır (sunucu tarafı
+// /api/account/delete ile silinir).
+export function deleteLocalAccount(username) {
+  const accounts = readAccounts();
+  delete accounts[username];
+  writeAccounts(accounts);
+  try { localStorage.removeItem(LAST_USERNAME_KEY); } catch { /* ignore */ }
+}
 
 export function saveLastUsername(username) {
   try { localStorage.setItem(LAST_USERNAME_KEY, username); } catch { /* ignore */ }

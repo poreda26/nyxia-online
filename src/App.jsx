@@ -15,8 +15,9 @@ import {
   loadAccount, saveCharacterSlot, deleteCharacterSlot, saveAccountRace, changeAccountRace,
   saveAccountBank, saveAccountUnlockedSlots, saveAccountDiamonds, saveAccountBankGold, saveLastUsername, loadLastUsername,
   CHARACTER_SLOTS, DEFAULT_UNLOCKED_SLOTS, THIRD_SLOT_COST_DIAMONDS, CHARACTER_DELETE_COST_DIAMONDS,
+  emptyAccount, deleteLocalAccount,
 } from "./utils/storage";
-import { fetchMe, fetchBackup, pushBackup } from "./utils/api";
+import { fetchMe, fetchBackup, pushBackup, logoutAccount, deleteAccountApi } from "./utils/api";
 import { styles } from "./styles";
 import GlobalStyle from "./components/GlobalStyle";
 import LoginScreen from "./components/LoginScreen";
@@ -403,10 +404,42 @@ export default function App() {
     return true;
   };
 
-  const handleLogout = () => {
+  // Oturum bittiğinde ekranı ve hesap durumunu sıfırlar. Hesap state'i de
+  // boşaltılıyor: bir sonraki giriş tamamlanana kadar eski hesabın verisi
+  // başka bir oturumun yedeğine gitmesin.
+  const resetSession = () => {
     setPlayer(null);
     setActiveSlot(null);
+    setUsername("");
+    setAccount(emptyAccount());
+    skipNextSyncRef.current = false;
     setScreen("login");
+  };
+
+  // Çıkış artık sunucu oturumunu da kapatıyor (önceden sadece ekran
+  // değişiyordu, sayfa yenilenince fetchMe kullanıcıyı geri alıyordu; yerel
+  // uygulamada ise token cihazda kalıyordu). Son değişiklikler 1.5 sn'lik
+  // gecikmeli senkron beklerken oturum kapanıp kaybolmasın diye önce bir
+  // son yedek gönderilir.
+  const handleLogout = async () => {
+    if (username) {
+      try {
+        const payload = activeSlot !== null && player
+          ? { ...account, characters: account.characters.map((c, i) => (i === activeSlot ? player : c)) }
+          : account;
+        const result = await pushBackup(backupRevisionRef.current, payload);
+        backupRevisionRef.current = result.revision;
+      } catch { /* ağ/çakışma — çıkışı engelleme */ }
+    }
+    try { await logoutAccount(); } catch { /* sunucuya ulaşılamıyorsa yerel çıkış yine de yapılır */ }
+    resetSession();
+  };
+
+  const handleDeleteAccount = async (password) => {
+    await deleteAccountApi(password);
+    deleteLocalAccount(username);
+    setSettingsOpen(false);
+    resetSession();
   };
 
   const handleChangeCharacter = () => {
@@ -491,6 +524,7 @@ export default function App() {
           onLangChange={(l) => updateAudioSetting("language", l)}
           theme={audioSettings.theme}
           onThemeChange={(v) => updateAudioSetting("theme", v)}
+          onDeleteAccount={screen !== "login" ? handleDeleteAccount : undefined}
           onClose={() => setSettingsOpen(false)}
         />
       )}
