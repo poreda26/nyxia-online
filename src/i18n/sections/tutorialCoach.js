@@ -1,0 +1,86 @@
+// Rehberli tutorial — Kaptan'ın bölüm bölüm anlattığı, oyuncunun gerçekten
+// yaptığı adımlar. Her ipucu oyuncu durumundan türetilir (bkz. utils/tutorial.js).
+export const tutorialCoachSection = {
+  tr: {
+    tutorialCoach: {
+      sectionOf: "Bölüm {n}/{total}",
+      skipSection: "Bölümü Atla",
+      skipAll: "Hepsini Atla",
+      continue: "Devam",
+      sections: { skills: "Beceriler", battle: "İlk Savaş", upgrade: "Silahı Güçlendir" },
+      welcome: {
+        title: "Nyxia Online'a Hoş Geldin",
+        text: "Selam, evlat. Ben Kaptan. Seni üç kısa görevle hazırlayacağım: becerilerini yerleştirmek, ilk savaşını vermek ve silahını +3'e basmak. Sıkılırsan istediğin bölümü atlayabilirsin.",
+        gift: "Hazırlığın için sana {gold} altın ve 1 Yükseltme Parşömeni veriyorum.",
+        start: "Başlayalım",
+      },
+      skills: {
+        goCharacter: "Alttaki menüden Karakter sekmesine geç.",
+        openSkillsTab: "Üstteki Beceriler alt sekmesine dokun.",
+        addSkill: "Bir becerinin yanındaki \"Kutucuğa Ekle\" düğmesine bas. Beceriler savaşta bu kutucuklardan kullanılır.",
+        done: "Süper! Beceri artık savaş kutucuğunda. Savaşta o kutucuğa dokunarak kullanırsın. Kutucuk sayısı 5; mana yettikçe dilediğini ekleyebilirsin.",
+      },
+      battle: {
+        goBattle: "Alttaki menüden Savaş sekmesine geç.",
+        pickMonster: "Bir canavarın yanındaki \"Savaşı Başlat\" düğmesine bas. İlk canavarla başlamak en iyisi.",
+        fight: "Saldır'a bas, mana yettikçe alttaki beceri kutucuklarını da kullan. Canavarı yenmen yeterli!",
+        done: "İlk zaferin! Altın, tecrübe ve bazen eşya düşer. Yeni canavarlar için aynısını 20 kez tekrar edip sıradakinin kilidini açarsın.",
+      },
+      upgrade: {
+        goInventory: "Önce silahı çantaya almalıyız. Alttan Envanter sekmesine geç.",
+        unequip: "Kuşanılmış silahına dokun ve \"Çıkar\"a bas; böylece çantaya girer.",
+        goUpgrade: "Alttan Yükselt sekmesine geç. Silah burada güçlenir.",
+        stage: "Çantandaki silaha dokun, forge'daki Eşya kutusuna girer. Sonra aynı seviye (T1) bir parşömene dokun, kutuya girsin.",
+        stageAgain: "Silahın +2 oldu, bir kez daha! Silaha ve bir T1 parşömene dokun, sonra Bas'a bas.",
+        scrollPress: "Çantandaki T1 parşömene dokun, parşömen kutusuna girsin. Sonra \"Bas\"a bas. +3'e kadar başarısızlık yok!",
+        buyScroll: "Parşömenin bittiyse sağdaki küçük Mağaza kutusundan T1 parşömen al (100 altın), sonra \"Bas\"a bas.",
+        goInventoryEquip: "Silahın +3 oldu! Envanter sekmesine dönüp tekrar kuşanalım.",
+        equipBack: "Çantandaki +3 silaha dokun ve \"Kuşan\"a bas.",
+        finished: "Harika! Silahın +3. Daha yükseğinde şans devreye girer ve başarısızlıkta eşya gider. Dikkatli ol.",
+        noWeapon: "Silahını bulamadım; bu bölümü geçiyoruz. Yükseltmeyi Yükselt sekmesinden her zaman deneyebilirsin.",
+        done: "Silahın +3 oldu. Yükselt sekmesini sık kullan, ama +3 üstünde riske dikkat!",
+      },
+    },
+  },
+  en: {
+    tutorialCoach: {
+      sectionOf: "Section {n}/{total}",
+      skipSection: "Skip Section",
+      skipAll: "Skip All",
+      continue: "Continue",
+      sections: { skills: "Skills", battle: "First Battle", upgrade: "Upgrade Your Weapon" },
+      welcome: {
+        title: "Welcome to Nyxia Online",
+        text: "Hello there. I'm the Captain. I'll prepare you with three short tasks: set up your skills, fight your first battle and upgrade your weapon to +3. Skip any section if you get bored.",
+        gift: "To help you prepare I'm giving you {gold} gold and 1 Upgrade Scroll.",
+        start: "Let's Go",
+      },
+      skills: {
+        goCharacter: "Switch to the Character tab in the bottom menu.",
+        openSkillsTab: "Tap the Skills sub-tab at the top.",
+        addSkill: "Press \"Add to Slot\" next to a skill. Skills are used from these slots in battle.",
+        done: "Nice! The skill now sits in a battle slot. Tap that slot during a fight to use it. You have 5 slots to fill.",
+      },
+      battle: {
+        goBattle: "Switch to the Battle tab in the bottom menu.",
+        pickMonster: "Press \"Start Battle\" next to a monster. Starting with the first one is best.",
+        fight: "Hit Attack and use the skill slots at the bottom as your mana allows. Just defeat the monster!",
+        done: "Your first victory! Gold, experience and sometimes gear drop. Defeat a monster 20 times to unlock the next one.",
+      },
+      upgrade: {
+        goInventory: "First we need the weapon in your bag. Switch to the Inventory tab.",
+        unequip: "Tap your equipped weapon and press \"Unequip\" to put it in your bag.",
+        goUpgrade: "Switch to the Upgrade tab at the bottom. Your weapon gets stronger here.",
+        stage: "Tap the weapon in your bag to place it in the Item slot. Then tap a T1 scroll so it enters the scroll box.",
+        stageAgain: "Your weapon is +2, one more time! Tap the weapon and a T1 scroll, then press Press.",
+        scrollPress: "Tap the T1 scroll in your bag so it goes into the scroll box. Then press \"Press\". No failure up to +3!",
+        buyScroll: "If you're out of scrolls, buy a T1 scroll (100 gold) from the small Shop box on the right, then press \"Press\".",
+        goInventoryEquip: "Your weapon is +3! Let's go back to Inventory and equip it again.",
+        equipBack: "Tap the +3 weapon in your bag and press \"Equip\".",
+        finished: "Great! Your weapon is +3. Beyond that luck decides and a failure destroys the item. Be careful.",
+        noWeapon: "I couldn't find your weapon, so we skip this part. You can always upgrade from the Upgrade tab.",
+        done: "Your weapon is +3. Use the Upgrade tab often, but watch the risk above +3!",
+      },
+    },
+  },
+};

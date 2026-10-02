@@ -26,7 +26,7 @@ import CharacterTab from "./CharacterTab";
 import CaptainTab from "./CaptainTab";
 import WarzoneTab from "./WarzoneTab";
 import ClanTab from "./ClanTab";
-import TutorialModal from "./TutorialModal";
+import TutorialCoach from "./TutorialCoach";
 import DailyLoginModal from "./DailyLoginModal";
 import WheelModal from "./WheelModal";
 import { fetchWheel } from "../services/wheelService";
@@ -58,7 +58,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
     setTutorialOpen(false);
     setPlayer((p) => (p.tutorialSeen ? p : { ...p, tutorialSeen: true }));
   };
-  const reopenTutorial = () => setTutorialOpen(true);
+  const reopenTutorial = () => { setPlayer((p) => ({ ...p, tutorialSection: 0 })); setTutorialOpen(true); };
 
   // Günlük giriş ödülü — Hub her açıldığında (uygulama yeniden yüklendiğinde
   // dahil) bugün henüz alınmadıysa otomatik açılır; kullanıcı kapatırsa
@@ -322,6 +322,8 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         )}
       </ScreenPanel>
 
+      {tutorialOpen && <TutorialCoach player={player} setPlayer={setPlayer} tab={tab} onFinish={closeTutorial} />}
+
       <BottomNav tab={tab} setTab={requestTabChange} notifications={notifications} />
 
       {pendingTab && (
@@ -338,8 +340,6 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
           </div>
         </div>
       )}
-
-      {tutorialOpen && <TutorialModal onFinish={closeTutorial} />}
 
       {dailyLoginOpen && !tutorialOpen && (
         <DailyLoginModal player={player} setPlayer={setPlayer} pushToast={pushToast} onClose={() => setDailyLoginOpen(false)} />

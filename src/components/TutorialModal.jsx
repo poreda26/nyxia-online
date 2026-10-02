@@ -27,12 +27,14 @@ const STEP_META = [
   { icon: Shield, color: "#A34FD9" },
 ];
 
-export default function TutorialModal({ onFinish }) {
+export default function TutorialModal({ onFinish, stepIndexes }) {
   const { t } = useTranslation();
   const steps = t("tutorial.steps");
   const [step, setStep] = useState(0);
-  const isLast = step === STEP_META.length - 1;
-  const current = { ...STEP_META[step], ...steps[step] };
+  // stepIndexes: rehberli tutorial'ın son bölümünde yalnızca seçili slaytlar gösterilir.
+  const indexes = stepIndexes || STEP_META.map((_, i) => i);
+  const isLast = step === indexes.length - 1;
+  const current = { ...STEP_META[indexes[step]], ...steps[indexes[step]] };
   const Icon = current.icon;
 
   return (
@@ -61,7 +63,7 @@ export default function TutorialModal({ onFinish }) {
         </div>
 
         <div style={{ display: "flex", gap: 5, marginTop: 18 }}>
-          {STEP_META.map((_, i) => (
+          {indexes.map((_, i) => (
             <div key={i} style={{ width: 6, height: 6, borderRadius: 3, background: i === step ? current.color : "var(--border)" }} />
           ))}
         </div>

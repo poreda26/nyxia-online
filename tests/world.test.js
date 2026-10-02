@@ -501,3 +501,37 @@ test('wheel prizes land in the bag, fall back to the bank, and stay pending when
   assert.equal(stuck.delivered, false);
   assert.equal(stuck.player.wheelAppliedAt, undefined);
 });
+
+import { grantTutorialGift, upgradeHint, totalKills, bagScrollCount } from '../src/utils/tutorial';
+test('tutorial gift is given once and the weapon hints follow the player state to +3', () => {
+  const base = player();
+  const gold = base.gold;
+  const gift = grantTutorialGift(base);
+  assert.equal(gift.player.gold, gold + 200);
+  assert.equal(bagScrollCount(gift.player, 1), 1);
+  assert.equal(grantTutorialGift(gift.player).player, gift.player);
+  assert.equal(totalKills(base), 0);
+
+  const weapon = base.equipped.mainHand;
+  assert.ok(weapon && weapon.upgradeLevel === 1);
+  assert.equal(upgradeHint(gift.player, 'battle', null).key, 'goInventory');
+  assert.equal(upgradeHint(gift.player, 'inventory', null).key, 'unequip');
+  const unequipped = unequipItem(gift.player, 'mainHand');
+  const bagged = unequipped.player || unequipped;
+  assert.equal(upgradeHint(bagged, 'inventory', weapon.id).key, 'goUpgrade');
+  assert.equal(upgradeHint(bagged, 'upgrade', weapon.id).key, 'stage');
+  // Forge'da bekleyen silah (çantada da kuşanılmış da değil).
+  const staged = { ...bagged, inventory: bagged.inventory.filter((i) => i.id !== weapon.id) };
+  assert.equal(upgradeHint(staged, 'upgrade', weapon.id).key, 'scrollPress');
+  assert.equal(upgradeHint({ ...staged, inventory: staged.inventory.filter((i) => i.kind !== 'scroll') }, 'upgrade', weapon.id).key, 'buyScroll');
+  // +2: bir kez daha; +3 çantada: tekrar kuşan; +3 kuşanılmış: bitti.
+  const plus2 = { ...bagged, inventory: bagged.inventory.map((i) => (i.id === weapon.id ? { ...i, upgradeLevel: 2 } : i)) };
+  assert.equal(upgradeHint(plus2, 'upgrade', weapon.id).key, 'stageAgain');
+  const plus3 = { ...bagged, inventory: bagged.inventory.map((i) => (i.id === weapon.id ? { ...i, upgradeLevel: 3 } : i)) };
+  assert.equal(upgradeHint(plus3, 'upgrade', weapon.id).key, 'goInventoryEquip');
+  assert.equal(upgradeHint(plus3, 'inventory', weapon.id).key, 'equipBack');
+  const done = { ...base, equipped: { ...base.equipped, mainHand: { ...weapon, upgradeLevel: 3 } } };
+  const finished = upgradeHint(done, 'inventory', weapon.id);
+  assert.equal(finished.key, 'finished');
+  assert.ok(finished.done);
+});
