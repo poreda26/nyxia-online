@@ -3,7 +3,17 @@
 // API aynı domain'den servis edileceği için bu varsayılan doğru olacak;
 // yerel geliştirmede (Vite 5173, backend ayrı port 8787) .env.local'de
 // VITE_API_BASE=http://localhost:8787 ile ezilir.
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+import { Capacitor } from "@capacitor/core";
+
+// Mağaza uygulamasında (Capacitor) sayfa https://localhost / capacitor://localhost
+// origin'inden çalışır: göreli /api yolu uygulamanın kendi yerel sunucusuna
+// gider, SameSite=Strict çerez de gönderilmez. Bu yüzden yerel uygulama canlı
+// API adresini kullanır ve oturumu Bearer token ile taşır.
+const NATIVE = Capacitor.isNativePlatform();
+const API_BASE = import.meta.env.VITE_API_BASE || (NATIVE ? "https://nyxia.sametcantas.com" : "");
+const TOKEN_KEY = "nyxia_native_session";
+const readToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } };
+const writeToken = (value) => { try { value ? localStorage.setItem(TOKEN_KEY, value) : localStorage.removeItem(TOKEN_KEY); } catch { /* depolama kapalı */ } };
 
 // Diğer servislerin (ör. chatService.js) aynı fetch/CORS/çerez mantığını
 // tekrarlamadan gerçek backend'e konuşabilmesi için dışa açık.
@@ -11,14 +21,23 @@ let activeCharacterKey=null;
 export function getActiveCharacterKey(){return activeCharacterKey;}
 export function setActiveCharacterKey(key){activeCharacterKey=key;}
 export async function call(path, method, body, characterKey=activeCharacterKey) {
+  const token = NATIVE ? readToken() : null;
   const res = await fetch(`${API_BASE}/api/${path}`, {
     method,
-    credentials: "include",
-    headers: { "Content-Type": "application/json", ...(path.startsWith("clan")&&characterKey?{"X-Character-Key":characterKey}:{}) },
+    credentials: NATIVE ? "omit" : "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(path.startsWith("clan")&&characterKey?{"X-Character-Key":characterKey}:{}),
+      ...(NATIVE ? { "X-Native-Client": "1", ...(token ? { Authorization: `Bearer ${token}` } : {}) } : {}),
+    },
     ...(method === "GET" ? {} : { body: JSON.stringify(body ?? {}) }),
   });
   let data = {};
   try { data = await res.json(); } catch { /* boş gövde (ör. 204) */ }
+  if (NATIVE) {
+    if (res.ok && data.token && (path === "login" || path === "register")) writeToken(data.token);
+    else if (path === "logout" || (res.status === 401 && data.error === "LOGIN_REQUIRED")) writeToken(null);
+  }
   if (!res.ok) throw Object.assign(new Error(data.error || "REQUEST_FAILED"), { code: data.error });
   return data;
 }

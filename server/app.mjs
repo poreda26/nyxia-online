@@ -106,7 +106,12 @@ const stallActive = (row, now) => !!row && now < row.listed_at + row.duration_ho
 const CLAN_MATERIAL_COLUMN = { wood: 'treasury_root_fragment', silver: 'treasury_midboss_trophy', iron: 'treasury_twilight_essence', goldBar: 'treasury_finalboss_trophy' };
 
 // Client backups are deliberately separate from future authoritative game state.
-export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null } = {}) {
+// Capacitor WebView'larının sabit origin'leri: Android https://localhost,
+// iOS capacitor://localhost. Bu origin'lerden gelen istekler çerezle değil
+// Bearer token ile yetkilenir (SameSite=Strict çerez WebView'dan gönderilmez).
+export const NATIVE_APP_ORIGINS = ['https://localhost', 'capacitor://localhost'];
+export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS } = {}) {
+  const allowedOrigins = new Set([origin, ...nativeOrigins]);
   const db = new DatabaseSync(database);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
     CREATE TABLE IF NOT EXISTS accounts(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, password TEXT NOT NULL);
@@ -271,18 +276,20 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   const server = createServer(async (req, res) => {
     const send = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(body)); };
     try {
-      if (req.headers.origin && req.headers.origin !== origin) throw fail(403, 'ORIGIN_DENIED');
-      if (req.headers.origin === origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
+      const reqOrigin = req.headers.origin;
+      if (reqOrigin && !allowedOrigins.has(reqOrigin)) throw fail(403, 'ORIGIN_DENIED');
+      const nativeOrigin = !!reqOrigin && reqOrigin !== origin;
+      if (reqOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+        if (!nativeOrigin) res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.setHeader('Vary', 'Origin');
       }
       if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Character-Key');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Character-Key, X-Native-Client, Authorization');
         return send(204, null);
       }
-      if (req.method !== 'GET' && req.method !== 'HEAD' && (req.headers.origin !== origin || !req.headers['content-type']?.startsWith('application/json'))) throw fail(403, 'INVALID_REQUEST_ORIGIN');
+      if (req.method !== 'GET' && req.method !== 'HEAD' && (!allowedOrigins.has(reqOrigin) || !req.headers['content-type']?.startsWith('application/json'))) throw fail(403, 'INVALID_REQUEST_ORIGIN');
       const path = new URL(req.url, 'http://localhost').pathname;
       if (!path.startsWith('/api/')) {
         if (!staticDir || req.method !== 'GET') throw fail(404, 'NOT_FOUND');
@@ -309,10 +316,17 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const token = randomBytes(32).toString('hex');
         db.prepare('DELETE FROM sessions WHERE expires < ?').run(Date.now());
         db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), account.id, Date.now() + 7 * 86400000);
+        // Yerel uygulama (Capacitor) çerez kullanamaz; token yalnızca açıkça
+        // native origin + X-Native-Client ile istenirse gövdede döner. Web
+        // istemcisi token'ı hiç görmez (HttpOnly çerez korumasını bozmamak için).
+        if (nativeOrigin && req.headers['x-native-client'] === '1') return send(200, { name: account.name, token });
         res.setHeader('Set-Cookie', cookie(token, 7 * 86400));
         return send(200, { name: account.name });
       }
-      const token = /(?:^|;\s*)nyxia_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || '')?.[1];
+      const bearerToken = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization || '')?.[1];
+      // Native origin'den gelen istekte çerez yok sayılır: yalnızca Bearer geçerli.
+      const cookieToken = nativeOrigin ? undefined : /(?:^|;\s*)nyxia_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || '')?.[1];
+      const token = bearerToken || cookieToken;
       const account = token && db.prepare('SELECT accounts.id,accounts.name FROM sessions JOIN accounts ON accounts.id=sessions.account WHERE token=? AND expires>?').get(hash(token), Date.now());
       if (!account) throw fail(401, 'LOGIN_REQUIRED');
       if(admin.blocked(account.id)) throw fail(403,'ACCOUNT_BLOCKED');
