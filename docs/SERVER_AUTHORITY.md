@@ -23,7 +23,8 @@ edebilmesi için açık `.js` uzantılı, bağımlılıksız dosyalar tercih edi
 | 1a | **Elmas kasası**: bakiye, defter, sunucu fiyat listesi, günlük giriş elması, haftalık sıralama ödülü (talep başına tek), GM verme, klan kurma/bağış, yedekte elmas sabitleme | Yapıldı |
 | 1b | **Hak sahipliği**: premium (satın alınan + çark), açılan karakter slotları, açılan boya/avatar/çerçeve (günlük seri 1a'da yapıldı) | Yapıldı |
 | 1c | **Ödeme**: mağaza makbuzu → elmas kredisi (RevenueCat webhook'u, işlem başına bir kez, iade geri alma). Sunucu tarafı hazır; istemci SDK'sı + hesap kurulumu bekliyor | Sunucu yapıldı |
-| 2a | **Altın + envanter + depo**: eşyalar sunucuda satır olarak, kuşan/çıkar/sat/depo | Bekliyor |
+| 2.0 | **Motor**: paylaşılan oyun mantığı paketi, `POST /api/game/act`, hesap başına sunucu ekonomisi bayrağı, istemci `act()` katmanı (bayrak kapalıyken aynı kurallar yerelde) | Yapıldı (bayrak kapalı) |
+| 2a | **Altın + envanter + depo**: kuşan/çıkar/sat/onar/depo/sandık/takviye parşömeni eylemleri | Envanter sekmesi yapıldı; dükkânlar, yükseltme, ırk/sınıf parşömeni, elmas mağazası eşyaları sırada |
 | 2b | **Yükseltme**: zarı sunucu atar, parşömen tüketimi sunucuda | Bekliyor |
 | 2c | **Pazar**: tezgah işlemleri sunucudaki envantere bağlanır | Bekliyor |
 | 3a | **Savaş ödülleri**: canavar ödülü (XP, altın, düşen eşya) sunucuda; savaş bildirimi doğrulanır (hız, seviye, harita kuralı) | Bekliyor |
@@ -69,3 +70,23 @@ edebilmesi için açık `.js` uzantılı, bağımlılıksız dosyalar tercih edi
    alımları için ayrıca `IAP_ALLOW_SANDBOX=1` (canlıya çıkarken kaldır).
 4. İstemcide `@revenuecat/purchases-capacitor` kurulup `appUserID` olarak hesap kimliği (`/api/me` → `id`)
    verilecek; mağaza ekranındaki "Elmas Al" düğmeleri bu SDK'ya bağlanacak (bunu ben yaparım).
+
+## Faz 2: ekonomi motoru (nasıl çalışıyor)
+
+- `src/game/actions.js`: oyun kuralları. Her eylem `(state, payload) -> { state, result }`; eşyalar
+  kimlikle bulunur, istemcinin gönderdiği nesneye güvenilmez. Aynı dosya iki yerde çalışır.
+- `scripts/build-game-logic.mjs` (`npm run build:logic`): kuralları ve kullandığı saf fonksiyonları
+  `server/game-logic.generated.mjs` içine paketler. Paket depoda durur; `tests/game-logic.test.mjs`
+  eskiyse testi düşürür. Kurallar değişince `npm run build:logic` çalıştırıp sunucuya birlikte yükle.
+- `server/game.mjs`: hesap bayrağı (`economy_accounts`; `server/set-economy.mjs hesap [kapat]` ya da
+  sunucuda `ECONOMY_FOR_ALL=1`), eylem uygulama (tek transaction) ve yedek sabitleme. Bayrak açıkken
+  altın / çanta / kuşanılanlar / sandıklar / depo / depo altını istemcinin yedeğinden değil sunucudan gelir;
+  yeni karakterin başlangıç ekonomisini kurallar belirler. Sunucuda rastgelelik kriptografik kaynaktan.
+- `src/game/client.js`: bileşenler `act(tip, yük)` çağırır. Bayrak kapalıysa kurallar istemcide çalışır
+  (davranış değişmez), açıksa sunucuya gider ve dönen yama (yalnızca değişen alanlar) yansıtılır.
+- Bayrak, tüm ekonomi yolları (kazanç + harcama) dönüştürülene kadar HERKES için kapalı kalır; aksi halde
+  henüz dönüştürülmemiş istemci yolları sunucu tarafından geri alınırdı.
+
+Dönüştürülmeyi bekleyen ekonomi yolları: canavar / sandık / görev / koleksiyon / günlük ödülleri (kaynaklar),
+NPC dükkânı ve iksirler, yükseltme (UpgradeTab), takı yükseltme, pazar, ırk/sınıf parşömeni, elmas mağazası
+eşya teslimleri, klan bağışları, beceri öğrenme, stat sıfırlama, ölüm cezası.

@@ -1,3 +1,4 @@
+import { createActor } from "./game/client";
 import { chargeDiamonds } from "./utils/diamondCharge";
 import { startPolling } from "./utils/polling";
 import {mergeClanResponse} from './utils/clanResponse';
@@ -5,7 +6,7 @@ import {fetchMyClan} from './services/clanService';
 import {setActiveCharacterKey} from './utils/api';
 import {applyLiveDropConfig} from './utils/dropConfig';
 import {call as callGameApi} from './utils/api';
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { Settings } from "lucide-react";
 import { initialPlayer, migratePlayer, BANK_PAGES, MAX_GOLD, formatGold } from "./utils/player";
 import { applyWeeklyRollover } from "./utils/nationalPoint";
@@ -200,6 +201,17 @@ export default function App() {
     setAccount((a) => ({ ...a, bankGold: typeof updater === "function" ? updater(a.bankGold) : updater }));
   }, []);
 
+  // Ekonomi eylemleri (bkz. src/game): bayrak kapalıysa kurallar burada, açıksa sunucuda çalışır.
+  const gameStateRef = useRef(null);
+  gameStateRef.current = { player, bank: account.bank, bankGold: account.bankGold };
+  const economyRef = useRef(false);
+  const act = useMemo(() => createActor({
+    getState: () => gameStateRef.current,
+    setPlayer, setBank, setBankGold,
+    isServer: () => economyRef.current,
+    onRevision: (revision) => { backupRevisionRef.current = revision; },
+  }), [setBank, setBankGold]);
+
   // Faz 2 — hesap artık sadece bu tarayıcıda değil, sunucudaki backup'a da
   // senkronlanıyor (bkz. utils/api.js#fetchBackup/pushBackup). backupRevisionRef
   // sunucunun beklediği bir sonraki sürüm numarasını tutar (iyimser
@@ -215,7 +227,7 @@ export default function App() {
 
   const handleLogin = async (name) => {
     setUsername(name);
-    fetchMe().then((me) => setIsGm(!!me.gm)).catch(() => setIsGm(false));
+    fetchMe().then((me) => { setIsGm(!!me.gm); economyRef.current = !!me.economy; }).catch(() => { setIsGm(false); economyRef.current = false; });
     saveLastUsername(name);
     // CharacterSelectScreen render's straight from account.characters (bkz.
     // CLASSES[p.class] look-up'ı) — handlePlay'e kadar migratePlayer hiç
@@ -423,6 +435,7 @@ export default function App() {
   // başka bir oturumun yedeğine gitmesin.
   const resetSession = () => {
     setIsGm(false);
+    economyRef.current = false;
     setPlayer(null);
     setActiveSlot(null);
     setUsername("");
@@ -494,6 +507,7 @@ export default function App() {
       {screen === "classSelect" && <ClassSelect onChoose={handleChooseClass} />}
       {screen === "hub" && player && (
         <Hub
+          act={act}
           isGm={isGm}
           player={player}
           setPlayer={setPlayer}

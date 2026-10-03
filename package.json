@@ -15,6 +15,8 @@
     "test:wallet": "node --test tests/wallet.test.mjs",
     "test:entitlements": "node --test tests/entitlements.test.mjs",
     "test:iap": "node --test tests/iap.test.mjs",
+    "build:logic": "node scripts/build-game-logic.mjs",
+    "test:game": "node --test tests/game.test.mjs tests/game-logic.test.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

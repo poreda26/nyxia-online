@@ -28,7 +28,7 @@ import Paperdoll from "./Paperdoll";
 import BagGrid from "./BagGrid";
 import BankGrid from "./BankGrid";
 
-export default function InventoryTab({ player, setPlayer, bank, setBank, bankGold, setBankGold, pushToast, onChangeRace }) {
+export default function InventoryTab({ act, player, setPlayer, bank, setBank, bankGold, setBankGold, pushToast, onChangeRace }) {
   const { t, lang } = useTranslation();
   const [openingChest, setOpeningChest] = useState(null); // {chest, phase, result}
   const [bulkChestResult, setBulkChestResult] = useState(null); // {items, failed} | null
@@ -45,23 +45,26 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
   // ama burası doğrudan kullanıcı eylemi olduğu için ÖNCEDEN net bir
   // hatayla engelliyor, sessizce kırpılıp yatırdığı miktarın bir kısmını
   // kaybetmiş gibi hissetmesin.
-  const depositGold = () => {
+  const goldFailure = (result) => {
+    const key = { invalidAmount: "inventory.enterValidAmount", notEnoughGold: "inventory.notEnoughGold", notEnoughBankGold: "inventory.notEnoughBankGold" }[result.reason];
+    if (key) return pushToast(t(key), "warn");
+    if (result.reason === "bankGoldCap") return pushToast(t("inventory.bankGoldCapExceeded", { max: formatGold(MAX_GOLD) }), "warn");
+    if (result.reason === "carryGoldCap") return pushToast(t("inventory.carryGoldCapExceeded", { max: formatGold(MAX_GOLD) }), "warn");
+    pushToast(t("wallet.unavailable"), "warn");
+  };
+  const depositGold = async () => {
     const amount = parseInt(goldAmount, 10);
     if (!Number.isFinite(amount) || amount <= 0) { pushToast(t("inventory.enterValidAmount"), "warn"); return; }
-    if (player.gold < amount) { pushToast(t("inventory.notEnoughGold"), "warn"); return; }
-    if (bankGold + amount > MAX_GOLD) { pushToast(t("inventory.bankGoldCapExceeded", { max: formatGold(MAX_GOLD) }), "warn"); return; }
-    setPlayer((p) => ({ ...p, gold: p.gold - amount }));
-    setBankGold((g) => g + amount);
+    const result = await act("inventory/depositGold", { amount });
+    if (!result.ok) { goldFailure(result); return; }
     pushToast(t("inventory.goldDeposited", { amount: formatGold(amount) }), "default");
     setGoldAmount("");
   };
-  const withdrawGold = () => {
+  const withdrawGold = async () => {
     const amount = parseInt(goldAmount, 10);
     if (!Number.isFinite(amount) || amount <= 0) { pushToast(t("inventory.enterValidAmount"), "warn"); return; }
-    if (bankGold < amount) { pushToast(t("inventory.notEnoughBankGold"), "warn"); return; }
-    if (player.gold + amount > MAX_GOLD) { pushToast(t("inventory.carryGoldCapExceeded", { max: formatGold(MAX_GOLD) }), "warn"); return; }
-    setBankGold((g) => g - amount);
-    setPlayer((p) => ({ ...p, gold: p.gold + amount }));
+    const result = await act("inventory/withdrawGold", { amount });
+    if (!result.ok) { goldFailure(result); return; }
     pushToast(t("inventory.goldWithdrawn", { amount: formatGold(amount) }), "default");
     setGoldAmount("");
   };
@@ -115,31 +118,21 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
 
   const bulkItems = player.inventory.filter((i) => bulkSelected.has(i.id));
 
-  const bulkDeposit = () => {
+  const bulkDeposit = async () => {
     if (bulkItems.length === 0) return;
-    let p = player, b = bank, moved = 0;
-    for (const item of bulkItems) {
-      const result = depositToBank(p, item, b, bankPage);
-      if (result.moved) { p = result.player; b = result.bank; moved++; }
-    }
-    setPlayer(p);
-    setBank(b);
+    const result = await act("inventory/depositBulk", { itemIds: bulkItems.map((i) => i.id), page: bankPage });
+    const moved = result.ok ? result.moved : 0;
     pushToast(moved > 0 ? t("inventory.bulkDepositMoved", { count: moved }) : t("inventory.bulkDepositFull"), moved > 0 ? "default" : "warn");
     setBulkSelected(new Set());
     setBulkMode(false);
   };
 
-  const bulkSell = () => {
-    // Pot/parşömen gibi tüketilebilirlerin satış değeri zaten 0 (bkz.
-    // sellPrice) — yanlışlıkla değerli bir parşömeni "0 altına" satıp
-    // kaybetmesin diye toplu satıştan bilerek dışlanıyorlar, tıpkı tekli
-    // "Sat" düğmesinin zaten yaptığı gibi.
-    const sellable = bulkItems.filter((i) => !isConsumable(i) && !i.noTrade);
-    if (sellable.length === 0) { pushToast(t("inventory.bulkNoneSellable"), "warn"); return; }
-    const total = sellable.reduce((sum, i) => sum + Math.round(sellPrice(i) * premiumSellMultiplier(player)), 0);
-    const soldIds = new Set(sellable.map((i) => i.id));
-    setPlayer((p) => ({ ...p, gold: p.gold + total, inventory: p.inventory.filter((i) => !soldIds.has(i.id)) }));
-    pushToast(t("inventory.bulkSold", { count: sellable.length, gold: formatGold(total) }), "loot");
+  const bulkSell = async () => {
+    // Pot/parşömen gibi tüketilebilirler ve takas edilemezler toplu satıştan bilerek dışlanır
+    // (kural src/game/actions.js'te; sunucu da aynısını uygular).
+    const result = await act("inventory/sellBulk", { itemIds: bulkItems.map((i) => i.id) });
+    if (!result.ok) { pushToast(result.reason === "noneSellable" ? t("inventory.bulkNoneSellable") : t("wallet.unavailable"), "warn"); return; }
+    pushToast(t("inventory.bulkSold", { count: result.count, gold: formatGold(result.gold) }), "loot");
     setBulkSelected(new Set());
     setBulkMode(false);
   };
@@ -157,50 +150,42 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     }
   };
 
-  const equip = (item) => {
-    const result = equipItem(player, item);
-    if (result.blocked) { pushToast(formatBlocked(result.blocked), "warn"); return; }
-    setPlayer(result.player);
+  const equip = async (item) => {
+    const result = await act("inventory/equip", { itemId: item.id });
+    if (!result.ok) { pushToast(result.blocked ? formatBlocked(result.blocked) : t("wallet.unavailable"), "warn"); return; }
     pushToast(t("inventory.equipped", { item: displayItemName(item, lang) }), "default");
     setSelectedId(null);
   };
 
-  const unequip = (slotKey) => {
-    const result=unequipItem(player,slotKey);
-    if(!result.removed){if(result.reason)pushToast(formatReason(t,result),'warn');return;}
-    setPlayer(result.player);
+  const unequip = async (slotKey) => {
+    const result = await act("inventory/unequip", { slot: slotKey });
+    if (!result.ok) { if (result.reason) pushToast(formatReason(t, result), 'warn'); return; }
     setSelectedEquipSlot(null);
   };
 
-  const sellItem = (item) => {
-    const price = Math.round(sellPrice(item) * premiumSellMultiplier(player));
-    setPlayer((p) => ({ ...p, gold: p.gold + price, inventory: p.inventory.filter((i) => i.id !== item.id) }));
-    pushToast(t("inventory.sold", { gold: formatGold(price) }), "loot");
+  const sellItem = async (item) => {
+    const result = await act("inventory/sell", { itemId: item.id });
+    if (!result.ok) { pushToast(t(result.reason === "noTrade" ? "upgrade.itemNoTrade" : "wallet.unavailable"), "warn"); return; }
+    pushToast(t("inventory.sold", { gold: formatGold(result.gold) }), "loot");
     setSelectedId(null);
   };
 
-  const repair = (item) => {
-    const result = repairItem(player, item, premiumRepairDiscount(player), bank);
-    if (!result.repaired) { pushToast(formatReason(t, result, "inventory.repairFailed"), "warn"); return; }
-    setPlayer(result.player);
-    if (result.bank) setBank(result.bank);
+  const repair = async (item) => {
+    const result = await act("inventory/repair", { itemId: item.id });
+    if (!result.ok) { pushToast(formatReason(t, result, "inventory.repairFailed"), "warn"); return; }
     pushToast(t("inventory.repaired", { gold: formatGold(result.cost) }), "default");
   };
 
-  const depositItem = (item) => {
-    const result = depositToBank(player, item, bank, bankPage);
-    if (!result.moved) { pushToast(formatReason(t, result, "inventory.depositFailed"), "warn"); return; }
-    setPlayer(result.player);
-    setBank(result.bank);
+  const depositItem = async (item) => {
+    const result = await act("inventory/depositItem", { itemId: item.id, page: bankPage });
+    if (!result.ok) { pushToast(formatReason(t, result, "inventory.depositFailed"), "warn"); return; }
     pushToast(t("inventory.itemDeposited", { item: displayItemName(item, lang) }), "default");
     setSelectedId(null);
   };
 
-  const withdrawItem = (item) => {
-    const result = withdrawFromBank(player, item, bank, bankPage);
-    if (!result.moved) { pushToast(formatReason(t, result, "inventory.withdrawFailed"), "warn"); return; }
-    setPlayer(result.player);
-    setBank(result.bank);
+  const withdrawItem = async (item) => {
+    const result = await act("inventory/withdrawItem", { itemId: item.id, page: bankPage });
+    if (!result.ok) { pushToast(formatReason(t, result, "inventory.withdrawFailed"), "warn"); return; }
     pushToast(t("inventory.itemWithdrawn", { item: displayItemName(item, lang) }), "default");
     setSelectedId(null);
   };
@@ -228,34 +213,35 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     setSelectedId(null);
   };
 
-  const handleUseBoostScroll = (item) => {
-    const result = useBoostScroll(player, item.boostId);
-    if (!result.used) { pushToast(t("boosts.noScrollsLeft"), "warn"); return; }
+  const handleUseBoostScroll = async (item) => {
+    const result = await act("inventory/useBoostScroll", { itemId: item.id });
+    if (!result.ok) { pushToast(t("boosts.noScrollsLeft"), "warn"); return; }
     pushToast(t("boosts.usedToast", { name: displayItemName(item, lang) }), "loot");
-    setPlayer(result.player);
     if ((item.count || 1) <= 1) setSelectedId(null);
   };
 
   const chestBusy=useRef(false),chestTimer=useRef(null);
   useEffect(()=>()=>clearTimeout(chestTimer.current),[]);
   const chestWarning=reason=>pushToast(reason==='bagFull'?(lang==='en'?'Inventory full. Chest kept.':'Envanter dolu. Sandık açılmadı.'):(lang==='en'?'Cannot collect reward. Chest kept; check carrying capacity.':'Ödül alınamadı. Sandık korundu; taşıma kapasiteni kontrol et.'),'warn');
-  const openChest = chest => {
+  const openChest = async chest => {
     if(chestBusy.current)return;
-    const result=openChestSafely(player,chest.id);
-    if(!result.opened){chestWarning(result.reason);return;}
     chestBusy.current=true;
-    setPlayer(result.player);
+    const result=await act("inventory/openChest",{chestId:chest.id});
+    if(!result.ok){chestBusy.current=false;chestWarning(result.reason);return;}
+    result.player=result.nextPlayer;
     setOpeningChest({chest,phase:'shaking',result:null});
     chestTimer.current=setTimeout(()=>setOpeningChest({chest,phase:'reveal',result:result.item}),950);
     newlyUnlocked(player,result.player).forEach(a=>pushToast(t('inventory.achievementUnlocked',{name:t(`character.achievements.${a.id}.name`),title:t(`character.achievements.${a.id}.title`)}),'level'));
   };
   const closeChestModal=()=>{clearTimeout(chestTimer.current);chestBusy.current=false;setOpeningChest(null);};
-  const openAllChests=()=>{
+  const openAllChests=async()=>{
     if(chestBusy.current)return;
-    const result=openChestsSafely(player);
+    chestBusy.current=true;
+    const result=await act("inventory/openAllChests");
+    if(!result.ok){chestBusy.current=false;if(result.reason&&result.reason!=="noChests")chestWarning(result.reason);return;}
+    result.player=result.nextPlayer;
     if(result.reason)chestWarning(result.reason);
-    if(!result.items.length)return;
-    chestBusy.current=true;setPlayer(result.player);setBulkChestResult({items:result.items,failed:0});
+    setBulkChestResult({items:result.items,failed:0});
     newlyUnlocked(player,result.player).forEach(a=>pushToast(t('inventory.achievementUnlocked',{name:t(`character.achievements.${a.id}.name`),title:t(`character.achievements.${a.id}.title`)}),'level'));
   };
 

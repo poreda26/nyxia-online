@@ -9,6 +9,7 @@ import {duelSnapshot} from './duel-snapshot.mjs';
 import {createWallet} from './wallet.mjs';
 import {createEntitlements} from './entitlements.mjs';
 import {createIap} from './iap.mjs';
+import {createGame} from './game.mjs';
 import {WHEEL_PREMIUM_PRIZES} from '../src/data/diamondPrices.js';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
@@ -116,8 +117,11 @@ const CLAN_MATERIAL_COLUMN = { wood: 'treasury_root_fragment', silver: 'treasury
 // Capacitor WebView'larının sabit origin'leri: Android https://localhost,
 // iOS capacitor://localhost. Bu origin'lerden gelen istekler çerezle değil
 // Bearer token ile yetkilenir (SameSite=Strict çerez WebView'dan gönderilmez).
-export const NATIVE_APP_ORIGINS = ['https://localhost', 'capacitor://localhost'];
-export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, iapWebhookSecret = null, iapAllowSandbox = false } = {}) {
+export // Oyun mantığı paketi (npm run build:logic ile üretilir). Yoksa sunucu otoritesi kapalı kalır.
+const gameLogic = await import('./game-logic.generated.mjs').catch(() => null);
+
+const NATIVE_APP_ORIGINS = ['https://localhost', 'capacitor://localhost'];
+export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, iapWebhookSecret = null, iapAllowSandbox = false, economyForAll = false } = {}) {
   const allowedOrigins = new Set([origin, ...nativeOrigins]);
   const db = new DatabaseSync(database);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
@@ -223,6 +227,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   };
   const wallet = createWallet(db, { fail });
   const entitlements = createEntitlements(db, { fail });
+  const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll });
+  const actRateLimit = makeRateLimiter(240);
   const iap = createIap(db, { fail, wallet, secret: iapWebhookSecret, allowSandbox: iapAllowSandbox });
   const admin = createAdmin(db, { read, fail, wallet });
   const wheel = createWheel(db, { fail });
@@ -334,6 +340,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       for (const [sql, params] of [
         ['DELETE FROM clan_invites WHERE from_account=? OR to_account=?', [id, id]],
         ['DELETE FROM wheel_spins WHERE account_id=?', [id]],
+        ['DELETE FROM economy_accounts WHERE account=?', [id]],
         ['DELETE FROM iap_purchases WHERE account=?', [id]],
         ['DELETE FROM entitlements WHERE account=?', [id]],
         ['DELETE FROM entitlement_seed WHERE account=?', [id]],
@@ -437,7 +444,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if(path.startsWith('/api/admin/')) return await admin.handle(req,path,account,send);
       if(path === '/api/drop-settings' && req.method==='GET')return send(200,admin.drops.get());
       if(req.method==='POST' && (path==='/api/chat/messages'||/^\/api\/social\/messages\/\d+$/.test(path)) && admin.muted(account.id))throw fail(403,'ACCOUNT_MUTED');
-      if (path === '/api/me' && req.method === 'GET') return send(200, { id: account.id, name: account.name, gm: admin.isGm(account.id) });
+      if (path === '/api/me' && req.method === 'GET') return send(200, { id: account.id, name: account.name, gm: admin.isGm(account.id), economy: game.enabled(account.id) });
       if (path === '/api/logout' && req.method === 'POST') {
         db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));
         res.setHeader('Set-Cookie', cookie('', 0)); return send(200, { ok: true });
@@ -500,6 +507,14 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         }
         return send(200, wallet.spend(account.id, kind, key, ref, now, hooks));
       }
+      // Ekonomi eylemleri (sunucu otoritesi, Faz 2). Bkz. src/game/actions.js.
+      if (path === '/api/game/act' && req.method === 'POST') {
+        actRateLimit(account.id);
+        const body = await read(req);
+        const ck = validCharacterKey(body?.characterKey);
+        if (!ck) throw fail(400, 'INVALID_CHARACTER');
+        return send(200, game.act(account.id, ck, String(body?.type), body?.payload ?? {}));
+      }
       // GM/sahip: karaktere premium verir (sohbet komutu /premium). Elmas harcamaz.
       if (path === '/api/entitlements/gm-premium' && req.method === 'POST') {
         walletRateLimit(account.id);
@@ -553,6 +568,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           const revision = current + 1, now = Date.now();
           wallet.clampBackup(account.id, body.data);
           entitlements.pin(account.id, body.data, characterKey);
+          game.pin(account.id, body.data);
           const data = JSON.stringify(body.data);
           db.prepare('INSERT INTO backup_history VALUES(?,?,?,?)').run(account.id, revision, data, now);
           db.prepare('INSERT OR REPLACE INTO backups VALUES(?,?,?,?)').run(account.id, revision, data, now);

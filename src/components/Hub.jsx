@@ -41,7 +41,7 @@ import MonsterPortrait from "./MonsterPortrait";
 import RewardChest from './icons/RewardChest';
 import EventStrip from "./EventStrip";
 
-export default function Hub({ isGm = false, player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings, unlockedSlots, onUnlockSlot }) {
+export default function Hub({ act, isGm = false, player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings, unlockedSlots, onUnlockSlot }) {
   const { t, tm } = useTranslation();
   const cls = CLASSES[player.class];
   const { atk } = totalStats(player);
@@ -310,7 +310,7 @@ export default function Hub({ isGm = false, player, setPlayer, bank, setBank, ba
           <BattleTab player={player} setPlayer={setPlayer} cls={cls} def={def} atk={atk} pushToast={pushToast} />
         )}
         {tab === "inventory" && (
-          <InventoryTab player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} pushToast={pushToast} onChangeRace={onChangeRace} />
+          <InventoryTab act={act} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} pushToast={pushToast} onChangeRace={onChangeRace} />
         )}
         {tab === "market" && (
           <MarketTab onOpenDiamondShop={() => setDiamondShopOpen(true)} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} username={username} pushToast={pushToast} />
