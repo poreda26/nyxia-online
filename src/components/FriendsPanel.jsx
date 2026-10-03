@@ -1,6 +1,7 @@
+import FriendDuel from "./FriendDuel";
 import { startPolling } from "../utils/polling";
 import { useState, useEffect, useCallback } from "react";
-import { UserPlus, Check, X, MessageCircle, Users, Sparkles } from "lucide-react";
+import { UserPlus, Check, X, MessageCircle, Users, Sparkles, Swords } from "lucide-react";
 import * as socialService from "../services/socialService";
 import { useTranslation, formatServerError } from "../i18n/LanguageContext";
 import { styles } from "../styles";
@@ -17,8 +18,9 @@ import { FRIEND_MAX_COUNT } from '../data/social';
 // olarak gözükebilir") — arkadaş listesi + öneriler. Özel mesajlaşmanın
 // kendisi artık burada değil, Sohbet'te bir sekme (bkz. ChatTab.jsx,
 // Hub.jsx#openDm) — "Mesaj" butonu oraya yönlendiriyor.
-export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
+export default function FriendsPanel({ player, pushToast, dmUnreadIds, onOpenDm }) {
   const { t, lang } = useTranslation();
+  const [duelFriend, setDuelFriend] = useState(null);
   const [friends, setFriends] = useState([]);
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
@@ -178,6 +180,7 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
               </div>
               <ModerationMenu target={{ accountId: f.accountId }} name={f.name} pushToast={pushToast} onBlocked={refreshFriends} />
               <button className="rpg-action" style={styles.tinyBtn} aria-label={`${f.name} — ${lang==='en'?'Send message':'Mesaj gönder'}`} onClick={() => onOpenDm(f)}><MessageCircle size={12} /></button>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#C9425A", display: "flex", alignItems: "center", gap: 3 }} aria-label={`${f.name} — ${t("friendDuel.button")}`} onClick={() => setDuelFriend(f)}><Swords size={12} /> VS</button>
               <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} aria-label={`${f.name} — ${lang==='en'?'Remove friend':'Arkadaşlıktan çıkar'}`} onClick={() => handleRemove(f.accountId)}><X size={12} /></button>
             </div>
           ))}
@@ -197,6 +200,7 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
           </div>
         </>
       )}
+      {duelFriend && player && <FriendDuel player={player} friend={duelFriend} onClose={() => setDuelFriend(null)} />}
     </div>
   );
 }

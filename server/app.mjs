@@ -5,6 +5,7 @@ import {validAvatarFrame} from '../src/data/avatarFrames.js';
 import {FIRST_PURCHASE_WEAPONS} from '../src/data/firstPurchaseWeapons.js';
 import {maskProfanity, containsProfanity, containsProfanityLoose} from '../src/data/profanity.js';
 import {createWheel} from './wheel.mjs';
+import {duelSnapshot} from './duel-snapshot.mjs';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, createHash, scrypt as derive, timingSafeEqual } from 'node:crypto';
@@ -745,7 +746,27 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           outgoing: outgoing.map(r => ({ id: r.id, toAccountId: r.toId, toName: r.toName, createdAt: r.createdAt })),
         });
       }
+      // Arkadaşa VS (dostane düello). Rakip, arkadaşın en yüksek seviyeli karakterinin
+      // en son senkronlanmış anlık görüntüsüdür (arkadaş çevrimdışı olabilir). Sonuç
+      // kimseye ödül/ceza yazmaz; hesap istemcide yapılır (bkz. utils/duelEngine.js).
+      // Yalnızca düello için gereken alanlar döner — envanter, altın, banka gibi
+      // özel veriler arkadaşa bile verilmez.
+      const friendDuelMatch = path.match(/^\/api\/social\/friends\/(\d+)\/duel$/);
+      if (friendDuelMatch && req.method === 'GET') {
+        duelRateLimit(account.id);
+        const friendId = Number(friendDuelMatch[1]);
+        const [low, high] = [Math.min(account.id, friendId), Math.max(account.id, friendId)];
+        const isFriend = db.prepare('SELECT 1 FROM friendships WHERE (account_a=? AND account_b=?) OR (account_a=? AND account_b=?)').get(low, high, high, low);
+        if (!isFriend) throw fail(403, 'NOT_FRIENDS');
+        if (db.prepare('SELECT 1 FROM user_blocks WHERE (blocker=? AND blocked=?) OR (blocker=? AND blocked=?)').get(account.id, friendId, friendId, account.id)) throw fail(403, 'USER_BLOCKED');
+        const row = db.prepare('SELECT backups.data AS data, accounts.name AS accountName FROM backups JOIN accounts ON accounts.id = backups.account WHERE backups.account=?').get(friendId);
+        const character = mainCharacterOf(row);
+        if (!character) throw fail(404, 'NO_CHARACTER');
+        const seed = randomBytes(4).readUInt32BE(0) || 1;
+        return send(200, { friendName: character.nickname || row.accountName, opponent: duelSnapshot(character), seed });
+      }
       // Kullanıcı isteği: "arkadaş önerilerinin gözüktüğü bir sistem olsun."
+
       // Önce ortak arkadaş sayısına göre sıralanmış aday (arkadaşının
       // arkadaşı) listesi, yetmezse gerçekten oynanmış (backup'ı olan) en
       // son aktif hesaplarla dolduruluyor — hiçbir zaman zaten arkadaş

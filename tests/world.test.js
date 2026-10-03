@@ -557,3 +557,19 @@ test('starter Bow uses the same generated art as the Rogue pose, and scrolls sho
   assert.equal(displayItemName(makeScrollStack(1, 1), 'tr'), 'Sıradan Yükseltme Parşömeni');
   assert.equal(displayItemName(makeScrollStack(2, 1), 'en'), 'Uncommon Upgrade Scroll');
 });
+
+import { createDuel, stepDuel } from '../src/utils/duelEngine';
+import { duelSnapshot } from '../server/duel-snapshot.mjs';
+test('the trimmed friend-duel snapshot plays exactly like the full character', () => {
+  const me = learnFreeSkills(initialPlayer('mage', 'human', 'Ben'));
+  const friend = { ...learnFreeSkills(initialPlayer('rogue', 'karus', 'Dost')), level: 12, gold: 5000, bankGold: 1, claimedQuests: ['q'] };
+  friend.skills = { ...friend.skills, loadout: friend.skills.known.slice(0, 2).concat([null, null, null]) };
+  const snapshot = duelSnapshot(friend);
+  for (const secret of ['gold', 'inventory', 'claimedQuests', 'monsterKills', 'diamonds', 'chests']) assert.equal(secret in snapshot, false, secret);
+  const play = (opponent) => {
+    let state = createDuel(me, opponent, { seed: 987654, fullHealth: true });
+    while (!state.finished) state = stepDuel(state);
+    return { winner: state.winner, round: state.round, hp: state.fighters.map((f) => f.hp), maxHp: state.fighters.map((f) => f.maxHp) };
+  };
+  assert.deepEqual(play(snapshot), play(friend));
+});

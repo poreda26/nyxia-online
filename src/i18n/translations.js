@@ -19,6 +19,7 @@ import { warzoneSection } from "./sections/warzone";
 import { wheelSection } from "./sections/wheel";
 import { tutorialCoachSection } from "./sections/tutorialCoach";
 import { eventStripSection } from "./sections/eventStrip";
+import { friendDuelSection } from "./sections/friendDuel";
 
 const base = {
   tr: {
@@ -91,6 +92,7 @@ const base = {
         REQUEST_ALREADY_SENT: "Zaten bir istek gönderdin.",
         REQUEST_NOT_FOUND: "İstek bulunamadı.",
         NOT_FRIENDS: "Bu kişiyle arkadaş değilsin.",
+        NO_CHARACTER: "Arkadaşının henüz kayıtlı bir karakteri yok.",
         USER_BLOCKED: "Bu oyuncuyu engelledin. Önce engeli kaldır.",
         NAME_NOT_ALLOWED: "Bu isim uygun değil. Başka bir isim dene.",
         TOO_MANY_REPORTS: "Bugün çok fazla şikayet gönderdin. Yarın tekrar dene.",
@@ -396,6 +398,7 @@ const base = {
         REQUEST_ALREADY_SENT: "You already sent a request.",
         REQUEST_NOT_FOUND: "Request not found.",
         NOT_FRIENDS: "You're not friends with this person.",
+        NO_CHARACTER: "Your friend has no saved character yet.",
         USER_BLOCKED: "You blocked this player. Unblock them first.",
         NAME_NOT_ALLOWED: "That name isn't allowed. Try another one.",
         TOO_MANY_REPORTS: "You've sent too many reports today. Try again tomorrow.",
@@ -641,11 +644,11 @@ export const translations = {
   tr: {
     ...base.tr,
     ...boostsSection.tr, ...captainSection.tr, ...characterSection.tr, ...diamondShopSection.tr, ...inventorySection.tr,
-    ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr, ...wheelSection.tr, ...tutorialCoachSection.tr, ...eventStripSection.tr,
+    ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr, ...wheelSection.tr, ...tutorialCoachSection.tr, ...eventStripSection.tr, ...friendDuelSection.tr,
   },
   en: {
     ...base.en,
     ...boostsSection.en, ...captainSection.en, ...characterSection.en, ...diamondShopSection.en, ...inventorySection.en,
-    ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en, ...wheelSection.en, ...tutorialCoachSection.en, ...eventStripSection.en,
+    ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en, ...wheelSection.en, ...tutorialCoachSection.en, ...eventStripSection.en, ...friendDuelSection.en,
   },
 };

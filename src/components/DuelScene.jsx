@@ -6,7 +6,7 @@ import './DuelScene.css';
 import { useTranslation } from '../i18n/LanguageContext';
 
 // Both sides use their captured equipment appearance and automatic skill events.
-export default function DuelScene({ player, ghost, duel, visual, shake }) {
+export default function DuelScene({ player, ghost, duel, visual, shake, title, subtitle }) {
   const { t } = useTranslation();
   const maxHp = playerMaxHp(player);
   const maxMp = playerMaxMp(player);
@@ -17,7 +17,7 @@ export default function DuelScene({ player, ghost, duel, visual, shake }) {
   const outgoing = active && (visual.outgoing?.damage||visual.outgoing?.hit===false)?visual.outgoing:null;
   return (
     <section className="battle-scene duel-scene" aria-label={t('battle.sceneTitle')}>
-      <div className="battle-scene-title">{t('warzone.title')}<span>{t('warzone.tabArea')}</span></div>
+      <div className="battle-scene-title">{title ?? t('warzone.title')}<span>{subtitle ?? t('warzone.tabArea')}</span></div>
       <div className="battle-hud">
         <div><strong>{player.nickname || t('battle.you')}</strong><meter aria-label={t('battle.yourHp')} min="0" max={maxHp} value={player.hp} /><small>{player.hp} / {maxHp}</small><meter className="mana" aria-label={t('battle.yourMp')} min="0" max={maxMp} value={player.mp} /><small>MP {player.mp} / {maxMp}</small></div>
         <div><strong>{ghost.name}</strong><meter aria-label={t('battle.enemyHp')} min="0" max={ghost.maxHp} value={Math.max(0, duel.ghostHp)} /><small>{Math.max(0, duel.ghostHp)} / {ghost.maxHp}</small>{duel.engine&&<small>MP {duel.engine.fighters[1].mp} / {duel.engine.fighters[1].maxMp}</small>}</div>

@@ -17,5 +17,8 @@ export const blockUser = (target) => call("social/block", "POST", target);
 export const unblockUser = (accountId) => call(`social/blocks/${accountId}`, "DELETE");
 export const reportUser = (target, reason, details = "") => call("social/report", "POST", { ...target, reason, details });
 
+// Arkadaşa VS (dostane düello): arkadaşın kayıtlı karakteri + adil seed.
+export const fetchFriendDuel = (accountId) => call(`social/friends/${accountId}/duel`, "GET");
+
 export const fetchDirectMessages = (accountId) => call(`social/messages/${accountId}`, "GET");
 export const sendDirectMessage = (accountId, text, avatarId, frameId) => call(`social/messages/${accountId}`, "POST", { text, avatarId, frameId:frameId||null });
