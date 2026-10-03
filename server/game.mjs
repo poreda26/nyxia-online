@@ -42,6 +42,16 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
         bank: Array.isArray(stored.data.bank) ? stored.data.bank : [],
         bankGold: Number.isFinite(stored.data.bankGold) ? stored.data.bankGold : 0,
       };
+      // Dünya Canavarı ödülü: hak, sunucudaki bekleyen kayıttır; boss kimliği ondan alınır
+      // (istemcinin söylediği yok sayılır) ve kayıt ödül verildiği işlemde silinir.
+      let claimId = null;
+      if (type === 'warzone/bossLoot') {
+        const id = Number(payload?.claimId);
+        const claim = Number.isInteger(id) ? db.prepare('SELECT id,boss_id FROM boss_loot_claims WHERE id=? AND account=?').get(id, account) : null;
+        if (!claim) { db.exec('ROLLBACK'); return { revision: stored.revision, result: { ok: false, reason: 'noClaim' } }; }
+        claimId = claim.id;
+        payload = { bossId: claim.boss_id };
+      }
       // Sahibin yayınladığı canlı drop kuralları, istemcidekiyle aynı biçimde uygulanır.
       const live = drops();
       if (live && logic.applyLiveDropConfig) logic.applyLiveDropConfig(live);
@@ -53,6 +63,7 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
       const before = stored.data.characters[index];
       const patch = {};
       for (const key of Object.keys(next.player)) if (JSON.stringify(before[key]) !== JSON.stringify(next.player[key])) patch[key] = next.player[key];
+      if (claimId !== null) db.prepare('DELETE FROM boss_loot_claims WHERE id=? AND account=?').run(claimId, account);
       const bankChanged = JSON.stringify(state.bank) !== JSON.stringify(next.bank);
       stored.data.characters[index] = next.player;
       stored.data.bank = next.bank;

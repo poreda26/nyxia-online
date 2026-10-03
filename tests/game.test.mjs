@@ -208,3 +208,64 @@ test('battle income is decided by the server: fights must be started, kills are 
     db.close();
   } finally { await api.close(); }
 });
+
+test('warzone: entry fee, boss loot only against a real claim (consumed once), hunts need a search and a started fight', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const cookie = (await call('register', { name: 'dave', password })).cookie;
+    const character = hero();
+    character.level = 55;
+    const data = { characters: [character, null, null], bank: [[], []], bankGold: 0, diamonds: 0 };
+    assert.equal((await call('backup', { revision: 0, data }, cookie, 'PUT')).status, 200);
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    const act = (type, payload = {}) => call('game/act', { characterKey: 'hero', type, payload }, cookie);
+    const state = async () => (await call('backup', null, cookie)).data.data.characters[0];
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const crimson = 'kizil_muhafiz';
+
+    // Nothing works before entering; entering costs gold.
+    assert.equal((await act('warzone/huntSearch')).data.result.reason, 'notEntered');
+    const goldStart = (await state()).gold;
+    assert.equal((await act('warzone/enter')).data.result.ok, true);
+    assert.equal((await state()).gold, goldStart - 50);
+
+    // Boss loot: no claim, no loot; a forged boss id is ignored; the claim is spent exactly once.
+    assert.equal((await act('warzone/bossLoot', { claimId: 999, bossId: 'buz_krali' })).data.result.reason, 'noClaim');
+    db.prepare('INSERT INTO boss_loot_claims(account,boss_id,created_at) VALUES(1,?,?)').run('kan_imparatoru', Date.now());
+    const gold0 = (await state()).gold;
+    const loot = await act('warzone/bossLoot', { claimId: 1, bossId: 'buz_krali' });
+    assert.equal(loot.data.result.ok, true);
+    assert.equal(loot.data.result.drops[0].type, 'gold');
+    assert.ok(loot.data.result.drops[0].amount >= 300);
+    assert.ok((await state()).gold >= gold0 + 300);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM boss_loot_claims').get().n, 0);
+    assert.equal((await act('warzone/bossLoot', { claimId: 1 })).data.result.reason, 'noClaim');
+    // Another account cannot spend this account's claim.
+    db.prepare('INSERT INTO boss_loot_claims(account,boss_id,created_at) VALUES(1,?,?)').run('alev_tanrisi', Date.now());
+    const bob = (await call('register', { name: 'erin', password })).cookie;
+    assert.equal((await call('game/act', { characterKey: 'hero', type: 'warzone/bossLoot', payload: { claimId: 2 } }, bob)).status, 409);
+
+    // Hunts: need a search, enough search time, then a started fight, then the minimum fight time.
+    assert.equal((await act('warzone/huntStart', { monsterId: crimson })).data.result.reason, 'searchTooShort');
+    assert.equal((await act('warzone/huntKill', { monsterId: crimson })).data.result.reason, 'noFight');
+    assert.equal((await act('warzone/huntSearch')).data.result.ok, true);
+    assert.equal((await act('warzone/huntStart', { monsterId: crimson })).data.result.reason, 'searchTooShort');
+    await wait(4600);
+    assert.equal((await act('warzone/huntStart', { monsterId: 'made_up' })).data.result.reason, 'unknownMonster');
+    assert.equal((await act('warzone/huntStart', { monsterId: crimson })).data.result.ok, true);
+    assert.equal((await act('warzone/huntKill', { monsterId: crimson })).data.result.reason, 'tooFast');
+    await wait(750);
+    const before = await state();
+    const kill = await act('warzone/huntKill', { monsterId: crimson });
+    assert.equal(kill.data.result.ok, true);
+    assert.ok(kill.data.result.drops.some((d) => d.type === 'xp'));
+    assert.ok((await state()).gold > before.gold);
+    assert.equal((await act('warzone/huntKill', { monsterId: crimson })).data.result.reason, 'noFight', 'one hunt pays once');
+
+    // Leaving clears the entry.
+    assert.equal((await act('warzone/leave')).data.result.ok, true);
+    assert.equal((await act('warzone/huntSearch')).data.result.reason, 'notEntered');
+    db.close();
+  } finally { await api.close(); }
+});

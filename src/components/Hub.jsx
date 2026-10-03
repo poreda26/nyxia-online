@@ -322,7 +322,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
           <CaptainTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
         )}
         {tab === "warzone" && (
-          <WarzoneTab player={player} setPlayer={setPlayer} pushToast={pushToast} onEnteredChange={setWarzoneEntered} />
+          <WarzoneTab player={player} setPlayer={setPlayer} pushToast={pushToast} onEnteredChange={setWarzoneEntered} act={act} />
         )}
         {tab === "clan" && (
           <ClanTab player={player} setPlayer={setPlayer} cls={cls} atk={atk} def={def} pushToast={pushToast} />

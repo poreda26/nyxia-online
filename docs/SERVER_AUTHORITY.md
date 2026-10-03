@@ -103,3 +103,10 @@ canlı drop kurallarını uygular.
 Bayrak AÇILMADAN önce kapanması gereken pin listesi (sunucu bu alanları yedekten geri çevirmeli):
 `xp, level, statPoints, monsterKills, mapBoss, soloDungeon, dungeonRun, fight, boosts, eventExpBonus, currentMapId`
 (+ görev/beceri/NP alanları 3b'de). `eventExpBonus` bugün GM komutuyla istemcide yazılıyor; sunucu komutuna taşınmalı.
+
+### Savaş Alanı (yapıldı)
+`warzone/enter` (giriş ücreti), `warzone/bossLoot` (hak sunucudaki `boss_loot_claims` satırıdır; boss kimliği ondan
+alınır, satır aynı işlemde silinir), `warzone/huntSearch` → `huntStart` → `huntKill` (arama süresi + savaş bildirimi +
+asgari süre), `warzone/leave`. Av/boss ölümü ve potu `battle/death` ve `battle/potion` ile gider.
+Düello NP/kupa sonuçları 3c'de. `src/world/engine.js` (WorldTab) hiçbir yerde bağlı değil: ölü kod, taşınmadı.
+Pin listesine eklenecek: `warzone, huntSearch`.

@@ -5,7 +5,6 @@ import './WarzoneTab.css';
 import { varyDamage } from '../utils/combat';
 import PracticeDuel from './PracticeDuel';
 import {createDuel,stepDuel} from '../utils/duelEngine';
-import {wingMultiplier} from '../data/wings';
 import RankBadge from './shared/RankBadge';
 import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useRef } from "react";
@@ -22,15 +21,12 @@ import * as warzoneBossService from "../services/warzoneBossService";
 import * as warzoneDuelService from "../services/warzoneDuelService";
 import { awardNationalPoint, penalizeNationalPoint } from "../utils/nationalPoint";
 import { NP_LOSS_PENALTY, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
-import { premiumNpLossReduction,premiumGoldMultiplier,premiumDropMultiplier } from "../utils/premium";
+import { premiumNpLossReduction } from "../utils/premium";
 import { leaderboardFor } from "../utils/leaderboard";
-import { rollConfiguredLoot, rollLoot } from "../utils/loot";
-import { grantMonsterReward } from "../utils/monsterRewards";
-import { addItemToInventory, makeScrollStack } from "../utils/inventory";
-import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, applyDeathPenalty, armorSetDamageReduction, clampGold, formatGold } from "../utils/player";
+import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, armorSetDamageReduction, formatGold } from "../utils/player";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
-import { usePotion, bestAvailablePotionTier } from "../utils/potions";
-import { rand, uid, pick } from "../utils/random";
+import { bestAvailablePotionTier } from "../utils/potions";
+import { rand, pick } from "../utils/random";
 import { playLevelUp, playHit, playMiss, playHurt, playPotion, playSkill } from "../audio/sfx";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
@@ -82,7 +78,7 @@ function freshWz() {
   };
 }
 
-export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChange }) {
+export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChange, act }) {
   const { t, tm, lang } = useTranslation();
   const cls = CLASSES[player.class];
   const atk = totalStats(player).atk;
@@ -109,6 +105,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // ki başka gerçek oyuncuların vuruşları da görünsün.
   const [sharedBosses, setSharedBosses] = useState({});
   const knownActiveRef = useRef(new Set());
+  const claimedRef = useRef(new Set());
   // Faz 5 — düellodaki rakip GERÇEK bir hesabın anlık görüntüsü (bkz.
   // services/warzoneDuelService.js). opponentAccountRef sonucu sunucuya
   // bildirirken (reportDuelResult) hangi hesap olduğunu hatırlamak için.
@@ -202,9 +199,13 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       try { claims = (await warzoneBossService.fetchLootClaims()).claims; } catch { return; }
       if (cancelled) return;
       for (const claim of claims) {
-        const boss = WARZONE_BOSSES.find((b) => b.id === claim.bossId);
-        if (boss) grantBossLoot(effectiveBoss(boss));
-        try { await warzoneBossService.claimLoot(claim.id); } catch { /* bir sonraki yoklamada tekrar dener */ }
+        if (claimedRef.current.has(claim.id)) continue;
+        claimedRef.current.add(claim.id);
+        // Ödül sunucu kurallarıyla üretilir; hak o işlemde tüketilir (eski yolda aşağıda ayrıca bildirilir).
+        const result = await act("warzone/bossLoot", { claimId: claim.id, bossId: claim.bossId });
+        if (!result.ok) { if (result.reason === "network") claimedRef.current.delete(claim.id); continue; }
+        pushToast(result.drops.map((d) => formatBossDrop(d)).join("  ·  "), "loot");
+        try { await warzoneBossService.claimLoot(claim.id); } catch { /* sunucu yolunda hak zaten tüketildi */ }
       }
     };
     poll();
@@ -220,8 +221,14 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // farklı sayıda hook çağrılır ve React "Rendered more hooks" hatası atar.
   useEffect(() => {
     if (!wz.searching) return;
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const template = pick(CRIMSON_MAP.monsters);
+      const started = await act("warzone/huntStart", { monsterId: template.id });
+      if (!started.ok) {
+        setWz((prev) => (prev.searching ? { ...prev, searching: null } : prev));
+        pushToast(t("battle.actionFailed"), "warn");
+        return;
+      }
       // Güç çarpanı sadece savaş istatistiklerine (hp/atk/def) uygulanıyor —
       // xp/goldMin/goldMax bilerek taban (Crimson Battlefront'un kendi)
       // değerinde kalıyor, ödül ayrı bir çarpanla (bkz. huntAction#grantMonsterReward
@@ -240,12 +247,15 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // sıfırlanır. Bunu düello kaybını National Point cezasından kaçmak için
   // kullanmayı engellemek üzere: yarım kalmış bir düello varken sekmeden
   // ayrılmak, düelloyu terk etmiş (kaybetmiş) saymak anlamına gelir.
+  const actRef = useRef(act);
+  actRef.current = act;
   const wzRef = useRef(wz);
   useEffect(() => { wzRef.current = wz; }, [wz]);
   useEffect(() => {
     return () => {
       const duel = wzRef.current?.duel;
       if (duel && !duel.finished) setPlayer((p) => penalizeNationalPoint(p));
+      actRef.current("warzone/leave");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -312,11 +322,12 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
                 <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setConfirmingEntry(false)}>{t("warzone.no")}</button>
                 <button
                   style={{ ...styles.tinyBtn, background: "#C9425A" }}
-                  onClick={() => {
-                    setPlayer((p) => ({ ...p, gold: p.gold - WARZONE_TELEPORT_COST }));
+                  onClick={async () => {
+                    setConfirmingEntry(false);
+                    const result = await act("warzone/enter");
+                    if (!result.ok) { pushToast(t("battle.actionFailed"), "warn"); return; }
                     pushToast(t("warzone.toast.teleported", { cost: formatGold(WARZONE_TELEPORT_COST) }), "default");
                     setEntered(true);
-                    setConfirmingEntry(false);
                   }}
                 >
                   {t("warzone.yes")}
@@ -401,54 +412,27 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
         // Aynı düzeltme burada da geçerli — bkz. BattleTab.jsx#resolveMonsterTurn:
         // eskiden "canın kısmen yenilendi" diyen toast hiçbir şeyi geri
         // yüklemiyordu.
-        setTimeout(() => {
-          let xpLost = 0;
-          setPlayer((p) => {
-            const result = applyDeathPenalty(p);
-            xpLost = result.xpLost;
-            return result.player;
-          });
-          setDeathInfo({ xpLost });
+        setTimeout(async () => {
+          const died = await act("battle/death", { wear: {} });
+          setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
+          setDeathInfo({ xpLost: died.xpLost || 0 });
         }, 400);
       }
     }
     setTimeout(() => { lockRef.current = false; }, 320);
   };
 
-  const grantBossLoot = (boss) => {
-    let drops = [];
-    setPlayer((p) => {
-      let np = { ...p, inventory: [...p.inventory], chests: [...p.chests] };
-      const goldGain = Math.round(rand(boss.bonusGoldMin, boss.bonusGoldMax)*premiumGoldMultiplier(np));
-      const goldBefore = np.gold;
-      np.gold = clampGold(np.gold + goldGain);
-      drops = [t("warzone.drop.gold", { amount: formatGold(np.gold - goldBefore) })];
-      if (Math.random() < boss.equipDropChance * wingMultiplier(p, "drop") * premiumDropMultiplier(p)) {
-        const item = Array.isArray(boss.loot) ? rollConfiguredLoot(boss.loot) : rollLoot(boss.lootTier);
-        // Katalog eşya-eşya yeniden dolduruluyor — bu tier/sınıf için henüz
-        // hiçbir eşya yoksa rollLoot null döner, o an hiç düşmemiş say.
-        if (item) {
-          const res = addItemToInventory(np, item);
-          np = res.player;
-          drops.push(res.added ? t("warzone.drop.itemDropped", { name: item.name }) : t("warzone.drop.itemDropFailed", { name: item.name, reason: t(REASON_KEY[res.reason] || res.reason) }));
-        }
-      }
-      if (Math.random() < boss.chestDropChance * wingMultiplier(p, "drop") * premiumDropMultiplier(p)) {
-        np.chests.push({ id: uid(), tier: boss.lootTier });
-        drops.push(t("warzone.drop.chestDropped", { tier: tierName(lang, boss.lootTier) }));
-      }
-      if (Math.random() < boss.scrollDropChance * wingMultiplier(p, "drop") * premiumDropMultiplier(p)) {
-        const scroll = makeScrollStack(boss.lootTier, 1);
-        const res = addItemToInventory(np, scroll);
-        np = res.player;
-        drops.push(res.added ? t("warzone.drop.scrollDropped", { tier: tierName(lang, boss.lootTier) }) : t("warzone.drop.scrollDropFailed", { reason: t(REASON_KEY[res.reason] || res.reason) }));
-      }
-      // Bir canavarı (boss da bir canavar) öldürünce can/mana tam yenilenir.
-      np.hp = playerMaxHp(np);
-      np.mp = playerMaxMp(np);
-      return np;
-    });
-    pushToast(drops.join("  ·  "), "loot");
+  // Dünya Canavarı ödülünün (sunucudan gelen typed drops) metni.
+  const formatBossDrop = (d) => {
+    switch (d.type) {
+      case "gold": return t("warzone.drop.gold", { amount: formatGold(d.amount) });
+      case "itemDropped": return t("warzone.drop.itemDropped", { name: d.itemName });
+      case "itemDropFailed": return t("warzone.drop.itemDropFailed", { name: d.itemName, reason: t(REASON_KEY[d.reason] || d.reason) });
+      case "chestDropped": return t("warzone.drop.chestDropped", { tier: tierName(lang, d.tier) });
+      case "scrollDropped": return t("warzone.drop.scrollDropped", { tier: tierName(lang, d.tier) });
+      case "scrollDropFailed": return t("warzone.drop.scrollDropFailed", { reason: t(REASON_KEY[d.reason] || d.reason) });
+      default: return "";
+    }
   };
 
   // ---- Düello: Faz 5 — sunucudan GERÇEK bir başka hesabın anlık
@@ -579,8 +563,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // bir "aranıyor" süresi olsun, canavar anında çıkmasın. Gerçek av
   // (monster üretimi) bu süre dolunca yukarıdaki useEffect'te (hook sırası
   // bozulmasın diye tüm hook'lar erken return'lerden ÖNCE olmalı) başlıyor.
-  const startHunt = () => {
+  const startHunt = async () => {
     if (lockRef.current || wz.hunt || wz.searching || player.hp <= 0) return;
+    const searched = await act("warzone/huntSearch");
+    if (!searched.ok) { pushToast(t("battle.actionFailed"), "warn"); return; }
     setWz((prev) => ({ ...prev, searching: { durationMs: rand(5, 15) * 1000 } }));
   };
 
@@ -598,7 +584,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // #attack ile aynı PvE hasar formülü (mitigate + MONSTER_DEF_K/PLAYER_DEF_K),
   // sadece burada tek tıkla hem oyuncunun hem canavarın vuruşu birlikte
   // çözülüyor (Dünya Canavarı'nın #attackBoss'uyla aynı ritim).
-  const huntAction = (actionType) => {
+  const huntAction = async (actionType) => {
     if (lockRef.current || !wz.hunt || player.hp <= 0) return;
     const isPotion = actionType === "potion_hp" || actionType === "potion_mp";
     const potionKind = actionType === "potion_hp" ? "hp" : actionType === "potion_mp" ? "mp" : null;
@@ -608,12 +594,14 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       if ((wz.hunt.potionCooldowns[potionKind] || 0) > 0) { pushToast(t("battle.potionOnCooldown"), "warn"); return; }
       potionTier = bestAvailablePotionTier(player, potionKind);
       if (!potionTier) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
-      potionResult = usePotion(player, potionKind, potionTier);
-      if (potionResult.reason) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
+      lockRef.current = true;
+      const used = await act("battle/potion", { kind: potionKind, hp: player.hp, mp: player.mp });
+      if (!used.ok) { lockRef.current = false; pushToast(t(used.reason === "noPotionsLeft" ? "battle.noPotionsLeft" : "battle.actionFailed"), "warn"); return; }
+      potionResult = { healed: used.healed, player: { ...used.nextPlayer, [potionKind]: Math.min(potionKind === "hp" ? maxHp : maxMp, player[potionKind] + used.healed) } };
     }
     const skillId=!isPotion?actionType:null;
     const action=prepareWarzoneAction(potionResult?.player||player,wz.hunt.monster,wz.hunt.effects,skillId);
-    if(action.error){pushToast(action.error,'warn');return;}
+    if(action.error){pushToast(action.error,'warn');lockRef.current = false;return;}
     lockRef.current = true;
     setHuntVisual((v) => ({ id: v.id + 1, type: isPotion ? "potion" : action.skill?"skill":"attack", skillId, label: isPotion ? (potionKind === "hp" ? t("battle.actionHpPotion") : t("battle.actionMpPotion")) : t("battle.actionAttack") }));
     if(isPotion)playPotion();
@@ -649,9 +637,9 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
     if (monsterHp <= 0) {
       setWz((prev) => ({ ...prev, hunt: null, log: [...prev.log, t("warzone.log.huntDefeated", { monster: lang === "tr" ? accusativeName(monster.name) : monster.name })].slice(-24) }));
-      const huntCfg = getWarzoneHuntConfig();
-      const result = grantMonsterReward(action.player, monster, CRIMSON_MAP, { goldMult: huntCfg.goldMult, dropMult: huntCfg.dropMult });
-      setPlayer(result.player);
+      const result = await act("warzone/huntKill", { monsterId: monster.id });
+      if (!result.ok) { lockRef.current = false; pushToast(t("battle.actionFailed"), "warn"); return; }
+      setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
       pushToast(result.drops.map(formatHuntDrop).join("  ·  "), result.tone);
       if (result.levelUp) { setLevelUpInfo(result.levelUp); playLevelUp(); }
       setTimeout(() => { lockRef.current = false; }, 320);
@@ -672,15 +660,11 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     setWz((prev) => ({ ...prev, hunt: { ...prev.hunt, monster: { ...monster, hp: monsterHp }, effects:action.state, potionCooldowns, log: log.slice(-24) } }));
 
     if (wouldDie) {
-      setTimeout(() => {
-        let xpLost = 0;
-        setPlayer((p) => {
-          const result = applyDeathPenalty(p);
-          xpLost = result.xpLost;
-          return result.player;
-        });
+      setTimeout(async () => {
+        const died = await act("battle/death", { wear: {} });
+        setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
         setWz((prev) => ({ ...prev, hunt: null }));
-        setDeathInfo({ xpLost });
+        setDeathInfo({ xpLost: died.xpLost || 0 });
       }, 400);
     }
     setTimeout(() => { lockRef.current = false; }, 320);

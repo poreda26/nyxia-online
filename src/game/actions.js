@@ -6,6 +6,7 @@ import { depositToBank, withdrawFromBank } from "../utils/inventory";
 import { useBoostScroll } from "../utils/boosts";
 import { premiumSellMultiplier, premiumRepairDiscount } from "../utils/premium";
 import { battleReducers } from "./battle";
+import { warzoneReducers } from "./warzone";
 import { openChestSafely, openChestsSafely } from "../utils/chests";
 
 // Ekonomi eylemleri (Faz 2): sunucu otoritesinin kuralları. Her eylem, oyunun zaten
@@ -137,7 +138,7 @@ const inventoryReducers = {
   },
 };
 
-export const reducers = { ...inventoryReducers, ...battleReducers };
+export const reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers };
 
 export const ACTION_TYPES = Object.keys(reducers);
 
