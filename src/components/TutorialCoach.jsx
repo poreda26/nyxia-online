@@ -21,7 +21,7 @@ const PROBES = {
   unequipBtn: '[data-tut="unequip-btn"]',
   equipBtn: '[data-tut="equip-btn"]',
   shopOpen: '[data-tut="buy-scroll-1"]',
-  lockedCard: ".skill-card.is-locked",
+  learnBtn: ".skill-card.is-locked .rpg-action",
   boxFilled: '[data-tut="scroll-box"][data-filled="1"]',
 };
 
@@ -45,7 +45,7 @@ function useScreenProbe(active) {
 // Hedef öğe(ler)in dışındaki her yeri karartır ve dokunmaya kapatır: oyuncu
 // yalnızca gösterilen yeri kullanabilir. Hedef yoksa hiçbir şey engellenmez
 // (örn. savaş sürerken ya da bölüm bitince).
-function TutorialSpotlight({ targets, soft }) {
+function TutorialSpotlight({ targets, soft, raised }) {
   const key = targets.join("|");
   const [rect, setRect] = useState(null);
   useEffect(() => {
@@ -81,7 +81,7 @@ function TutorialSpotlight({ targets, soft }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, soft]);
   if (!rect) return null;
-  if (rect.soft) return <>{rect.rects.map((r, i) => <div key={i} className="tut-ring" style={r} />)}</>;
+  if (rect.soft) return <>{rect.rects.map((r, i) => <div key={i} className={`tut-ring ${raised ? "is-raised" : ""}`} style={r} />)}</>;
   const block = (style) => <div className="tut-block" style={style} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />;
   return (
     <>
@@ -89,7 +89,7 @@ function TutorialSpotlight({ targets, soft }) {
       {block({ top: rect.bottom, left: 0, right: 0, bottom: 0 })}
       {block({ top: rect.top, left: 0, width: rect.left, height: rect.bottom - rect.top })}
       {block({ top: rect.top, left: rect.right, right: 0, height: rect.bottom - rect.top })}
-      <div className="tut-ring" style={{ top: rect.top, left: rect.left, width: rect.right - rect.left, height: rect.bottom - rect.top }} />
+      <div className={`tut-ring ${raised ? "is-raised" : ""}`} style={{ top: rect.top, left: rect.left, width: rect.right - rect.left, height: rect.bottom - rect.top }} />
     </>
   );
 }
@@ -116,14 +116,24 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
 
   // Beceri bölümünde "öğren" açıklaması bir kez gösterilir (Anladım ile geçilir).
   const [learnSeen, setLearnSeen] = useState(false);
-  useEffect(() => { setLearnSeen(false); }, [section]);
+  const skillsAtStart = useRef(0);
+  useEffect(() => { setLearnSeen(false); skillsAtStart.current = player.skills.known.length; }, [section]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Becerisiz başlayan oyuncu "Öğren"e basınca açıklama zaten yaşanmış sayılır.
+  useEffect(() => {
+    if (section === SECTION.skills && skillsAtStart.current === 0 && player.skills.known.length > 0) setLearnSeen(true);
+  }, [section, player.skills.known.length]);
 
   let hint = null; // { key, targets[], done, soft, info }
   if (section === SECTION.skills) {
-    if (learnSeen && player.skills.loadout.some(Boolean)) hint = { key: "done", done: true, targets: ['[data-tut="loadout"]'] };
+    const knowsSkill = player.skills.known.length > 0;
+    if (knowsSkill && learnSeen && player.skills.loadout.some(Boolean)) hint = { key: "done", done: true, targets: ['[data-tut="loadout"]'] };
     else if (tab !== "character") hint = { key: "goCharacter", targets: [NAV.character] };
     else if (!probe.skillCards) hint = { key: "openSkillsTab", targets: [".rpg-tabs button:nth-child(2)"] };
-    else if (!learnSeen) hint = { key: "learnInfo", info: true, targets: [probe.lockedCard ? ".skill-card.is-locked" : ".skill-card"] };
+    // Yeni karakter henüz hiç beceri öğrenmemiştir: "Öğren"e bastır. Zaten becerisi
+    // olan (tutorial'ı tekrar izleyen) oyuncuya yalnızca nasıl öğrenildiği anlatılır.
+    else if (!knowsSkill && probe.learnBtn) hint = { key: "learnSkill", targets: [".skill-card.is-locked"] };
+    else if (knowsSkill && !learnSeen) hint = { key: "learnInfo", info: true, targets: [".skill-card.is-known"] };
+    else if (!knowsSkill) hint = { key: "learnInfo", targets: [] };
     else hint = { key: "addSkill", targets: [".skill-card.is-known:not(.is-equipped) .rpg-action"] };
   } else if (section === SECTION.battle) {
     if (killBaseline.current != null && totalKills(player) > killBaseline.current) hint = { key: "done", done: true };
@@ -155,6 +165,9 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
     if (needsGold) setPlayer((p) => (p.gold < TUTORIAL_SCROLL_PRICE ? { ...p, gold: TUTORIAL_SCROLL_PRICE } : p));
   }, [needsGold, setPlayer]);
   const targets = hint?.targets || [];
+  // Çıkar / Kuşan düğmeleri tam ekran bir alt panelin (z-index 60) içinde: rehber
+  // kartı ve parlak çerçeve panelin üstünde görünsün.
+  const raised = !!(probe.unequipBtn || probe.equipBtn);
 
   if (section === SECTION.wrap) return <TutorialModal onFinish={onFinish} stepIndexes={WRAP_STEPS} />;
 
@@ -185,8 +198,8 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
   const text = hint.done ? t(`tutorialCoach.${name}.${doneKey}`) : t(`tutorialCoach.${name}.${hint.key}`);
   return (
     <>
-    {targets.length > 0 && <TutorialSpotlight targets={targets} soft={!!hint.soft} />}
-    <div className="tutorial-coach" role="status" aria-live="polite">
+    {targets.length > 0 && <TutorialSpotlight targets={targets} soft={!!hint.soft} raised={raised} />}
+    <div className={`tutorial-coach ${raised ? "is-raised" : ""} ${hint.soft ? "is-compact" : ""}`} role="status" aria-live="polite">
       <button className="tutorial-close" onClick={() => setConfirmOpen(true)} aria-label={t("tutorial.skip")} title={t("tutorial.skip")}><X size={16} /></button>
       <div className="tutorial-coach-head">
         <div className="tutorial-coach-portrait"><CaptainPortrait size={34} /></div>

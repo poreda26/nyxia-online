@@ -104,7 +104,7 @@ export default function GlobalStyle() {
       }
 
       .toast {
-        position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%);
+        position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%); pointer-events: none;
         background: var(--bg-panel-alt); border: 1.5px solid var(--border);
         color: var(--text-primary); font-family: var(--font-body); font-size: 13px; font-weight: 600;
         padding: 12px 18px; border-radius: 12px; z-index: 999; max-width: 92%;

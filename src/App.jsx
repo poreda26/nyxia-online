@@ -52,6 +52,8 @@ function FloatingSettingsButton({ onClick }) {
 
 export default function App() {
   const [screen, setScreen] = useState("login");
+  // Açılışta oturum çerezi kontrol edilirken giriş ekranı yanıp sönmesin.
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [username, setUsername] = useState("");
   const [account, setAccount] = useState({ race: null, characters: [null, null, null], bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS, diamonds: 0, bankGold: 0 });
   const [activeSlot, setActiveSlot] = useState(null);
@@ -251,7 +253,7 @@ export default function App() {
   // mount→cleanup→mount döngüsünde ilk çağrının sonucu artık yok sayılıyor.
   useEffect(() => {
     let cancelled = false;
-    fetchMe().then(({ name }) => { if (!cancelled) handleLogin(name); }).catch(() => {});
+    fetchMe().then(({ name }) => { if (!cancelled) return handleLogin(name); }).catch(() => {}).finally(() => { if (!cancelled) setSessionChecked(true); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -461,7 +463,7 @@ export default function App() {
     <LanguageProvider lang={audioSettings.language} setLang={(l) => updateAudioSetting("language", l)}>
     <div style={styles.appRoot}>
       <GlobalStyle />
-      {screen === "login" && <LoginScreen initialUsername={initialUsername} onLogin={handleLogin} />}
+      {screen === "login" && sessionChecked && <LoginScreen initialUsername={initialUsername} onLogin={handleLogin} />}
       {screen === "raceSelect" && <RaceSelect onChoose={handleChooseAccountRace} />}
       {screen === "characterSelect" && (
         <CharacterSelectScreen

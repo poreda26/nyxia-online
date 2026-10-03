@@ -19,7 +19,8 @@ export const tutorialCoachSection = {
       skills: {
         goCharacter: "Alttaki menüden Karakter sekmesine geç.",
         openSkillsTab: "Üstteki Beceriler alt sekmesine dokun.",
-        learnInfo: "Beceri kartları burada. Temel beceriler seviyenle kendiliğinden öğrenilir. Kilitli (gri) bir becerinin kartında \"Öğren\" düğmesi çıkar: seviye, altın ve Kaptan'ın görevi gerekir. Kartı incele, hazır olunca Anladım'a bas.",
+        learnSkill: "Bu beceriyi henüz öğrenmedin. Parlayan \"Öğren\" düğmesine bas. Bazı becerilerde seviye, altın ve Kaptan'ın görevi de gerekir.",
+        learnInfo: "Beceriler kartlarındaki \"Öğren\" düğmesiyle öğrenilir; bazılarında seviye, altın ve Kaptan'ın görevi gerekir. Öğrendiklerinde \"Kutucuğa Ekle\" çıkar. Kartı incele, hazır olunca Anladım'a bas.",
         addSkill: "Parlayan \"Kutucuğa Ekle\" düğmesine bas. Beceriler savaşta bu kutucuklardan kullanılır.",
         done: "Süper! Beceri artık savaş kutucuğunda (parlayan kutular). Savaşta o kutucuğa dokunarak kullanırsın. Toplam 5 kutucuk var; dilediğin kadar ekleyebilirsin.",
       },
@@ -67,7 +68,8 @@ export const tutorialCoachSection = {
       skills: {
         goCharacter: "Switch to the Character tab in the bottom menu.",
         openSkillsTab: "Tap the Skills sub-tab at the top.",
-        learnInfo: "These are the skill cards. Basic skills are learned automatically as you level. A locked (grey) skill shows a \"Learn\" button: it needs the level, gold and the Captain's quest. Look at the card, then press Got it.",
+        learnSkill: "You haven't learned this skill yet. Press the glowing \"Learn\" button. Some skills also need a level, gold and the Captain's quest.",
+        learnInfo: "Skills are learned with the \"Learn\" button on their card; some need a level, gold and the Captain's quest. Once learned, \"Add to Slot\" appears. Look at the card, then press Got it.",
         addSkill: "Press \"Add to Slot\" next to a skill. Skills are used from these slots in battle.",
         done: "Nice! The skill now sits in a battle slot. Tap that slot during a fight to use it. You have 5 slots to fill.",
       },

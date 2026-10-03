@@ -302,7 +302,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
                   }}
                 >
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: dye.swatch }} />
-                  <span style={{ fontSize: 10, textAlign: "center" }}>{dye.name}</span>
+                  <span style={{ fontSize: 10, textAlign: "center" }}>{lang === "en" ? dye.nameEn : dye.name}</span>
                   {owned ? (
                     <span style={{ fontSize: 8, color: "#5FA8A0" }}>{t("character.cosmetics.owned")}</span>
                   ) : (

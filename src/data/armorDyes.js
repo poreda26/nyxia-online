@@ -6,10 +6,10 @@
 // sonuç, zırhın taban rengine göre değişir, bu yüzden isimler kesin ton yerine
 // genel yöne göre seçildi). sat: doygunluk çarpanı (1 = değişmez).
 export const ARMOR_DYES = [
-  { id: "crimson", name: "Kızıl Boya", hue: 320, sat: 1.35, cost: 250, swatch: "#C9425A" },
-  { id: "azure", name: "Gökyüzü Mavisi", hue: 190, sat: 1.3, cost: 250, swatch: "#4FC3D9" },
-  { id: "emerald", name: "Zümrüt Yeşili", hue: 100, sat: 1.3, cost: 250, swatch: "#4FC97A" },
-  { id: "violet", name: "Mor Alacası", hue: 260, sat: 1.25, cost: 300, swatch: "#8B6FC9" },
-  { id: "gold", name: "Altın Varak", hue: 25, sat: 1.5, cost: 400, swatch: "#D4AF6A" },
-  { id: "obsidian", name: "Obsidyen Karası", hue: 220, sat: 0.1, cost: 400, swatch: "#3A3F4A" },
+  { id: "crimson", nameEn: "Crimson Dye", name: "Kızıl Boya", hue: 320, sat: 1.35, cost: 250, swatch: "#C9425A" },
+  { id: "azure", nameEn: "Sky Blue", name: "Gökyüzü Mavisi", hue: 190, sat: 1.3, cost: 250, swatch: "#4FC3D9" },
+  { id: "emerald", nameEn: "Emerald Green", name: "Zümrüt Yeşili", hue: 100, sat: 1.3, cost: 250, swatch: "#4FC97A" },
+  { id: "violet", nameEn: "Violet Mottle", name: "Mor Alacası", hue: 260, sat: 1.25, cost: 300, swatch: "#8B6FC9" },
+  { id: "gold", nameEn: "Gold Leaf", name: "Altın Varak", hue: 25, sat: 1.5, cost: 400, swatch: "#D4AF6A" },
+  { id: "obsidian", nameEn: "Obsidian Black", name: "Obsidyen Karası", hue: 220, sat: 0.1, cost: 400, swatch: "#3A3F4A" },
 ];

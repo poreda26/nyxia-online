@@ -21,3 +21,7 @@
 .tutorial-close{position:absolute;top:8px;right:8px;z-index:2;display:grid;place-items:center;width:28px;height:28px;padding:0;border:none;border-radius:50%;background:transparent;color:var(--text-faint,#92968a);cursor:pointer}
 .tutorial-close:hover{color:var(--text-primary,#eee5d1);background:#ffffff14}
 .tutorial-coach-actions:empty{display:none}
+.tutorial-coach.is-raised{z-index:61}
+.tut-ring.is-raised{z-index:62}
+.tutorial-coach.is-compact .tutorial-coach-dots,.tutorial-coach.is-compact .tutorial-coach-portrait,.tutorial-coach.is-compact .tutorial-coach-title small{display:none}
+.tutorial-coach.is-compact{padding:7px 10px}
