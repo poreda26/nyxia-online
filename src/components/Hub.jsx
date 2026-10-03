@@ -1,5 +1,6 @@
 import { getActiveCharacterKey } from "../utils/api";
 import { fetchWallet, claimWeeklyRankServer } from "../services/walletService";
+import { applyEntitlement } from "../utils/diamondCharge";
 import { startPolling } from "../utils/polling";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { hasCaptainNotice } from "../utils/captainNotices";
@@ -87,8 +88,8 @@ export default function Hub({ isGm = false, player, setPlayer, bank, setBank, ba
         setPlayer((p) => { const { pendingWeeklyClaim, ...rest } = p; void pendingWeeklyClaim; return { ...rest, diamonds: res.diamonds }; });
         if (res.diamondsAwarded > 0) pushToast(t("app.warzoneRankReward", { rank: pending.rank, diamonds: res.diamondsAwarded }), "loot");
       } else {
-        const wallet = await fetchWallet();
-        setPlayer((p) => (p.diamonds === wallet.diamonds ? p : { ...p, diamonds: wallet.diamonds }));
+        const wallet = await fetchWallet(getActiveCharacterKey());
+        setPlayer((p) => applyEntitlement(p.diamonds === wallet.diamonds ? p : { ...p, diamonds: wallet.diamonds }, wallet.entitlement));
       }
     } catch { return false; }
   }, 60000), []); // eslint-disable-line react-hooks/exhaustive-deps

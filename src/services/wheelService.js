@@ -3,4 +3,4 @@ import { call } from "../utils/api";
 
 export const fetchWheel = () => call("wheel", "GET");
 export const spinWheel = () => call("wheel/spin", "POST");
-export const claimWheel = () => call("wheel/claim", "POST");
+export const claimWheel = (characterKey = null) => call("wheel/claim", "POST", { characterKey });

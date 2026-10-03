@@ -482,6 +482,8 @@ test('wheel prizes land in the bag, fall back to the bank, and stay pending when
   const base = { ...player(), level: 30 };
   for (const id of WHEEL_SLICES) {
     const out = applyWheelPrize(base, [[]], id, 1000);
+    // Premium ödülünü sunucu verir (claim); istemci yerelde vermez.
+    if (id === 'mythic_1d' || id === 'apex_3d') { assert.equal(out.delivered, false, id); continue; }
     assert.ok(out.delivered, id);
     assert.equal(out.player.wheelAppliedAt, 1000);
   }
@@ -574,7 +576,9 @@ test('the trimmed friend-duel snapshot plays exactly like the full character', (
   assert.deepEqual(play(snapshot), play(friend));
 });
 
-import { DIAMOND_PRICES, DAILY_LOGIN_DIAMONDS, WEEKLY_RANK_REWARDS } from '../src/data/diamondPrices';
+import { DIAMOND_PACKS } from '../src/data/diamondPacks';
+import { DIAMOND_PRICES, DIAMOND_PACK_AMOUNTS, DAILY_LOGIN_DIAMONDS, WEEKLY_RANK_REWARDS, PREMIUM_DURATION_DAYS, WHEEL_PREMIUM_PRIZES, DEFAULT_UNLOCKED_SLOTS as SERVER_DEFAULT_SLOTS, CHARACTER_SLOTS as SERVER_CHARACTER_SLOTS } from '../src/data/diamondPrices';
+import { DEFAULT_UNLOCKED_SLOTS, CHARACTER_SLOTS } from '../src/utils/storage';
 import { PREMIUM_TIERS } from '../src/data/premium';
 import { BOOST_SCROLLS } from '../src/data/boostScrolls';
 import { ARMOR_DYES } from '../src/data/armorDyes';
@@ -603,7 +607,12 @@ test('the server diamond price list matches the data files the client uses', () 
   assert.equal(DIAMOND_PRICES.clanFound, CLAN_FOUND_COST_DIAMONDS);
   assert.equal(DIAMOND_PRICES.slotUnlock, THIRD_SLOT_COST_DIAMONDS);
   assert.equal(DIAMOND_PRICES.characterDelete, CHARACTER_DELETE_COST_DIAMONDS);
+  assert.deepEqual(DIAMOND_PACK_AMOUNTS, Object.fromEntries(DIAMOND_PACKS.map((p) => [p.id, p.diamonds])));
   assert.deepEqual(WEEKLY_RANK_REWARDS, WEEKLY_REWARDS);
+  for (const tier of Object.values(PREMIUM_TIERS)) assert.equal(PREMIUM_DURATION_DAYS, tier.durationDays, 'premium duration ' + tier.id);
+  assert.equal(SERVER_DEFAULT_SLOTS, DEFAULT_UNLOCKED_SLOTS);
+  assert.equal(SERVER_CHARACTER_SLOTS, CHARACTER_SLOTS);
+  assert.deepEqual(WHEEL_PREMIUM_PRIZES, { mythic_1d: { tier: 'mythic', days: 1 }, apex_3d: { tier: 'apex', days: 3 } });
   assert.deepEqual(DAILY_LOGIN_DIAMONDS, DAILY_LOGIN_REWARDS.map((r) => r.diamonds));
 });
 

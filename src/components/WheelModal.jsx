@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X, Crown, Feather, ScrollText, Coins, Swords, Shield, Heart, Sparkles, Gem, Flag } from "lucide-react";
 import "./RewardPanels.css";
 import "./WheelModal.css";
-import { WHEEL_SLICES, applyWheelPrize, wheelAlreadyApplied } from "../utils/wheel";
+import { WHEEL_SLICES, WHEEL_PREMIUM_IDS, applyWheelPrize, wheelAlreadyApplied } from "../utils/wheel";
+import { getActiveCharacterKey } from "../utils/api";
+import { applyEntitlement } from "../utils/diamondCharge";
 import { fetchWheel, spinWheel, claimWheel } from "../services/wheelService";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
@@ -74,6 +76,21 @@ export default function WheelModal({ player, setPlayer, bank, setBank, onClose, 
   const prizeName = (id) => t(`wheel.prize.${id}`);
 
   const deliver = async (prizeId, spunAt) => {
+    // Premium ödülü: hakkı sunucu yazar (alma ve verme tek işlem), yerel değer sunucudakine eşitlenir.
+    if (WHEEL_PREMIUM_IDS.includes(prizeId)) {
+      try {
+        const res = await claimWheel(getActiveCharacterKey());
+        setPlayer((p) => ({ ...applyEntitlement(p, res.entitlement), wheelAppliedAt: spunAt }));
+        setResult({ prizeId });
+        pushToast?.(t("wheel.applied", { name: prizeName(prizeId) }), "success");
+        await refresh();
+      } catch {
+        setResult(null);
+        setError("failed");
+        publish({ canSpin: false, pending: prizeId, spunAt, nextSpinAt: state?.nextSpinAt });
+      }
+      return;
+    }
     const out = applyWheelPrize(playerRef.current, bankRef.current, prizeId, spunAt);
     if (!out.delivered) {
       setResult({ prizeId, bagFull: true });
@@ -84,7 +101,7 @@ export default function WheelModal({ player, setPlayer, bank, setBank, onClose, 
     if (out.bank !== bankRef.current) setBank(out.bank);
     setResult({ prizeId, toBank: !!out.toBank });
     pushToast?.(t("wheel.applied", { name: prizeName(prizeId) }), "success");
-    try { await claimWheel(); } catch { /* ödül yazıldı; bir sonraki açılışta onay tekrarlanır */ }
+    try { await claimWheel(getActiveCharacterKey()); } catch { /* ödül yazıldı; bir sonraki açılışta onay tekrarlanır */ }
     await refresh();
   };
 

@@ -1,5 +1,5 @@
 import { DIAMOND_PRICES } from "../data/diamondPrices";
-import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
+import { chargeDiamonds, settle, reportChargeFailure, applyEntitlement } from "../utils/diamondCharge";
 import ScrollArt from './icons/ScrollArt';
 import {useState} from 'react';
 import {Crown,Check,Gem,Star} from 'lucide-react';
@@ -18,7 +18,7 @@ export default function PremiumShop({player,setPlayer,bank,setBank,pushToast}){
     const charge = await chargeDiamonds("premium", tierId);
     if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
     const result = buyPremium(settle(player, charge), tierId, bank);
-    setPlayer(result.player);
+    setPlayer(applyEntitlement(result.player, charge.entitlement));
     setBank(result.bank);
     pushToast(t("shop.premiumActivated", { tier: PREMIUM_TIERS[tierId].name }), "loot");
   };

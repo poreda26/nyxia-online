@@ -11,6 +11,8 @@ const api = createApi({
   secure: production,
   staticDir: process.env.STATIC_DIR || null,
   trustedProxy: process.env.TRUSTED_PROXY || null,
+  iapWebhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || null,
+  iapAllowSandbox: process.env.IAP_ALLOW_SANDBOX === '1',
 });
 // Varsayılan bağlanma adresi bilerek loopback (127.0.0.1) — dışarıya açmak
 // (0.0.0.0) sadece bir ters proxy'nin arkasında, HOST ortam değişkeni

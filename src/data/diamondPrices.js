@@ -20,6 +20,16 @@ export const DIAMOND_PRICES = {
   characterDelete: 500,
 };
 
+// Premium süresi (gün) ve çarkın premium ödülleri — satın alınan haklar sunucuda tutulur.
+export const PREMIUM_DURATION_DAYS = 15;
+export const WHEEL_PREMIUM_PRIZES = { mythic_1d: { tier: 'mythic', days: 1 }, apex_3d: { tier: 'apex', days: 3 } };
+// Karakter slotları (storage.js ile aynı; tests/world.test.js eşleşmeyi doğrular).
+export const DEFAULT_UNLOCKED_SLOTS = 2;
+export const CHARACTER_SLOTS = 3;
+
+// Mağaza ürünü -> kredilenecek elmas (src/data/diamondPacks.js ile aynı; test eşleşmeyi doğrular).
+export const DIAMOND_PACK_AMOUNTS = { diamonds_100: 100, diamonds_550: 550, diamonds_1200: 1200, diamonds_2500: 2500, diamonds_5500: 5500, diamonds_12000: 12000 };
+
 // Günlük giriş döngüsünün elmas kısmı (gün 1..7). Altın/parşömen/sandık hâlâ
 // istemcide; elmas sunucudan.
 export const DAILY_LOGIN_DIAMONDS = [0, 0, 0, 0, 0, 5, 15];

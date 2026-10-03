@@ -4,6 +4,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
+const unpinned=d=>{const c=structuredClone(d);delete c.unlockedSlots;(c.characters||[]).forEach(ch=>{if(ch)for(const k of ['premium','ownedDyes','ownedAvatars','ownedAvatarFrames'])delete ch[k];});return c;};
 import {createApi} from '../server/app.mjs';
 test('owner panel: deny GM/anonymous, preserve revisions, restore, ban, audit, survive restart',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'nyxia-owner-')),database=join(dir,'test.sqlite');
@@ -35,7 +36,7 @@ test('owner panel: deny GM/anonymous, preserve revisions, restore, ban, audit, s
   assert.deepEqual(detail.data.characters,data.characters);assert.equal(detail.snapshots.length,1);
   assert.equal((await call('admin/account/save',{id:2,revision:2,data:{...edited,characters:[null,null,null]},reason:'bad deletion'},a.cookie)).status,400);
   assert.equal((await call('admin/account/restore',{id:2,revision:2,snapshot:detail.snapshots[0].id,reason:'undo test'},a.cookie)).status,200);
-  assert.deepEqual((await call('backup',null,b.cookie)).data.data,{...data,diamonds:0});
+  assert.deepEqual(unpinned((await call('backup',null,b.cookie)).data.data),{...data,diamonds:0});
   assert.equal((await call('admin/account/block',{id:1,blocked:true,reason:'lock owner'},a.cookie)).status,400);
   assert.equal((await call('admin/account/block',{id:2,blocked:true,reason:'test ban'},a.cookie)).status,200);
   assert.equal((await call('backup',null,b.cookie)).status,401);

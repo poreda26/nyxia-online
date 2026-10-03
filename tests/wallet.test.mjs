@@ -91,15 +91,17 @@ test('wallet API: spend, GM grants, backup pinning, clan charges and account del
 
     // Nobody but a GM can create diamonds; spending needs a real balance.
     assert.equal((await call('wallet/gm-grant', { amount: 5000 }, player)).status, 403);
-    assert.equal((await call('wallet/spend', { kind: 'premium', key: 'mythic' }, player)).status, 409);
+    assert.equal((await call('wallet/spend', { kind: 'premium', key: 'mythic', characterKey: 'hero' }, player)).status, 409);
     assert.equal((await call('wallet/gm-grant', { amount: 5000 }, owner)).data.diamonds, 5000);
     assert.equal((await call('wallet/gm-grant', { amount: -1 }, owner)).status, 400);
     assert.equal((await call('wallet/gm-grant', { amount: 5000000 }, owner)).status, 400);
 
     // The server prices the purchase itself; the client cannot pass its own number.
-    const bought = await call('wallet/spend', { kind: 'premium', key: 'mythic', price: 1 }, owner);
-    assert.deepEqual(bought.data, { diamonds: 2000, price: 3000 });
-    assert.equal((await call('wallet/spend', { kind: 'premium', key: 'nope' }, owner)).status, 400);
+    const bought = await call('wallet/spend', { kind: 'premium', key: 'mythic', price: 1, characterKey: 'hero' }, owner);
+    assert.equal(bought.data.diamonds, 2000);
+    assert.equal(bought.data.price, 3000);
+    assert.equal(bought.data.entitlement.premium.tier, 'mythic');
+    assert.equal((await call('wallet/spend', { kind: 'premium', key: 'nope', characterKey: 'hero' }, owner)).status, 400);
     assert.equal((await call('wallet/spend', { kind: 'wings', key: 'dawn' }, owner)).data.diamonds, 0);
     assert.equal((await call('wallet/spend', { kind: 'wings', key: 'dawn' }, owner)).status, 409);
 

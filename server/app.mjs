@@ -7,6 +7,9 @@ import {maskProfanity, containsProfanity, containsProfanityLoose} from '../src/d
 import {createWheel} from './wheel.mjs';
 import {duelSnapshot} from './duel-snapshot.mjs';
 import {createWallet} from './wallet.mjs';
+import {createEntitlements} from './entitlements.mjs';
+import {createIap} from './iap.mjs';
+import {WHEEL_PREMIUM_PRIZES} from '../src/data/diamondPrices.js';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, createHash, scrypt as derive, timingSafeEqual } from 'node:crypto';
@@ -114,7 +117,7 @@ const CLAN_MATERIAL_COLUMN = { wood: 'treasury_root_fragment', silver: 'treasury
 // iOS capacitor://localhost. Bu origin'lerden gelen istekler çerezle değil
 // Bearer token ile yetkilenir (SameSite=Strict çerez WebView'dan gönderilmez).
 export const NATIVE_APP_ORIGINS = ['https://localhost', 'capacitor://localhost'];
-export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS } = {}) {
+export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, iapWebhookSecret = null, iapAllowSandbox = false } = {}) {
   const allowedOrigins = new Set([origin, ...nativeOrigins]);
   const db = new DatabaseSync(database);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
@@ -219,6 +222,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     try { return JSON.parse(Buffer.concat(chunks).toString()); } catch { throw fail(400, 'INVALID_JSON'); }
   };
   const wallet = createWallet(db, { fail });
+  const entitlements = createEntitlements(db, { fail });
+  const iap = createIap(db, { fail, wallet, secret: iapWebhookSecret, allowSandbox: iapAllowSandbox });
   const admin = createAdmin(db, { read, fail, wallet });
   const wheel = createWheel(db, { fail });
   const wheelRateLimit = makeRateLimiter(20);
@@ -329,6 +334,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       for (const [sql, params] of [
         ['DELETE FROM clan_invites WHERE from_account=? OR to_account=?', [id, id]],
         ['DELETE FROM wheel_spins WHERE account_id=?', [id]],
+        ['DELETE FROM iap_purchases WHERE account=?', [id]],
+        ['DELETE FROM entitlements WHERE account=?', [id]],
+        ['DELETE FROM entitlement_seed WHERE account=?', [id]],
         ['DELETE FROM wallet_ledger WHERE account=?', [id]],
         ['DELETE FROM wallets WHERE account=?', [id]],
         ['DELETE FROM daily_login_claims WHERE account=?', [id]],
@@ -380,8 +388,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Character-Key, X-Native-Client, Authorization');
         return send(204, null);
       }
-      if (req.method !== 'GET' && req.method !== 'HEAD' && (!allowedOrigins.has(reqOrigin) || !req.headers['content-type']?.startsWith('application/json'))) throw fail(403, 'INVALID_REQUEST_ORIGIN');
       const path = new URL(req.url, 'http://localhost').pathname;
+      // Mağaza ödeme servisi (RevenueCat) tarayıcı değildir: Origin göndermez, kimliğini gizli anahtarla kanıtlar.
+      const isWebhook = path === '/api/iap/revenuecat' && req.method === 'POST' && !reqOrigin;
+      if (req.method !== 'GET' && req.method !== 'HEAD' && !isWebhook && (!allowedOrigins.has(reqOrigin) || !req.headers['content-type']?.startsWith('application/json'))) throw fail(403, 'INVALID_REQUEST_ORIGIN');
+      if (isWebhook) return send(200, iap.handleRevenueCat(req.headers, await read(req)));
       if (!path.startsWith('/api/')) {
         if (!staticDir || req.method !== 'GET') throw fail(404, 'NOT_FOUND');
         return serveStatic(res, staticDir, path);
@@ -426,7 +437,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if(path.startsWith('/api/admin/')) return await admin.handle(req,path,account,send);
       if(path === '/api/drop-settings' && req.method==='GET')return send(200,admin.drops.get());
       if(req.method==='POST' && (path==='/api/chat/messages'||/^\/api\/social\/messages\/\d+$/.test(path)) && admin.muted(account.id))throw fail(403,'ACCOUNT_MUTED');
-      if (path === '/api/me' && req.method === 'GET') return send(200, { name: account.name, gm: admin.isGm(account.id) });
+      if (path === '/api/me' && req.method === 'GET') return send(200, { id: account.id, name: account.name, gm: admin.isGm(account.id) });
       if (path === '/api/logout' && req.method === 'POST') {
         db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));
         res.setHeader('Set-Cookie', cookie('', 0)); return send(200, { ok: true });
@@ -445,15 +456,59 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       if (path === '/api/wheel' && req.method === 'GET') return send(200, wheel.status(account.id));
       if (path === '/api/wheel/spin' && req.method === 'POST') { wheelRateLimit(account.id); return send(200, wheel.spin(account.id)); }
-      if (path === '/api/wheel/claim' && req.method === 'POST') { wheelRateLimit(account.id); return send(200, wheel.claim(account.id)); }
+      if (path === '/api/wheel/claim' && req.method === 'POST') {
+        wheelRateLimit(account.id);
+        const body = await read(req).catch(() => ({}));
+        const ck = validCharacterKey(body?.characterKey);
+        // Premium ödülü hakkı sunucuda verilir: ödülün alınması ve hakkın yazılması tek işlemde.
+        const result = wallet.atomic(() => {
+          const pending = wheel.status(account.id).pending;
+          const claimed = wheel.claim(account.id);
+          if (!WHEEL_PREMIUM_PRIZES[pending]) return claimed;
+          if (!ck) throw fail(400, 'INVALID_CHARACTER');
+          entitlements.grantBoost(account.id, ck, pending, characterKey);
+          return { ...claimed, entitlement: entitlements.snapshot(account.id, ck, characterKey) };
+        });
+        return send(200, result);
+      }
       // Elmas kasası (sunucu otoritesi). Bakiye yalnızca bu uçlarla değişir; yedeğe
       // yazılan elmas sayısı dikkate alınmaz (bkz. wallet.clampBackup).
-      if (path === '/api/wallet' && req.method === 'GET') return send(200, { diamonds: wallet.balance(account.id) });
+      if (path === '/api/wallet' && req.method === 'GET') {
+        const queryKey = validCharacterKey(new URL(req.url, 'http://localhost').searchParams.get('characterKey'));
+        return send(200, { diamonds: wallet.balance(account.id), ...(queryKey ? { entitlement: entitlements.snapshot(account.id, queryKey, characterKey) } : {}) });
+      }
       if (path === '/api/wallet/spend' && req.method === 'POST') {
         walletRateLimit(account.id);
         const body = await read(req);
         const ref = typeof body?.ref === 'string' ? body.ref.slice(0, 60) : null;
-        return send(200, wallet.spend(account.id, String(body?.kind), body?.key == null ? null : String(body.key), ref));
+        const kind = String(body?.kind);
+        const key = body?.key == null ? null : String(body.key);
+        const ck = validCharacterKey(body?.characterKey);
+        const now = Date.now();
+        const needCharacter = () => { if (!ck) throw fail(400, 'INVALID_CHARACTER'); return ck; };
+        let hooks = {};
+        if (kind === 'premium') {
+          hooks = { check: () => entitlements.checkPremium(account.id, needCharacter(), key, characterKey, now), grant: () => { entitlements.grantPremium(account.id, ck, key, 'purchase', now); return entitlements.snapshot(account.id, ck, characterKey, now); } };
+        } else if (kind === 'dye') {
+          hooks = { check: () => entitlements.checkNotOwned(account.id, needCharacter(), 'dye', key, characterKey, now), grant: () => { entitlements.grantOwned(account.id, ck, 'dye', key, 'purchase', now); return entitlements.snapshot(account.id, ck, characterKey, now); } };
+        } else if (kind === 'avatarCosmetic') {
+          const match = /^(avatar|frame):([\w-]{1,40})$/.exec(key || '');
+          if (!match) throw fail(400, 'INVALID_PURCHASE');
+          hooks = { check: () => entitlements.checkNotOwned(account.id, needCharacter(), match[1], match[2], characterKey, now), grant: () => { entitlements.grantOwned(account.id, ck, match[1], match[2], 'purchase', now); return entitlements.snapshot(account.id, ck, characterKey, now); } };
+        } else if (kind === 'slotUnlock') {
+          hooks = { check: () => entitlements.checkSlot(account.id, characterKey, now), grant: () => { entitlements.grantSlot(account.id, 'purchase', now); return entitlements.snapshot(account.id, ck || '', characterKey, now); } };
+        }
+        return send(200, wallet.spend(account.id, kind, key, ref, now, hooks));
+      }
+      // GM/sahip: karaktere premium verir (sohbet komutu /premium). Elmas harcamaz.
+      if (path === '/api/entitlements/gm-premium' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        if (!admin.isGm(account.id)) throw fail(403, 'GM_ONLY');
+        const body = await read(req);
+        const ck = validCharacterKey(body?.characterKey);
+        if (!ck || !['mythic', 'apex'].includes(body?.tier)) throw fail(400, 'INVALID_PURCHASE');
+        const result = wallet.atomic(() => { entitlements.ensure(account.id, characterKey); entitlements.grantPremium(account.id, ck, body.tier, 'gm', Date.now()); return entitlements.snapshot(account.id, ck, characterKey); });
+        return send(200, { entitlement: result });
       }
       if (path === '/api/wallet/daily-login' && req.method === 'POST') {
         walletRateLimit(account.id);
@@ -480,7 +535,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (path === '/api/backup' && req.method === 'GET') {
         const row = db.prepare('SELECT * FROM backups WHERE account=?').get(account.id);
         const stored = row ? JSON.parse(row.data) : null;
-        return send(200, { revision: row?.revision || 0, data: stored ? wallet.clampBackup(account.id, stored) : null, trusted: false });
+        return send(200, { revision: row?.revision || 0, data: stored ? entitlements.pin(account.id, wallet.clampBackup(account.id, stored), characterKey) : null, trusted: false });
       }
       if (path === '/api/backup' && req.method === 'PUT') {
         const body = await read(req);
@@ -497,6 +552,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           }
           const revision = current + 1, now = Date.now();
           wallet.clampBackup(account.id, body.data);
+          entitlements.pin(account.id, body.data, characterKey);
           const data = JSON.stringify(body.data);
           db.prepare('INSERT INTO backup_history VALUES(?,?,?,?)').run(account.id, revision, data, now);
           db.prepare('INSERT OR REPLACE INTO backups VALUES(?,?,?,?)').run(account.id, revision, data, now);

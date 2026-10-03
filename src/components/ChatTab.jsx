@@ -1,4 +1,6 @@
-import { gmGrantDiamonds } from "../services/walletService";
+import { gmGrantDiamonds, gmGrantPremium } from "../services/walletService";
+import { getActiveCharacterKey } from "../utils/api";
+import { applyEntitlement } from "../utils/diamondCharge";
 import { startPolling } from "../utils/polling";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Send, ShieldCheck, HelpCircle, Wand2, X, Globe2, MessageCircle } from "lucide-react";
@@ -77,6 +79,9 @@ export default function ChatTab({
         const amount = Math.max(1, parseInt(parsed.args[0], 10) || 100);
         const granted = await gmGrantDiamonds(amount);
         setPlayer((p) => ({ ...p, diamonds: granted.diamonds }));
+      } else if (parsed.cmd === "premium" && ["mythic", "apex"].includes((parsed.args[0] || "").toLowerCase())) {
+        const granted = await gmGrantPremium(getActiveCharacterKey(), parsed.args[0].toLowerCase());
+        setPlayer((p) => applyEntitlement({ ...nextPlayer, diamonds: p.diamonds }, granted.entitlement));
       } else {
         setPlayer(nextPlayer);
       }

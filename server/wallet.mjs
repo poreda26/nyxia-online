@@ -53,10 +53,17 @@ export function createWallet(db, { fail }) {
 
   const balance = (id) => ensure(id);
 
-  const spend = (id, kind, key, ref, now = Date.now()) => {
+  // hooks.check: tahsilattan önce (geçersizse fırlatır, ücret alınmaz);
+  // hooks.grant: aynı transaction'da hakkı verir ve yanıta eklenecek hak özetini döner.
+  const spend = (id, kind, key, ref, now = Date.now(), hooks = {}) => {
     const price = diamondPrice(kind, key);
     if (price === null) throw fail(400, 'INVALID_PURCHASE');
-    return atomic(() => ({ diamonds: move(id, -price, `spend:${kind}`, key == null ? ref : `${key}${ref ? ':' + ref : ''}`, now), price }));
+    return atomic(() => {
+      hooks.check?.();
+      const result = { diamonds: move(id, -price, `spend:${kind}`, key == null ? ref : `${key}${ref ? ':' + ref : ''}`, now), price };
+      const entitlement = hooks.grant?.();
+      return entitlement ? { ...result, entitlement } : result;
+    });
   };
 
   // Başka bir sunucu işleminin (ör. klan kurma) kendi transaction'ı içinde çağrılır.
@@ -75,6 +82,11 @@ export function createWallet(db, { fail }) {
     if (!Number.isSafeInteger(target) || target < 0) throw fail(400, 'INVALID_CURRENCY');
     const delta = target - ensure(id, now);
     return delta === 0 ? target : move(id, delta, reason, ref, now);
+  };
+
+  const creditInTransaction = (id, amount, reason, ref, now = Date.now()) => {
+    if (!Number.isSafeInteger(amount) || amount <= 0) throw fail(400, 'INVALID_AMOUNT');
+    return move(id, amount, reason, ref, now);
   };
 
   const credit = (id, amount, reason, ref, now = Date.now()) => {
@@ -118,5 +130,5 @@ export function createWallet(db, { fail }) {
     return data;
   };
 
-  return { balance, spend, spendInTransaction, debitInTransaction, setBalanceInTransaction, credit, dailyLogin, weeklyRank, clampBackup, atomic };
+  return { balance, spend, spendInTransaction, debitInTransaction, creditInTransaction, setBalanceInTransaction, credit, dailyLogin, weeklyRank, clampBackup, atomic };
 }

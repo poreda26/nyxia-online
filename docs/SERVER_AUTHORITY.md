@@ -21,8 +21,8 @@ edebilmesi için açık `.js` uzantılı, bağımlılıksız dosyalar tercih edi
 | Faz | Kapsam | Durum |
 | --- | --- | --- |
 | 1a | **Elmas kasası**: bakiye, defter, sunucu fiyat listesi, günlük giriş elması, haftalık sıralama ödülü (talep başına tek), GM verme, klan kurma/bağış, yedekte elmas sabitleme | Yapıldı |
-| 1b | **Hak sahipliği**: premium (satın alınan + çark), açılan karakter slotları, açılan boya/avatar/çerçeve, günlük seri | Sırada |
-| 1c | **Ödeme**: Apple/Google makbuz doğrulama → elmas kredisi (mağaza öncesi şart) | Sırada |
+| 1b | **Hak sahipliği**: premium (satın alınan + çark), açılan karakter slotları, açılan boya/avatar/çerçeve (günlük seri 1a'da yapıldı) | Yapıldı |
+| 1c | **Ödeme**: mağaza makbuzu → elmas kredisi (RevenueCat webhook'u, işlem başına bir kez, iade geri alma). Sunucu tarafı hazır; istemci SDK'sı + hesap kurulumu bekliyor | Sunucu yapıldı |
 | 2a | **Altın + envanter + depo**: eşyalar sunucuda satır olarak, kuşan/çıkar/sat/depo | Bekliyor |
 | 2b | **Yükseltme**: zarı sunucu atar, parşömen tüketimi sunucuda | Bekliyor |
 | 2c | **Pazar**: tezgah işlemleri sunucudaki envantere bağlanır | Bekliyor |
@@ -47,3 +47,25 @@ edebilmesi için açık `.js` uzantılı, bağımlılıksız dosyalar tercih edi
 - Fiyatlar tek listede: `src/data/diamondPrices.js`. Veri dosyalarıyla eşleştiği
   `tests/world.test.js` içinde doğrulanır.
 - Harcama akışı (istemci): yerelde dene → `POST /api/wallet/spend` → sunucu bakiyesiyle uygula.
+
+## Faz 1b: haklar
+
+- `entitlements` tablosu: premium (süreli), çark premium'u, boya / avatar / çerçeve, 3. slot.
+  Haklar yalnızca sunucuda bir satın alma, çark ödülü ya da GM işlemiyle doğar.
+- Satın alma tek istekte olur: `POST /api/wallet/spend` elmasını düşer ve hakkı aynı transaction'da verir;
+  cevapta hakkın güncel özeti döner. Aynı hak ikinci kez satılmaz (`ALREADY_OWNED` / `ALREADY_PREMIUM`).
+- Yedek okunurken/yazılırken ilgili alanlar sunucudaki gerçeğe sabitlenir; istemci yedekle hak ekleyemez.
+- Çark: premium ödülü `POST /api/wheel/claim` ile alınırken sunucu hakkı yazar (alma + verme tek işlem).
+- Mevcut hesaplar ilk erişimde yedeklerindeki hakları bir kez devralır (premium süresi 15 güne kırpılır).
+
+## Faz 1c: elmas satın alma kurulumu (sen yapacaksın)
+
+1. RevenueCat hesabı aç, uygulamayı ekle; Google Play ve App Store'da `diamonds_100`, `diamonds_550`,
+   `diamonds_1200`, `diamonds_2500`, `diamonds_5500`, `diamonds_12000` adlı tüketilebilir ürünleri oluştur
+   (kimlikler `src/data/diamondPacks.js` ile birebir aynı olmalı).
+2. RevenueCat → Integrations → Webhooks: adres `https://nyxia.sametcantas.com/api/iap/revenuecat`,
+   Authorization başlığı `Bearer <gizli-anahtar>`.
+3. Sunucuda ortam değişkeni: `REVENUECAT_WEBHOOK_SECRET=<aynı gizli anahtar>`. TestFlight / Play test
+   alımları için ayrıca `IAP_ALLOW_SANDBOX=1` (canlıya çıkarken kaldır).
+4. İstemcide `@revenuecat/purchases-capacitor` kurulup `appUserID` olarak hesap kimliği (`/api/me` → `id`)
+   verilecek; mağaza ekranındaki "Elmas Al" düğmeleri bu SDK'ya bağlanacak (bunu ben yaparım).

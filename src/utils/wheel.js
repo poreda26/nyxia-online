@@ -3,7 +3,6 @@ import { highestUnlockedMap } from "../data/maps";
 import { addItemToInventory, addItemToAnyBankPage, makeScrollStack, makeBonusScrollStack, makeAccessoryScrollStack } from "./inventory";
 import { makeBoostScrollStack } from "./boosts";
 import { makeWings } from "./wings";
-import { grantBoostPremium } from "./premium";
 
 // Çarkın 12 dilimi aynı boyutta ve bu sırada çizilir. Oranlar BURADA YOK:
 // ödülü sunucu seçer (server/wheel.mjs), istemci yalnızca sonucu gösterir.
@@ -15,6 +14,7 @@ export const WHEEL_SLICES = [
 
 const BOOST_OF = { boost_exp: "exp", boost_gold: "gold", boost_atk: "atk", boost_np: "np", boost_def: "def", boost_hp: "hp" };
 
+export const WHEEL_PREMIUM_IDS = ["mythic_1d", "apex_3d"];
 export const wheelSliceKind = (id) => (id === "mythic_1d" || id === "apex_3d" ? "premium" : id === "wing" ? "wing" : "scroll");
 
 function buildItem(player, prizeId) {
@@ -30,8 +30,9 @@ function buildItem(player, prizeId) {
 // delivered:false döner ve ödül alınmamış kalır (kaybolmaz).
 export function applyWheelPrize(player, bank, prizeId, spunAt) {
   const mark = (p) => ({ ...p, wheelAppliedAt: spunAt });
-  if (prizeId === "mythic_1d") return { player: mark(grantBoostPremium(player, "mythic", 1)), bank, delivered: true };
-  if (prizeId === "apex_3d") return { player: mark(grantBoostPremium(player, "apex", 3)), bank, delivered: true };
+  // Premium ödülleri artık burada verilmez: sunucu çark ödülünü alırken hakkı yazar
+  // (bkz. WheelModal.jsx#deliver, server /api/wheel/claim).
+  if (prizeId === "mythic_1d" || prizeId === "apex_3d") return { player, bank, delivered: false };
   const item = buildItem(player, prizeId);
   if (!item) return { player, bank, delivered: false };
   const toBag = addItemToInventory(player, item);
