@@ -102,14 +102,15 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
     const trimmed = nameInput.trim();
     if (!trimmed) { pushToast(t("common.reason.enterClanName"), "warn"); return; }
     if (player.diamonds < CLAN_FOUND_COST_DIAMONDS) { pushToast(t("common.reason.notEnoughDiamonds"), "warn"); return; }
+    let founded;
     try {
       setBusy(true);
-      await foundClanApi(trimmed, pick(CLAN_COLORS),avatarId);
-    } catch (error) { pushToast(formatServerError(t, error), "warn"); return; }
+      founded = await foundClanApi(trimmed, pick(CLAN_COLORS),avatarId);
+    } catch (error) { pushToast(error?.code === "NOT_ENOUGH_DIAMONDS" ? t("common.reason.notEnoughDiamonds") : formatServerError(t, error), "warn"); return; }
     finally {setBusy(false);}
     const before = player;
     setPlayer((p) => {
-      const after = { ...p, diamonds: p.diamonds - CLAN_FOUND_COST_DIAMONDS, milestones: { ...p.milestones, hasFoundedClan: true } };
+      const after = { ...p, diamonds: Number.isSafeInteger(founded?.diamonds) ? founded.diamonds : p.diamonds - CLAN_FOUND_COST_DIAMONDS, milestones: { ...p.milestones, hasFoundedClan: true } };
       newlyUnlocked(before, after).forEach((a) => pushToast(t("clan.toastAchievement", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
       return after;
     });
@@ -180,14 +181,16 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
     if (!Number.isFinite(amount) || amount <= 0) { pushToast(formatReason(t, { reason: "enterValidAmount" }, "clan.toastDonateFailed"), "warn"); return; }
     const balance = currency === "np" ? player.nationalPoint : currency === "gold" ? player.gold : player.diamonds;
     if (balance < amount) { pushToast(formatReason(t, { reason: currency === "np" ? "notEnoughNP" : currency === "gold" ? "notEnoughGold" : "notEnoughDiamonds" }, "clan.toastDonateFailed"), "warn"); return; }
+    let donated;
     try {
-      await donateToClan(currency, amount);
-    } catch (error) { pushToast(formatServerError(t, error, "clan.toastDonateFailed"), "warn"); return; }
+      donated = await donateToClan(currency, amount);
+    } catch (error) { pushToast(error?.code === "NOT_ENOUGH_DIAMONDS" ? t("common.reason.notEnoughDiamonds") : formatServerError(t, error, "clan.toastDonateFailed"), "warn"); return; }
     setPlayer((p) => ({
       ...p,
       nationalPoint: currency === "np" ? p.nationalPoint - amount : p.nationalPoint,
       gold: currency === "gold" ? p.gold - amount : p.gold,
-      diamonds: currency === "diamonds" ? p.diamonds - amount : p.diamonds,
+      // Elmas bağışı sunucuda kasadan düşer; bakiyeyi sunucunun söylediği değere oturt.
+      diamonds: currency === "diamonds" ? (Number.isSafeInteger(donated?.diamonds) ? donated.diamonds : p.diamonds - amount) : p.diamonds,
     }));
     const toastKey = currency === "np" ? "clan.toastDonatedNp" : currency === "gold" ? "clan.toastDonatedGold" : "clan.toastDonatedDiamonds";
     pushToast(t(toastKey, { amount: fmt(amount) }), "loot");

@@ -1,3 +1,4 @@
+import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
 import {openChestSafely,openChestsSafely} from '../utils/chests';
 import RewardChest from './icons/RewardChest';
 import { useState, useRef, useEffect } from "react";
@@ -65,12 +66,15 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
     setGoldAmount("");
   };
 
-  const handleBuyBankPage = () => {
-    const result = buyExtraBankPage(player, bank);
-    if (!result.bought) {
-      pushToast(result.reason === "maxBankPages" ? t("inventory.maxBankPagesReached") : t("shop.notEnoughDiamonds"), "warn");
+  const handleBuyBankPage = async () => {
+    const dry = buyExtraBankPage(player, bank);
+    if (!dry.bought) {
+      pushToast(dry.reason === "maxBankPages" ? t("inventory.maxBankPagesReached") : t("shop.notEnoughDiamonds"), "warn");
       return;
     }
+    const charge = await chargeDiamonds("bankPage");
+    if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+    const result = buyExtraBankPage(settle(player, charge), bank);
     setPlayer(result.player);
     setBank(result.bank);
     pushToast(t("inventory.bankPageBought"), "loot");

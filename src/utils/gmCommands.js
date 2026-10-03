@@ -72,8 +72,9 @@ export function executeGmCommand(player, cmd, args, bank) {
       };
     }
     case "elmas": {
+      // Elmas artık sunucu kasasından verilir (bkz. ChatTab.jsx → /api/wallet/gm-grant).
       const amount = Math.max(1, parseInt(args[0], 10) || 100);
-      return { player: { ...player, diamonds: player.diamonds + amount }, bank, resultText: `+${amount} elmas verildi.` };
+      return { player, bank, resultText: `+${amount} elmas verildi.` };
     }
     case "zirh":
     case "zırh": {

@@ -1,10 +1,14 @@
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {mkdtempSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createApi} from '../server/app.mjs';
 import {DatabaseSync} from 'node:sqlite';
 import {migrateCharacterClans} from '../server/clan-characters.mjs';
 test('characters isolate membership, invitations, rank, donations and dungeon turns',async()=>{
- const api=createApi({secure:false,origin:'http://localhost:5177'});
+ const dbFile=join(mkdtempSync(join(tmpdir(),'nyxia-clans-')),'t.sqlite');
+ const api=createApi({database:dbFile,secure:false,origin:'http://localhost:5177'});
  await new Promise(r=>api.server.listen(0,'127.0.0.1',r));const url=`http://127.0.0.1:${api.server.address().port}/api/`;
  let cookie;
  const call=async(path,key,body,method=body?'POST':'GET')=>{const r=await fetch(url+path,{method,headers:{Origin:'http://localhost:5177','Content-Type':'application/json',...(cookie?{Cookie:cookie}:{}),...(key?{'X-Character-Key':key}:{})},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};};
@@ -12,6 +16,7 @@ test('characters isolate membership, invitations, rank, donations and dungeon tu
   cookie=(await call('register',null,{name:'clantester',password:'test-password-long'})).cookie;
   const data={characters:[{id:'hero',nickname:'MainHero',level:50},{id:'alt',nickname:'AltHero',level:20},null],bank:[[]],diamonds:10000};
   assert.equal((await call('backup',null,{revision:0,data},'PUT')).status,200);
+  { const grant=new DatabaseSync(dbFile); grant.prepare('UPDATE wallets SET diamonds=5000').run(); grant.close(); }
   assert.equal((await call('clan','hero',{name:'First Clan'})).status,200);
   assert.equal((await call('clan/mine','alt')).data.clan,null);
   assert.equal((await call('backup',null,{revision:1,data:{...data,characters:[null,data.characters[1],null]}},'PUT')).status,409);

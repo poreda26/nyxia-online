@@ -1,3 +1,4 @@
+import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
 import AchievementsPanel from './AchievementsPanel';
 import {equippedStatBonus} from '../utils/player';
 import Avatar from './Avatar';
@@ -78,9 +79,14 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
 
   const unlockedCount = ACHIEVEMENTS.filter((a) => isAchievementUnlocked(player, a)).length;
 
-  const pickDye = (dyeId) => {
-    const result = selectArmorDye(player, dyeId);
+  const pickDye = async (dyeId) => {
+    let result = selectArmorDye(player, dyeId);
     if (!result.bought) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
+    if (result.purchased) {
+      const charge = await chargeDiamonds("dye", dyeId);
+      if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+      result = selectArmorDye(settle(player, charge), dyeId);
+    }
     setPlayer(result.player);
     if (result.purchased) pushToast(t("character.cosmetics.dyeBought"), "loot");
   };

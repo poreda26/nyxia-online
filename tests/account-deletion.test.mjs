@@ -32,6 +32,7 @@ test('account deletion removes every trace, hands clans over and protects the pa
     assert.equal((await call('backup', { method: 'PUT', body: { revision: 0, data: backupOf('BobHero') }, cookie: bob })).status, 200);
 
     // Alice founds a clan and invites Bob; both talk in chat, befriend each other and DM.
+    db.exec('INSERT OR REPLACE INTO wallets(account,diamonds,updated_at) SELECT id,5000,0 FROM accounts');
     assert.equal((await call('clan', { method: 'POST', body: { name: 'Doomed Clan' }, cookie: alice, key: 'alicehero' })).status, 200);
     assert.equal((await call('clan/invite', { method: 'POST', body: { name: 'BobHero' }, cookie: alice, key: 'alicehero' })).status, 200);
     const invite = (await call('clan/invites', { cookie: bob, key: 'bobhero' })).data[0];

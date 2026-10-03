@@ -1,3 +1,4 @@
+import { chargeDiamonds, settle, reportChargeFailure } from '../utils/diamondCharge';
 import {useState} from 'react';
 import {Gem,Check} from 'lucide-react';
 import {WINGS} from '../data/wings';
@@ -13,9 +14,13 @@ export default function WingsShop({player,setPlayer,pushToast}) {
   const wing=WINGS.find(w=>w.id===selected);
   const owned=[...player.inventory,player.equipped.wings].some(i=>i?.kind==='wings'&&i.wingId===selected);
   const name=lang==='tr'?wing.name:wing.nameEn;
-  const purchase=()=>{
-    const result=buyWings(player,selected);
+  const purchase=async()=>{
     setConfirm(false);
+    const dry=buyWings(player,selected);
+    if(!dry.bought){pushToast(formatReason(t,dry,'shop.purchaseFailed'),'warn');return;}
+    const charge=await chargeDiamonds('wings',selected);
+    if(!charge.ok){reportChargeFailure(t,pushToast,charge);return;}
+    const result=buyWings(settle(player,charge),selected);
     if(!result.bought){pushToast(formatReason(t,result,'shop.purchaseFailed'),'warn');return;}
     setPlayer(result.player);
     pushToast(lang==='tr'?`${name} çantana eklendi. Envanterden kuşanabilirsin.`:`${name} added to your bag. Equip it from Inventory.`,'loot');

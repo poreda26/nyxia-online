@@ -573,3 +573,44 @@ test('the trimmed friend-duel snapshot plays exactly like the full character', (
   };
   assert.deepEqual(play(snapshot), play(friend));
 });
+
+import { DIAMOND_PRICES, DAILY_LOGIN_DIAMONDS, WEEKLY_RANK_REWARDS } from '../src/data/diamondPrices';
+import { PREMIUM_TIERS } from '../src/data/premium';
+import { BOOST_SCROLLS } from '../src/data/boostScrolls';
+import { ARMOR_DYES } from '../src/data/armorDyes';
+import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS } from '../src/data/soloDungeon';
+import { CLAN_FOUND_COST_DIAMONDS } from '../src/data/clan';
+import { THIRD_SLOT_COST_DIAMONDS, CHARACTER_DELETE_COST_DIAMONDS } from '../src/utils/storage';
+import { EXTRA_BANK_PAGE_COST_DIAMONDS } from '../src/utils/inventory';
+import { WEEKLY_REWARDS } from '../src/utils/leaderboard';
+import { DAILY_LOGIN_REWARDS } from '../src/data/dailySystems';
+import { AVATAR_FRAMES } from '../src/data/avatarFrames';
+import { PLAYER_AVATARS } from '../src/data/avatars';
+import { avatarPrice } from '../src/utils/avatarCosmetics';
+import { claimDailyLogin } from '../src/utils/dailyLogin';
+test('the server diamond price list matches the data files the client uses', () => {
+  for (const [id, tier] of Object.entries(PREMIUM_TIERS)) assert.equal(DIAMOND_PRICES.premium[id], tier.price, 'premium ' + id);
+  assert.deepEqual(Object.keys(DIAMOND_PRICES.premium).sort(), Object.keys(PREMIUM_TIERS).sort());
+  for (const wing of WINGS) assert.equal(DIAMOND_PRICES.wings, wing.price, 'wing ' + wing.id);
+  for (const scroll of BOOST_SCROLLS) assert.equal(DIAMOND_PRICES.boostPack[scroll.id], scroll.packCost, 'boost ' + scroll.id);
+  assert.deepEqual(Object.keys(DIAMOND_PRICES.boostPack).sort(), BOOST_SCROLLS.map((s) => s.id).sort());
+  for (const dye of ARMOR_DYES) assert.equal(DIAMOND_PRICES.dye[dye.id], dye.cost, 'dye ' + dye.id);
+  assert.deepEqual(Object.keys(DIAMOND_PRICES.dye).sort(), ARMOR_DYES.map((d) => d.id).sort());
+  for (const frame of AVATAR_FRAMES) assert.equal(DIAMOND_PRICES.avatarCosmetic, frame.price, 'frame ' + frame.id);
+  for (const avatar of PLAYER_AVATARS.filter((a) => avatarPrice(a))) assert.equal(DIAMOND_PRICES.avatarCosmetic, avatarPrice(avatar), 'avatar ' + avatar.id);
+  assert.equal(DIAMOND_PRICES.bankPage, EXTRA_BANK_PAGE_COST_DIAMONDS);
+  assert.equal(DIAMOND_PRICES.dungeonEntry, EXTRA_DUNGEON_ENTRY_COST_DIAMONDS);
+  assert.equal(DIAMOND_PRICES.clanFound, CLAN_FOUND_COST_DIAMONDS);
+  assert.equal(DIAMOND_PRICES.slotUnlock, THIRD_SLOT_COST_DIAMONDS);
+  assert.equal(DIAMOND_PRICES.characterDelete, CHARACTER_DELETE_COST_DIAMONDS);
+  assert.deepEqual(WEEKLY_RANK_REWARDS, WEEKLY_REWARDS);
+  assert.deepEqual(DAILY_LOGIN_DIAMONDS, DAILY_LOGIN_REWARDS.map((r) => r.diamonds));
+});
+
+test('daily login takes the streak and the diamond balance from the server answer', () => {
+  const base = { ...player(), diamonds: 12, gold: 0, dailyLogin: { streak: 5, lastClaimDay: null } };
+  const result = claimDailyLogin(base, { streak: 6, diamonds: 40 });
+  assert.equal(result.streak, 6);
+  assert.equal(result.player.diamonds, 40, 'balance is the server balance, not local arithmetic');
+  assert.equal(result.player.dailyLogin.streak, 6);
+});

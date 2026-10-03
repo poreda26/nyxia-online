@@ -1,3 +1,4 @@
+import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
 import ScrollArt from './icons/ScrollArt';
 import {useState} from 'react';
 import WingsShop from './WingsShop';
@@ -31,39 +32,48 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
     pushToast(t("diamondShop.comingSoonToast"), "default");
   };
 
-  const handleBuyDungeonEntries = () => {
-    const result = buyExtraDungeonEntries(player);
-    if (!result.bought) {
-      pushToast(t(result.reason === "alreadyBoughtToday" ? "battle.dungeonEntriesAlreadyBoughtToday" : "shop.notEnoughDiamonds"), "warn");
+  const handleBuyDungeonEntries = async () => {
+    const dry = buyExtraDungeonEntries(player);
+    if (!dry.bought) {
+      pushToast(t(dry.reason === "alreadyBoughtToday" ? "battle.dungeonEntriesAlreadyBoughtToday" : "shop.notEnoughDiamonds"), "warn");
       return;
     }
+    const charge = await chargeDiamonds("dungeonEntry");
+    if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+    const result = buyExtraDungeonEntries(settle(player, charge));
     setPlayer(result.player);
     pushToast(t("battle.dungeonEntriesBought"), "loot");
   };
 
-  const handleBuyBankPage = () => {
-    const result = buyExtraBankPage(player, bank);
-    if (!result.bought) {
-      pushToast(result.reason === "maxBankPages" ? t("inventory.maxBankPagesReached") : t("shop.notEnoughDiamonds"), "warn");
+  const handleBuyBankPage = async () => {
+    const dry = buyExtraBankPage(player, bank);
+    if (!dry.bought) {
+      pushToast(dry.reason === "maxBankPages" ? t("inventory.maxBankPagesReached") : t("shop.notEnoughDiamonds"), "warn");
       return;
     }
+    const charge = await chargeDiamonds("bankPage");
+    if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+    const result = buyExtraBankPage(settle(player, charge), bank);
     setPlayer(result.player);
     setBank(result.bank);
     pushToast(t("inventory.bankPageBought"), "loot");
   };
 
-  const handleUnlockSlot = () => {
-    const bought = onUnlockSlot();
+  const handleUnlockSlot = async () => {
+    const bought = await onUnlockSlot();
     if (!bought) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     pushToast(t("diamondShop.slotUnlockedToast"), "loot");
   };
 
-  const handleBuyBoostPack = (scrollId) => {
-    const result = buyBoostScrollPack(player, scrollId);
-    if (!result.bought) {
-      pushToast(result.reason === "notEnoughDiamonds" ? t("shop.notEnoughDiamonds") : t("shop.purchaseFailed", { reason: result.reason }), "warn");
+  const handleBuyBoostPack = async (scrollId) => {
+    const dry = buyBoostScrollPack(player, scrollId);
+    if (!dry.bought) {
+      pushToast(dry.reason === "notEnoughDiamonds" ? t("shop.notEnoughDiamonds") : t("shop.purchaseFailed", { reason: dry.reason }), "warn");
       return;
     }
+    const charge = await chargeDiamonds("boostPack", scrollId);
+    if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+    const result = buyBoostScrollPack(settle(player, charge), scrollId);
     setPlayer(result.player);
     pushToast(t("boosts.boughtToast", { name: boostScrollName(scrollId, lang), pack: BOOST_SCROLL_PACK_SIZE }), "loot");
   };

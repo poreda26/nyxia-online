@@ -1,3 +1,5 @@
+import { DIAMOND_PRICES } from "../data/diamondPrices";
+import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
 import ScrollArt from './icons/ScrollArt';
 import {useState} from 'react';
 import {Crown,Check,Gem,Star} from 'lucide-react';
@@ -6,13 +8,16 @@ import {activePremiumTier,premiumDaysLeft,buyPremium} from '../utils/premium';
 import {addItemToInventory,makeRaceScroll,makeJobScroll,makeBonusScrollStack} from '../utils/inventory';
 import {useTranslation,formatReason} from '../i18n/LanguageContext';
 import {styles} from '../styles';
-const RACE_SCROLL_PRICE=500,JOB_SCROLL_PRICE=1500,BONUS_SCROLL_PRICE=800;
+const RACE_SCROLL_PRICE=DIAMOND_PRICES.raceScroll,JOB_SCROLL_PRICE=DIAMOND_PRICES.jobScroll,BONUS_SCROLL_PRICE=DIAMOND_PRICES.bonusScroll;
 export default function PremiumShop({player,setPlayer,bank,setBank,pushToast}){
  const {t}=useTranslation();
  const [upgradeConfirmStep,setUpgradeConfirmStep]=useState(0);
-  const purchasePremium = (tierId) => {
-    const result = buyPremium(player, tierId, bank);
-    if (!result.bought) { pushToast(formatReason(t, result, "market.purchaseFailed"), "warn"); return; }
+  const purchasePremium = async (tierId) => {
+    const dry = buyPremium(player, tierId, bank);
+    if (!dry.bought) { pushToast(formatReason(t, dry, "market.purchaseFailed"), "warn"); return; }
+    const charge = await chargeDiamonds("premium", tierId);
+    if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+    const result = buyPremium(settle(player, charge), tierId, bank);
     setPlayer(result.player);
     setBank(result.bank);
     pushToast(t("shop.premiumActivated", { tier: PREMIUM_TIERS[tierId].name }), "loot");
@@ -39,26 +44,35 @@ export default function PremiumShop({player,setPlayer,bank,setBank,pushToast}){
     if (yes) purchasePremium("mythic");
   };
 
-  const buyBonusScroll = () => {
+  const buyBonusScroll = async () => {
     if (player.diamonds < BONUS_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
-    const result = addItemToInventory({ ...player, diamonds: player.diamonds - BONUS_SCROLL_PRICE }, makeBonusScrollStack());
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, result) }), "warn"); return; }
+    const dry = addItemToInventory(player, makeBonusScrollStack());
+    if (!dry.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, dry) }), "warn"); return; }
+    const charge = await chargeDiamonds("bonusScroll");
+    if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+    const result = addItemToInventory({ ...player, diamonds: charge.diamonds }, makeBonusScrollStack());
     setPlayer(result.player);
     pushToast(t("shop.bonusScrollPurchased"), "loot");
   };
 
-  const buyRaceScroll = () => {
+  const buyRaceScroll = async () => {
     if (player.diamonds < RACE_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
-    const result = addItemToInventory({ ...player, diamonds: player.diamonds - RACE_SCROLL_PRICE }, makeRaceScroll(1));
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, result) }), "warn"); return; }
+    const dry = addItemToInventory(player, makeRaceScroll(1));
+    if (!dry.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, dry) }), "warn"); return; }
+    const charge = await chargeDiamonds("raceScroll");
+    if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+    const result = addItemToInventory({ ...player, diamonds: charge.diamonds }, makeRaceScroll(1));
     setPlayer(result.player);
     pushToast(t("shop.raceScrollPurchased"), "loot");
   };
 
-  const buyJobScroll = () => {
+  const buyJobScroll = async () => {
     if (player.diamonds < JOB_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
-    const result = addItemToInventory({ ...player, diamonds: player.diamonds - JOB_SCROLL_PRICE }, makeJobScroll(1));
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, result) }), "warn"); return; }
+    const dry = addItemToInventory(player, makeJobScroll(1));
+    if (!dry.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, dry) }), "warn"); return; }
+    const charge = await chargeDiamonds("jobScroll");
+    if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+    const result = addItemToInventory({ ...player, diamonds: charge.diamonds }, makeJobScroll(1));
     setPlayer(result.player);
     pushToast(t("shop.jobScrollPurchased"), "loot");
   };

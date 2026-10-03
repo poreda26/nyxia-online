@@ -1,3 +1,4 @@
+import { gmGrantDiamonds } from "../services/walletService";
 import { startPolling } from "../utils/polling";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Send, ShieldCheck, HelpCircle, Wand2, X, Globe2, MessageCircle } from "lucide-react";
@@ -72,7 +73,13 @@ export default function ChatTab({
     if (parsed && isGM) {
       await chatService.sendMessage(displayName, text, playerAvatarId(player), player.avatarFrameId);
       const { player: nextPlayer, bank: nextBank, resultText } = executeGmCommand(player, parsed.cmd, parsed.args, bank);
-      setPlayer(nextPlayer);
+      if (parsed.cmd === "elmas") {
+        const amount = Math.max(1, parseInt(parsed.args[0], 10) || 100);
+        const granted = await gmGrantDiamonds(amount);
+        setPlayer((p) => ({ ...p, diamonds: granted.diamonds }));
+      } else {
+        setPlayer(nextPlayer);
+      }
       if (nextBank) setBank(nextBank);
       await chatService.sendMessage(t("chat.gmSystemAuthor"), resultText, playerAvatarId(player), player.avatarFrameId);
       pushToast(resultText, "loot");

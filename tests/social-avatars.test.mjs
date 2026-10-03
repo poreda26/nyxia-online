@@ -21,6 +21,7 @@ test('avatar migration, public/private messages, clan selection and leader-only 
   const friend=(await call('social/friends','GET',null,a.cookie)).body.friends[0];
   assert.equal((await call(`social/messages/${friend.accountId}`,'POST',{text:'private',avatarId:'human-rogue',frameId:'frost'},a.cookie)).status,200);
   assert.equal((await call(`social/messages/${friend.accountId}`,'GET',null,a.cookie)).body[0].avatarId,'human-rogue');
+  { const grant=new DatabaseSync(database); grant.exec("INSERT OR REPLACE INTO wallets(account,diamonds,updated_at) SELECT id,5000,0 FROM accounts"); grant.close(); }
   assert.equal((await call('clan','POST',{name:'Test Guardians',avatarId:'dragon'},a.cookie)).status,200);
   assert.equal((await call('clan/mine','GET',null,a.cookie)).body.clan.avatarId,'dragon');
   await call('clan/invite','POST',{name:'avatarbob'},a.cookie);const invite=(await call('clan/invites','GET',null,b.cookie)).body[0];assert.equal(invite.avatarId,'dragon');

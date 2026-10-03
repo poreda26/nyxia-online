@@ -28,12 +28,13 @@ test('accounts isolate backups, reject stale writes, preserve items and survive 
     assert.equal((await call('backup', 'PUT', { revision: 0, data }, a.cookie, 'https://evil.example')).status, 403);
     assert.equal((await call('backup', 'PUT', { revision: 0, data }, a.cookie)).body.revision, 1);
     assert.equal((await call('backup', 'PUT', { revision: 0, data }, a.cookie)).status, 409);
-    assert.deepEqual((await call('backup', 'GET', null, a.cookie)).body.data, data);
+    // The diamond balance belongs to the server wallet, not to the backup.
+    assert.deepEqual((await call('backup', 'GET', null, a.cookie)).body.data, { ...data, diamonds: 0 });
     assert.equal((await call('backup', 'GET', null, b.cookie)).body.data, null);
     const concurrent = await Promise.all([1, 2].map(() => call('backup', 'PUT', { revision: 1, data }, a.cookie)));
     assert.deepEqual(concurrent.map(r => r.status).sort(), [200, 409]);
     await api.close(); api = createApi(options); url = await listen();
-    assert.deepEqual((await call('backup', 'GET', null, a.cookie)).body.data, data);
+    assert.deepEqual((await call('backup', 'GET', null, a.cookie)).body.data, { ...data, diamonds: 0 });
     assert.equal((await call('backup', 'GET', null, a.cookie)).body.trusted, false);
     assert.equal((await call('logout', 'POST', {}, a.cookie)).status, 200);
     assert.equal((await call('me', 'GET', null, a.cookie)).status, 401);

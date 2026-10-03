@@ -1,3 +1,5 @@
+import { getActiveCharacterKey } from "../utils/api";
+import { claimDailyLoginServer } from "../services/walletService";
 import { useState } from "react";
 import { Coins, Gem, ScrollText, Gift, X, CheckCircle2 } from "lucide-react";
 import RewardChest from './icons/RewardChest';
@@ -27,8 +29,24 @@ export default function DailyLoginModal({ player, setPlayer, onClose, pushToast 
   const { streak, reward } = previewDailyLoginReward(player);
   const cyclePos = ((streak - 1) % DAILY_LOGIN_REWARDS.length) + 1;
 
-  const handleClaim = () => {
-    const result = claimDailyLogin(player);
+  const [claiming, setClaiming] = useState(false);
+  const handleClaim = async () => {
+    if (claiming) return;
+    setClaiming(true);
+    let server;
+    try {
+      server = await claimDailyLoginServer(getActiveCharacterKey());
+    } catch (error) {
+      setClaiming(false);
+      if (error?.code === "DAILY_ALREADY_CLAIMED") {
+        // Sunucuya göre bugünkü ödül zaten alınmış: yerel durumu da "alındı" yap.
+        setPlayer((p) => ({ ...p, dailyLogin: { streak: p.dailyLogin?.streak || 1, lastClaimDay: new Date().toDateString() } }));
+        pushToast(t("dailyLogin.alreadyClaimed"), "warn"); onClose(); return;
+      }
+      pushToast(t("wallet.unavailable"), "warn"); return;
+    }
+    setClaiming(false);
+    const result = claimDailyLogin(player, server);
     if (!result.claimed) { pushToast(t("dailyLogin.alreadyClaimed"), "warn"); onClose(); return; }
     setPlayer(result.player);
     setClaimedReward(result.reward);

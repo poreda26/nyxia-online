@@ -40,13 +40,16 @@ export function previewDailyLoginReward(player) {
   return { streak, reward: cycleReward(streak) };
 }
 
-export function claimDailyLogin(player) {
-  if (!canClaimDailyLogin(player)) return { player, claimed: false, reason: "dailyRewardAlreadyClaimed" };
+// server: sunucunun günlük giriş yanıtı ({ streak, diamonds }). Verilirse seri ve elmas
+// SUNUCUDAN gelir (elmas bakiyesi doğrudan sunucudakine ayarlanır); altın/parşömen/sandık
+// hâlâ istemcide. Verilmezse eski yerel hesap (testler/çevrimdışı araçlar için).
+export function claimDailyLogin(player, server = null) {
+  if (!server && !canClaimDailyLogin(player)) return { player, claimed: false, reason: "dailyRewardAlreadyClaimed" };
   const login = player.dailyLogin || freshLogin();
-  const streak = nextStreakFor(login);
+  const streak = server ? server.streak : nextStreakFor(login);
   const reward = cycleReward(streak);
 
-  let p = { ...player, gold: player.gold + reward.gold, diamonds: player.diamonds + reward.diamonds };
+  let p = { ...player, gold: player.gold + reward.gold, diamonds: server ? server.diamonds : player.diamonds + reward.diamonds };
   if (reward.scrollCount > 0) {
     p = addItemToInventory(p, makeScrollStack(1, reward.scrollCount)).player;
   }

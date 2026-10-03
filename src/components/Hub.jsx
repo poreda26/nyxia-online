@@ -1,3 +1,5 @@
+import { getActiveCharacterKey } from "../utils/api";
+import { fetchWallet, claimWeeklyRankServer } from "../services/walletService";
 import { startPolling } from "../utils/polling";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { hasCaptainNotice } from "../utils/captainNotices";
@@ -72,6 +74,24 @@ export default function Hub({ isGm = false, player, setPlayer, bank, setBank, ba
 
   // Günlük Çark: hak/alınmamış ödül durumu sunucudan gelir; TopBar'da nokta
   // olarak gösterilir. Açılışta ve 5 dakikada bir tazelenir (gece yarısı yeni hak).
+  // Elmas bakiyesi sunucuda; burada yalnızca yansıması güncel tutulur (başka cihaz,
+  // yönetici düzeltmesi vb.). Bekleyen haftalık sıralama ödülü de burada tahsil edilir
+  // ve ağ hatasında bir sonraki turda yeniden denenir.
+  const playerRef = useRef(player);
+  playerRef.current = player;
+  useEffect(() => startPolling(async () => {
+    try {
+      const pending = playerRef.current.pendingWeeklyClaim;
+      if (pending) {
+        const res = await claimWeeklyRankServer(getActiveCharacterKey(), pending.weekId, pending.rank);
+        setPlayer((p) => { const { pendingWeeklyClaim, ...rest } = p; void pendingWeeklyClaim; return { ...rest, diamonds: res.diamonds }; });
+        if (res.diamondsAwarded > 0) pushToast(t("app.warzoneRankReward", { rank: pending.rank, diamonds: res.diamondsAwarded }), "loot");
+      } else {
+        const wallet = await fetchWallet();
+        setPlayer((p) => (p.diamonds === wallet.diamonds ? p : { ...p, diamonds: wallet.diamonds }));
+      }
+    } catch { return false; }
+  }, 60000), []); // eslint-disable-line react-hooks/exhaustive-deps
   const [wheelOpen, setWheelOpen] = useState(false);
   const [wheelReady, setWheelReady] = useState(false);
   useEffect(() => {

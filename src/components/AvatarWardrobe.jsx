@@ -1,3 +1,4 @@
+import {chargeDiamonds,settle} from '../utils/diamondCharge';
 import {useEffect,useRef,useState} from 'react';
 import Avatar from './Avatar';
 import {PLAYER_AVATARS,playerAvatarId} from '../data/avatars';
@@ -5,6 +6,7 @@ import {AVATAR_FRAMES} from '../data/avatarFrames';
 import {avatarPrice,ownsCosmetic,selectCosmetic} from '../utils/avatarCosmetics';
 import {useTranslation} from '../i18n/LanguageContext';
 export default function AvatarWardrobe({player,setPlayer,onClose}){
+ const [chargeError,setChargeError]=useState(false);
  const {lang}=useTranslation(),en=lang==='en',ref=useRef(null);
  const [tab,setTab]=useState('avatar'),[preview,setPreview]=useState(playerAvatarId(player));
  useEffect(()=>{const dialog=ref.current;dialog.showModal();return()=>dialog.close()},[]);
@@ -17,6 +19,6 @@ export default function AvatarWardrobe({player,setPlayer,onClose}){
   <div className="wardrobe-preview"><Avatar player={player} id={frames?playerAvatarId(player):preview} frameId={frames?preview:player.avatarFrameId||null} size={72}/><div><strong>{en?'Diamonds':'Elmas'}: {player.diamonds||0} ◆</strong><p>{en?'Permanent unlock · cosmetic only':'Kalıcı satın alım · yalnızca görünüm'}</p></div></div>
   <div className="wardrobe-tabs"><button aria-pressed={!frames} onClick={()=>changeTab('avatar')}>{en?'Avatars':'Avatarlar'}</button><button aria-pressed={frames} onClick={()=>changeTab('frame')}>{en?'Frames':'Çerçeveler'}</button></div>
   <div className="wardrobe-grid">{catalog.map(a=>{const have=ownsCosmetic(player,tab,a.id),cost=frames?a.price:avatarPrice(a);return <button key={a.id||'none'} aria-label={en?(a.en||a.name):a.name} aria-pressed={a.id===preview} onClick={()=>setPreview(a.id)}><Avatar id={frames?playerAvatarId(player):a.id} frameId={frames?a.id:null} size={48}/><small>{have?(a.id===(frames?player.avatarFrameId||null:playerAvatarId(player))?'✓':en?'Owned':'Sende'):`${cost} ◆`}</small></button>})}</div>
-  <footer><button disabled={!chosen||active||(!owned&&(player.diamonds||0)<price)} onClick={()=>setPlayer(p=>selectCosmetic(p,tab,preview))}>{active?(en?'Equipped':'Kuşanıldı'):!owned&&(player.diamonds||0)<price?(en?'Not enough diamonds':'Yetersiz elmas'):owned?(en?'Equip':'Kuşan'):`${price} ◆ · ${en?'Buy & equip':'Satın al ve kuşan'}`}</button></footer>
+  <footer>{chargeError&&<p role="alert" style={{color:'#E8A5AF',fontSize:12,margin:'0 0 8px'}}>{en?'Purchase failed: check your connection or diamonds.':'Satın alma olmadı: bağlantını ve elmasını kontrol et.'}</p>}<button disabled={!chosen||active||(!owned&&(player.diamonds||0)<price)} onClick={async()=>{setChargeError(false);const dry=selectCosmetic(player,tab,preview);if((player.diamonds||0)>(dry.diamonds||0)){const charge=await chargeDiamonds('avatarCosmetic',preview);if(!charge.ok){if(charge.code!=='BUSY')setChargeError(true);return;}setPlayer(p=>selectCosmetic(settle(p,charge),tab,preview));}else setPlayer(p=>selectCosmetic(p,tab,preview));}}>{active?(en?'Equipped':'Kuşanıldı'):!owned&&(player.diamonds||0)<price?(en?'Not enough diamonds':'Yetersiz elmas'):owned?(en?'Equip':'Kuşan'):`${price} ◆ · ${en?'Buy & equip':'Satın al ve kuşan'}`}</button></footer>
  </dialog>;
 }

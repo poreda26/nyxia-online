@@ -1,3 +1,4 @@
+import { chargeDiamonds } from "./utils/diamondCharge";
 import { startPolling } from "./utils/polling";
 import {mergeClanResponse} from './utils/clanResponse';
 import {fetchMyClan} from './services/clanService';
@@ -319,9 +320,9 @@ export default function App() {
     setActiveSlot(slotIndex);
     setTab("battle");
     setScreen("hub");
-    if (diamondsAwarded > 0) {
-      pushToast(translateWith(audioSettings.language, "app.warzoneRankReward", { rank, diamonds: diamondsAwarded }), "loot");
-    }
+    // Haftalık sıralama elmasını artık sunucu öder; bekleyen talep Hub'da tahsil edilir
+    // ve oradaki bildirim gösterilir (bkz. Hub.jsx, pendingWeeklyClaim).
+    void diamondsAwarded; void rank;
   };
 
   useEffect(()=>{
@@ -373,7 +374,9 @@ export default function App() {
     }catch{pushToast('Klan bilgisi doğrulanamadı. Lütfen tekrar dene.','warn');return;}
 
     if (account.diamonds < CHARACTER_DELETE_COST_DIAMONDS) return;
-    const nextDiamonds = account.diamonds - CHARACTER_DELETE_COST_DIAMONDS;
+    const charge = await chargeDiamonds("characterDelete");
+    if (!charge.ok) { if (charge.code !== "BUSY") pushToast(translateWith(audioSettings.language, charge.code === "NOT_ENOUGH_DIAMONDS" ? "shop.notEnoughDiamonds" : "wallet.unavailable"), "warn"); return; }
+    const nextDiamonds = charge.diamonds;
     deleteCharacterSlot(username, slotIndex);
     saveAccountDiamonds(username, nextDiamonds);
     setAccount((a) => {
@@ -387,9 +390,11 @@ export default function App() {
   // 3. karakter slotu artık hesabın paylaşılan elmas havuzundan açılıyor —
   // eskiden "hangi karakter ödesin" seçimi gerekiyordu (elmas karakter
   // alanıydı), artık tek bir ortak bakiye olduğu için gerek kalmadı.
-  const handleUnlockSlot = () => {
+  const handleUnlockSlot = async () => {
     if (account.diamonds < THIRD_SLOT_COST_DIAMONDS) return;
-    const nextDiamonds = account.diamonds - THIRD_SLOT_COST_DIAMONDS;
+    const charge = await chargeDiamonds("slotUnlock");
+    if (!charge.ok) { if (charge.code !== "BUSY") pushToast(translateWith(audioSettings.language, charge.code === "NOT_ENOUGH_DIAMONDS" ? "shop.notEnoughDiamonds" : "wallet.unavailable"), "warn"); return; }
+    const nextDiamonds = charge.diamonds;
     saveAccountDiamonds(username, nextDiamonds);
     saveAccountUnlockedSlots(username, CHARACTER_SLOTS);
     setAccount((a) => ({ ...a, diamonds: nextDiamonds, unlockedSlots: CHARACTER_SLOTS }));
@@ -403,9 +408,11 @@ export default function App() {
   // bu düşüşü sessizce iptal eder — o yüzden elmas kesintisi player.diamonds
   // üzerinden yapılıyor, unlockedSlots ise (o effect'in dokunmadığı ayrı bir alan
   // olduğu için) doğrudan account'a yazılabiliyor.
-  const handleUnlockSlotFromHub = () => {
+  const handleUnlockSlotFromHub = async () => {
     if (player.diamonds < THIRD_SLOT_COST_DIAMONDS) return false;
-    setPlayer((p) => ({ ...p, diamonds: p.diamonds - THIRD_SLOT_COST_DIAMONDS }));
+    const charge = await chargeDiamonds("slotUnlock");
+    if (!charge.ok) return false;
+    setPlayer((p) => ({ ...p, diamonds: charge.diamonds }));
     saveAccountUnlockedSlots(username, CHARACTER_SLOTS);
     setAccount((a) => ({ ...a, unlockedSlots: CHARACTER_SLOTS }));
     return true;

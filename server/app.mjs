@@ -6,6 +6,7 @@ import {FIRST_PURCHASE_WEAPONS} from '../src/data/firstPurchaseWeapons.js';
 import {maskProfanity, containsProfanity, containsProfanityLoose} from '../src/data/profanity.js';
 import {createWheel} from './wheel.mjs';
 import {duelSnapshot} from './duel-snapshot.mjs';
+import {createWallet} from './wallet.mjs';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, createHash, scrypt as derive, timingSafeEqual } from 'node:crypto';
@@ -217,9 +218,12 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     }
     try { return JSON.parse(Buffer.concat(chunks).toString()); } catch { throw fail(400, 'INVALID_JSON'); }
   };
-  const admin = createAdmin(db, { read, fail });
+  const wallet = createWallet(db, { fail });
+  const admin = createAdmin(db, { read, fail, wallet });
   const wheel = createWheel(db, { fail });
   const wheelRateLimit = makeRateLimiter(20);
+  const walletRateLimit = makeRateLimiter(60);
+  const validCharacterKey = (value) => (typeof value === 'string' && /^[\w:.-]{1,64}$/.test(value) ? value : null);
   // Push bildirimleri — bkz. dosyanın en üstündeki VAPID/kapsam notu. Bir
   // hesabın kendi tercihi (push_prefs) kategoriyi kapatmışsa hiç gönderilmez;
   // tercih hiç kaydedilmemişse varsayılan açık (satır yoksa `prefs` null,
@@ -325,6 +329,10 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       for (const [sql, params] of [
         ['DELETE FROM clan_invites WHERE from_account=? OR to_account=?', [id, id]],
         ['DELETE FROM wheel_spins WHERE account_id=?', [id]],
+        ['DELETE FROM wallet_ledger WHERE account=?', [id]],
+        ['DELETE FROM wallets WHERE account=?', [id]],
+        ['DELETE FROM daily_login_claims WHERE account=?', [id]],
+        ['DELETE FROM weekly_rank_claims WHERE account=?', [id]],
         ['DELETE FROM gm_accounts WHERE account=?', [id]],
         ['DELETE FROM user_blocks WHERE blocker=? OR blocked=?', [id, id]],
         ['DELETE FROM user_reports WHERE target=?', [id]],
@@ -438,9 +446,41 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (path === '/api/wheel' && req.method === 'GET') return send(200, wheel.status(account.id));
       if (path === '/api/wheel/spin' && req.method === 'POST') { wheelRateLimit(account.id); return send(200, wheel.spin(account.id)); }
       if (path === '/api/wheel/claim' && req.method === 'POST') { wheelRateLimit(account.id); return send(200, wheel.claim(account.id)); }
+      // Elmas kasası (sunucu otoritesi). Bakiye yalnızca bu uçlarla değişir; yedeğe
+      // yazılan elmas sayısı dikkate alınmaz (bkz. wallet.clampBackup).
+      if (path === '/api/wallet' && req.method === 'GET') return send(200, { diamonds: wallet.balance(account.id) });
+      if (path === '/api/wallet/spend' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        const body = await read(req);
+        const ref = typeof body?.ref === 'string' ? body.ref.slice(0, 60) : null;
+        return send(200, wallet.spend(account.id, String(body?.kind), body?.key == null ? null : String(body.key), ref));
+      }
+      if (path === '/api/wallet/daily-login' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        const body = await read(req);
+        const characterKey = validCharacterKey(body?.characterKey);
+        if (!characterKey) throw fail(400, 'INVALID_CHARACTER');
+        return send(200, wallet.dailyLogin(account.id, characterKey));
+      }
+      if (path === '/api/wallet/weekly-rank' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        const body = await read(req);
+        const characterKey = validCharacterKey(body?.characterKey);
+        if (!characterKey) throw fail(400, 'INVALID_CHARACTER');
+        return send(200, wallet.weeklyRank(account.id, characterKey, body?.weekId, body?.rank === null ? null : Number(body?.rank)));
+      }
+      if (path === '/api/wallet/gm-grant' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        if (!admin.isGm(account.id)) throw fail(403, 'GM_ONLY');
+        const body = await read(req);
+        const amount = Number(body?.amount);
+        if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1_000_000) throw fail(400, 'INVALID_AMOUNT');
+        return send(200, { diamonds: wallet.credit(account.id, amount, 'gm-grant', account.name) });
+      }
       if (path === '/api/backup' && req.method === 'GET') {
         const row = db.prepare('SELECT * FROM backups WHERE account=?').get(account.id);
-        return send(200, { revision: row?.revision || 0, data: row ? JSON.parse(row.data) : null, trusted: false });
+        const stored = row ? JSON.parse(row.data) : null;
+        return send(200, { revision: row?.revision || 0, data: stored ? wallet.clampBackup(account.id, stored) : null, trusted: false });
       }
       if (path === '/api/backup' && req.method === 'PUT') {
         const body = await read(req);
@@ -455,7 +495,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           for(const member of db.prepare('SELECT character_key FROM clan_members WHERE account_id=?').all(account.id)){
             if(!keys.includes(member.character_key))throw fail(409,'LEAVE_CLAN_BEFORE_DELETING_CHARACTER');
           }
-          const revision = current + 1, data = JSON.stringify(body.data), now = Date.now();
+          const revision = current + 1, now = Date.now();
+          wallet.clampBackup(account.id, body.data);
+          const data = JSON.stringify(body.data);
           db.prepare('INSERT INTO backup_history VALUES(?,?,?,?)').run(account.id, revision, data, now);
           db.prepare('INSERT OR REPLACE INTO backups VALUES(?,?,?,?)').run(account.id, revision, data, now);
           db.prepare('DELETE FROM backup_history WHERE account=? AND revision<=?').run(account.id, revision - 20);
@@ -1004,6 +1046,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (myMembership()) throw fail(409, 'ALREADY_IN_CLAN');
         db.exec('BEGIN IMMEDIATE');
         try {
+          const paid = wallet.spendInTransaction(account.id, 'clanFound', null, name);
           let clanId;
           try {
             db.prepare('INSERT INTO clans(name,color,founder_account,created_at,avatar_id) VALUES(?,?,?,?,?)').run(name, color, account.id, Date.now(),avatarId);
@@ -1011,7 +1054,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           } catch (error) { if (error.code?.startsWith('ERR_SQLITE')) throw fail(409, 'CLAN_NAME_TAKEN'); throw error; }
           db.prepare('INSERT INTO clan_members(account_id,character_key,clan_id,role,joined_at,donated_np) VALUES(?,?,?,?,?,0)').run(account.id,myCharacterKey, clanId, 'leader', Date.now());
           db.exec('COMMIT');
-          return send(200, { clanId });
+          return send(200, { clanId, diamonds: paid.diamonds });
         } catch (error) { db.exec('ROLLBACK'); throw error; }
       }
       if (path === '/api/clan/mine' && req.method === 'GET') {
@@ -1170,11 +1213,12 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const column = CLAN_MATERIAL_COLUMN[currency] || (currency === 'gold' ? 'treasury_gold' : currency === 'diamonds' ? 'treasury_diamonds' : 'treasury_np');
         db.exec('BEGIN IMMEDIATE');
         try {
+          const diamonds = currency === 'diamonds' ? wallet.debitInTransaction(account.id, amount, 'clan-donate', String(membership.clan_id)) : null;
           db.prepare(`UPDATE clans SET ${column} = ${column} + ? WHERE id=?`).run(amount, membership.clan_id);
           if (currency === 'np') db.prepare('UPDATE clan_members SET donated_np = donated_np + ? WHERE account_id=? AND character_key=?').run(amount, account.id,myCharacterKey);
           db.exec('COMMIT');
         } catch (error) { db.exec('ROLLBACK'); throw error; }
-        return send(200, { ok: true });
+        return send(200, { ok: true, ...(currency === 'diamonds' ? { diamonds: wallet.balance(account.id) } : {}) });
       }
       // Bina yükseltmesi PAYLAŞILAN hazineden düştüğü için (kendi cebinden
       // değil) burası sunucu-otoriter — maliyet/tavan istemciyle aynı sabit

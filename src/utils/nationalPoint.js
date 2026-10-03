@@ -72,8 +72,16 @@ export function applyWeeklyRollover(player) {
   const rank = own ? own.rank : null;
   const diamondsAwarded = rank && rank <= WEEKLY_REWARDS.length ? WEEKLY_REWARDS[rank - 1] : 0;
 
+  // Elmas ödülü artık burada eklenmez: sunucu kasası ödüler (bkz. /api/wallet/weekly-rank).
+  // Talep, ağ sorununda kaybolmasın diye oyuncuda "bekleyen talep" olarak tutulur ve
+  // başarıyla ödenene kadar yeniden denenir (bkz. Hub.jsx, utils/weeklyClaim.js).
   return {
-    player: { ...player, diamonds: player.diamonds + diamondsAwarded, weeklyPoint: 0, weekId: nowWeek },
+    player: {
+      ...player,
+      weeklyPoint: 0,
+      weekId: nowWeek,
+      ...(diamondsAwarded > 0 ? { pendingWeeklyClaim: { weekId: player.weekId, rank } } : {}),
+    },
     diamondsAwarded,
     rank,
   };

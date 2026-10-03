@@ -1,6 +1,6 @@
 import {createDropSettings,dropMetadata} from './drop-settings.mjs';
 // Owner identity is provisioned locally, never from a character flag or HTTP body.
-export function createAdmin(db, { read, fail }) {
+export function createAdmin(db, { read, fail, wallet }) {
   db.exec(`CREATE TABLE IF NOT EXISTS panel_owner(singleton INTEGER PRIMARY KEY CHECK(singleton=1), account INTEGER NOT NULL REFERENCES accounts(id));
     CREATE TABLE IF NOT EXISTS account_blocks(account INTEGER PRIMARY KEY REFERENCES accounts(id), reason TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS admin_audit(id INTEGER PRIMARY KEY, actor INTEGER NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, reason TEXT NOT NULL, created_at INTEGER NOT NULL);
@@ -40,6 +40,7 @@ export function createAdmin(db, { read, fail }) {
       if(c.race!==undefined && (!['elmorad','karus','human'].includes(c.race)||(data.race && c.race!==data.race))) throw fail(400,'INVALID_RACE');
     }
     const json = JSON.stringify(data), now = Date.now();
+    if (wallet && Number.isSafeInteger(data.diamonds)) wallet.setBalanceInTransaction(id, data.diamonds, 'admin-adjust', 'owner-panel', now);
     db.prepare('INSERT INTO admin_snapshots(account,data,created_at) VALUES(?,?,?)').run(id,old.data,now);
     db.prepare('UPDATE backups SET revision=?,data=?,updated=? WHERE account=?').run(revision+1,json,now,id);
     db.prepare('INSERT INTO backup_history VALUES(?,?,?,?)').run(id,revision+1,json,now);

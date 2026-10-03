@@ -1,3 +1,4 @@
+import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
 import { varyDamage } from '../utils/combat';
 import {refreshSkillBuff} from '../utils/skills';
 import {wingDexBonus} from '../data/wings';
@@ -145,12 +146,15 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     startBattle(stages[0]);
   };
 
-  const handleBuyDungeonEntries = () => {
-    const result = buyExtraDungeonEntries(player);
-    if (!result.bought) {
-      pushToast(t(result.reason === "alreadyBoughtToday" ? "battle.dungeonEntriesAlreadyBoughtToday" : "battle.notEnoughDiamondsForEntries"), "warn");
+  const handleBuyDungeonEntries = async () => {
+    const dry = buyExtraDungeonEntries(player);
+    if (!dry.bought) {
+      pushToast(t(dry.reason === "alreadyBoughtToday" ? "battle.dungeonEntriesAlreadyBoughtToday" : "battle.notEnoughDiamondsForEntries"), "warn");
       return;
     }
+    const charge = await chargeDiamonds("dungeonEntry");
+    if (!charge.ok) { reportChargeFailure(t, pushToast, charge); return; }
+    const result = buyExtraDungeonEntries(settle(player, charge));
     setPlayer(result.player);
     pushToast(t("battle.dungeonEntriesBought"), "loot");
   };
