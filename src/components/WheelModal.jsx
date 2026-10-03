@@ -142,7 +142,7 @@ export default function WheelModal({ player, setPlayer, bank, setBank, onClose, 
 
         <div className="wheel-stage">
           <svg className="wheel-pointer" viewBox="0 0 22 26" aria-hidden="true"><path d="M11 25 1 4a12 12 0 0 1 20 0Z" fill="#e8b94f" stroke="#5c3a10" strokeWidth="1.5" /></svg>
-          <svg ref={discRef} className="wheel-disc" viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: `rotate(${rotation}deg)` }} aria-hidden="true">
+          <div className="wheel-rotor"><svg ref={discRef} className="wheel-disc" viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: `rotate(${rotation}deg)` }} aria-hidden="true">
             <circle cx={CENTER} cy={CENTER} r={RADIUS + 3} fill="#3b2a14" stroke="#caa566" strokeWidth="3" />
             {WHEEL_SLICES.map((id, i) => {
               const Icon = ICONS[id];
@@ -158,7 +158,7 @@ export default function WheelModal({ player, setPlayer, bank, setBank, onClose, 
               );
             })}
             <circle cx={CENTER} cy={CENTER} r="20" fill="#caa566" stroke="#5c3a10" strokeWidth="2" />
-          </svg>
+          </svg></div>
         </div>
 
         <div className="wheel-result" aria-live="polite">
