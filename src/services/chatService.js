@@ -10,6 +10,7 @@ export async function fetchMessages() {
 }
 
 // POST /api/chat/messages
-export async function sendMessage(author, text, isGM, avatarId, frameId) {
-  return call("chat/messages", "POST", { author, text, isGM: !!isGM, avatarId, frameId:frameId||null });
+// GM rozetini sunucu hesap yetkisinden kendisi belirler; istemci isGM göndermez.
+export async function sendMessage(author, text, avatarId, frameId) {
+  return call("chat/messages", "POST", { author, text, avatarId, frameId:frameId||null });
 }

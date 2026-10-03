@@ -1,9 +1,10 @@
+import { startPolling } from "../utils/polling";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Send, ShieldCheck, HelpCircle, Wand2, X, Globe2, MessageCircle } from "lucide-react";
 import { styles } from "../styles";
 import * as chatService from "../services/chatService";
 import * as socialService from "../services/socialService";
-import { parseGmCommand, executeGmCommand, tryGmUnlock } from "../utils/gmCommands";
+import { parseGmCommand, executeGmCommand } from "../utils/gmCommands";
 import { displayClassName } from "../utils/player";
 import GmItemPanel from "./GmItemPanel";
 import ModerationMenu from "./ModerationMenu";
@@ -18,7 +19,7 @@ import { useTranslation, formatServerError } from "../i18n/LanguageContext";
 // Hub'da yaşıyor ki bu bileşen (Sohbet'ten çıkılınca ScreenPanel'in
 // key={tab} ile yeniden mount etmesi yüzünden) kaybolmasın.
 export default function ChatTab({
-  player, setPlayer, bank, setBank, pushToast,
+  isGM = false, player, setPlayer, bank, setBank, pushToast,
   openDmTabs = [], dmUnreadIds, pendingActiveDm = null, onConsumePendingActiveDm, onCloseDm, onSeenDm,
 }) {
   const { t, lang } = useTranslation();
@@ -42,15 +43,14 @@ export default function ChatTab({
     try {
       const msgs = await chatService.fetchMessages();
       setMessages([WELCOME, ...msgs]);
-    } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
+    } catch { /* geçici ağ hatası — aralık uzar, sonra tekrar dener */ return false; }
   }, []);
 
   useEffect(() => { if (activeDmId === null) refresh(); }, [activeDmId, refresh]);
   // Diğer oyuncuların mesajlarını görmek için periyodik yenileme.
   useEffect(() => {
     if (activeDmId !== null) return;
-    const id = setInterval(refresh, 4000);
-    return () => clearInterval(id);
+    return startPolling(refresh, 4000, { runNow: false });
   }, [activeDmId, refresh]);
   useEffect(() => {
     if (activeDmId === null && logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
@@ -69,26 +69,18 @@ export default function ChatTab({
     try {
     const parsed = parseGmCommand(text);
 
-    if (parsed && !player.isGM && tryGmUnlock(parsed)) {
-      // Parola sohbet geçmişine hiç yazılmıyor (bkz. gmCommands.js'teki not)
-      // — sadece bu karaktere isGM veriliyor, mesaj gönderilmiyor.
-      setPlayer({ ...player, isGM: true });
-      pushToast(t("chat.gmUnlocked"), "loot");
-      return;
-    }
-
-    if (parsed && player.isGM) {
-      await chatService.sendMessage(displayName, text, true, playerAvatarId(player), player.avatarFrameId);
+    if (parsed && isGM) {
+      await chatService.sendMessage(displayName, text, playerAvatarId(player), player.avatarFrameId);
       const { player: nextPlayer, bank: nextBank, resultText } = executeGmCommand(player, parsed.cmd, parsed.args, bank);
       setPlayer(nextPlayer);
       if (nextBank) setBank(nextBank);
-      await chatService.sendMessage(t("chat.gmSystemAuthor"), resultText, true, playerAvatarId(player), player.avatarFrameId);
+      await chatService.sendMessage(t("chat.gmSystemAuthor"), resultText, playerAvatarId(player), player.avatarFrameId);
       pushToast(resultText, "loot");
       refresh();
       return;
     }
 
-    await chatService.sendMessage(displayName, text, player.isGM, playerAvatarId(player), player.avatarFrameId);
+    await chatService.sendMessage(displayName, text, playerAvatarId(player), player.avatarFrameId);
     refresh();
     } catch(e) { setInput(text);pushToast(e.code==='ACCOUNT_MUTED'?'Sohbet yetkin geçici olarak kapatıldı.':'Mesaj gönderilemedi.','warn'); }
   };
@@ -112,14 +104,13 @@ export default function ChatTab({
       setDmMessages(msgs);
       const lastFromThem = msgs.filter((m) => !m.mine).slice(-1)[0];
       if (lastFromThem) onSeenDm?.(activeDm.accountId, lastFromThem.createdAt);
-    } catch { /* geçici ağ hatası — bir sonraki periyotta tekrar dener */ }
+    } catch { /* geçici ağ hatası — aralık uzar, sonra tekrar dener */ return false; }
   }, [activeDm, onSeenDm]);
 
   useEffect(() => { refreshDm(); }, [refreshDm]);
   useEffect(() => {
     if (!activeDm) return;
-    const id = setInterval(refreshDm, 4000);
-    return () => clearInterval(id);
+    return startPolling(refreshDm, 4000, { runNow: false });
   }, [activeDm, refreshDm]);
   useEffect(() => {
     if (activeDm && dmLogRef.current) dmLogRef.current.scrollTop = dmLogRef.current.scrollHeight;
@@ -181,7 +172,7 @@ export default function ChatTab({
       <div className="conversation-tools" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {player.isGM && (
+          {isGM && (
             <button onClick={() => setShowGmPanel((v) => !v)} style={{ background: "none", border: "none", color: showGmPanel ? "var(--gold-text)" : "var(--text-faint)", cursor: "pointer" }} title={t("chat.gmItemPanelTitle")}>
               <Wand2 size={16} />
             </button>
@@ -193,14 +184,14 @@ export default function ChatTab({
         <span style={{ fontSize: 9, color: "var(--text-faint)" }}>{t("chat.messageTtlHint")}</span>
       </div>
 
-      {showGmPanel && player.isGM && (
+      {showGmPanel && isGM && (
         <GmItemPanel player={player} setPlayer={setPlayer} pushToast={pushToast} />
       )}
 
       {showHelp && (
         <div className="rpg-card" style={styles.itemDetailCard}>
           <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6 }}>
-            {player.isGM ? (
+            {isGM ? (
               <>
                 <b>{t("chat.helpGmBadge")}</b> {t("chat.helpGmIntro")}<br />
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 10 }}>
@@ -241,7 +232,7 @@ export default function ChatTab({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) send(); }}
-          placeholder={player.isGM ? t("chat.inputPlaceholderGm") : t("chat.inputPlaceholderDefault")}
+          placeholder={isGM ? t("chat.inputPlaceholderGm") : t("chat.inputPlaceholderDefault")}
           style={styles.chatInput}
         />
         <button aria-label={lang === "en" ? "Send message" : "Mesaj gönder"} className="rpg-action" style={styles.tinyBtn} disabled={!input.trim()} onClick={send}>

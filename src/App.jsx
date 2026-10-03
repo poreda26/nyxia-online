@@ -1,3 +1,4 @@
+import { startPolling } from "./utils/polling";
 import {mergeClanResponse} from './utils/clanResponse';
 import {fetchMyClan} from './services/clanService';
 import {setActiveCharacterKey} from './utils/api';
@@ -54,6 +55,8 @@ export default function App() {
   const [screen, setScreen] = useState("login");
   // Açılışta oturum çerezi kontrol edilirken giriş ekranı yanıp sönmesin.
   const [sessionChecked, setSessionChecked] = useState(false);
+  // GM yetkisi sunucudan gelir (hesaba bağlı); yerel kayıttaki hiçbir değer yetki vermez.
+  const [isGm, setIsGm] = useState(false);
   const [username, setUsername] = useState("");
   const [account, setAccount] = useState({ race: null, characters: [null, null, null], bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS, diamonds: 0, bankGold: 0 });
   const [activeSlot, setActiveSlot] = useState(null);
@@ -66,10 +69,10 @@ export default function App() {
   // Keep gesture retries for autoplay/interruption recovery on mobile browsers.
   useEffect(()=>{
     let disposed=false;
-    const refresh=async()=>{try{const rules=await callGameApi('drop-settings','GET');if(!disposed)applyLiveDropConfig(rules.data);}catch{/* offline: keep last successful rules */}};
-    refresh();const timer=setInterval(refresh,30000);
-    const visible=()=>{if(!document.hidden)refresh();};document.addEventListener('visibilitychange',visible);
-    return()=>{disposed=true;clearInterval(timer);document.removeEventListener('visibilitychange',visible);};
+    const refresh=async()=>{try{const rules=await callGameApi('drop-settings','GET');if(!disposed)applyLiveDropConfig(rules.data);}catch{/* offline: keep last successful rules */return false;}};
+    // Drop kuralları nadiren değişir: 2 dakikada bir (ve uygulama öne gelince) yeter.
+    const stop=startPolling(refresh,120000);
+    return()=>{disposed=true;stop();};
   },[username]);
   const musicRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -211,6 +214,7 @@ export default function App() {
 
   const handleLogin = async (name) => {
     setUsername(name);
+    fetchMe().then((me) => setIsGm(!!me.gm)).catch(() => setIsGm(false));
     saveLastUsername(name);
     // CharacterSelectScreen render's straight from account.characters (bkz.
     // CLASSES[p.class] look-up'ı) — handlePlay'e kadar migratePlayer hiç
@@ -323,9 +327,10 @@ export default function App() {
   useEffect(()=>{
     if(screen!=='hub'||activeSlot===null)return;
     let alive=true;
-    const refresh=()=>fetchMyClan().then(({clan})=>{if(alive)setPlayer(p=>mergeClanResponse(p,clan));}).catch(()=>{});
-    refresh();const timer=setInterval(refresh,8000);
-    return ()=>{alive=false;clearInterval(timer);};
+    const refresh=()=>fetchMyClan().then(({clan})=>{if(alive)setPlayer(p=>mergeClanResponse(p,clan));}).catch(()=>false);
+    // Klan sekmesi açıkken ClanTab kendi 8 sn'lik yoklamasını yapar; arka planda 30 sn yeter.
+    const stop=startPolling(refresh,30000);
+    return ()=>{alive=false;stop();};
   },[screen,activeSlot]);
 
   const handleCreate = (slotIndex) => {
@@ -410,6 +415,7 @@ export default function App() {
   // boşaltılıyor: bir sonraki giriş tamamlanana kadar eski hesabın verisi
   // başka bir oturumun yedeğine gitmesin.
   const resetSession = () => {
+    setIsGm(false);
     setPlayer(null);
     setActiveSlot(null);
     setUsername("");
@@ -481,6 +487,7 @@ export default function App() {
       {screen === "classSelect" && <ClassSelect onChoose={handleChooseClass} />}
       {screen === "hub" && player && (
         <Hub
+          isGm={isGm}
           player={player}
           setPlayer={setPlayer}
           bank={account.bank}

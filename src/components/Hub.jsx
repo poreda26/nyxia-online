@@ -1,3 +1,4 @@
+import { startPolling } from "../utils/polling";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { hasCaptainNotice } from "../utils/captainNotices";
 import { loadChatSeenId, saveChatSeenId, loadDmSeen, saveDmSeen, hasUnreadChat, latestChatId, unreadFriendIds } from "../utils/readState";
@@ -35,10 +36,9 @@ import FirstPurchaseOfferModal from "./FirstPurchaseOfferModal";
 import EventReadyModal from "./EventReadyModal";
 import MonsterPortrait from "./MonsterPortrait";
 import RewardChest from './icons/RewardChest';
-import ScheduledEventBanner from "./ScheduledEventBanner";
-import WarzoneBossBanner from "./WarzoneBossBanner";
+import EventStrip from "./EventStrip";
 
-export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings, unlockedSlots, onUnlockSlot }) {
+export default function Hub({ isGm = false, player, setPlayer, bank, setBank, bankGold, setBankGold, username, tab, setTab, pushToast, onChangeCharacter, onChangeRace, onOpenSettings, unlockedSlots, onUnlockSlot }) {
   const { t, tm } = useTranslation();
   const cls = CLASSES[player.class];
   const { atk } = totalStats(player);
@@ -76,10 +76,9 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
   const [wheelReady, setWheelReady] = useState(false);
   useEffect(() => {
     let alive = true;
-    const check = () => fetchWheel().then((s) => { if (alive) setWheelReady(!!(s.canSpin || s.pending)); }).catch(() => {});
-    check();
-    const id = setInterval(check, 5 * 60 * 1000);
-    return () => { alive = false; clearInterval(id); };
+    const check = () => fetchWheel().then((s) => { if (alive) setWheelReady(!!(s.canSpin || s.pending)); }).catch(() => false);
+    const stop = startPolling(check, 5 * 60 * 1000);
+    return () => { alive = false; stop(); };
   }, []);
 
   // Kullanıcı isteği: "İlk ödeme ödülü almayan kişilere oyuna ilk girişte
@@ -164,7 +163,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
       try {
         msgs = await chatService.fetchMessages();
       } catch {
-        return; // Oturum/ağ geçici sorunu — bir sonraki periyotta tekrar dener.
+        return false; // Oturum/ağ geçici sorunu — aralık uzar, sonra tekrar dener.
       }
       if (cancelled) return;
       const newest = latestChatId(msgs);
@@ -177,9 +176,10 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         setChatNotice(hasUnreadChat(msgs, chatSeenId));
       }
     };
-    check();
-    const id = setInterval(check, 4000);
-    return () => { cancelled = true; clearInterval(id); };
+    // Sohbet açıkken ChatTab zaten 4 sn'de bir yoklar; diğer sekmelerde yalnızca
+    // bildirim noktası için seyrek yoklamak yeter (en çok ~15 sn gecikir).
+    const stop = startPolling(check, tab === "chat" ? 8000 : 15000);
+    return () => { cancelled = true; stop(); };
   }, [tab, chatSeenId, username]);
 
   // Arkadaşlık isteği bildirimi — kullanıcı isteği: "Arkadaşlar için bir
@@ -207,7 +207,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
     const check = async () => {
       let data;
       try { data = await socialService.fetchFriends(); }
-      catch { return; } // Oturum/ağ geçici sorunu — bir sonraki periyotta tekrar dener.
+      catch { return false; } // Oturum/ağ geçici sorunu — aralık uzar, sonra tekrar dener.
       if (cancelled) return;
       setIncomingFriendRequestCount(data.incoming.length);
       friendLastMessageRef.current = Object.fromEntries(data.friends.map((f) => [f.accountId, f.lastMessageAt || 0]));
@@ -227,9 +227,10 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         });
       }
     };
-    check();
-    const id = setInterval(check, 10000);
-    return () => { cancelled = true; clearInterval(id); };
+    // Özel mesaj / arkadaş isteği bildirimi için 20 sn yeterli; Arkadaşlar ve Sohbet
+    // sekmeleri açıkken kendi paneli zaten daha sık yoklar.
+    const stop = startPolling(check, 20000);
+    return () => { cancelled = true; stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dmSeenAt]);
   const friendsNotice = incomingFriendRequestCount > 0 && tab !== "friends";
@@ -265,8 +266,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         onOpenDiamondShop={() => setDiamondShopOpen(true)}
       />
 
-      <ScheduledEventBanner player={player} setPlayer={setPlayer} pushToast={pushToast} />
-      <WarzoneBossBanner onOpenWarzone={() => setTab("warzone")} />
+      <EventStrip player={player} setPlayer={setPlayer} pushToast={pushToast} onOpenWarzone={() => setTab("warzone")} />
 
       {!firstPurchaseClaimed && (
         <button
@@ -308,7 +308,7 @@ export default function Hub({ player, setPlayer, bank, setBank, bankGold, setBan
         )}
         {tab === "chat" && (
           <ChatTab
-            player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast}
+            isGM={isGm} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast}
             openDmTabs={openDmTabs} dmUnreadIds={dmUnreadIds} pendingActiveDm={pendingActiveDm}
             onConsumePendingActiveDm={() => setPendingActiveDm(null)}
             onCloseDm={closeDmTab} onSeenDm={markDmSeen}

@@ -266,6 +266,8 @@ export function migratePlayer(player) {
     stats,
     diamonds: player.diamonds ?? 0,
     premium: player.premium || { tier: null, expiresAt: null },
+    // GM yetkisi sunucudan gelir (bkz. /api/me); kayıttaki eski/elle yazılmış değer sayılmaz.
+    isGM: false,
     nickname: player.nickname ?? null,
     skills,
     monsterKills: player.monsterKills || {},

@@ -1,3 +1,4 @@
+import { startPolling } from "../utils/polling";
 import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Check, X, MessageCircle, Users, Sparkles } from "lucide-react";
 import * as socialService from "../services/socialService";
@@ -39,11 +40,18 @@ export default function FriendsPanel({ pushToast, dmUnreadIds, onOpenDm }) {
     catch { /* geçici ağ hatası */ }
   }, []);
 
+  // Öneriler ve engel listesi nadiren değişir: yalnızca açılışta ve işlemlerden
+  // sonra yenilenir. Periyodik yoklama sadece arkadaş/istek listesini çeker.
+  const pollFriends = useCallback(async () => {
+    try {
+      const data = await socialService.fetchFriends();
+      setFriends(data.friends);
+      setIncoming(data.incoming);
+      setOutgoing(data.outgoing);
+    } catch { return false; }
+  }, []);
   useEffect(() => { refreshFriends(); }, [refreshFriends]);
-  useEffect(() => {
-    const id = setInterval(refreshFriends, 10000);
-    return () => clearInterval(id);
-  }, [refreshFriends]);
+  useEffect(() => startPolling(pollFriends, 10000, { runNow: false }), [pollFriends]);
 
   const sendRequestTo = async (name) => {
     if (atLimit) { pushToast(t("chat.friends.limitReached", { max: FRIEND_MAX_COUNT }), "warn"); return; }

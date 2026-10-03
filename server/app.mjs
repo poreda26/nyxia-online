@@ -324,6 +324,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       for (const [sql, params] of [
         ['DELETE FROM clan_invites WHERE from_account=? OR to_account=?', [id, id]],
         ['DELETE FROM wheel_spins WHERE account_id=?', [id]],
+        ['DELETE FROM gm_accounts WHERE account=?', [id]],
         ['DELETE FROM user_blocks WHERE blocker=? OR blocked=?', [id, id]],
         ['DELETE FROM user_reports WHERE target=?', [id]],
         ['UPDATE user_reports SET reporter=NULL WHERE reporter=?', [id]],
@@ -416,7 +417,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if(path.startsWith('/api/admin/')) return await admin.handle(req,path,account,send);
       if(path === '/api/drop-settings' && req.method==='GET')return send(200,admin.drops.get());
       if(req.method==='POST' && (path==='/api/chat/messages'||/^\/api\/social\/messages\/\d+$/.test(path)) && admin.muted(account.id))throw fail(403,'ACCOUNT_MUTED');
-      if (path === '/api/me' && req.method === 'GET') return send(200, { name: account.name });
+      if (path === '/api/me' && req.method === 'GET') return send(200, { name: account.name, gm: admin.isGm(account.id) });
       if (path === '/api/logout' && req.method === 'POST') {
         db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));
         res.setHeader('Set-Cookie', cookie('', 0)); return send(200, { ok: true });
@@ -471,7 +472,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const author = typeof body?.author === 'string' ? maskProfanity(body.author.trim().slice(0, 40)) : '';
         const text = typeof body?.text === 'string' ? maskProfanity(body.text.trim().slice(0, 500)) : '';
         if (!author || !text) throw fail(400, 'INVALID_MESSAGE');
-        const isGm = !!body.isGM;
+        // GM rozeti istemcinin söylediğine değil sunucudaki hesap yetkisine bağlı.
+        const isGm = admin.isGm(account.id);
         const createdAt = Date.now();
         const avatarId=body.avatarId??'human-warrior';
         if(!validPlayerAvatar(avatarId))throw fail(400,'INVALID_AVATAR');

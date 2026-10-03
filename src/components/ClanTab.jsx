@@ -1,3 +1,4 @@
+import { startPolling } from "../utils/polling";
 import {getActiveCharacterKey} from '../utils/api';
 import {mergeClanResponse} from '../utils/clanResponse';
 import RankBadge from './shared/RankBadge';
@@ -84,10 +85,7 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => {
-    const id = setInterval(refresh, 8000);
-    return () => clearInterval(id);
-  }, [refresh]);
+  useEffect(() => startPolling(refresh, 8000, { runNow: false }), [refresh]);
 
   // Boss açıkken geri sayım/HP saniyeler içinde eskir — bu tick sadece
   // yeniden render tetikler (bkz. utils/clanBoss.js'in "Date.now()'dan

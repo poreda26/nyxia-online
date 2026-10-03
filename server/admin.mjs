@@ -10,9 +10,13 @@ export function createAdmin(db, { read, fail }) {
   db.exec('CREATE TABLE IF NOT EXISTS account_activity(account INTEGER PRIMARY KEY REFERENCES accounts(id),last_seen INTEGER NOT NULL)');
   const seen=new Map();
   const touch=id=>{const now=Date.now();if(now-(seen.get(id)||0)<60000)return;if(seen.size>10000)seen.clear();seen.set(id,now);db.prepare('INSERT OR REPLACE INTO account_activity VALUES(?,?)').run(id,now);};
+  // GM yetkisi sunucuda hesaba bağlıdır (istemcideki hiçbir bayrak/parola yetki vermez).
+  // Panel sahibi her zaman GM sayılır; diğer GM'leri yalnızca sahip ekler/çıkarır.
+  db.exec('CREATE TABLE IF NOT EXISTS gm_accounts(account INTEGER PRIMARY KEY REFERENCES accounts(id), granted_at INTEGER NOT NULL)');
   const drops=createDropSettings(db);
   const muted = id => !!db.prepare('SELECT 1 FROM account_mutes WHERE account=? AND (expires_at IS NULL OR expires_at>?)').get(id,Date.now());
   const owner = id => db.prepare('SELECT account FROM panel_owner WHERE singleton=1').get()?.account === id;
+  const isGm = id => owner(id) || !!db.prepare('SELECT 1 FROM gm_accounts WHERE account=?').get(id);
   const blocked = id => !!db.prepare('SELECT account FROM account_blocks WHERE account=? AND (expires_at IS NULL OR expires_at>?)').get(id,Date.now());
   const audit = (id, action, target, reason) => db.prepare('INSERT INTO admin_audit(actor,action,target,reason,created_at) VALUES(?,?,?,?,?)').run(id, action, String(target), reason, Date.now());
   const transaction = fn => { db.exec('BEGIN IMMEDIATE'); try { const result = fn(); db.exec('COMMIT'); return result; } catch(e) { db.exec('ROLLBACK'); throw e; } };
@@ -62,7 +66,7 @@ export function createAdmin(db, { read, fail }) {
         const a = db.prepare('SELECT id,name FROM accounts WHERE id=?').get(id);
         if(!a) throw fail(404,'ACCOUNT_NOT_FOUND');
         const b = db.prepare('SELECT * FROM backups WHERE account=?').get(id);
-        return send(200,{...a,lastSeen:db.prepare('SELECT last_seen FROM account_activity WHERE account=?').get(id)?.last_seen,blocked:blocked(id),muted:muted(id),ban:db.prepare('SELECT reason,expires_at FROM account_blocks WHERE account=?').get(id),mute:db.prepare('SELECT reason,expires_at FROM account_mutes WHERE account=?').get(id),revision:b?.revision||0,data:b?JSON.parse(b.data):null,snapshots:db.prepare('SELECT id,created_at FROM admin_snapshots WHERE account=? ORDER BY id DESC LIMIT 30').all(id)});
+        return send(200,{...a,lastSeen:db.prepare('SELECT last_seen FROM account_activity WHERE account=?').get(id)?.last_seen,blocked:blocked(id),muted:muted(id),gm:isGm(id),ban:db.prepare('SELECT reason,expires_at FROM account_blocks WHERE account=?').get(id),mute:db.prepare('SELECT reason,expires_at FROM account_mutes WHERE account=?').get(id),revision:b?.revision||0,data:b?JSON.parse(b.data):null,snapshots:db.prepare('SELECT id,created_at FROM admin_snapshots WHERE account=? ORDER BY id DESC LIMIT 30').all(id)});
       }
       if(path === '/api/admin/audit') return send(200,db.prepare('SELECT * FROM admin_audit ORDER BY id DESC LIMIT 200').all());
       if(path === '/api/admin/reports') return send(200,db.prepare("SELECT r.id,r.target,r.target_name,r.context,r.content,r.reason,r.details,r.created_at,r.status,r.resolved_at,r.resolution,(SELECT name FROM accounts WHERE id=r.reporter) reporter_name FROM user_reports r ORDER BY (r.status='open') DESC, r.id DESC LIMIT 200").all());
@@ -112,6 +116,14 @@ export function createAdmin(db, { read, fail }) {
           db.prepare('DELETE FROM sessions WHERE account=?').run(id);
           audit(account.id,path+ (path.endsWith('/block')?':'+b.blocked:''),id,reason+' | saat: '+(b.hours||'kalıcı')); return {ok:true};
         }
+        if(path === '/api/admin/account/gm') {
+          if(typeof b.gm!=='boolean') throw fail(400,'INVALID_GM');
+          if(id===account.id) throw fail(400,'OWNER_PROTECTED');
+          if(!db.prepare('SELECT id FROM accounts WHERE id=?').get(id)) throw fail(404,'ACCOUNT_NOT_FOUND');
+          if(b.gm) db.prepare('INSERT OR IGNORE INTO gm_accounts(account,granted_at) VALUES(?,?)').run(id,Date.now());
+          else db.prepare('DELETE FROM gm_accounts WHERE account=?').run(id);
+          audit(account.id,path+':'+b.gm,id,reason); return {ok:true};
+        }
         if(path === '/api/admin/report/resolve') {
           if(!['actioned','dismissed'].includes(b.status))throw fail(400,'INVALID_STATUS');
           const result=db.prepare("UPDATE user_reports SET status=?,resolved_at=?,resolution=? WHERE id=? AND status='open'").run(b.status,Date.now(),reason,id);
@@ -137,5 +149,5 @@ export function createAdmin(db, { read, fail }) {
     }
     throw fail(404,'NOT_FOUND');
   }
-  return {handle,owner,blocked,muted,drops,touch};
+  return {handle,owner,isGm,blocked,muted,drops,touch};
 }

@@ -1,3 +1,4 @@
+import { startPolling } from "../utils/polling";
 import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useCallback } from "react";
 import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, AlertTriangle, ChevronDown, ChevronUp, ShoppingBag, Package2 } from "lucide-react";
@@ -84,10 +85,7 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast,
 
   useEffect(() => { refreshMarket(); }, [refreshMarket]);
   // Diğer oyuncuların yeni tezgah/eşyalarını görmek için periyodik yenileme.
-  useEffect(() => {
-    const id = setInterval(refreshMarket, 8000);
-    return () => clearInterval(id);
-  }, [refreshMarket]);
+  useEffect(() => startPolling(refreshMarket, 8000, { runNow: false }), [refreshMarket]);
 
   const buyPotion = (potionType, tier, qty) => {
     const amount = Math.max(1, qty || 1);

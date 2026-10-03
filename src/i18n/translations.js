@@ -18,6 +18,7 @@ import { upgradeSection } from "./sections/upgrade";
 import { warzoneSection } from "./sections/warzone";
 import { wheelSection } from "./sections/wheel";
 import { tutorialCoachSection } from "./sections/tutorialCoach";
+import { eventStripSection } from "./sections/eventStrip";
 
 const base = {
   tr: {
@@ -640,11 +641,11 @@ export const translations = {
   tr: {
     ...base.tr,
     ...boostsSection.tr, ...captainSection.tr, ...characterSection.tr, ...diamondShopSection.tr, ...inventorySection.tr,
-    ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr, ...wheelSection.tr, ...tutorialCoachSection.tr,
+    ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr, ...wheelSection.tr, ...tutorialCoachSection.tr, ...eventStripSection.tr,
   },
   en: {
     ...base.en,
     ...boostsSection.en, ...captainSection.en, ...characterSection.en, ...diamondShopSection.en, ...inventorySection.en,
-    ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en, ...wheelSection.en, ...tutorialCoachSection.en,
+    ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en, ...wheelSection.en, ...tutorialCoachSection.en, ...eventStripSection.en,
   },
 };

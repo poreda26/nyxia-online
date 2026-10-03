@@ -10,6 +10,7 @@
     "test:account-deletion": "node --test tests/account-deletion.test.mjs",
     "test:moderation": "node --test tests/moderation.test.mjs",
     "test:wheel": "node --test tests/wheel.test.mjs",
+    "test:gm": "node --test tests/gm.test.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
