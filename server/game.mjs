@@ -12,7 +12,7 @@ const ECONOMY_FIELDS = ['gold', 'inventory', 'equipped', 'chests'];
 const SERVER_RANDOM_RANGE = 2 ** 48 - 1; // randomInt üst sınırı
 Math.random = () => randomInt(0, SERVER_RANDOM_RANGE) / (SERVER_RANDOM_RANGE + 1);
 
-export function createGame(db, { fail, logic, keyOf, all = false }) {
+export function createGame(db, { fail, logic, keyOf, all = false, drops = () => null }) {
   db.exec('CREATE TABLE IF NOT EXISTS economy_accounts(account INTEGER PRIMARY KEY REFERENCES accounts(id), enabled_at INTEGER NOT NULL)');
   const available = !!logic;
 
@@ -42,6 +42,9 @@ export function createGame(db, { fail, logic, keyOf, all = false }) {
         bank: Array.isArray(stored.data.bank) ? stored.data.bank : [],
         bankGold: Number.isFinite(stored.data.bankGold) ? stored.data.bankGold : 0,
       };
+      // Sahibin yayınladığı canlı drop kuralları, istemcidekiyle aynı biçimde uygulanır.
+      const live = drops();
+      if (live && logic.applyLiveDropConfig) logic.applyLiveDropConfig(live);
       const { state: next, result } = logic.applyAction(state, String(type), payload);
       if (!result.ok) { db.exec('ROLLBACK'); return { revision: stored.revision, result }; }
 

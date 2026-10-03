@@ -2,6 +2,7 @@
 // server/game-logic.generated.mjs paketinde (bkz. scripts/build-game-logic.mjs) kullanılır.
 import { initialPlayer } from "../utils/player";
 
+export { applyLiveDropConfig } from "../utils/dropConfig";
 export { applyAction, ACTION_TYPES, reducers } from "./actions";
 
 const CLASS_IDS = ["warrior", "rogue", "mage"];

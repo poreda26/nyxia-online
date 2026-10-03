@@ -20267,6 +20267,8 @@ init_define_import_meta_env();
 
 // src/data/potions.js
 init_define_import_meta_env();
+var HP_POTION_TIERS = [90, 180, 360, 720];
+var MP_POTION_TIERS = [240, 480, 960, 1920];
 var POTION_TIER_NAMES = {
   tr: {
     hp: ["K\xFC\xE7\xFCk Can \u0130ksiri", "Can \u0130ksiri", "B\xFCy\xFCk Can \u0130ksiri", "Muazzam Can \u0130ksiri"],
@@ -20277,6 +20279,12 @@ var POTION_TIER_NAMES = {
     mp: ["Mana Potion", "Greater Mana Potion", "Superior Mana Potion", "Legendary Mana Potion"]
   }
 };
+function potionTiersFor(potionType) {
+  return potionType === "hp" ? HP_POTION_TIERS : MP_POTION_TIERS;
+}
+function potionAmount(potionType, tier) {
+  return potionTiersFor(potionType)[tier - 1] || 0;
+}
 function potionName(potionType, tier, lang = "tr") {
   const names = POTION_TIER_NAMES[lang] || POTION_TIER_NAMES.tr;
   return names[potionType]?.[tier - 1] || (potionType === "hp" ? names.hp[1] : names.mp[0]);
@@ -21116,6 +21124,7 @@ function isConsumable(item) {
 
 // src/data/maps.js
 init_define_import_meta_env();
+var GATE_TELEPORT_COST = 10;
 var TIER_HP_MULT = { 1: 0.9, 2: 1.1, 3: 1.5, 4: 1.85, 5: 1.9, 6: 1.9 };
 var TIER_DEF_MULT = { 1: 2, 2: 2.3, 3: 2.6, 4: 3, 5: 3.4, 6: 3.8 };
 var TIER_ATK_MULT = { 1: 0.85, 2: 1.1, 3: 1.38, 4: 2.07, 5: 2.76, 6: 3.6 };
@@ -21235,6 +21244,9 @@ var RAW_MAPS = [
   }
 ];
 var MAPS = RAW_MAPS.map((map, i) => ({ ...map, monsters: map.monsters.map((m) => scaleMonster(m, i + 1)) }));
+function findMap(mapId) {
+  return MAPS.find((m) => m.id === mapId) || MAPS[0];
+}
 
 // src/utils/week.js
 init_define_import_meta_env();
@@ -22775,6 +22787,7 @@ var WARZONE_BOSSES = [
 
 // src/data/soloDungeon.js
 init_define_import_meta_env();
+var SOLO_DUNGEON_DAILY_LIMIT = 3;
 var REGULAR_STAGE_MULT = [1, 1.22, 1.48, 1.8, 2.2];
 var BOSS_STAGE_MULT = 3.2;
 var SOLO_DUNGEON_STAGE_COUNT = REGULAR_STAGE_MULT.length + 1;
@@ -22858,6 +22871,9 @@ var DEFAULT_DROP_CONFIG = buildDefaultDropConfig();
 
 // src/utils/dropConfig.js
 var liveConfig = null;
+function applyLiveDropConfig(config) {
+  liveConfig = config;
+}
 var STORAGE_KEY = "nyxia_drop_config_v1";
 var UNSAFE_MERGE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
 function deepMerge(base, override) {
@@ -22881,6 +22897,19 @@ function getDropConfig() {
   } catch {
     return DEFAULT_DROP_CONFIG;
   }
+}
+function getMonsterRewardConfig(monster, map) {
+  const override = getDropConfig().maps?.[map.id]?.monsters?.[monster.id];
+  return {
+    loot: override?.loot,
+    guaranteedChests: override?.guaranteedChests ?? 1,
+    guaranteedChestTier: override?.guaranteedChestTier ?? map.tier,
+    goldMin: override?.goldMin ?? monster.goldMin,
+    goldMax: override?.goldMax ?? monster.goldMax,
+    xp: override?.xp ?? monster.xp,
+    dropChance: override?.dropChance ?? map.dropChance,
+    chestChance: override?.chestChance ?? map.chestChance
+  };
 }
 function getChestConfig() {
   return getDropConfig().chests;
@@ -23106,6 +23135,12 @@ function rollAccessory(tierId) {
   const chosen = pick(options);
   return buildAccessoryFromTemplate(chosen.item, tierId, chosen.slot);
 }
+function rollMapAccessory(mapTier) {
+  const options = MAP_ACCESSORIES.filter((it) => it.mapTier === mapTier);
+  if (!options.length) return null;
+  const chosen = pick(options);
+  return buildAccessoryFromTemplate(chosen, chosen.tier, chosen.slot);
+}
 function buildStartingWeapon(cls) {
   const w = STARTING_WEAPONS[cls];
   if (!w) return null;
@@ -23141,6 +23176,10 @@ function rollLoot(tierId) {
   const item = r < weaponPct ? rollWeapon(tierId, pick(Object.keys(CLASSES))) : r < weaponPct + armorPct ? rollArmor(tierId) : rollAccessory(tierId);
   if (item) return item;
   return rollWeapon(tierId, pick(Object.keys(CLASSES))) || rollArmor(tierId) || rollAccessory(tierId) || (tierId > 1 ? rollLoot(tierId - 1) : null);
+}
+function rollMapLoot(tierId, mapTier = tierId) {
+  if (mapTier <= 2 && Math.random() < 0.06) return rollMapAccessory(mapTier);
+  return rollLoot(tierId);
 }
 function rollSpecialChestLoot(playerClass) {
   const table = getDropConfig().chestTables?.special;
@@ -23275,7 +23314,21 @@ function useBoostScroll(player, scrollId) {
 }
 
 // src/utils/player.js
+function xpToNext(level) {
+  return Math.round(90 * Math.pow(level, 1.62));
+}
 var MAX_GOLD = 2e9;
+function clampGold(amount) {
+  return Math.max(0, Math.min(MAX_GOLD, Math.round(amount)));
+}
+function xpLevelPenaltyMultiplier(playerLevel, mapLevelMax) {
+  const diff = playerLevel - mapLevelMax;
+  if (diff <= 1) return 1;
+  if (diff <= 7) return 0.8;
+  if (diff <= 13) return 0.5;
+  return 0.2;
+}
+var MAX_LEVEL = 65;
 var STARTING_STAT_POINTS = 10;
 function initialPlayer(cls, race, nickname) {
   const base = CLASSES[cls];
@@ -23527,7 +23580,24 @@ function playerMaxMp(player) {
 function clampPlayerHp(player) {
   return { ...player, hp: Math.min(player.hp, playerMaxHp(player)), mp: Math.min(player.mp, playerMaxMp(player)) };
 }
+var DEATH_XP_LOSS_PCT = 0.05;
+function applyDeathPenalty(player) {
+  const xpLost = Math.min(player.xp, Math.round(xpToNext(player.level) * DEATH_XP_LOSS_PCT));
+  const next = { ...player, xp: player.xp - xpLost, hp: playerMaxHp(player), mp: playerMaxMp(player) };
+  return { player: next, xpLost };
+}
+var WEAPON_SLOTS = ["mainHand"];
 var ARMOR_SLOTS = ["head", "chest", "legs", "gauntlets", "boots"];
+function damageEquippedDurability(player, slotKeys, amount = 1) {
+  const equipped = { ...player.equipped };
+  slotKeys.forEach((k) => {
+    const it = equipped[k];
+    if (it && it.durability > 0) {
+      equipped[k] = { ...it, currentDurability: Math.max(0, it.currentDurability - amount) };
+    }
+  });
+  return { ...player, equipped };
+}
 function repairCost(item) {
   if (!item || !item.durability) return 0;
   const missing = item.durability - item.currentDurability;
@@ -23682,12 +23752,590 @@ function activePremiumTier(player) {
   const entry = effectivePremium(player);
   return entry ? PREMIUM_TIERS[entry.tier] : null;
 }
+function premiumGoldMultiplier(player) {
+  return activePremiumTier(player)?.goldMult ?? 1;
+}
+function premiumExpMultiplier(player) {
+  return activePremiumTier(player)?.expMult ?? 1;
+}
+function premiumDropMultiplier(player) {
+  return activePremiumTier(player)?.dropMult ?? 1;
+}
 function premiumSellMultiplier(player) {
   return activePremiumTier(player)?.sellMult ?? 1;
 }
 function premiumRepairDiscount(player) {
   return activePremiumTier(player)?.repairDiscount ?? 0;
 }
+
+// src/game/battle.js
+init_define_import_meta_env();
+
+// src/data/mapBosses.js
+init_define_import_meta_env();
+function buildMapBoss(map) {
+  const base = map.monsters[map.monsters.length - 1];
+  const rewardCfg = getMonsterRewardConfig(base, map);
+  return {
+    id: `map_boss_${map.id}`,
+    name: `${map.name} Muhaf\u0131z\u0131`,
+    hp: Math.round(base.hp * 2.5),
+    atk: Math.round(base.atk * 1.15),
+    def: Math.round(base.def * 1.3),
+    xp: Math.round(rewardCfg.xp * 3),
+    goldMin: Math.round(rewardCfg.goldMin * 3),
+    goldMax: Math.round(rewardCfg.goldMax * 3),
+    mapBoss: true,
+    isBoss: true,
+    visualSourceId: base.id
+  };
+}
+
+// src/utils/monsterRewards.js
+init_define_import_meta_env();
+
+// src/utils/clan.js
+init_define_import_meta_env();
+
+// src/utils/day.js
+init_define_import_meta_env();
+function todayKey() {
+  return (/* @__PURE__ */ new Date()).toDateString();
+}
+
+// src/data/clan.js
+init_define_import_meta_env();
+var CLAN_EXP_TIERS = [
+  { min: 31, bonus: 0.05 },
+  { min: 21, bonus: 0.02 },
+  { min: 11, bonus: 0.01 }
+];
+
+// src/utils/clan.js
+function onlineCountFor(clan) {
+  if (!clan) return 0;
+  return clan.members.length;
+}
+function clanExpBonus(onlineCount) {
+  for (const tier of CLAN_EXP_TIERS) {
+    if (onlineCount >= tier.min) return tier.bonus;
+  }
+  return 0;
+}
+function clanExpMultiplier(player) {
+  if (!player.clan) return 1;
+  return 1 + clanExpBonus(onlineCountFor(player.clan));
+}
+
+// src/utils/events.js
+init_define_import_meta_env();
+function activeExpEvent(player) {
+  if (!player.eventExpBonus?.expiresAt) return null;
+  if (player.eventExpBonus.expiresAt <= Date.now()) return null;
+  return player.eventExpBonus;
+}
+function eventExpMultiplier(player) {
+  return activeExpEvent(player)?.mult ?? 1;
+}
+
+// src/utils/skills.js
+init_define_import_meta_env();
+
+// src/data/skills.js
+init_define_import_meta_env();
+
+// src/data/warriorSkills.js
+init_define_import_meta_env();
+var WARRIOR_SKILLS = [
+  { id: "w1", unlockLevel: 1, name: "K\u0131l\u0131\xE7 Darbesi", tier: "basic", mpCost: 8, cooldown: 0, effect: { type: "damage", mult: 1.3 } },
+  { id: "w2", unlockLevel: 5, name: "Sava\u015F\xE7\u0131 Azmi", tier: "basic", mpCost: 12, cooldown: 3, effect: { type: "heal", pct: 0.15 } },
+  { id: "w3", unlockLevel: 10, name: "Y\u0131k\u0131c\u0131 Vuru\u015F", tier: "advanced", mpCost: 18, cooldown: 2, effect: { type: "damage", mult: 1.75 }, goldCost: 400, questTier: 1 },
+  { id: "w4", unlockLevel: 15, name: "Sava\u015F Naras\u0131", tier: "advanced", mpCost: 18, cooldown: 4, effect: { type: "buffAtk", mult: 1.35, turns: 3 }, goldCost: 600, questTier: 2 },
+  { id: "w5", unlockLevel: 20, name: "\xC7ift Kesim", tier: "advanced", mpCost: 22, cooldown: 2, effect: { type: "damage", mult: 2 }, goldCost: 800, questTier: 2 },
+  { id: "w6", unlockLevel: 25, name: "Kanayan Yara", tier: "advanced", mpCost: 20, cooldown: 3, effect: { type: "dot", mult: 0.75, turns: 3 }, goldCost: 1e3, questTier: 2 },
+  { id: "w7", unlockLevel: 30, name: "Toprak Sars\u0131nt\u0131s\u0131", tier: "advanced", mpCost: 26, cooldown: 3, effect: { type: "damage", mult: 2.2 }, goldCost: 1200, questTier: 3 },
+  { id: "w8", unlockLevel: 35, name: "Can Al\u0131c\u0131 Darbe", tier: "advanced", mpCost: 24, cooldown: 3, effect: { type: "execute", mult: 2.8, hpPctThreshold: 0.3 }, goldCost: 1400, questTier: 3 },
+  { id: "w9", unlockLevel: 40, name: "Kalkan Par\xE7alayan", tier: "advanced", mpCost: 28, cooldown: 3, effect: { type: "damage", mult: 2.35 }, goldCost: 1600, questTier: 3 },
+  { id: "w10", unlockLevel: 45, name: "Zafer \xC7\u0131\u011Fl\u0131\u011F\u0131", tier: "advanced", mpCost: 26, cooldown: 4, effect: { type: "buffAtk", mult: 1.45, turns: 3 }, goldCost: 1800, questTier: 4 },
+  { id: "w11", unlockLevel: 50, name: "Ejder Kesici", tier: "advanced", mpCost: 32, cooldown: 3, effect: { type: "damage", mult: 2.5 }, goldCost: 2e3, questTier: 4 },
+  { id: "w12", unlockLevel: 55, name: "Demir \u0130rade", tier: "advanced", mpCost: 30, cooldown: 5, effect: { type: "heal", pct: 0.25 }, goldCost: 2200, questTier: 4 },
+  { id: "w13", unlockLevel: 60, name: "Kaos Y\u0131k\u0131m\u0131", tier: "advanced", mpCost: 40, cooldown: 4, effect: { type: "damage", mult: 2.8 }, goldCost: 2400, questTier: 5 }
+];
+
+// src/data/rogueSkills.js
+init_define_import_meta_env();
+var ROGUE_SKILLS = [
+  { id: "r1", unlockLevel: 1, name: "H\u0131zl\u0131 At\u0131\u015F", tier: "basic", mpCost: 8, cooldown: 0, effect: { type: "damage", mult: 1.3 } },
+  { id: "r2", unlockLevel: 5, name: "Yara Sarma", tier: "basic", mpCost: 12, cooldown: 3, effect: { type: "heal", pct: 0.15 } },
+  { id: "r3", unlockLevel: 10, name: "Ni\u015Fan At\u0131\u015F\u0131", tier: "advanced", mpCost: 18, cooldown: 2, effect: { type: "damage", mult: 1.75 }, goldCost: 400, questTier: 1 },
+  { id: "r4", unlockLevel: 15, name: "Keskin Ni\u015Fanc\u0131 Duru\u015Fu", tier: "advanced", mpCost: 18, cooldown: 4, effect: { type: "buffAtk", mult: 1.35, turns: 3 }, goldCost: 600, questTier: 2 },
+  { id: "r5", unlockLevel: 20, name: "\xC7ifte At\u0131\u015F", tier: "advanced", mpCost: 22, cooldown: 2, effect: { type: "damage", mult: 2 }, goldCost: 800, questTier: 2 },
+  { id: "r6", unlockLevel: 25, name: "Zehirli Ok", tier: "advanced", mpCost: 20, cooldown: 3, effect: { type: "dot", mult: 0.75, turns: 3 }, goldCost: 1e3, questTier: 2 },
+  { id: "r7", unlockLevel: 30, name: "Delici At\u0131\u015F", tier: "advanced", mpCost: 26, cooldown: 3, effect: { type: "damage", mult: 2.2 }, goldCost: 1200, questTier: 3 },
+  { id: "r8", unlockLevel: 35, name: "\u0130nfaz Oku", tier: "advanced", mpCost: 24, cooldown: 3, effect: { type: "execute", mult: 2.8, hpPctThreshold: 0.3 }, goldCost: 1400, questTier: 3 },
+  { id: "r9", unlockLevel: 40, name: "Sessiz Ok", tier: "advanced", mpCost: 28, cooldown: 3, effect: { type: "damage", mult: 2.35 }, goldCost: 1600, questTier: 3 },
+  { id: "r10", unlockLevel: 45, name: "Avc\u0131 \u0130\xE7g\xFCd\xFCs\xFC", tier: "advanced", mpCost: 26, cooldown: 4, effect: { type: "buffAtk", mult: 1.45, turns: 3 }, goldCost: 1800, questTier: 4 },
+  { id: "r11", unlockLevel: 50, name: "Kesin At\u0131\u015F", tier: "advanced", mpCost: 32, cooldown: 3, effect: { type: "damage", mult: 2.5 }, goldCost: 2e3, questTier: 4 },
+  { id: "r12", unlockLevel: 55, name: "Do\u011Fa \u015Eifas\u0131", tier: "advanced", mpCost: 30, cooldown: 5, effect: { type: "heal", pct: 0.25 }, goldCost: 2200, questTier: 4 },
+  { id: "r13", unlockLevel: 60, name: "\xD6l\xFCm Oku", tier: "advanced", mpCost: 40, cooldown: 4, effect: { type: "damage", mult: 2.8 }, goldCost: 2400, questTier: 5 }
+];
+
+// src/data/mageSkills.js
+init_define_import_meta_env();
+var MAGE_SKILLS = [
+  { id: "m1", unlockLevel: 1, name: "B\xFCy\xFC Oku", tier: "basic", mpCost: 8, cooldown: 0, effect: { type: "damage", mult: 1.3 } },
+  { id: "m2", unlockLevel: 5, name: "Mana Ak\u0131\u015F\u0131", tier: "basic", mpCost: 12, cooldown: 3, effect: { type: "heal", pct: 0.15 } },
+  { id: "m3", unlockLevel: 10, name: "Alev Topu", tier: "advanced", mpCost: 18, cooldown: 2, effect: { type: "damage", mult: 1.75 }, goldCost: 400, questTier: 1 },
+  { id: "m4", unlockLevel: 15, name: "Arkane Yo\u011Funla\u015Fma", tier: "advanced", mpCost: 18, cooldown: 4, effect: { type: "buffAtk", mult: 1.35, turns: 3 }, goldCost: 600, questTier: 2 },
+  { id: "m5", unlockLevel: 20, name: "Y\u0131ld\u0131r\u0131m Zinciri", tier: "advanced", mpCost: 22, cooldown: 2, effect: { type: "damage", mult: 2 }, goldCost: 800, questTier: 2 },
+  { id: "m6", unlockLevel: 25, name: "K\xFCk\xFCrt Ya\u011Fmuru", tier: "advanced", mpCost: 20, cooldown: 3, effect: { type: "dot", mult: 0.75, turns: 3 }, goldCost: 1e3, questTier: 2 },
+  { id: "m7", unlockLevel: 30, name: "Donma Patlamas\u0131", tier: "advanced", mpCost: 26, cooldown: 3, effect: { type: "damage", mult: 2.2 }, goldCost: 1200, questTier: 3 },
+  { id: "m8", unlockLevel: 35, name: "Ruh T\xFCketimi", tier: "advanced", mpCost: 24, cooldown: 3, effect: { type: "execute", mult: 2.8, hpPctThreshold: 0.3 }, goldCost: 1400, questTier: 3 },
+  { id: "m9", unlockLevel: 40, name: "Meteor Ya\u011Fmuru", tier: "advanced", mpCost: 28, cooldown: 3, effect: { type: "damage", mult: 2.35 }, goldCost: 1600, questTier: 3 },
+  { id: "m10", unlockLevel: 45, name: "Zaman B\xFCk\xFCm\xFC", tier: "advanced", mpCost: 26, cooldown: 4, effect: { type: "buffAtk", mult: 1.45, turns: 3 }, goldCost: 1800, questTier: 4 },
+  { id: "m11", unlockLevel: 50, name: "Kaos B\xFCy\xFCs\xFC", tier: "advanced", mpCost: 32, cooldown: 3, effect: { type: "damage", mult: 2.5 }, goldCost: 2e3, questTier: 4 },
+  { id: "m12", unlockLevel: 55, name: "Ya\u015Fam \xC7alma", tier: "advanced", mpCost: 30, cooldown: 5, effect: { type: "heal", pct: 0.25 }, goldCost: 2200, questTier: 4 },
+  { id: "m13", unlockLevel: 60, name: "Arkane K\u0131yamet", tier: "advanced", mpCost: 40, cooldown: 4, effect: { type: "damage", mult: 2.8 }, goldCost: 2400, questTier: 5 }
+];
+
+// src/data/skills.js
+var SKILLS_BY_CLASS = {
+  warrior: WARRIOR_SKILLS,
+  rogue: ROGUE_SKILLS,
+  mage: MAGE_SKILLS
+};
+
+// src/utils/quests.js
+init_define_import_meta_env();
+
+// src/data/quests.js
+init_define_import_meta_env();
+var TIER_QUEST_TABLE = {
+  1: { target: 50, goldReward: 150, xpReward: 1450 },
+  2: { target: 70, goldReward: 400, xpReward: 3750 },
+  3: { target: 90, goldReward: 800, xpReward: 7500 },
+  4: { target: 110, goldReward: 1300, xpReward: 12700 },
+  5: { target: 60, goldReward: 2e3, xpReward: 23e3 }
+};
+var QUEST_NAMES = {
+  sis_kurdu: "Sisli Vadi'nin Belas\u0131",
+  kabuklu_golem: "Kabuk Avc\u0131s\u0131",
+  otlak_yabanisi: "Otlak Temizli\u011Fi",
+  bataklik_surungeni: "Batakl\u0131k K\u0131r\u0131m\u0131",
+  nadas_devi: "Nadas Devi Av\u0131",
+  kul_yaratigi: "K\xFCl Kanyonu N\xF6bet\xE7isi",
+  volkan_suru: "S\xFCr\xFCngen K\u0131r\u0131m\u0131",
+  kanyon_akrebi: "Akrep Kovu\u015Fturmas\u0131",
+  lav_ruhu: "Lav Ruhu Bast\u0131rmas\u0131",
+  buzul_kurdu: "Buzul S\xFCr\xFCs\xFC",
+  alev_orumcegi: "Alev \xD6r\xFCmce\u011Fi Av\u0131",
+  don_devi: "Don Devi Seferi",
+  kor_salamanderi: "Kor Salamanderi K\u0131r\u0131m\u0131",
+  zirve_muhafizi: "Zirve Muhaf\u0131zlar\u0131",
+  harabe_iskeleti: "Harabe Temizli\u011Fi",
+  lanetli_rahip: "Lanetli Rahip Av\u0131",
+  tapinak_bekcisi: "Tap\u0131nak Bek\xE7ileri",
+  golge_vaizi: "G\xF6lge Vaizi Sefas\u0131",
+  ucurum_solucani: "U\xE7urum Solucan\u0131 Av\u0131",
+  karanlik_cagirici: "Karanl\u0131k \xC7a\u011F\u0131r\u0131c\u0131 K\u0131r\u0131m\u0131",
+  dip_iblisi: "Dip \u0130blisi Seferi",
+  kabus_golgesi: "Kabus G\xF6lgesi Av\u0131",
+  ucurum_efendisi: "U\xE7urum Efendisi Kovu\u015Fturmas\u0131",
+  kizil_muhafiz: "K\u0131z\u0131l Muhaf\u0131z Seferi",
+  alev_cellati: "Alev Cellad\u0131 Av\u0131",
+  kaos_iblisi: "Kaos Tap\u0131na\u011F\u0131 Seferi",
+  kiyamet_ejderha: "K\u0131yamet Av\u0131"
+};
+var MONSTER_QUESTS = MAPS.flatMap((map) => {
+  const table = TIER_QUEST_TABLE[map.tier];
+  const avgXp = map.monsters.reduce((sum, m) => sum + m.xp, 0) / map.monsters.length;
+  return map.monsters.map((m) => ({
+    id: m.id,
+    monsterId: m.id,
+    tier: map.tier,
+    requiredLevel: map.levelMin,
+    name: QUEST_NAMES[m.id] || m.name,
+    target: table.target,
+    goldReward: table.goldReward,
+    xpReward: Math.round(table.xpReward * (m.xp / avgXp) / 10) * 10
+  }));
+});
+
+// src/utils/combat.js
+init_define_import_meta_env();
+
+// src/utils/skills.js
+function classSkills(cls) {
+  return SKILLS_BY_CLASS[cls] || [];
+}
+function isKnown(player, skillId) {
+  return (player.skills?.known || []).includes(skillId);
+}
+function learnFreeSkills(player) {
+  const toLearn = classSkills(player.class).filter(
+    (s) => s.tier === "basic" && s.unlockLevel <= player.level && !isKnown(player, s.id)
+  );
+  if (toLearn.length === 0) return player;
+  return { ...player, skills: { ...player.skills, known: [...player.skills.known, ...toLearn.map((s) => s.id)] } };
+}
+
+// src/utils/dailyQuests.js
+init_define_import_meta_env();
+
+// src/data/dailySystems.js
+init_define_import_meta_env();
+var DAILY_QUEST_SLOTS = [
+  { target: 10, goldReward: 150, xpReward: 400, chest: false },
+  { target: 25, goldReward: 400, xpReward: 1e3, chest: false },
+  { target: 50, goldReward: 900, xpReward: 2200, chest: true }
+];
+
+// src/utils/dailyQuests.js
+function freshDailyQuests() {
+  return { day: todayKey(), killsToday: 0, claimed: DAILY_QUEST_SLOTS.map(() => false) };
+}
+function ensureDailyQuestsFresh(player) {
+  const dq = player.dailyQuests;
+  if (dq && dq.day === todayKey()) return player;
+  return { ...player, dailyQuests: freshDailyQuests() };
+}
+function registerDailyKill(player) {
+  const p = ensureDailyQuestsFresh(player);
+  return { ...p, dailyQuests: { ...p.dailyQuests, killsToday: p.dailyQuests.killsToday + 1 } };
+}
+
+// src/utils/weeklyQuests.js
+init_define_import_meta_env();
+
+// src/data/weeklyQuests.js
+init_define_import_meta_env();
+
+// src/utils/weeklyQuests.js
+function freshWeeklyQuests() {
+  return { weekId: currentWeekId(), kills: 0, bosses: 0, claimed: [] };
+}
+function ensureWeeklyQuestsFresh(player) {
+  return player.weeklyQuests?.weekId === currentWeekId() ? player : { ...player, weeklyQuests: freshWeeklyQuests() };
+}
+function registerWeeklyKill(player, monster) {
+  const p = ensureWeeklyQuestsFresh(player);
+  return { ...p, weeklyQuests: { ...p.weeklyQuests, kills: p.weeklyQuests.kills + 1, bosses: p.weeklyQuests.bosses + (monster.mapBoss ? 1 : 0) } };
+}
+
+// src/utils/mapBoss.js
+init_define_import_meta_env();
+
+// src/utils/mapProgress.js
+init_define_import_meta_env();
+var KILLS_TO_UNLOCK_NEXT = 20;
+function monsterKillCount(player, monsterId) {
+  return player.monsterKills?.[monsterId] || 0;
+}
+function isMonsterUnlocked(player, map, index) {
+  if (index <= 0) return true;
+  const prev = map.monsters[index - 1];
+  return monsterKillCount(player, prev.id) >= KILLS_TO_UNLOCK_NEXT;
+}
+function isMapProgressUnlocked(player, mapIndex, allMaps) {
+  if (mapIndex <= 0) return true;
+  const prevMap = allMaps[mapIndex - 1];
+  return prevMap.monsters.every((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT);
+}
+
+// src/utils/mapBoss.js
+function freshBossState() {
+  return { day: todayKey(), defeatedMapIds: [] };
+}
+function mapBossState(player) {
+  return player.mapBoss?.day === todayKey() ? player.mapBoss : freshBossState();
+}
+function mapCompletion(player, mapId, map = findMap(mapId)) {
+  const total = map.monsters.length;
+  const done3 = map.monsters.filter((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT).length;
+  return { done: done3, total, complete: done3 >= total };
+}
+function canFightMapBoss(player, mapId, map) {
+  if (mapBossState(player).defeatedMapIds.includes(mapId)) return { ok: false, reason: "defeatedToday" };
+  const completion = mapCompletion(player, mapId, map);
+  if (!completion.complete) return { ok: false, reason: "mapIncomplete", done: completion.done, total: completion.total };
+  return { ok: true };
+}
+function registerMapBossDefeat(player, mapId) {
+  const state = mapBossState(player);
+  if (state.defeatedMapIds.includes(mapId)) return player;
+  return { ...player, mapBoss: { ...state, defeatedMapIds: [...state.defeatedMapIds, mapId] } };
+}
+
+// src/utils/monsterRewards.js
+function pickDropTier(tier) {
+  return Math.random() < 0.5 ? tier : Math.max(1, tier - 1);
+}
+function grantMonsterReward(p, m, map, opts = {}) {
+  if (m.mapBoss && !canFightMapBoss(p, map.id).ok) return { player: p, drops: null, blockedReasonKey: "battle.bossDefeatedToday", tone: "warn" };
+  const rewardCfg = getMonsterRewardConfig(m, map);
+  const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p) * boostMultiplier(p, "exp") * wingMultiplier(p, "exp");
+  const dropMult = premiumDropMultiplier(p) * (opts.dropMult ?? 1) * wingMultiplier(p, "drop");
+  const goldMult = premiumGoldMultiplier(p) * boostMultiplier(p, "gold") * (opts.goldMult ?? 1);
+  let np = { ...p, inventory: [...p.inventory], chests: [...p.chests], monsterKills: { ...p.monsterKills } };
+  const killsBefore = np.monsterKills[m.id] || 0;
+  np.monsterKills[m.id] = killsBefore + 1;
+  const goldGain = Math.round(rand(rewardCfg.goldMin, rewardCfg.goldMax) * goldMult);
+  const levelPenalty = xpLevelPenaltyMultiplier(p.level, map.levelMax);
+  const xpGain = p.level >= MAX_LEVEL ? 0 : Math.round(rewardCfg.xp * expMult * levelPenalty);
+  const goldBefore = np.gold;
+  np.gold = clampGold(np.gold + goldGain);
+  const actualGoldGain = np.gold - goldBefore;
+  np.xp += xpGain;
+  let drops = [];
+  if (actualGoldGain > 0) drops.push({ type: "gold", amount: actualGoldGain });
+  if (xpGain > 0) drops.push({ type: "xp", amount: xpGain });
+  const relatedQuest = MONSTER_QUESTS.find((q) => q.monsterId === m.id);
+  if (relatedQuest && !(p.claimedQuests || []).includes(relatedQuest.id)) {
+    const current = np.monsterKills[m.id];
+    if (current >= relatedQuest.target) {
+      if (killsBefore < relatedQuest.target) {
+        drops.push({ type: "questComplete" });
+      }
+    } else {
+      drops.push({ type: "questProgress", current, target: relatedQuest.target });
+    }
+  }
+  const freshNp = ensureDailyQuestsFresh(np);
+  const dailyKillsBefore = freshNp.dailyQuests.killsToday;
+  np = registerDailyKill(freshNp);
+  np = registerWeeklyKill(np, m);
+  DAILY_QUEST_SLOTS.forEach((slot) => {
+    const wasDone = dailyKillsBefore >= slot.target;
+    const isDone = np.dailyQuests.killsToday >= slot.target;
+    if (isDone && !wasDone) {
+      drops.push({ type: "dailyQuestComplete", target: slot.target });
+    }
+  });
+  if (Math.random() < rewardCfg.dropChance * dropMult) {
+    const dropTier = pickDropTier(map.tier);
+    const item = Array.isArray(rewardCfg.loot) ? rollConfiguredLoot(rewardCfg.loot) : rollMapLoot(dropTier, map.tier);
+    if (item) {
+      const addResult = addItemToInventory(np, item);
+      np = addResult.player;
+      if (addResult.added) np.hasNewItemNotice = true;
+      drops.push(addResult.added ? { type: "itemDropped", kind: item.kind, itemName: item.name } : { type: "itemDropFailed", itemName: item.name, reason: addResult.reason });
+    }
+  }
+  if (Math.random() < rewardCfg.chestChance * dropMult) {
+    const chestTier = pickDropTier(map.tier);
+    const chest = { id: uid(), tier: chestTier };
+    np.chests.push(chest);
+    drops.push({ type: "chestDropped", tier: chestTier });
+  }
+  if (m.mapBoss) {
+    np = registerMapBossDefeat(np, map.id);
+    for (let i = 0; i < rewardCfg.guaranteedChests; i++) {
+      np.chests.push({ id: uid(), tier: rewardCfg.guaranteedChestTier });
+      drops.push({ type: "guardChest", tier: rewardCfg.guaranteedChestTier });
+    }
+  }
+  const levelBefore = p.level;
+  let leveled = false;
+  let levelsGained = 0;
+  while (np.level < MAX_LEVEL && np.xp >= xpToNext(np.level)) {
+    np.xp -= xpToNext(np.level);
+    np.level += 1;
+    np.statPoints += 3;
+    levelsGained += 1;
+    leveled = true;
+  }
+  if (np.level >= MAX_LEVEL) np.xp = 0;
+  np.hp = playerMaxHp(np);
+  np.mp = playerMaxMp(np);
+  if (leveled) {
+    drops.push({ type: "levelUpToast", level: np.level, statPoints: levelsGained * 3 });
+  }
+  np = learnFreeSkills(np);
+  const unlockedMap = leveled ? MAPS.find((m2) => m2.levelMin > levelBefore && m2.levelMin <= np.level) : null;
+  const levelUp = leveled ? { fromLevel: levelBefore, toLevel: np.level, levelsGained, statPointsGained: levelsGained * 3, unlockedMap } : null;
+  return { player: np, drops, blockedReasonKey: null, tone: leveled ? "level" : "loot", levelUp };
+}
+
+// src/utils/soloDungeon.js
+init_define_import_meta_env();
+function freshEntries() {
+  return { day: todayKey(), entriesUsed: 0, extraPurchased: 0 };
+}
+function todaysEntries(player) {
+  const sd = player.soloDungeon;
+  return sd && sd.day === todayKey() ? sd : freshEntries();
+}
+function dungeonEntriesLeft(player) {
+  const sd = todaysEntries(player);
+  return Math.max(0, SOLO_DUNGEON_DAILY_LIMIT + (sd.extraPurchased || 0) - sd.entriesUsed);
+}
+function canEnterSoloDungeon(player) {
+  if (dungeonEntriesLeft(player) <= 0) return { ok: false, reason: "Bug\xFCnk\xFC zindan giri\u015F haklar\u0131n bitti \u2014 yar\u0131n tekrar gel." };
+  return { ok: true };
+}
+function consumeDungeonEntry(player) {
+  const sd = todaysEntries(player);
+  return { ...player, soloDungeon: { ...sd, entriesUsed: sd.entriesUsed + 1 } };
+}
+
+// src/utils/potions.js
+init_define_import_meta_env();
+function bestAvailablePotionTier(player, potionType) {
+  const tiers = potionTiersFor(potionType);
+  for (let tier = 1; tier <= tiers.length; tier++) {
+    const stack = player.inventory.find((i) => i.kind === "potion" && i.potionType === potionType && i.tier === tier);
+    if (stack && stack.count > 0) return tier;
+  }
+  return null;
+}
+function usePotion(player, potionType, tier) {
+  const stack = player.inventory.find((i) => i.kind === "potion" && i.potionType === potionType && i.tier === tier);
+  if (!stack || stack.count <= 0) {
+    return { player, healed: 0, reason: "noPotionsLeft" };
+  }
+  const maxStat = potionType === "hp" ? playerMaxHp(player) : playerMaxMp(player);
+  const healAmt = potionAmount(potionType, tier);
+  const cur = potionType === "hp" ? player.hp : player.mp;
+  const next = Math.min(maxStat, cur + healAmt);
+  const healed = next - cur;
+  const inventory = stack.count - 1 <= 0 ? player.inventory.filter((i) => i.id !== stack.id) : player.inventory.map((i) => i.id === stack.id ? { ...i, count: i.count - 1 } : i);
+  return { player: { ...player, [potionType]: next, inventory }, healed };
+}
+
+// src/game/battle.js
+var MIN_FIGHT_MS = 700;
+var MAX_WEAR_PER_REPORT = 1500;
+var fail = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var staticIndex = null;
+function buildIndex() {
+  const index = /* @__PURE__ */ new Map();
+  MAPS.forEach((map) => {
+    map.monsters.forEach((monster, i) => index.set(monster.id, { monster, map, kind: "normal", index: i }));
+    const stages = buildSoloDungeonStages(map);
+    stages.forEach((stage, i) => {
+      if (stage.isBoss) {
+        index.set(stage.id, { monster: stage, map, kind: "dungeon", stage: i, risk: false });
+        return;
+      }
+      buildDungeonStageChoices(map, i).forEach((choice) => index.set(choice.risk ? choice.id : stage.id, { monster: choice, map, kind: "dungeon", stage: i, risk: !!choice.risk }));
+    });
+  });
+  return index;
+}
+function resolveMonster(monsterId) {
+  if (typeof monsterId !== "string") return null;
+  staticIndex ||= buildIndex();
+  const hit = staticIndex.get(monsterId);
+  if (hit) return hit;
+  const map = MAPS.find((m) => monsterId === `map_boss_${m.id}`);
+  return map ? { monster: buildMapBoss(map), map, kind: "boss" } : null;
+}
+var currentMap = (player) => {
+  const map = findMap(player.currentMapId);
+  return player.level >= map.levelMin ? map : null;
+};
+function checkAccess(player, target) {
+  const map = currentMap(player);
+  if (!map) return "locked";
+  if (target.map.id !== map.id) return "wrongMap";
+  if (target.kind === "normal" && !isMonsterUnlocked(player, map, target.index)) return "monsterLocked";
+  if (target.kind === "boss") {
+    const gate = canFightMapBoss(player, map.id);
+    if (!gate.ok) return gate.reason === "mapIncomplete" ? "mapIncomplete" : "defeatedToday";
+  }
+  if (target.kind === "dungeon") {
+    const run = player.dungeonRun;
+    if (!run || run.mapId !== map.id || run.stage !== target.stage) return "noDungeonRun";
+  }
+  return null;
+}
+var asCount = (value) => Number.isFinite(value) && value > 0 ? Math.min(MAX_WEAR_PER_REPORT, Math.floor(value)) : 0;
+function applyWear(player, wear) {
+  let next = player;
+  const weapon = asCount(wear?.weapon);
+  const armor = asCount(wear?.armor);
+  if (weapon) next = damageEquippedDurability(next, WEAPON_SLOTS, weapon);
+  if (armor) next = damageEquippedDurability(next, ARMOR_SLOTS, armor);
+  return next;
+}
+var clearFight = (player) => player.fight || player.dungeonRun ? { ...player, fight: null, dungeonRun: null } : player;
+var battleReducers = {
+  "battle/start"(state, { monsterId }) {
+    const target = resolveMonster(monsterId);
+    if (!target) return fail(state, "unknownMonster");
+    const denied = checkAccess(state.player, target);
+    if (denied) return fail(state, denied);
+    const player = { ...state.player, fight: { monsterId, startedAt: Date.now() }, hp: playerMaxHp(state.player), mp: playerMaxMp(state.player) };
+    return done({ ...state, player });
+  },
+  "battle/kill"(state, { monsterId, wear }) {
+    const target = resolveMonster(monsterId);
+    if (!target) return fail(state, "unknownMonster");
+    const fight = state.player.fight;
+    if (!fight || fight.monsterId !== monsterId) return fail(state, "noFight");
+    if (Date.now() - fight.startedAt < MIN_FIGHT_MS) return fail(state, "tooFast");
+    const denied = checkAccess(state.player, target);
+    if (denied) return fail(state, denied);
+    let player = applyWear({ ...state.player, fight: null }, wear);
+    const reward = grantMonsterReward(player, target.monster, target.map);
+    if (reward.blockedReasonKey) return done({ ...state, player }, { blockedReasonKey: reward.blockedReasonKey, tone: reward.tone, drops: [], levelUp: null });
+    player = reward.player;
+    let completion = null;
+    if (target.kind === "dungeon") {
+      if (target.monster.isBoss) {
+        const bonusGold = rand(target.monster.goldMin, target.monster.goldMax) * 2;
+        const gold = clampGold(player.gold + bonusGold);
+        completion = { bonusGold: gold - player.gold, chestTier: target.map.tier };
+        player = { ...player, gold, chests: [...player.chests, { id: uid(), tier: target.map.tier }], dungeonRun: null };
+      } else {
+        player = { ...player, dungeonRun: { ...player.dungeonRun, stage: target.stage + 1 } };
+      }
+    }
+    return done({ ...state, player }, { drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp, completion });
+  },
+  "battle/death"(state, { wear }) {
+    const penalty = applyDeathPenalty(clearFight(applyWear(state.player, wear)));
+    return done({ ...state, player: penalty.player }, { xpLost: penalty.xpLost });
+  },
+  "battle/retreat"(state, { wear }) {
+    return done({ ...state, player: clearFight(applyWear(state.player, wear)) });
+  },
+  // hp/mp istemcide canlı tutulur; pot hesabı istemcinin söylediği güncel değerlerle yapılır
+  // (yalnızca kendi savaş ekranındaki iyileşmeyi etkiler), tüketilen pot sunucuda düşer.
+  "battle/potion"(state, { kind, hp, mp }) {
+    if (kind !== "hp" && kind !== "mp") return fail(state, "invalidKind");
+    const tier = bestAvailablePotionTier(state.player, kind);
+    if (!tier) return fail(state, "noPotionsLeft");
+    const reported = {
+      ...state.player,
+      hp: Number.isFinite(hp) ? Math.max(0, Math.min(playerMaxHp(state.player), hp)) : state.player.hp,
+      mp: Number.isFinite(mp) ? Math.max(0, Math.min(playerMaxMp(state.player), mp)) : state.player.mp
+    };
+    const used = usePotion(reported, kind, tier);
+    if (used.reason) return fail(state, used.reason);
+    return done({ ...state, player: used.player }, { healed: used.healed, tier });
+  },
+  "map/teleport"(state, { mapId }) {
+    const idx = MAPS.findIndex((m) => m.id === mapId);
+    if (idx < 0) return fail(state, "unknownMap");
+    const target = MAPS[idx];
+    const { player } = state;
+    if (player.level < target.levelMin) return fail(state, "locked");
+    if (!isMapProgressUnlocked(player, idx, MAPS)) return fail(state, "mapProgressLocked");
+    if (target.id === player.currentMapId) return fail(state, "sameMap");
+    if (player.gold < GATE_TELEPORT_COST) return fail(state, "notEnoughGold", { cost: GATE_TELEPORT_COST });
+    return done({ ...state, player: { ...clearFight(player), gold: player.gold - GATE_TELEPORT_COST, currentMapId: target.id } }, { cost: GATE_TELEPORT_COST });
+  },
+  "battle/dungeonEntry"(state) {
+    const map = currentMap(state.player);
+    if (!map) return fail(state, "locked");
+    const check = canEnterSoloDungeon(state.player);
+    if (!check.ok) return fail(state, "entriesExhausted");
+    const player = { ...consumeDungeonEntry(state.player), fight: null, dungeonRun: { mapId: map.id, stage: 0 } };
+    return done({ ...state, player });
+  }
+};
 
 // src/utils/chests.js
 init_define_import_meta_env();
@@ -23717,70 +24365,70 @@ function openChestsSafely(player, roll) {
 }
 
 // src/game/actions.js
-var fail = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
-var done = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var fail2 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done2 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
 var strip = ({ player, bank, ...rest }) => rest;
 var findOwned = (player, itemId) => player.inventory.find((i) => i.id === itemId) || Object.values(player.equipped || {}).find((i) => i && i.id === itemId) || null;
-var reducers = {
+var inventoryReducers = {
   "inventory/equip"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail(state, "itemNotFound");
+    if (!item) return fail2(state, "itemNotFound");
     const result = equipItem(state.player, item);
-    if (result.blocked) return fail(state, "blocked", { blocked: result.blocked });
-    return done({ ...state, player: result.player });
+    if (result.blocked) return fail2(state, "blocked", { blocked: result.blocked });
+    return done2({ ...state, player: result.player });
   },
   "inventory/unequip"(state, { slot }) {
     const result = unequipItem(state.player, slot);
-    if (!result.removed) return fail(state, result.reason || "nothingToRemove", strip(result));
-    return done({ ...state, player: result.player });
+    if (!result.removed) return fail2(state, result.reason || "nothingToRemove", strip(result));
+    return done2({ ...state, player: result.player });
   },
   "inventory/sell"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail(state, "itemNotFound");
-    if (item.noTrade) return fail(state, "noTrade");
+    if (!item) return fail2(state, "itemNotFound");
+    if (item.noTrade) return fail2(state, "noTrade");
     const price = Math.round(sellPrice(item) * premiumSellMultiplier(state.player));
     const gold = Math.min(MAX_GOLD, state.player.gold + price);
-    return done({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
+    return done2({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
   },
   "inventory/sellBulk"(state, { itemIds }) {
     const wanted = new Set(Array.isArray(itemIds) ? itemIds : []);
     const sellable = state.player.inventory.filter((i) => wanted.has(i.id) && !isConsumable(i) && !i.noTrade);
-    if (sellable.length === 0) return fail(state, "noneSellable");
+    if (sellable.length === 0) return fail2(state, "noneSellable");
     const total = sellable.reduce((sum, i) => sum + Math.round(sellPrice(i) * premiumSellMultiplier(state.player)), 0);
     const sold = new Set(sellable.map((i) => i.id));
     const gold = Math.min(MAX_GOLD, state.player.gold + total);
-    return done({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
+    return done2({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
   },
   "inventory/repair"(state, { itemId }) {
     const item = findOwned(state.player, itemId);
-    if (!item) return fail(state, "itemNotFound");
+    if (!item) return fail2(state, "itemNotFound");
     const result = repairItem(state.player, item, premiumRepairDiscount(state.player), state.bank);
-    if (!result.repaired) return fail(state, result.reason || "repairFailed", strip(result));
-    return done({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
+    if (!result.repaired) return fail2(state, result.reason || "repairFailed", strip(result));
+    return done2({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
   },
   "inventory/repairAll"(state) {
     const result = repairAllEquipped(state.player, premiumRepairDiscount(state.player));
-    if (!result.repaired) return fail(state, result.reason || "nothingToRepair", strip(result));
-    return done({ ...state, player: result.player }, { cost: result.cost });
+    if (!result.repaired) return fail2(state, result.reason || "nothingToRepair", strip(result));
+    return done2({ ...state, player: result.player }, { cost: result.cost });
   },
   "inventory/depositItem"(state, { itemId, page }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail(state, "itemNotFound");
-    if (!Number.isInteger(page) || !state.bank[page]) return fail(state, "invalidPage");
+    if (!item) return fail2(state, "itemNotFound");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail2(state, "invalidPage");
     const result = depositToBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail(state, result.reason || "depositFailed", strip(result));
-    return done({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail2(state, result.reason || "depositFailed", strip(result));
+    return done2({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/withdrawItem"(state, { itemId, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail2(state, "invalidPage");
     const item = state.bank[page].find((i) => i.id === itemId);
-    if (!item) return fail(state, "itemNotFound");
+    if (!item) return fail2(state, "itemNotFound");
     const result = withdrawFromBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail(state, result.reason || "withdrawFailed", strip(result));
-    return done({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail2(state, result.reason || "withdrawFailed", strip(result));
+    return done2({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/depositBulk"(state, { itemIds, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail2(state, "invalidPage");
     let player = state.player, bank = state.bank, moved = 0;
     for (const id of Array.isArray(itemIds) ? itemIds : []) {
       const item = player.inventory.find((i) => i.id === id);
@@ -23792,43 +24440,44 @@ var reducers = {
         moved++;
       }
     }
-    return done({ ...state, player, bank }, { moved });
+    return done2({ ...state, player, bank }, { moved });
   },
   "inventory/depositGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail(state, "invalidAmount");
-    if (state.player.gold < amount) return fail(state, "notEnoughGold");
-    if (state.bankGold + amount > MAX_GOLD) return fail(state, "bankGoldCap");
-    return done({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail2(state, "invalidAmount");
+    if (state.player.gold < amount) return fail2(state, "notEnoughGold");
+    if (state.bankGold + amount > MAX_GOLD) return fail2(state, "bankGoldCap");
+    return done2({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
   },
   "inventory/withdrawGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail(state, "invalidAmount");
-    if (state.bankGold < amount) return fail(state, "notEnoughBankGold");
-    if (state.player.gold + amount > MAX_GOLD) return fail(state, "carryGoldCap");
-    return done({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail2(state, "invalidAmount");
+    if (state.bankGold < amount) return fail2(state, "notEnoughBankGold");
+    if (state.player.gold + amount > MAX_GOLD) return fail2(state, "carryGoldCap");
+    return done2({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
   },
   "inventory/openChest"(state, { chestId }) {
     const result = openChestSafely(state.player, chestId);
-    if (!result.opened) return fail(state, result.reason || "chestFailed");
-    return done({ ...state, player: result.player }, { item: result.item });
+    if (!result.opened) return fail2(state, result.reason || "chestFailed");
+    return done2({ ...state, player: result.player }, { item: result.item });
   },
   "inventory/openAllChests"(state) {
     const result = openChestsSafely(state.player);
-    if (!result.items.length) return fail(state, result.reason || "noChests");
-    return done({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
+    if (!result.items.length) return fail2(state, result.reason || "noChests");
+    return done2({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
   },
   "inventory/useBoostScroll"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId && i.kind === "boostScroll");
-    if (!item) return fail(state, "itemNotFound");
+    if (!item) return fail2(state, "itemNotFound");
     const result = useBoostScroll(state.player, item.boostId);
-    if (!result.used) return fail(state, "noScrollsLeft");
-    return done({ ...state, player: result.player });
+    if (!result.used) return fail2(state, "noScrollsLeft");
+    return done2({ ...state, player: result.player });
   }
 };
+var reducers = { ...inventoryReducers, ...battleReducers };
 var ACTION_TYPES = Object.keys(reducers);
 function applyAction(state, type, payload = {}) {
   const reducer = Object.hasOwn(reducers, type) ? reducers[type] : null;
-  if (!reducer) return fail(state, "unknownAction");
-  if (payload === null || typeof payload !== "object") return fail(state, "invalidPayload");
+  if (!reducer) return fail2(state, "unknownAction");
+  if (payload === null || typeof payload !== "object") return fail2(state, "invalidPayload");
   return reducer(state, payload);
 }
 
@@ -23845,6 +24494,7 @@ function newCharacterEconomy(cls, race, nickname) {
 export {
   ACTION_TYPES,
   applyAction,
+  applyLiveDropConfig,
   createCharacter,
   newCharacterEconomy,
   reducers

@@ -5,6 +5,7 @@ import { isConsumable } from "../utils/itemDisplay";
 import { depositToBank, withdrawFromBank } from "../utils/inventory";
 import { useBoostScroll } from "../utils/boosts";
 import { premiumSellMultiplier, premiumRepairDiscount } from "../utils/premium";
+import { battleReducers } from "./battle";
 import { openChestSafely, openChestsSafely } from "../utils/chests";
 
 // Ekonomi eylemleri (Faz 2): sunucu otoritesinin kuralları. Her eylem, oyunun zaten
@@ -22,7 +23,7 @@ const strip = ({ player, bank, ...rest }) => rest; // pure fonksiyon sonuçları
 const findOwned = (player, itemId) => player.inventory.find((i) => i.id === itemId)
   || Object.values(player.equipped || {}).find((i) => i && i.id === itemId) || null;
 
-export const reducers = {
+const inventoryReducers = {
   "inventory/equip"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
     if (!item) return fail(state, "itemNotFound");
@@ -135,6 +136,8 @@ export const reducers = {
     return done({ ...state, player: result.player });
   },
 };
+
+export const reducers = { ...inventoryReducers, ...battleReducers };
 
 export const ACTION_TYPES = Object.keys(reducers);
 

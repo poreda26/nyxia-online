@@ -227,7 +227,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   };
   const wallet = createWallet(db, { fail });
   const entitlements = createEntitlements(db, { fail });
-  const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll });
+  const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll, drops: () => admin.drops.get().data });
   const actRateLimit = makeRateLimiter(240);
   const iap = createIap(db, { fail, wallet, secret: iapWebhookSecret, allowSandbox: iapAllowSandbox });
   const admin = createAdmin(db, { read, fail, wallet });

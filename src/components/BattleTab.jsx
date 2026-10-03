@@ -4,7 +4,6 @@ import {refreshSkillBuff} from '../utils/skills';
 import {wingDexBonus} from '../data/wings';
 import MenuEmblem from './icons/MenuEmblem';
 import BattleScene, {hasBattleScene} from './BattleScene';
-import { grantMonsterReward } from "../utils/monsterRewards";
 import { useState, useEffect, useRef } from "react";
 import { Lock, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle, Gem } from "lucide-react";
 import MonsterPortrait from './MonsterPortrait';
@@ -13,10 +12,10 @@ import { isMonsterUnlocked, isMapProgressUnlocked, monsterKillCount, KILLS_TO_UN
 import { buildSoloDungeonStages, buildDungeonStageChoices, SOLO_DUNGEON_DAILY_LIMIT } from "../data/soloDungeon";
 import { buildMapBoss } from "../data/mapBosses";
 import { canFightMapBoss } from "../utils/mapBoss";
-import { rand, uid } from "../utils/random";
-import { playerMaxHp, playerMaxMp, displayClassName, damageEquippedDurability, applyDeathPenalty, armorSetDamageReduction, WEAPON_SLOTS, ARMOR_SLOTS, clampGold, formatGold } from "../utils/player";
+import { rand } from "../utils/random";
+import { playerMaxHp, playerMaxMp, displayClassName, armorSetDamageReduction, formatGold } from "../utils/player";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
-import { usePotion, bestAvailablePotionTier } from "../utils/potions";
+import { bestAvailablePotionTier } from "../utils/potions";
 import { hasAutoBattleAccess } from "../utils/premium";
 import { classSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
 import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry, buyExtraDungeonEntries, hasBoughtExtraDungeonEntryToday } from "../utils/soloDungeon";
@@ -70,7 +69,7 @@ function pickAutoSkill({ loadout, playerClass, skillCooldowns, mp, monsterHpPct,
   return damage ? damage.id : null;
 }
 
-export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast }) {
+export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast, act }) {
   const { t, tm, lang } = useTranslation();
   // data/skills.js'in `name` alanı Türkçe kalıyor (CharacterTab.jsx'in
   // t(`character.skills.${skill.id}.name`) yoluyla çevirdiği aynı veri) —
@@ -98,6 +97,17 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const [dungeonComplete, setDungeonComplete] = useState(null); // { mapName, bonusGold, chestTier } | null
   const [dungeonChoice, setDungeonChoice] = useState(null); // { nextIndex, choices }
   const logRef = useRef(null);
+  // Savaşın gelirleri sunucu kurallarıyla (act) verilir: başlangıç bildirilir, ödül/ölüm/geri çekilme
+  // sonunda o savaşta yaşanan silah/zırh aşınması tek seferde raporlanır.
+  const wearRef = useRef({ weapon: 0, armor: 0 });
+  const startRef = useRef(Promise.resolve());
+  const takeWear = () => { const w = wearRef.current; wearRef.current = { weapon: 0, armor: 0 }; return w; };
+  const actRef = useRef(act);
+  actRef.current = act;
+  useEffect(() => () => {
+    const w = wearRef.current;
+    if (w.weapon || w.armor) { wearRef.current = { weapon: 0, armor: 0 }; actRef.current("battle/retreat", { wear: w }); }
+  }, []);
 
   // Oyuncunun en son ışınlandığı harita kalıcı — güvenlik amaçlı, artık
   // seviyesinin yetmediği bir haritaya işaret ediyorsa en yüksek açık
@@ -122,13 +132,16 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     setPendingMap(targetMap);
   };
 
-  const confirmTeleport = () => {
+  const confirmTeleport = async () => {
     const targetMap = pendingMap;
     if (!targetMap) return;
-    if (player.gold < GATE_TELEPORT_COST) { pushToast(t("battle.gateNeedsGold", { cost: GATE_TELEPORT_COST }), "warn"); setPendingMap(null); return; }
-    setPlayer((p) => ({ ...p, gold: p.gold - GATE_TELEPORT_COST, currentMapId: targetMap.id }));
-    pushToast(t("battle.teleported", { map: targetMap.name, cost: GATE_TELEPORT_COST }), "default");
     setPendingMap(null);
+    const result = await act("map/teleport", { mapId: targetMap.id });
+    if (!result.ok) {
+      pushToast(result.reason === "notEnoughGold" ? t("battle.gateNeedsGold", { cost: GATE_TELEPORT_COST }) : t("battle.actionFailed"), "warn");
+      return;
+    }
+    pushToast(t("battle.teleported", { map: targetMap.name, cost: GATE_TELEPORT_COST }), "default");
   };
 
   // Günlük Solo Zindan'a giriş — mevcut haritaya göre ölçeklenen 5 aşama +
@@ -136,12 +149,13 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // giriş hakkını hemen düşer (koşu yarıda bırakılsa/kaybedilse bile hak
   // geri gelmez, "günde 3 kez girilebilir" kullanıcı isteğinin doğal
   // sonucu) ve ilk aşamayla normal startBattle akışını başlatır.
-  const enterSoloDungeon = () => {
+  const enterSoloDungeon = async () => {
     if (locked) return;
     const check = canEnterSoloDungeon(player);
     if (!check.ok) { pushToast(t("battle.dungeonEntriesExhausted"), "warn"); return; }
     const stages = buildSoloDungeonStages(map);
-    setPlayer((p) => consumeDungeonEntry(p));
+    const entry = await act("battle/dungeonEntry");
+    if (!entry.ok) { pushToast(t(entry.reason === "entriesExhausted" ? "battle.dungeonEntriesExhausted" : "battle.actionFailed"), "warn"); return; }
     setDungeonRun({ stages, index: 0 });
     startBattle(stages[0]);
   };
@@ -195,6 +209,19 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   const startBattle = (m, { preserveAutoBattle = false } = {}) => {
     if(m.mapBoss){const gate=canFightMapBoss(latestPlayer.current,map.id);if(!gate.ok){pushToast(t(gate.reason==='mapIncomplete'?'battle.bossMapIncomplete':'battle.bossDefeatedToday'), 'warn');return;}}
     attackLockRef.current = false;
+    wearRef.current = { weapon: 0, armor: 0 };
+    // Savaşı sunucuya bildir: ödül yalnızca bildirilmiş bir savaş için verilir. Reddedilirse
+    // (kilitli canavar, zindan sırası...) savaş hemen kapanır.
+    const started = act("battle/start", { monsterId: m.id });
+    startRef.current = started;
+    started.then((r) => {
+      if (r.ok || !mountedRef.current) return;
+      attackLockRef.current = false;
+      setMonster(null);
+      setBattle(null);
+      setDungeonRun(null);
+      pushToast(t("battle.actionFailed"), "warn");
+    });
     setMonster(m);
     setVisual({id:0,type:'',label:''});
     setBattle({
@@ -267,11 +294,13 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       default: return "";
     }
   };
-  const applyLoot = (m) => {
-    if (!mountedRef.current) return;
-    const result = grantMonsterReward(latestPlayer.current, m, map);
-    latestPlayer.current = result.player;
-    setPlayer(result.player);
+  // Öldürme ödülü sunucu kurallarıyla verilir (act → battle/kill). Dönen değer: ödül verildi mi.
+  const applyLoot = async (m) => {
+    await startRef.current;
+    const result = await act("battle/kill", { monsterId: m.id, wear: takeWear() });
+    if (!mountedRef.current) return result.ok;
+    if (!result.ok) { pushToast(t("battle.actionFailed"), "warn"); return false; }
+    setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
     pushToast(result.blockedReasonKey ? t(result.blockedReasonKey) : result.drops.map(formatDrop).join("  ·  "), result.tone);
     // Kullanıcı isteği: "Seviye atladığımız zaman 5 Lvl oldun! tarzında bir
     // widget açılsın... buna bir ses ekle." — toast zaten "Seviye atladın!"
@@ -280,27 +309,13 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       setLevelUpInfo(result.levelUp);
       playLevelUp();
     }
-  };
-
-  // Solo Zindan'ın boss aşaması yenildiğinde applyLoot'un normal
-  // altın/XP/drop'una EK olarak verilen tamamlama ödülü — bonus altın boss'un
-  // kendi (zaten tier'a göre ölçeklenmiş) altın aralığına göre, garanti bir
-  // sandık da haritanın loot tier'ında. Kesin zindan-özel loot tablosu henüz
-  // tasarlanmadı (bkz. data/soloDungeon.js'in üstündeki not) — bu, o
-  // tasarım gelene kadar makul bir varsayılan.
-  const grantDungeonCompletionReward = (boss) => {
-    const bonusGold = rand(boss.goldMin, boss.goldMax) * 2;
-    let toastMsg = "";
-    let actualGold = bonusGold;
-    setPlayer((p) => {
-      const chest = { id: uid(), tier: map.tier };
-      const nextGold = clampGold(p.gold + bonusGold);
-      actualGold = nextGold - p.gold;
-      toastMsg = t("battle.dungeonCompleteToast", { boss: tm(boss), gold: formatGold(actualGold), tier: tierName(lang, map.tier) });
-      return { ...p, gold: nextGold, chests: [...p.chests, chest] };
-    });
-    pushToast(toastMsg, "level");
-    setDungeonComplete({ mapName: map.name, bonusGold: actualGold, chestTier: map.tier });
+    // Solo Zindan'ın boss aşaması yenildiğinde normal ödüle EK tamamlama ödülü (bonus altın +
+    // garanti sandık) sunucuda verilir; burada yalnızca gösterilir.
+    if (result.completion) {
+      pushToast(t("battle.dungeonCompleteToast", { boss: tm(m), gold: formatGold(result.completion.bonusGold), tier: tierName(lang, result.completion.chestTier) }), "level");
+      setDungeonComplete({ mapName: map.name, bonusGold: result.completion.bonusGold, chestTier: result.completion.chestTier });
+    }
+    return true;
   };
 
   // Shared tail-end for both attack() and useSkill(): the monster's counter
@@ -319,9 +334,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
       setBattle({ ...battle, ...extra, monsterHp, log, finished: true });
       // lock stays engaged through this window so extra clicks can't
       // trigger a second loot/level-up off the same kill
-      setTimeout(() => {
-        applyLoot(wonMonster);
+      setTimeout(async () => {
+        const rewarded = await applyLoot(wonMonster);
         attackLockRef.current = false;
+        if (!rewarded && dungeonRun) { setDungeonRun(null); setMonster(null); setBattle(null); return; }
 
         // Solo Zindan koşusu sürüyorsa "Tekrar Savaş?" akışına hiç girmez —
         // bir sonraki aşamaya (ya da boss'sa tamamlama ödülüne) otomatik
@@ -331,7 +347,6 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         // aksiyonu engellediği için state ile senkron kalır.
         if (dungeonRun) {
           if (wonMonster.isBoss) {
-            grantDungeonCompletionReward(wonMonster);
             setDungeonRun(null);
             setMonster(null);
             setBattle(null);
@@ -380,10 +395,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     // Getting hit wears the armor down — same durability/repair loop as
     // the weapon uses on a landed hit (see utils/player.js's repair
     // system, the intended gold sink for this).
-    setPlayer((p) => {
-      const worn = monsterHits ? damageEquippedDurability(p, ARMOR_SLOTS, 1) : p;
-      return { ...worn, hp: Math.max(0, worn.hp - mdmg) };
-    });
+    if (monsterHits) wearRef.current.armor += 1; // aşınma savaş sonunda sunucuya raporlanır
+    setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - mdmg) }));
     setBattle({ ...battle, ...extra, monsterHp, log, finished: playerDied });
     setShake("player");
     setTimeout(() => setShake(null), 260);
@@ -396,17 +409,15 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
         // "düşük canla başlıyoruz" bug'ı). Artık applyDeathPenalty hem
         // hp/mp'yi gerçekten tam dolduruyor hem de küçük bir XP cezası
         // uyguluyor, DeathModal da bunu net bir "Öldün!" uyarısıyla gösteriyor.
-        let xpLost = 0;
-        setPlayer((p) => {
-          const result = applyDeathPenalty(p);
-          xpLost = result.xpLost;
-          return result.player;
-        });
-        setDeathInfo({ xpLost });
-        endBattle();
-        // Zindanda ölmek koşuyu bitirir — kalan aşamalar/boss ödülü kaybedilir,
-        // giriş hakkı zaten enterSoloDungeon'da harcanmıştı (geri gelmiyor).
-        if (dungeonRun) setDungeonRun(null);
+        (async () => {
+          const result = await act("battle/death", { wear: takeWear() });
+          setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
+          setDeathInfo({ xpLost: result.xpLost || 0 });
+          endBattle();
+          // Zindanda ölmek koşuyu bitirir — kalan aşamalar/boss ödülü kaybedilir,
+          // giriş hakkı zaten enterSoloDungeon'da harcanmıştı (geri gelmiyor).
+          if (dungeonRun) setDungeonRun(null);
+        })();
       }, 500);
     } else {
       // normal exchange resolved — release the lock after a short cooldown
@@ -443,7 +454,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
 
     // Every swing wears the weapon down a little — see utils/player.js's
     // repair system, the intended gold sink for this (misses don't wear it).
-    if (playerHits) setPlayer((p) => damageEquippedDurability(p, WEAPON_SLOTS, 1));
+    if (playerHits) wearRef.current.weapon += 1;
 
     setShake("monster");
     setTimeout(() => setShake(null), 260);
@@ -522,27 +533,32 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
   // 2 turluk bekleme her iki pot için de ayrı ayrı işler (bkz.
   // EMPTY_BATTLE_EFFECTS). Bu yüzden aynı anda hem can hem mana potu
   // basılamaz — her ikisi de kendi turunu harcar.
-  const handlePotion = (kind) => {
+  const handlePotion = async (kind) => {
     if (attackLockRef.current) return;
     if (!battle || battle.finished || player.hp <= 0) return;
     if ((battle.potionCooldowns[kind] || 0) > 0) { pushToast(t("battle.potionOnCooldown"), "warn"); return; }
-    const tier = bestAvailablePotionTier(player, kind);
-    if (!tier) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
-    const result = usePotion(player, kind, tier);
-    if (result.reason) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
+    if (!bestAvailablePotionTier(player, kind)) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
     attackLockRef.current = true;
+    // Tüketilen pot sunucuda düşer; can/mana istemcide canlı tutulur ve iyileşme burada uygulanır.
+    const result = await act("battle/potion", { kind, hp: player.hp, mp: player.mp });
+    if (!mountedRef.current) return;
+    if (!result.ok) {
+      attackLockRef.current = false;
+      pushToast(t(result.reason === "noPotionsLeft" ? "battle.noPotionsLeft" : "battle.actionFailed"), "warn");
+      return;
+    }
+    const healedTo = Math.min(kind === "hp" ? playerMaxHp(player) : playerMaxMp(player), player[kind] + result.healed);
+    setPlayer((p) => ({ ...p, [kind]: healedTo }));
     showAction('potion', kind === 'hp' ? t('battle.actionHpPotion') : t('battle.actionMpPotion'));
 
     const ticked = tickBattleEffects(battle);
     const potionCooldowns = { ...ticked.potionCooldowns, [kind]: POTION_COOLDOWN_TURNS };
 
     if (ticked.monsterHp <= 0) {
-      setPlayer(() => result.player);
       resolveMonsterTurn(ticked.monsterHp, ticked.log, { ...ticked, potionCooldowns });
       return;
     }
 
-    setPlayer(() => result.player);
     playPotion();
     // Can potu da bir "can çekme" aksiyonu — beceri heal'iyle aynı "+X"
     // uçan yazısı burada da görünsün (bkz. useSkill'in heal dalı). Mana
@@ -550,7 +566,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
     // 0 olur) hiç göstermiyoruz.
     if (kind === "hp" && result.healed > 0) setVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: result.healed } }));
     const log = pushLog(ticked.log, kind === "hp" ? t("battle.log.usedHpPotion", { n: result.healed }) : t("battle.log.usedMpPotion", { n: result.healed }));
-    resolveMonsterTurn(ticked.monsterHp, log, { ...ticked, potionCooldowns }, result.player.hp);
+    resolveMonsterTurn(ticked.monsterHp, log, { ...ticked, potionCooldowns }, kind === "hp" ? healedTo : player.hp);
   };
 
   const maxHp = playerMaxHp(player);
@@ -878,6 +894,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast 
             <button
               style={{ ...styles.ghostBtn, flex: 1 }}
               onClick={() => {
+                act("battle/retreat", { wear: takeWear() });
                 endBattle();
                 // Zindan koşusu sürerken elle geri çekilmek koşuyu yarıda
                 // bırakır — kalan aşamalar/boss ödülü kaybedilir, giriş hakkı

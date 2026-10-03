@@ -307,7 +307,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
 
       <ScreenPanel key={tab} screen={tab}>
         {tab === "battle" && (
-          <BattleTab player={player} setPlayer={setPlayer} cls={cls} def={def} atk={atk} pushToast={pushToast} />
+          <BattleTab player={player} setPlayer={setPlayer} cls={cls} def={def} atk={atk} pushToast={pushToast} act={act} />
         )}
         {tab === "inventory" && (
           <InventoryTab act={act} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} pushToast={pushToast} onChangeRace={onChangeRace} />

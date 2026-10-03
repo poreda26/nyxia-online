@@ -25,7 +25,7 @@ edebilmesi için açık `.js` uzantılı, bağımlılıksız dosyalar tercih edi
 | 1c | **Ödeme**: mağaza makbuzu → elmas kredisi (RevenueCat webhook'u, işlem başına bir kez, iade geri alma). Sunucu tarafı hazır; istemci SDK'sı + hesap kurulumu bekliyor | Sunucu yapıldı |
 | 2.0 | **Motor**: paylaşılan oyun mantığı paketi, `POST /api/game/act`, hesap başına sunucu ekonomisi bayrağı, istemci `act()` katmanı (bayrak kapalıyken aynı kurallar yerelde) | Yapıldı (bayrak kapalı) |
 | 2a | **Altın + envanter + depo**: kuşan/çıkar/sat/onar/depo/sandık/takviye parşömeni eylemleri | Envanter sekmesi yapıldı; dükkânlar, yükseltme, ırk/sınıf parşömeni, elmas mağazası eşyaları sırada |
-| 2b | **Yükseltme**: zarı sunucu atar, parşömen tüketimi sunucuda | Bekliyor |
+| 2b | **Yükseltme**: zarı sunucu atar, parşömen tüketimi sunucuda | Normal savaş + zindan + kapı yapıldı (battle/start, kill, death, retreat, potion, dungeonEntry, map/teleport); Savaş Alanı avı/boss ve dünya motoru sırada |
 | 2c | **Pazar**: tezgah işlemleri sunucudaki envantere bağlanır | Bekliyor |
 | 3a | **Savaş ödülleri**: canavar ödülü (XP, altın, düşen eşya) sunucuda; savaş bildirimi doğrulanır (hız, seviye, harita kuralı) | Bekliyor |
 | 3b | **İlerleme**: seviye, statlar, beceriler, görevler, başarımlar, NP | Bekliyor |
@@ -90,3 +90,16 @@ edebilmesi için açık `.js` uzantılı, bağımlılıksız dosyalar tercih edi
 Dönüştürülmeyi bekleyen ekonomi yolları: canavar / sandık / görev / koleksiyon / günlük ödülleri (kaynaklar),
 NPC dükkânı ve iksirler, yükseltme (UpgradeTab), takı yükseltme, pazar, ırk/sınıf parşömeni, elmas mağazası
 eşya teslimleri, klan bağışları, beceri öğrenme, stat sıfırlama, ölüm cezası.
+
+
+## Faz 3a: savaş gelirleri (yapıldı: normal savaş)
+
+Eylemler `src/game/battle.js`: `battle/start` (savaşı bildirir; kilitli canavar, yanlış harita, zindan sırası denetlenir),
+`battle/kill` (canavar kimlikten verilerden kurulur; ödül `grantMonsterReward` ile verilir; bildirimden en az 700 ms
+geçmeli, bir savaş bir kez öder), `battle/death`, `battle/retreat`, `battle/potion`, `map/teleport`, `battle/dungeonEntry`.
+Silah/zırh aşınması savaş sonunda tek raporla gelir (en fazla 1500 vuruş). Sunucu, her eylemden önce sahibin yayınladığı
+canlı drop kurallarını uygular.
+
+Bayrak AÇILMADAN önce kapanması gereken pin listesi (sunucu bu alanları yedekten geri çevirmeli):
+`xp, level, statPoints, monsterKills, mapBoss, soloDungeon, dungeonRun, fight, boosts, eventExpBonus, currentMapId`
+(+ görev/beceri/NP alanları 3b'de). `eventExpBonus` bugün GM komutuyla istemcide yazılıyor; sunucu komutuna taşınmalı.

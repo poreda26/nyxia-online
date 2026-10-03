@@ -121,3 +121,90 @@ test('economy actions run on the server, ignore forged client state and survive 
     db.close();
   } finally { await api.close(); }
 });
+
+test('battle income is decided by the server: fights must be started, kills are priced from data, dungeon stages run in order', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const cookie = (await call('register', { name: 'carol', password })).cookie;
+    const character = hero();
+    character.level = 30;
+    character.inventory = [...character.inventory, { id: 'pot-1', kind: 'potion', potionType: 'hp', tier: 1, count: 2, name: 'HP', weight: 0, noTrade: false }];
+    character.equipped = { ...character.equipped, mainHand: sword({ id: 'wield', currentDurability: 1000 }) };
+    const data = { characters: [character, null, null], bank: [[], []], bankGold: 0, diamonds: 0 };
+    assert.equal((await call('backup', { revision: 0, data }, cookie, 'PUT')).status, 200);
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    const act = (type, payload = {}) => call('game/act', { characterKey: 'hero', type, payload }, cookie);
+    const state = async () => (await call('backup', null, cookie)).data.data.characters[0];
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const firstMonster = 'sis_kurdu';
+
+    // No reward without a started fight, none for unknown monsters, none for another map's monsters.
+    assert.equal((await act('battle/kill', { monsterId: firstMonster })).data.result.reason, 'noFight');
+    assert.equal((await act('battle/start', { monsterId: 'made_up' })).data.result.reason, 'unknownMonster');
+    assert.equal((await act('battle/start', { monsterId: 'kul_yaratigi' })).data.result.reason, 'wrongMap');
+    assert.equal((await act('battle/start', { monsterId: 'sis_kurdu_2' })).data.result.reason, 'unknownMonster');
+
+    // A kill straight after the start is refused; after the minimum time the server pays the data-driven reward.
+    assert.equal((await act('battle/start', { monsterId: firstMonster })).data.result.ok, true);
+    assert.equal((await act('battle/kill', { monsterId: firstMonster })).data.result.reason, 'tooFast');
+    await wait(750);
+    const before = await state();
+    const kill = await act('battle/kill', { monsterId: firstMonster, wear: { weapon: 40, armor: 5000 } });
+    assert.equal(kill.data.result.ok, true);
+    assert.ok(kill.data.result.drops.some((d) => d.type === 'xp'));
+    const after = await state();
+    assert.ok(after.gold >= before.gold + 6 && after.gold <= before.gold + 200, 'gold comes from the monster table, not from the client');
+    assert.equal(after.monsterKills[firstMonster], 1);
+    assert.equal(after.equipped.mainHand.currentDurability, 960, 'reported weapon wear is applied');
+    assert.equal((await act('battle/kill', { monsterId: firstMonster })).data.result.reason, 'noFight', 'one fight pays once');
+
+    // Locked monsters and the map guardian need their progress first.
+    assert.equal((await act('battle/start', { monsterId: 'kabuklu_golem' })).data.result.reason, 'monsterLocked');
+    assert.equal((await act('battle/start', { monsterId: 'map_boss_fallow_valley' })).data.result.reason, 'mapIncomplete');
+
+    // Potions are consumed on the server; healing uses the reported hp.
+    const potionCount = async () => (await state()).inventory.filter((i) => i.kind === 'potion' && i.potionType === 'hp' && i.tier === 1).reduce((n, i) => n + i.count, 0);
+    const potionsBefore = await potionCount();
+    const potion = await act('battle/potion', { kind: 'hp', hp: 1, mp: 0 });
+    assert.equal(potion.data.result.ok, true);
+    assert.ok(potion.data.result.healed > 0);
+    assert.equal(await potionCount(), potionsBefore - 1);
+    assert.equal((await act('battle/potion', { kind: 'nonsense' })).data.result.reason, 'invalidKind');
+
+    // Solo dungeon: needs an entry first, stages come in order, the boss pays the completion reward once.
+    assert.equal((await act('battle/start', { monsterId: 'dungeon_fallow_valley_1' })).data.result.reason, 'noDungeonRun');
+    const entry = await act('battle/dungeonEntry');
+    assert.equal(entry.data.result.ok, true);
+    assert.equal((await state()).soloDungeon.entriesUsed, 1);
+    assert.equal((await act('battle/start', { monsterId: 'dungeon_fallow_valley_3' })).data.result.reason, 'noDungeonRun', 'cannot skip stages');
+    for (const id of ['dungeon_fallow_valley_1', 'dungeon_fallow_valley_2_risk', 'dungeon_fallow_valley_3', 'dungeon_fallow_valley_4', 'dungeon_fallow_valley_5']) {
+      assert.equal((await act('battle/start', { monsterId: id })).data.result.ok, true, id);
+      await wait(720);
+      assert.equal((await act('battle/kill', { monsterId: id })).data.result.ok, true, id);
+    }
+    const goldBeforeBoss = (await state()).gold;
+    const chestsBeforeBoss = (await state()).chests.length;
+    assert.equal((await act('battle/start', { monsterId: 'dungeon_fallow_valley_boss' })).data.result.ok, true);
+    await wait(720);
+    const bossKill = await act('battle/kill', { monsterId: 'dungeon_fallow_valley_boss' });
+    assert.equal(bossKill.data.result.ok, true);
+    assert.ok(bossKill.data.result.completion.bonusGold > 0);
+    assert.ok((await state()).chests.length > chestsBeforeBoss);
+    assert.ok((await state()).gold > goldBeforeBoss);
+    assert.equal((await act('battle/start', { monsterId: 'dungeon_fallow_valley_boss' })).data.result.reason, 'noDungeonRun', 'the run is over');
+    // Three entries a day, never more.
+    await act('battle/dungeonEntry');
+    await act('battle/dungeonEntry');
+    assert.equal((await act('battle/dungeonEntry')).data.result.reason, 'entriesExhausted');
+
+    // Death costs xp and clears the fight; teleport charges the gate fee and respects the level lock.
+    await act('battle/start', { monsterId: firstMonster });
+    const death = await act('battle/death', { wear: { weapon: 1, armor: 1 } });
+    assert.equal(death.data.result.ok, true);
+    assert.equal((await act('battle/kill', { monsterId: firstMonster })).data.result.reason, 'noFight');
+    assert.equal((await act('map/teleport', { mapId: 'nowhere' })).data.result.reason, 'unknownMap');
+    assert.equal((await act('map/teleport', { mapId: 'fallow_valley' })).data.result.reason, 'sameMap');
+    db.close();
+  } finally { await api.close(); }
+});
