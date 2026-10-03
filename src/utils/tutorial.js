@@ -53,7 +53,7 @@ export function upgradeHint(player, tab, weaponId, probe = {}) {
   const level = weapon?.upgradeLevel || 0;
   const weaponSel = weapon ? `[data-item-kind="weapon"][data-item-id="${weapon.id}"]` : null;
   const shopSteps = () => (probe.shopOpen
-    ? { key: "buyScroll", target: '[data-tut="buy-scroll-1"]' }
+    ? { key: "buyScroll", target: '[data-tut="scroll-card-1"]' }
     : { key: "openShop", target: '[data-tut="forge-shop"]' });
 
   if (weapon && level >= TUTORIAL_TARGET_UPGRADE) {

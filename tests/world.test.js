@@ -534,7 +534,7 @@ test('tutorial gift is given once and the weapon steps follow the player state t
   assert.equal(hint(plus2, 'upgrade').key, 'openShop');
   assert.equal(hint(plus2, 'upgrade').target, '[data-tut="forge-shop"]');
   assert.equal(hint(plus2, 'upgrade', { shopOpen: true }).key, 'buyScroll');
-  assert.equal(hint(plus2, 'upgrade', { shopOpen: true }).target, '[data-tut="buy-scroll-1"]');
+  assert.equal(hint(plus2, 'upgrade', { shopOpen: true }).target, '[data-tut="scroll-card-1"]');
   const bought = { ...plus2, inventory: [...plus2.inventory, makeScrollStack(1, 1)] };
   assert.equal(hint(bought, 'upgrade').key, 'stageAgain');
   // +3 çantada: tekrar kuşan; +3 kuşanılmış: bitti.

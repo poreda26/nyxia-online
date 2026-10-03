@@ -19,6 +19,7 @@ const PROBES = {
   unequipBtn: '[data-tut="unequip-btn"]',
   equipBtn: '[data-tut="equip-btn"]',
   shopOpen: '[data-tut="buy-scroll-1"]',
+  lockedCard: ".skill-card.is-locked",
   boxFilled: '[data-tut="scroll-box"][data-filled="1"]',
 };
 
@@ -42,7 +43,7 @@ function useScreenProbe(active) {
 // Hedef öğe(ler)in dışındaki her yeri karartır ve dokunmaya kapatır: oyuncu
 // yalnızca gösterilen yeri kullanabilir. Hedef yoksa hiçbir şey engellenmez
 // (örn. savaş sürerken ya da bölüm bitince).
-function TutorialSpotlight({ targets }) {
+function TutorialSpotlight({ targets, soft }) {
   const key = targets.join("|");
   const [rect, setRect] = useState(null);
   useEffect(() => {
@@ -59,6 +60,13 @@ function TutorialSpotlight({ targets }) {
         boxes = found.map((el) => el.getBoundingClientRect());
       }
       const pad = 6;
+      // soft: karartma ve kilit yok, yalnızca her hedefin etrafında parlak çerçeve
+      // (örn. savaşı izleyebilsin diye).
+      if (soft) {
+        const rects = boxes.map((b) => ({ top: b.top - pad, left: b.left - pad, width: b.width + 2 * pad, height: b.height + 2 * pad }));
+        setRect((r) => (r?.soft && JSON.stringify(r.rects) === JSON.stringify(rects) ? r : { soft: true, rects }));
+        return;
+      }
       const next = {
         top: Math.max(0, Math.min(...boxes.map((b) => b.top)) - pad), left: Math.max(0, Math.min(...boxes.map((b) => b.left)) - pad),
         right: Math.min(window.innerWidth, Math.max(...boxes.map((b) => b.right)) + pad), bottom: Math.min(window.innerHeight, Math.max(...boxes.map((b) => b.bottom)) + pad),
@@ -69,8 +77,9 @@ function TutorialSpotlight({ targets }) {
     const id = setInterval(measure, 120);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, soft]);
   if (!rect) return null;
+  if (rect.soft) return <>{rect.rects.map((r, i) => <div key={i} className="tut-ring" style={r} />)}</>;
   const block = (style) => <div className="tut-block" style={style} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />;
   return (
     <>
@@ -102,27 +111,47 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section]);
 
-  let hint = null; // { key, targets[], done }
+  // Beceri bölümünde "öğren" açıklaması bir kez gösterilir (Anladım ile geçilir).
+  const [learnSeen, setLearnSeen] = useState(false);
+  useEffect(() => { setLearnSeen(false); }, [section]);
+
+  let hint = null; // { key, targets[], done, soft, info }
   if (section === SECTION.skills) {
-    if (player.skills.loadout.some(Boolean)) hint = { key: "done", done: true };
+    if (learnSeen && player.skills.loadout.some(Boolean)) hint = { key: "done", done: true, targets: ['[data-tut="loadout"]'] };
     else if (tab !== "character") hint = { key: "goCharacter", targets: [NAV.character] };
     else if (!probe.skillCards) hint = { key: "openSkillsTab", targets: [".rpg-tabs button:nth-child(2)"] };
+    else if (!learnSeen) hint = { key: "learnInfo", info: true, targets: [probe.lockedCard ? ".skill-card.is-locked" : ".skill-card"] };
     else hint = { key: "addSkill", targets: [".skill-card.is-known:not(.is-equipped) .rpg-action"] };
   } else if (section === SECTION.battle) {
     if (killBaseline.current != null && totalKills(player) > killBaseline.current) hint = { key: "done", done: true };
     else if (tab !== "battle") hint = { key: "goBattle", targets: [NAV.battle] };
-    else if (probe.inFight) hint = { key: "fight", targets: [".battle-skill-dock", ".battle-action-dock"] };
+    else if (probe.inFight) hint = { key: "fight", soft: true, targets: [".battle-skill-dock", ".battle-action-dock button:first-child"] };
     else hint = { key: "pickMonster", targets: [".monster-attack:not([disabled])"] };
   } else if (section === SECTION.upgrade) {
     const h = upgradeHint(player, tab, weaponId.current, probe);
     hint = { key: h.key, done: h.done, targets: h.nav ? [NAV[h.nav]] : h.target ? [h.target] : [] };
   }
+
+  // Parşömen kutuya girince çantadaki sayısı düşer ama kutunun dolduğunu ekrandan
+  // okumak biraz geç kalır; o kısa aralıkta "Mağaza" ışığı yanıp sönmesin diye
+  // Mağaza adımı ancak yarım saniye boyunca değişmeden kalırsa gösterilir.
+  const isShopStep = hint?.key === "openShop" || hint?.key === "buyScroll";
+  const [shopSettled, setShopSettled] = useState(false);
+  const lastStable = useRef(null);
+  useEffect(() => {
+    if (!isShopStep) { setShopSettled(false); return undefined; }
+    const id = setTimeout(() => setShopSettled(true), 600);
+    return () => clearTimeout(id);
+  }, [isShopStep, hint?.key]);
+  if (isShopStep && !shopSettled && lastStable.current) hint = lastStable.current;
+  else if (hint) lastStable.current = hint;
+
   // Mağaza adımında altın yetmezse (başka yere harcandıysa) rehber takılmasın.
   const needsGold = hint?.key === "buyScroll" && player.gold < TUTORIAL_SCROLL_PRICE;
   useEffect(() => {
     if (needsGold) setPlayer((p) => (p.gold < TUTORIAL_SCROLL_PRICE ? { ...p, gold: TUTORIAL_SCROLL_PRICE } : p));
   }, [needsGold, setPlayer]);
-  const targets = hint && !hint.done ? hint.targets : [];
+  const targets = hint?.targets || [];
 
   if (section === SECTION.wrap) return <TutorialModal onFinish={onFinish} stepIndexes={WRAP_STEPS} />;
 
@@ -152,7 +181,7 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
   const text = hint.done ? t(`tutorialCoach.${name}.${doneKey}`) : t(`tutorialCoach.${name}.${hint.key}`);
   return (
     <>
-    {targets.length > 0 && <TutorialSpotlight targets={targets} />}
+    {targets.length > 0 && <TutorialSpotlight targets={targets} soft={!!hint.soft} />}
     <div className="tutorial-coach" role="status" aria-live="polite">
       <div className="tutorial-coach-head">
         <div className="tutorial-coach-portrait"><CaptainPortrait size={34} /></div>
@@ -166,8 +195,9 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
         {COACH_SECTIONS.map((s, i) => <i key={s} className={i < index ? "is-done" : i === index ? "is-current" : ""} />)}
       </div>
       <div className="tutorial-coach-actions">
-        {!hint.done && <button onClick={() => goTo(section + 1)}>{t("tutorialCoach.skipSection")}</button>}
+        {!hint.done && !hint.info && <button onClick={() => goTo(section + 1)}>{t("tutorialCoach.skipSection")}</button>}
         <button onClick={onFinish}>{t("tutorialCoach.skipAll")}</button>
+        {hint.info && <button className="is-primary" onClick={() => setLearnSeen(true)}>{t("tutorialCoach.gotIt")}</button>}
         {hint.done && <button className="is-primary" onClick={() => goTo(section + 1)}>{t("tutorialCoach.continue")}</button>}
       </div>
     </div>

@@ -7,6 +7,7 @@ export const tutorialCoachSection = {
       skipSection: "Bölümü Atla",
       skipAll: "Hepsini Atla",
       continue: "Devam",
+      gotIt: "Anladım",
       sections: { skills: "Beceriler", battle: "İlk Savaş", upgrade: "Silahı Güçlendir" },
       welcome: {
         title: "Nyxia Online'a Hoş Geldin",
@@ -17,8 +18,9 @@ export const tutorialCoachSection = {
       skills: {
         goCharacter: "Alttaki menüden Karakter sekmesine geç.",
         openSkillsTab: "Üstteki Beceriler alt sekmesine dokun.",
+        learnInfo: "Beceri kartları burada. Temel beceriler seviyenle kendiliğinden öğrenilir. Kilitli (gri) bir becerinin kartında \"Öğren\" düğmesi çıkar: seviye, altın ve Kaptan'ın görevi gerekir. Kartı incele, hazır olunca Anladım'a bas.",
         addSkill: "Parlayan \"Kutucuğa Ekle\" düğmesine bas. Beceriler savaşta bu kutucuklardan kullanılır.",
-        done: "Süper! Beceri artık savaş kutucuğunda. Savaşta o kutucuğa dokunarak kullanırsın. Kutucuk sayısı 5; mana yettikçe dilediğini ekleyebilirsin.",
+        done: "Süper! Beceri artık savaş kutucuğunda (parlayan kutular). Savaşta o kutucuğa dokunarak kullanırsın. Toplam 5 kutucuk var; dilediğin kadar ekleyebilirsin.",
       },
       battle: {
         goBattle: "Alttaki menüden Savaş sekmesine geç.",
@@ -52,6 +54,7 @@ export const tutorialCoachSection = {
       skipSection: "Skip Section",
       skipAll: "Skip All",
       continue: "Continue",
+      gotIt: "Got it",
       sections: { skills: "Skills", battle: "First Battle", upgrade: "Upgrade Your Weapon" },
       welcome: {
         title: "Welcome to Nyxia Online",
@@ -62,6 +65,7 @@ export const tutorialCoachSection = {
       skills: {
         goCharacter: "Switch to the Character tab in the bottom menu.",
         openSkillsTab: "Tap the Skills sub-tab at the top.",
+        learnInfo: "These are the skill cards. Basic skills are learned automatically as you level. A locked (grey) skill shows a \"Learn\" button: it needs the level, gold and the Captain's quest. Look at the card, then press Got it.",
         addSkill: "Press \"Add to Slot\" next to a skill. Skills are used from these slots in battle.",
         done: "Nice! The skill now sits in a battle slot. Tap that slot during a fight to use it. You have 5 slots to fill.",
       },

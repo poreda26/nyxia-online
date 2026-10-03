@@ -207,7 +207,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
           <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>
             {t("character.skills.loadoutHeader", { n: player.skills.loadout.filter(Boolean).length, max: MAX_LOADOUT_SLOTS })}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${MAX_LOADOUT_SLOTS}, 1fr)`, gap: 6, marginBottom: 16 }}>
+          <div data-tut="loadout" style={{ display: "grid", gridTemplateColumns: `repeat(${MAX_LOADOUT_SLOTS}, 1fr)`, gap: 6, marginBottom: 16 }}>
             {player.skills.loadout.map((skillId, i) => {
               const skill = skillId ? classSkills(player.class).find((s) => s.id === skillId) : null;
               return (
