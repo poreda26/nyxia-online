@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Compass, Sword, Package, Store, ShieldCheck, ArrowUpCircle, Shield, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { styles } from "../styles";
 import CaptainPortrait from "./CaptainPortrait";
+import TutorialSkipConfirm from "./TutorialSkipConfirm";
 import { useTranslation } from "../i18n/LanguageContext";
 
 // Yeni karakterler Hub'a ilk girişte bunu görür (bkz. Hub.jsx — sadece
@@ -31,6 +32,7 @@ export default function TutorialModal({ onFinish, stepIndexes }) {
   const { t } = useTranslation();
   const steps = t("tutorial.steps");
   const [step, setStep] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   // stepIndexes: rehberli tutorial'ın son bölümünde yalnızca seçili slaytlar gösterilir.
   const indexes = stepIndexes || STEP_META.map((_, i) => i);
   const isLast = step === indexes.length - 1;
@@ -38,10 +40,10 @@ export default function TutorialModal({ onFinish, stepIndexes }) {
   const Icon = current.icon;
 
   return (
-    <div style={styles.modalOverlay} onClick={onFinish}>
+    <div style={styles.modalOverlay}>
       <div style={{ ...styles.modalCard, maxWidth: 300 }} onClick={(e) => e.stopPropagation()}>
         <button
-          onClick={onFinish}
+          onClick={() => setConfirmOpen(true)}
           style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", padding: 4 }}
           title={t("tutorial.skip")}
         >
@@ -69,12 +71,6 @@ export default function TutorialModal({ onFinish, stepIndexes }) {
         </div>
 
         <div style={{ display: "flex", gap: 8, marginTop: 20, width: "100%" }}>
-          <button
-            style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", flex: 1 }}
-            onClick={onFinish}
-          >
-            {t("tutorial.skip")}
-          </button>
           {step > 0 && (
             <button
               style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}
@@ -91,6 +87,7 @@ export default function TutorialModal({ onFinish, stepIndexes }) {
           </button>
         </div>
       </div>
+      {confirmOpen && <TutorialSkipConfirm onKeepGoing={() => setConfirmOpen(false)} onSkipAll={onFinish} />}
     </div>
   );
 }

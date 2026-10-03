@@ -8,6 +8,7 @@ export const tutorialCoachSection = {
       skipAll: "Hepsini Atla",
       continue: "Devam",
       gotIt: "Anladım",
+      skipConfirm: { title: "Tutorial'ı atlamak ister misin?", text: "Atlarsan rehber kapanır. Karakter sekmesinden istediğin zaman tekrar açabilirsin.", textSection: "İstersen sadece bu bölümü atlayabilir ya da tamamını kapatabilirsin. Tekrar açmak için Karakter sekmesine bak.", keepGoing: "Devam Et", skipAll: "Tutorial'ı Atla" },
       sections: { skills: "Beceriler", battle: "İlk Savaş", upgrade: "Silahı Güçlendir" },
       welcome: {
         title: "Nyxia Online'a Hoş Geldin",
@@ -55,6 +56,7 @@ export const tutorialCoachSection = {
       skipAll: "Skip All",
       continue: "Continue",
       gotIt: "Got it",
+      skipConfirm: { title: "Do you want to skip the tutorial?", text: "If you skip, the guide closes. You can reopen it any time from the Character tab.", textSection: "You can skip just this section or close the whole guide. You can reopen it from the Character tab.", keepGoing: "Keep Going", skipAll: "Skip Tutorial" },
       sections: { skills: "Skills", battle: "First Battle", upgrade: "Upgrade Your Weapon" },
       welcome: {
         title: "Welcome to Nyxia Online",

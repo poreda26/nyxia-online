@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import "./TutorialCoach.css";
 import CaptainPortrait from "./CaptainPortrait";
 import TutorialModal from "./TutorialModal";
+import TutorialSkipConfirm from "./TutorialSkipConfirm";
+import { X } from "lucide-react";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 import { TUTORIAL_SECTIONS, TUTORIAL_GIFT_GOLD, TUTORIAL_SCROLL_PRICE, grantTutorialGift, totalKills, findTutorialWeapon, upgradeHint } from "../utils/tutorial";
@@ -98,6 +100,7 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
   const { t } = useTranslation();
   const section = Math.min(player.tutorialSection ?? 0, TUTORIAL_SECTIONS.length - 1);
   const goTo = (n) => setPlayer((p) => ({ ...p, tutorialSection: n }));
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const probe = useScreenProbe(section >= SECTION.skills && section <= SECTION.upgrade);
 
   const killBaseline = useRef(null);
@@ -161,16 +164,17 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
     return (
       <div style={styles.modalOverlay}>
         <div style={{ ...styles.modalCard, maxWidth: 320 }}>
+          <button className="tutorial-close" onClick={() => setConfirmOpen(true)} aria-label={t("tutorial.skip")} title={t("tutorial.skip")}><X size={16} /></button>
           <div className="tutorial-coach-portrait"><CaptainPortrait size={64} /></div>
           <div style={{ marginTop: 10, fontSize: 10, color: "var(--gold-text)", fontFamily: "var(--font-mono)", letterSpacing: 1, textTransform: "uppercase" }}>{t("tutorial.badge")}</div>
           <div style={{ marginTop: 8, fontFamily: "var(--font-display)", fontSize: 17, textAlign: "center" }}>{t("tutorialCoach.welcome.title")}</div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8, textAlign: "center", lineHeight: 1.6 }}>"{t("tutorialCoach.welcome.text")}"</div>
           {!giftGiven && <div style={{ fontSize: 12, color: "var(--gold-text)", marginTop: 10, textAlign: "center", lineHeight: 1.5 }}>{t("tutorialCoach.welcome.gift", { gold: TUTORIAL_GIFT_GOLD })}</div>}
           <div style={{ display: "flex", gap: 8, marginTop: 20, width: "100%" }}>
-            <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", flex: 1 }} onClick={onFinish}>{t("tutorialCoach.skipAll")}</button>
-            <button style={{ ...styles.tinyBtn, background: "#D4AF6A", flex: 1.4 }} onClick={start}>{t("tutorialCoach.welcome.start")}</button>
+            <button style={{ ...styles.tinyBtn, background: "#D4AF6A", flex: 1 }} onClick={start}>{t("tutorialCoach.welcome.start")}</button>
           </div>
         </div>
+        {confirmOpen && <TutorialSkipConfirm onKeepGoing={() => setConfirmOpen(false)} onSkipAll={onFinish} />}
       </div>
     );
   }
@@ -183,6 +187,7 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
     <>
     {targets.length > 0 && <TutorialSpotlight targets={targets} soft={!!hint.soft} />}
     <div className="tutorial-coach" role="status" aria-live="polite">
+      <button className="tutorial-close" onClick={() => setConfirmOpen(true)} aria-label={t("tutorial.skip")} title={t("tutorial.skip")}><X size={16} /></button>
       <div className="tutorial-coach-head">
         <div className="tutorial-coach-portrait"><CaptainPortrait size={34} /></div>
         <div className="tutorial-coach-title">
@@ -195,12 +200,11 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
         {COACH_SECTIONS.map((s, i) => <i key={s} className={i < index ? "is-done" : i === index ? "is-current" : ""} />)}
       </div>
       <div className="tutorial-coach-actions">
-        {!hint.done && !hint.info && <button onClick={() => goTo(section + 1)}>{t("tutorialCoach.skipSection")}</button>}
-        <button onClick={onFinish}>{t("tutorialCoach.skipAll")}</button>
         {hint.info && <button className="is-primary" onClick={() => setLearnSeen(true)}>{t("tutorialCoach.gotIt")}</button>}
         {hint.done && <button className="is-primary" onClick={() => goTo(section + 1)}>{t("tutorialCoach.continue")}</button>}
       </div>
     </div>
+    {confirmOpen && <TutorialSkipConfirm onKeepGoing={() => setConfirmOpen(false)} onSkipSection={() => { setConfirmOpen(false); goTo(section + 1); }} onSkipAll={onFinish} />}
     </>
   );
 }
