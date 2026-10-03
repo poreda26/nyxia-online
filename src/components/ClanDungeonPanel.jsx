@@ -1,12 +1,13 @@
 import {usePotion,bestAvailablePotionTier} from '../utils/potions';
 import {getActiveCharacterKey} from '../utils/api';
 import EncounterScreen from './EncounterScreen';
+import SkillIcon from './SkillIcon';
+import {classSkills} from '../utils/skills';
 import BattleScene from './BattleScene';
-import WarzoneSkills from './WarzoneSkills';
 import {prepareWarzoneAction} from '../utils/warzoneCombat';
 import './WarzoneTab.css';
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Swords, Lock, Users, ScrollText, Heart, Zap } from "lucide-react";
+import { Swords, Lock, Users, ScrollText, Heart, Zap, Sword, Plus, ArrowLeft, Castle } from "lucide-react";
 import { styles } from "../styles";
 import DungeonEncounter from './DungeonEncounter';
 import { useTranslation, formatServerError } from "../i18n/LanguageContext";
@@ -141,6 +142,11 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
   const { stage, monsterHp, completed, locked, lockedByMe, lockedByName, lockedUntil, attempts, stageIndex, totalStages } = state;
   const lockRemainingMs = lockedUntil ? Math.max(0, lockedUntil - Date.now()) : 0;
 
+  const inFight = lockedByMe && !completed;
+  const fightDisabled = defeated || busy || player.hp <= 0;
+  const bossId = stage?.isFinalBoss ? "dungeon_crimson_battlefront_boss" : stage?.isMidBoss ? "dungeon_ruined_sanctuary_boss" : undefined;
+  const fightMonster = { ...stage, visualSourceId: bossId, id: bossId || `dungeon_ashen_canyon_${stageIndex}` };
+
   const logLine = (entry) => {
     if (!entry.killed) return t("clan.dungeonLogHit", { name: entry.name, stage: entry.stageIndex, damage: fmtNum(entry.damage) });
     const isBoss = entry.stageIndex === MID_BOSS_INDEX || entry.stageIndex === FINAL_BOSS_INDEX;
@@ -163,8 +169,73 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
       </div>
 
       {entering&&<EncounterScreen title={lang==='en'?'Entering dungeon':'Zindana giriliyor'} busy onLeave={()=>{}}><p className="encounter-status">{lang==='en'?'Waiting for the server…':'Sunucudan giriş onayı bekleniyor…'}</p></EncounterScreen>}
-      {lockedByMe&&!completed&&<EncounterScreen title={stage.name} onLeave={handleLeave} busy={busy}><div className="battle-mobile"><BattleScene player={player} monster={{...stage,visualSourceId:stage.isFinalBoss?'dungeon_crimson_battlefront_boss':stage.isMidBoss?'dungeon_ruined_sanctuary_boss':undefined,id:stage.isFinalBoss?'dungeon_crimson_battlefront_boss':stage.isMidBoss?'dungeon_ruined_sanctuary_boss':`dungeon_ashen_canyon_${stageIndex}`}} battle={{monsterHp,monsterMaxHp:stage.hp}} map={{name:lang==='en'?'Clan Dungeon':'Klan Zindanı'}} visual={visual}/></div><WarzoneSkills player={player} state={effects} onUse={handleAttack} disabled={defeated||busy||player.hp<=0}/><button className="rpg-action" style={{...styles.primaryBtn,background:cls.color,width:'100%',marginTop:14}} disabled={defeated||busy||player.hp<=0} onClick={()=>handleAttack()}><Swords size={16}/>{t('clan.dungeonAttackBtn')}</button><div style={{display:'flex',gap:8,marginTop:10}}>{['hp','mp'].map(kind=><button key={kind} style={{...styles.potionBtn,flex:1}} disabled={defeated||busy||player.hp<=0||!bestAvailablePotionTier(player,kind)||(effects.potionCooldowns?.[kind]||0)>0||player[kind]>=(kind==='hp'?playerMaxHp(player):playerMaxMp(player))} onClick={()=>handleAttack('potion_'+kind)}>{kind==='hp'?<Heart size={15}/>:<Zap size={15}/>} {kind.toUpperCase()} {(effects.potionCooldowns?.[kind]||0)>0?`${effects.potionCooldowns[kind]} tur`:player.inventory.filter(i=>i.kind==='potion'&&i.potionType===kind).reduce((n,i)=>n+(i.count||0),0)}</button>)}</div><p className="encounter-status">{stageIndex} / {totalStages} · {fmtClock(lockRemainingMs)}</p></EncounterScreen>}
-      {stage&&<DungeonEncounter stage={stage} hp={monsterHp} index={stageIndex} total={totalStages} completed={completed}/>}
+      {inFight && (
+        <div className="battle-mobile" style={styles.battleArena}>
+          <BattleScene player={player} monster={fightMonster} battle={{ monsterHp, monsterMaxHp: stage.hp }} map={{ name: lang === "en" ? "Clan Dungeon" : "Klan Zindanı" }} visual={visual} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "#A34FD914", border: "1px solid #A34FD944" }}>
+            <span style={{ fontSize: 11, color: "#A34FD9", fontFamily: "var(--font-mono)", display: "flex", alignItems: "center", gap: 5 }}>
+              <Castle size={12} /> {t("battle.dungeonStage", { current: Math.min(stageIndex, totalStages), total: totalStages })}
+            </span>
+            <span style={{ fontSize: 10, color: "var(--gold-text)", fontFamily: "var(--font-mono)" }}>{stage.isBoss ? t("battle.boss") : fmtClock(lockRemainingMs)}</span>
+          </div>
+          <details className="battle-history"><summary>{t("battle.combatLog")} · {log.length ? logLine(log[0]) : (visual.label || t("battle.readyForBattle"))}</summary>
+            <div style={styles.combatLog}>{log.map((entry) => <div key={entry.id} style={styles.combatLogLine}>{logLine(entry)}</div>)}</div>
+          </details>
+
+          <div className="battle-skill-dock" aria-label={t("battle.skillsAriaLabel")} style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, marginBottom: 8 }}>
+            {player.skills.loadout.map((skillId, i) => {
+              if (!skillId) {
+                return (
+                  <div key={i} className="rpg-slot" style={{ ...styles.equipSlotCard, opacity: 0.4 }}>
+                    <Plus size={12} color="var(--text-faint)" /><span className="battle-slot-label">{t("battle.empty")}</span>
+                  </div>
+                );
+              }
+              const skill = classSkills(player.class).find((sk) => sk.id === skillId);
+              if (!skill) return null;
+              const cdLeft = effects.skillCooldowns?.[skillId] || 0;
+              const disabled = cdLeft > 0 || player.mp < skill.mpCost || fightDisabled;
+              const skillLabel = t(`character.skills.${skill.id}.name`);
+              return (
+                <button
+                  key={i}
+                  className="rpg-slot" style={{ ...styles.equipSlotCard, borderColor: `${cls.color}66`, background: `${cls.color}12`, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1 }}
+                  onClick={() => handleAttack(skillId)}
+                  disabled={disabled}
+                  title={`${skillLabel} — MP ${skill.mpCost}`}
+                >
+                  <SkillIcon skill={skill} effectType={skill.effect.type} size={22} color={cls.color} /><span className="battle-slot-label">{skillLabel}</span>
+                  <div style={{ fontSize: 7, marginTop: 2, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+                    {cdLeft > 0 ? cdLeft : `${skill.mpCost}mp`}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="battle-action-dock" style={styles.battleControls}>
+            <button style={{ ...styles.primaryBtn, flex: 1, background: cls.color, opacity: fightDisabled ? 0.5 : 1 }} onClick={() => handleAttack()} disabled={fightDisabled}>
+              <Sword size={15} /> {t("battle.attack")}
+            </button>
+            {[["hp", Heart, "#C9425A"], ["mp", Zap, "#4FC3D9"]].map(([kind, Icon, color]) => {
+              const cooldown = effects.potionCooldowns?.[kind] || 0;
+              const off = fightDisabled || cooldown > 0 || !bestAvailablePotionTier(player, kind) || player[kind] >= (kind === "hp" ? playerMaxHp(player) : playerMaxMp(player));
+              const count = player.inventory.filter((i) => i.kind === "potion" && i.potionType === kind).reduce((n, i) => n + (i.count || 0), 0);
+              return (
+                <button key={kind} style={{ ...styles.potionBtn, opacity: off ? 0.5 : 1 }} onClick={() => handleAttack("potion_" + kind)} disabled={off}>
+                  <Icon size={14} color={color} /> {cooldown > 0 ? cooldown : count}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+            <button style={{ ...styles.ghostBtn, flex: 1 }} onClick={handleLeave} disabled={busy}>
+              <ArrowLeft size={13} /> {t("battle.retreat")}
+            </button>
+          </div>
+        </div>
+      )}
+      {stage&&!inFight&&<DungeonEncounter stage={stage} hp={monsterHp} index={stageIndex} total={totalStages} completed={completed}/>}
       {completed ? (
         <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>{t("clan.dungeonCompletedToday")}</div>
       ) : locked && !lockedByMe ? (
@@ -178,9 +249,7 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
             </div>
           )}
         </div>
-      ) : lockedByMe ? (
-        <p className="encounter-status">{lang==='en'?'Battle in progress':'Karşılaşma devam ediyor'}</p>
-      ) : (
+      ) : lockedByMe ? null : (
         <>
           {attempts.entriesLeft === 0 ? (
             <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>
