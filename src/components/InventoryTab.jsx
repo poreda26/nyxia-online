@@ -296,7 +296,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
             <ItemTooltip item={equippedSelectedItem} player={player} />
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
               <button
-                className="rpg-action" style={{ ...styles.tinyBtn, background: "#C9425A", display: "flex", alignItems: "center", gap: 4 }}
+                className="rpg-action" data-tut="unequip-btn" style={{ ...styles.tinyBtn, background: "#C9425A", display: "flex", alignItems: "center", gap: 4 }}
                 onClick={() => unequip(selectedEquipSlot)}
               >
                 <ArrowUpFromLine size={11} style={{ transform: "rotate(180deg)" }} /> {t("inventory.unequipBtn")}
@@ -551,7 +551,7 @@ export default function InventoryTab({ player, setPlayer, bank, setBank, bankGol
                       <Ban size={11} /> {t("inventory.insufficientStats")}
                     </button>
                   ) : (
-                    <button className="rpg-action" style={styles.tinyBtn} onClick={() => equip(selectedItem)}>{t("inventory.equipBtn")}</button>
+                    <button className="rpg-action" data-tut="equip-btn" style={styles.tinyBtn} onClick={() => equip(selectedItem)}>{t("inventory.equipBtn")}</button>
                   )}
                   {repairAmount > 0 && (
                     <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#D4AF6A", color: "#15171E", display: "flex", alignItems: "center", gap: 4 }} onClick={() => repair(selectedItem)}>

@@ -4,7 +4,7 @@ import CaptainPortrait from "./CaptainPortrait";
 import TutorialModal from "./TutorialModal";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
-import { TUTORIAL_SECTIONS, TUTORIAL_GIFT_GOLD, grantTutorialGift, totalKills, findTutorialWeapon, upgradeHint } from "../utils/tutorial";
+import { TUTORIAL_SECTIONS, TUTORIAL_GIFT_GOLD, TUTORIAL_SCROLL_PRICE, grantTutorialGift, totalKills, findTutorialWeapon, upgradeHint } from "../utils/tutorial";
 
 const SECTION = { welcome: 0, skills: 1, battle: 2, upgrade: 3, wrap: 4 };
 const COACH_SECTIONS = ["skills", "battle", "upgrade"];
@@ -13,41 +13,74 @@ const WRAP_STEPS = [2, 3, 4, 6]; // Envanter, Pazar, Kaptan, Klan & Savaş Alan�
 const navButton = (index) => `.dock-rail .dock-button:nth-child(${index})`;
 const NAV = { battle: navButton(1), inventory: navButton(2), upgrade: navButton(4), character: navButton(10) };
 
+const PROBES = {
+  skillCards: ".skill-card",
+  inFight: ".battle-skill-dock",
+  unequipBtn: '[data-tut="unequip-btn"]',
+  equipBtn: '[data-tut="equip-btn"]',
+  shopOpen: '[data-tut="buy-scroll-1"]',
+  boxFilled: '[data-tut="scroll-box"][data-filled="1"]',
+};
+
 // Sayfadaki öğeleri periyodik olarak okur: rehber, bileşenlerin içine girmeden
-// hangi ekranda olduğumuzu anlasın (örn. savaş başladı mı, Beceriler açık mı).
+// hangi ekranda olduğumuzu anlasın (örn. savaş başladı mı, mağaza açık mı).
 function useScreenProbe(active) {
-  const [probe, setProbe] = useState({ skillCards: false, inFight: false });
+  const [probe, setProbe] = useState({});
   useEffect(() => {
     if (!active) return undefined;
     const read = () => {
-      const next = { skillCards: !!document.querySelector(".skill-card"), inFight: !!document.querySelector(".battle-skill-dock") };
-      setProbe((prev) => (prev.skillCards === next.skillCards && prev.inFight === next.inFight ? prev : next));
+      const next = Object.fromEntries(Object.entries(PROBES).map(([key, sel]) => [key, !!document.querySelector(sel)]));
+      setProbe((prev) => (Object.keys(next).every((k) => prev[k] === next[k]) ? prev : next));
     };
     read();
-    const id = setInterval(read, 400);
+    const id = setInterval(read, 300);
     return () => clearInterval(id);
   }, [active]);
   return probe;
 }
 
-// Vurgulanacak öğeye .tut-pulse sınıfı ekler (bileşenlere dokunmadan).
-function useHighlight(selector) {
+// Hedef öğe(ler)in dışındaki her yeri karartır ve dokunmaya kapatır: oyuncu
+// yalnızca gösterilen yeri kullanabilir. Hedef yoksa hiçbir şey engellenmez
+// (örn. savaş sürerken ya da bölüm bitince).
+function TutorialSpotlight({ targets }) {
+  const key = targets.join("|");
+  const [rect, setRect] = useState(null);
   useEffect(() => {
-    if (!selector) return undefined;
-    let current = null;
-    const apply = () => {
-      const target = document.querySelector(selector);
-      if (target === current) return;
-      current?.classList.remove("tut-pulse");
-      current = target;
-      current?.classList.add("tut-pulse");
-      // Alt menü yatay kayar; hedef görünür alanda değilse ortalansın.
-      current?.scrollIntoView?.({ block: "nearest", inline: "center", behavior: "auto" });
+    let scrolledFor = null;
+    const measure = () => {
+      const found = targets.map((sel) => document.querySelector(sel)).filter(Boolean);
+      if (!found.length) { setRect((r) => (r ? null : r)); return; }
+      let boxes = found.map((el) => el.getBoundingClientRect());
+      // Hedef ekran dışındaysa (yatay kayan alt menü, uzun liste) görünene kadar kaydır.
+      const hidden = boxes[0].left < 0 || boxes[0].right > window.innerWidth || boxes[0].top < 0 || boxes[0].bottom > window.innerHeight;
+      if (scrolledFor !== key || hidden) {
+        scrolledFor = key;
+        found[0].scrollIntoView?.({ block: "nearest", inline: "center", behavior: "auto" });
+        boxes = found.map((el) => el.getBoundingClientRect());
+      }
+      const pad = 6;
+      const next = {
+        top: Math.max(0, Math.min(...boxes.map((b) => b.top)) - pad), left: Math.max(0, Math.min(...boxes.map((b) => b.left)) - pad),
+        right: Math.min(window.innerWidth, Math.max(...boxes.map((b) => b.right)) + pad), bottom: Math.min(window.innerHeight, Math.max(...boxes.map((b) => b.bottom)) + pad),
+      };
+      setRect((r) => (r && r.top === next.top && r.left === next.left && r.right === next.right && r.bottom === next.bottom ? r : next));
     };
-    apply();
-    const id = setInterval(apply, 400);
-    return () => { clearInterval(id); current?.classList.remove("tut-pulse"); };
-  }, [selector]);
+    measure();
+    const id = setInterval(measure, 120);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  if (!rect) return null;
+  const block = (style) => <div className="tut-block" style={style} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} />;
+  return (
+    <>
+      {block({ top: 0, left: 0, right: 0, height: rect.top })}
+      {block({ top: rect.bottom, left: 0, right: 0, bottom: 0 })}
+      {block({ top: rect.top, left: 0, width: rect.left, height: rect.bottom - rect.top })}
+      {block({ top: rect.top, left: rect.right, right: 0, height: rect.bottom - rect.top })}
+      <div className="tut-ring" style={{ top: rect.top, left: rect.left, width: rect.right - rect.left, height: rect.bottom - rect.top }} />
+    </>
+  );
 }
 
 // Bölüm bölüm, uygulamalı tutorial. Hub'da alt menünün hemen üstünde küçük bir
@@ -69,22 +102,27 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section]);
 
-  let hint = null; // { key, nav, highlight, done }
+  let hint = null; // { key, targets[], done }
   if (section === SECTION.skills) {
     if (player.skills.loadout.some(Boolean)) hint = { key: "done", done: true };
-    else if (tab !== "character") hint = { key: "goCharacter", highlight: NAV.character };
-    else if (!probe.skillCards) hint = { key: "openSkillsTab", highlight: ".rpg-tabs button:nth-child(2)" };
-    else hint = { key: "addSkill", highlight: ".skill-card.is-known:not(.is-equipped) .rpg-action" };
+    else if (tab !== "character") hint = { key: "goCharacter", targets: [NAV.character] };
+    else if (!probe.skillCards) hint = { key: "openSkillsTab", targets: [".rpg-tabs button:nth-child(2)"] };
+    else hint = { key: "addSkill", targets: [".skill-card.is-known:not(.is-equipped) .rpg-action"] };
   } else if (section === SECTION.battle) {
     if (killBaseline.current != null && totalKills(player) > killBaseline.current) hint = { key: "done", done: true };
-    else if (tab !== "battle") hint = { key: "goBattle", highlight: NAV.battle };
-    else if (probe.inFight) hint = { key: "fight", highlight: ".battle-skill-dock button:not([disabled])" };
-    else hint = { key: "pickMonster", highlight: ".monster-attack:not([disabled])" };
+    else if (tab !== "battle") hint = { key: "goBattle", targets: [NAV.battle] };
+    else if (probe.inFight) hint = { key: "fight", targets: [".battle-skill-dock", ".battle-action-dock"] };
+    else hint = { key: "pickMonster", targets: [".monster-attack:not([disabled])"] };
   } else if (section === SECTION.upgrade) {
-    const h = upgradeHint(player, tab, weaponId.current);
-    hint = { key: h.key, done: h.done, highlight: h.nav ? NAV[h.nav] : null };
+    const h = upgradeHint(player, tab, weaponId.current, probe);
+    hint = { key: h.key, done: h.done, targets: h.nav ? [NAV[h.nav]] : h.target ? [h.target] : [] };
   }
-  useHighlight(hint?.highlight || null);
+  // Mağaza adımında altın yetmezse (başka yere harcandıysa) rehber takılmasın.
+  const needsGold = hint?.key === "buyScroll" && player.gold < TUTORIAL_SCROLL_PRICE;
+  useEffect(() => {
+    if (needsGold) setPlayer((p) => (p.gold < TUTORIAL_SCROLL_PRICE ? { ...p, gold: TUTORIAL_SCROLL_PRICE } : p));
+  }, [needsGold, setPlayer]);
+  const targets = hint && !hint.done ? hint.targets : [];
 
   if (section === SECTION.wrap) return <TutorialModal onFinish={onFinish} stepIndexes={WRAP_STEPS} />;
 
@@ -113,6 +151,8 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
   const doneKey = name === "upgrade" ? hint.key : "done";
   const text = hint.done ? t(`tutorialCoach.${name}.${doneKey}`) : t(`tutorialCoach.${name}.${hint.key}`);
   return (
+    <>
+    {targets.length > 0 && <TutorialSpotlight targets={targets} />}
     <div className="tutorial-coach" role="status" aria-live="polite">
       <div className="tutorial-coach-head">
         <div className="tutorial-coach-portrait"><CaptainPortrait size={34} /></div>
@@ -131,5 +171,6 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
         {hint.done && <button className="is-primary" onClick={() => goTo(section + 1)}>{t("tutorialCoach.continue")}</button>}
       </div>
     </div>
+    </>
   );
 }

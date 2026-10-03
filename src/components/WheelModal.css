@@ -1,8 +1,6 @@
 .wheel-panel{max-width:360px}
 .wheel-stage{position:relative;width:min(100%,300px);aspect-ratio:1;margin:14px auto 4px}
 .wheel-pointer{position:absolute;top:-6px;left:50%;width:22px;height:26px;margin-left:-11px;z-index:2;filter:drop-shadow(0 2px 4px #000a)}
-.wheel-disc{width:100%;height:100%;transform:rotate(0deg);transition:transform 4.2s cubic-bezier(.12,.67,.1,1);filter:drop-shadow(0 8px 18px #0008)}
-.wheel-disc.is-still{transition:none}
+.wheel-disc{width:100%;height:100%;transform-origin:50% 50%;filter:drop-shadow(0 8px 18px #0008)}
 .wheel-result{box-sizing:border-box;width:100%;margin-top:10px;padding:12px;border-block:1px solid #b797502b;text-align:center;font-size:11px;line-height:1.7;color:var(--text-muted,#bbb)}
 .wheel-result strong{display:block;font-size:14px;color:var(--gold-text,#d4af6a)}
-@media(prefers-reduced-motion:reduce){.wheel-disc{transition-duration:.01s}}

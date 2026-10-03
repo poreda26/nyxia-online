@@ -9,6 +9,7 @@ import { MAPS } from "../data/maps";
 import { currentWeekId } from "./week";
 import { STARTING_NATIONAL_POINT } from "./nationalPointConstants";
 import { buildStartingWeapon } from "./loot";
+import { tierName } from "../data/itemRarity";
 import {wingMultiplier,wingDefinition} from '../data/wings';
 import {rebalanceSavedWeapon} from '../data/balancedWeapons';
 import { boostMultiplier, boostFlatBonus } from "./boosts";
@@ -674,6 +675,9 @@ function translatedItemName(item, lang) {
   if(item.kind === "wings") return (lang === "en" ? wingDefinition(item.wingId)?.nameEn : wingDefinition(item.wingId)?.name) || item.name;
   if (item.kind === "potion") return potionName(item.potionType, item.tier, lang);
   if (item.kind === "boostScroll") return boostScrollName(item.boostId, lang);
+  // Parşömen adı yalnızca ekranda nadirlik adıyla gösterilir (T1 yerine Sıradan);
+  // kayıtlı eşya adına dokunulmaz.
+  if (item.kind === "scroll" && item.tier) return lang === "en" ? `${tierName("en", item.tier)} Upgrade Scroll` : `${tierName("tr", item.tier)} Yükseltme Parşömeni`;
   if (lang !== "en") return item.name;
   if (item.kind === "weapon" && WEAPON_NAME_EN[item.name]) return WEAPON_NAME_EN[item.name];
   if (item.kind === "accessory") {

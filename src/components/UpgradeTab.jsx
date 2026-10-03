@@ -262,7 +262,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
               const isMatch = !!stagedItem && !!box && box.tier === stagedItem.tier;
               return (
                 <button
-                  key={i}
+                  key={i} data-tut="scroll-box" data-filled={box ? "1" : "0"}
                   style={{
                     ...styles.forgeScrollSlot,
                     ...(box ? { borderColor: `${itemTierColor(box.tier)}88`, background: `${itemTierColor(box.tier)}1c` } : styles.bagSlotEmpty),
@@ -288,7 +288,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
 
           <div>
             <div style={styles.forgeColLabel}>{t("upgrade.shopLabel")}</div>
-            <button style={styles.forgeSmallSlot} onClick={() => setShopOpen((v) => !v)}>
+            <button data-tut="forge-shop" style={styles.forgeSmallSlot} onClick={() => setShopOpen((v) => !v)}>
               <ScrollArt item={{kind:"scroll",tier:1}} size={32}/>
             </button>
           </div>
@@ -304,7 +304,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
           {t("upgrade.tryButton")}
         </button>
         <button
-          className="rpg-action" style={{ ...styles.primaryBtn, flex: 1, background: canPress ? "#5FA8A0" : "var(--bg-panel-alt)", color: canPress ? "#0B0C10" : "var(--text-faint)" }}
+          className="rpg-action" data-tut="forge-press" style={{ ...styles.primaryBtn, flex: 1, background: canPress ? "#5FA8A0" : "var(--bg-panel-alt)", color: canPress ? "#0B0C10" : "var(--text-faint)" }}
           disabled={!canPress}
           onClick={press}
         >

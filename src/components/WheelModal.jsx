@@ -9,7 +9,8 @@ import { useTranslation } from "../i18n/LanguageContext";
 
 const SLICE_COUNT = WHEEL_SLICES.length;
 const SLICE_DEG = 360 / SLICE_COUNT;
-const SPIN_MS = 4300;
+const SPIN_MS = 4200;
+const REDUCED_SPIN_MS = 1400;
 const SIZE = 300;
 const CENTER = SIZE / 2;
 const RADIUS = 146;
@@ -48,7 +49,8 @@ export default function WheelModal({ player, setPlayer, bank, setBank, onClose, 
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [now, setNow] = useState(Date.now());
-  const stillRef = useRef(true);
+  const discRef = useRef(null);
+  const rotationRef = useRef(0);
   // setPlayer / setBank çağrıları animasyon sonrası çalışır; en güncel değeri okusun.
   const playerRef = useRef(player); playerRef.current = player;
   const bankRef = useRef(bank); bankRef.current = bank;
@@ -94,9 +96,23 @@ export default function WheelModal({ player, setPlayer, bank, setBank, onClose, 
       const index = WHEEL_SLICES.indexOf(spin.prize);
       const turns = 5 + Math.floor(Math.random() * 2);
       const jitter = (Math.random() - 0.5) * (SLICE_DEG * 0.6);
-      stillRef.current = false;
-      setRotation((r) => (Math.floor(r / 360) + turns) * 360 - index * SLICE_DEG + jitter);
-      await new Promise((resolve) => setTimeout(resolve, SPIN_MS));
+      // Dönüş Web Animations ile yapılır: "hareketi azalt" ayarı CSS geçişlerini
+      // tamamen kapatıyor (MobileUI.css), bu yüzden çark hiç dönmüyor, sonuca
+      // atlıyordu. Bu ayarda dönüş kısa ve az turlu ama yine görünür kalır.
+      const reduced = document.documentElement.dataset.motion === "reduced";
+      const from = rotationRef.current;
+      const target = (Math.floor(from / 360) + (reduced ? 1 : turns)) * 360 - index * SLICE_DEG + jitter;
+      const disc = discRef.current;
+      const duration = reduced ? REDUCED_SPIN_MS : SPIN_MS;
+      const animation = disc?.animate?.(
+        [{ transform: `rotate(${from}deg)` }, { transform: `rotate(${target}deg)` }],
+        { duration, easing: "cubic-bezier(.12,.67,.1,1)", fill: "forwards" },
+      );
+      await new Promise((resolve) => { if (animation) animation.onfinish = resolve; setTimeout(resolve, duration + 150); });
+      rotationRef.current = target;
+      if (disc) disc.style.transform = `rotate(${target}deg)`;
+      animation?.cancel();
+      setRotation(target);
       await deliver(spin.prize, spin.spunAt);
     } catch (e) {
       setError(e?.code === "WHEEL_ALREADY_SPUN" ? "alreadySpun" : "failed");
@@ -126,7 +142,7 @@ export default function WheelModal({ player, setPlayer, bank, setBank, onClose, 
 
         <div className="wheel-stage">
           <svg className="wheel-pointer" viewBox="0 0 22 26" aria-hidden="true"><path d="M11 25 1 4a12 12 0 0 1 20 0Z" fill="#e8b94f" stroke="#5c3a10" strokeWidth="1.5" /></svg>
-          <svg className={`wheel-disc ${stillRef.current ? "is-still" : ""}`} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: `rotate(${rotation}deg)` }} aria-hidden="true">
+          <svg ref={discRef} className="wheel-disc" viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: `rotate(${rotation}deg)` }} aria-hidden="true">
             <circle cx={CENTER} cy={CENTER} r={RADIUS + 3} fill="#3b2a14" stroke="#caa566" strokeWidth="3" />
             {WHEEL_SLICES.map((id, i) => {
               const Icon = ICONS[id];

@@ -503,7 +503,7 @@ test('wheel prizes land in the bag, fall back to the bank, and stay pending when
 });
 
 import { grantTutorialGift, upgradeHint, totalKills, bagScrollCount } from '../src/utils/tutorial';
-test('tutorial gift is given once and the weapon hints follow the player state to +3', () => {
+test('tutorial gift is given once and the weapon steps follow the player state to +3, forcing the shop purchase', () => {
   const base = player();
   const gold = base.gold;
   const gift = grantTutorialGift(base);
@@ -514,24 +514,46 @@ test('tutorial gift is given once and the weapon hints follow the player state t
 
   const weapon = base.equipped.mainHand;
   assert.ok(weapon && weapon.upgradeLevel === 1);
-  assert.equal(upgradeHint(gift.player, 'battle', null).key, 'goInventory');
-  assert.equal(upgradeHint(gift.player, 'inventory', null).key, 'unequip');
+  const hint = (p, tab, probe = {}) => upgradeHint(p, tab, weapon.id, probe);
+  assert.equal(hint(gift.player, 'battle').key, 'goInventory');
+  assert.equal(hint(gift.player, 'inventory').key, 'selectEquipped');
+  assert.equal(hint(gift.player, 'inventory', { unequipBtn: true }).key, 'unequip');
   const unequipped = unequipItem(gift.player, 'mainHand');
   const bagged = unequipped.player || unequipped;
-  assert.equal(upgradeHint(bagged, 'inventory', weapon.id).key, 'goUpgrade');
-  assert.equal(upgradeHint(bagged, 'upgrade', weapon.id).key, 'stage');
-  // Forge'da bekleyen silah (çantada da kuşanılmış da değil).
+  assert.equal(hint(bagged, 'inventory').key, 'goUpgrade');
+  const stage = hint(bagged, 'upgrade');
+  assert.equal(stage.key, 'stage');
+  assert.ok(stage.target.includes(weapon.id));
+  // Forge'da bekleyen silah: önce parşömeni koy, sonra Bas.
   const staged = { ...bagged, inventory: bagged.inventory.filter((i) => i.id !== weapon.id) };
-  assert.equal(upgradeHint(staged, 'upgrade', weapon.id).key, 'scrollPress');
-  assert.equal(upgradeHint({ ...staged, inventory: staged.inventory.filter((i) => i.kind !== 'scroll') }, 'upgrade', weapon.id).key, 'buyScroll');
-  // +2: bir kez daha; +3 çantada: tekrar kuşan; +3 kuşanılmış: bitti.
-  const plus2 = { ...bagged, inventory: bagged.inventory.map((i) => (i.id === weapon.id ? { ...i, upgradeLevel: 2 } : i)) };
-  assert.equal(upgradeHint(plus2, 'upgrade', weapon.id).key, 'stageAgain');
+  assert.equal(hint(staged, 'upgrade').key, 'putScroll');
+  assert.equal(hint(staged, 'upgrade', { boxFilled: true }).key, 'press');
+  // +2 ve parşömen kalmadı: Mağaza'ya tıklamaya ve satın almaya zorla.
+  const noScrolls = (p) => ({ ...p, inventory: p.inventory.filter((i) => i.kind !== 'scroll') });
+  const plus2 = noScrolls({ ...bagged, inventory: bagged.inventory.map((i) => (i.id === weapon.id ? { ...i, upgradeLevel: 2 } : i)) });
+  assert.equal(hint(plus2, 'upgrade').key, 'openShop');
+  assert.equal(hint(plus2, 'upgrade').target, '[data-tut="forge-shop"]');
+  assert.equal(hint(plus2, 'upgrade', { shopOpen: true }).key, 'buyScroll');
+  assert.equal(hint(plus2, 'upgrade', { shopOpen: true }).target, '[data-tut="buy-scroll-1"]');
+  const bought = { ...plus2, inventory: [...plus2.inventory, makeScrollStack(1, 1)] };
+  assert.equal(hint(bought, 'upgrade').key, 'stageAgain');
+  // +3 çantada: tekrar kuşan; +3 kuşanılmış: bitti.
   const plus3 = { ...bagged, inventory: bagged.inventory.map((i) => (i.id === weapon.id ? { ...i, upgradeLevel: 3 } : i)) };
-  assert.equal(upgradeHint(plus3, 'upgrade', weapon.id).key, 'goInventoryEquip');
-  assert.equal(upgradeHint(plus3, 'inventory', weapon.id).key, 'equipBack');
+  assert.equal(hint(plus3, 'upgrade').key, 'goInventoryEquip');
+  assert.equal(hint(plus3, 'inventory').key, 'selectToEquip');
+  assert.equal(hint(plus3, 'inventory', { equipBtn: true }).key, 'equipBack');
   const done = { ...base, equipped: { ...base.equipped, mainHand: { ...weapon, upgradeLevel: 3 } } };
-  const finished = upgradeHint(done, 'inventory', weapon.id);
+  const finished = hint(done, 'inventory');
   assert.equal(finished.key, 'finished');
   assert.ok(finished.done);
+});
+
+import { weaponIconArt } from '../src/data/starterWeaponArt';
+import { displayItemName } from '../src/utils/player';
+import { makeScrollStack } from '../src/utils/inventory';
+test('starter Bow uses the same generated art as the Rogue pose, and scrolls show rarity names', () => {
+  assert.deepEqual(weaponIconArt('Bow'), weaponIconArt('Avcı Yayı'));
+  assert.ok(weaponIconArt('Short Blade') && weaponIconArt('Wood Staff'));
+  assert.equal(displayItemName(makeScrollStack(1, 1), 'tr'), 'Sıradan Yükseltme Parşömeni');
+  assert.equal(displayItemName(makeScrollStack(2, 1), 'en'), 'Uncommon Upgrade Scroll');
 });

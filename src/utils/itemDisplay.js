@@ -1,6 +1,7 @@
 import { SLOTS } from "../data/armor";
 import { WEAPON_TYPE_LABEL } from "../data/warriorWeapons";
 import { STAT_LABELS } from "../data/stats";
+import { tierName } from "../data/itemRarity";
 
 export const ACCESSORY_SLOT_LABEL = { necklace: "Kolye", belt: "Kemer", ring: "Yüzük", earring: "Küpe" };
 
@@ -27,7 +28,7 @@ export function itemSubLabel(item, lang = "tr") {
   }
   if (item.kind === "potion") return lang === "en" ? `${item.potionType === "hp" ? "Health" : "Mana"} · T${item.tier}` : `${item.potionType === "hp" ? "Can" : "Mana"} · T${item.tier}`;
   if (item.kind === "accessoryScroll") return lang === "en" ? "Accessory upgrade" : "Takı yükseltme";
-  if (item.kind === "scroll") return lang === "en" ? `T${item.tier} Scroll` : `T${item.tier} Parşömen`;
+  if (item.kind === "scroll") return lang === "en" ? `${tierName("en", item.tier)} Scroll` : `${tierName("tr", item.tier)} Parşömen`;
   if (item.kind === "raceScroll") return lang === "en" ? "Race Change" : "Irk Değiştirme";
   if (item.kind === "jobScroll") return lang === "en" ? "Class Change" : "Sınıf Değiştirme";
   if (item.kind === "bonusScroll") return lang === "en" ? "Upgrade Bonus" : "Yükseltme Bonusu";

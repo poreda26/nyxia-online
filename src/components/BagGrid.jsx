@@ -69,6 +69,7 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
           return (
             <button className="rpg-slot"
               key={item ? item.id : `empty-${i}`}
+              data-item-kind={item?.kind} data-item-id={item?.id}
               onPointerDown={() => { if (item) { setDragIndex(i); dragMovedRef.current = false; } }}
               onPointerEnter={() => {
                 if (dragIndex !== null && dragIndex !== i) {

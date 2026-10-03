@@ -2,7 +2,7 @@
 export const STARTER_WEAPON_ART = Object.freeze({
  'Paslı Kılıç':0,'Short Blade':0,'Demir Balta':1,'Tahta Asa':2,'Wood Staff':2,
  'Çırak Asası':3,'Demir Uçlu Asa':4,'İpek Sarılı Asa':5,
- 'Kızıl Rün Asası':6,'Kabuk Dokuma Asa':7,'Avcı Yayı':8,
+ 'Kızıl Rün Asası':6,'Kabuk Dokuma Asa':7,'Avcı Yayı':8,'Bow':8,
 });
 const classicSheets={
  'classic-a':['Gökdev Baltası','Kara Diken','Yılan Ucu','Yırtıcı Pençe','Ayaz Balta','Buzul Kıran','Ateş Dili','Serap','Fırtına Ustası'],

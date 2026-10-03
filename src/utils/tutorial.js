@@ -40,23 +40,39 @@ export const bagScrollCount = (player, tier = 1) => player.inventory
   .filter((it) => it.kind === "scroll" && it.tier === tier)
   .reduce((sum, it) => sum + (it.count || 1), 0);
 
-// Yükseltme bölümü için ipucu anahtarı — yalnızca oyuncu durumu ve açık sekmeden
-// türetilir, bu yüzden uygulama yeniden açılsa bile doğru adımı gösterir.
-// Dönen { key, nav, done }: nav = alt menüde vurgulanacak sekme.
-export function upgradeHint(player, tab, weaponId) {
+export const TUTORIAL_SCROLL_PRICE = 100;
+
+// Yükseltme bölümü için adım — yalnızca oyuncu durumundan, açık sekmeden ve
+// ekrandaki öğelerden (probe) türetilir, bu yüzden uygulama yeniden açılsa da
+// doğru adımı gösterir. Dönen { key, nav, target, done }:
+// nav = alt menüde dokunulacak sekme, target = dokunulacak öğenin seçicisi
+// (rehber o öğe dışındaki her yeri karartıp kilitler).
+export function upgradeHint(player, tab, weaponId, probe = {}) {
   const { weapon, where } = findTutorialWeapon(player, weaponId);
   if (where === "none") return { key: "noWeapon", done: true };
   const level = weapon?.upgradeLevel || 0;
+  const weaponSel = weapon ? `[data-item-kind="weapon"][data-item-id="${weapon.id}"]` : null;
+  const shopSteps = () => (probe.shopOpen
+    ? { key: "buyScroll", target: '[data-tut="buy-scroll-1"]' }
+    : { key: "openShop", target: '[data-tut="forge-shop"]' });
+
   if (weapon && level >= TUTORIAL_TARGET_UPGRADE) {
     if (where === "equipped") return { key: "finished", done: true };
-    return tab === "inventory" ? { key: "equipBack" } : { key: "goInventoryEquip", nav: "inventory" };
+    if (tab !== "inventory") return { key: "goInventoryEquip", nav: "inventory" };
+    return probe.equipBtn ? { key: "equipBack", target: '[data-tut="equip-btn"]' } : { key: "selectToEquip", target: weaponSel };
   }
-  if (where === "equipped") return tab === "inventory" ? { key: "unequip" } : { key: "goInventory", nav: "inventory" };
-  if (where === "bag") {
-    if (tab !== "upgrade") return { key: "goUpgrade", nav: "upgrade" };
-    return level > 1 ? { key: "stageAgain" } : { key: "stage" };
+  if (where === "equipped") {
+    if (tab !== "inventory") return { key: "goInventory", nav: "inventory" };
+    return probe.unequipBtn ? { key: "unequip", target: '[data-tut="unequip-btn"]' } : { key: "selectEquipped", target: '.equipment-layout [data-slot="mainHand"]' };
   }
-  // Forge'da bekliyor.
   if (tab !== "upgrade") return { key: "goUpgrade", nav: "upgrade" };
-  return bagScrollCount(player, 1) > 0 ? { key: "scrollPress" } : { key: "buyScroll" };
+  const noScroll = bagScrollCount(player, 1) === 0 && !probe.boxFilled;
+  if (where === "bag") {
+    if (noScroll) return { ...shopSteps(), key: probe.shopOpen ? "buyScroll" : "openShop" };
+    return { key: level > 1 ? "stageAgain" : "stage", target: weaponSel };
+  }
+  // Silah forge'da bekliyor.
+  if (probe.boxFilled) return { key: "press", target: '[data-tut="forge-press"]' };
+  if (noScroll) return shopSteps();
+  return { key: "putScroll", target: '[data-item-kind="scroll"]' };
 }

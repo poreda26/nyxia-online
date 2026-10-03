@@ -43,7 +43,7 @@ export default function ScrollShop({ player, setPlayer, pushToast }) {
           <div key={tierId} style={{ ...styles.scrollBuyCard, borderColor: `${itemTierColor(tierId)}55` }}>
             <ScrollArt item={{kind:"scroll",tier:tierId}} size={40}/>
             <div style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: itemTierColor(tierId), marginTop: 3 }}>{tierName(lang, tierId)}</div>
-            <button style={{ ...styles.tinyBtn, ...styles.scrollBuyBtn, background: "#D4AF6A", color: "#15171E" }} onClick={() => buyScroll(tierId)}>
+            <button data-tut={`buy-scroll-${tierId}`} style={{ ...styles.tinyBtn, ...styles.scrollBuyBtn, background: "#D4AF6A", color: "#15171E" }} onClick={() => buyScroll(tierId)}>
               {formatGold(scrollPrice(tierId))}g
             </button>
           </div>
