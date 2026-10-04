@@ -6,7 +6,7 @@ import TutorialSkipConfirm from "./TutorialSkipConfirm";
 import { X } from "lucide-react";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
-import { TUTORIAL_SECTIONS, TUTORIAL_GIFT_GOLD, TUTORIAL_SCROLL_PRICE, grantTutorialGift, totalKills, findTutorialWeapon, upgradeHint } from "../utils/tutorial";
+import { TUTORIAL_SECTIONS, TUTORIAL_GIFT_GOLD, TUTORIAL_SCROLL_PRICE, totalKills, findTutorialWeapon, upgradeHint } from "../utils/tutorial";
 
 const SECTION = { welcome: 0, skills: 1, battle: 2, upgrade: 3, wrap: 4 };
 const COACH_SECTIONS = ["skills", "battle", "upgrade"];
@@ -96,7 +96,7 @@ function TutorialSpotlight({ targets, soft, raised }) {
 
 // Bölüm bölüm, uygulamalı tutorial. Hub'da alt menünün hemen üstünde küçük bir
 // Kaptan kartı olarak durur (içeriği kapatmaz); her bölüm tek tek atlanabilir.
-export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
+export default function TutorialCoach({ player, setPlayer, act, tab, onFinish }) {
   const { t } = useTranslation();
   const section = Math.min(player.tutorialSection ?? 0, TUTORIAL_SECTIONS.length - 1);
   const goTo = (n) => setPlayer((p) => ({ ...p, tutorialSection: n }));
@@ -109,7 +109,7 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
     killBaseline.current = section === SECTION.battle ? totalKills(player) : null;
     if (section === SECTION.upgrade) {
       weaponId.current = findTutorialWeapon(player, null).weapon?.id ?? null;
-      setPlayer((p) => grantTutorialGift(p).player);
+      act("tutorial/gift");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section]);
@@ -162,8 +162,8 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
   // Mağaza adımında altın yetmezse (başka yere harcandıysa) rehber takılmasın.
   const needsGold = hint?.key === "buyScroll" && player.gold < TUTORIAL_SCROLL_PRICE;
   useEffect(() => {
-    if (needsGold) setPlayer((p) => (p.gold < TUTORIAL_SCROLL_PRICE ? { ...p, gold: TUTORIAL_SCROLL_PRICE } : p));
-  }, [needsGold, setPlayer]);
+    if (needsGold) act("tutorial/topUp");
+  }, [needsGold]); // eslint-disable-line react-hooks/exhaustive-deps
   const targets = hint?.targets || [];
   // Çıkar / Kuşan düğmeleri tam ekran bir alt panelin (z-index 60) içinde: rehber
   // kartı ve parlak çerçeve panelin üstünde görünsün.
@@ -173,7 +173,7 @@ export default function TutorialCoach({ player, setPlayer, tab, onFinish }) {
 
   if (section === SECTION.welcome) {
     const giftGiven = !!player.tutorialGift;
-    const start = () => { setPlayer((p) => ({ ...grantTutorialGift(p).player, tutorialSection: SECTION.skills })); };
+    const start = async () => { await act("tutorial/gift"); setPlayer((p) => ({ ...p, tutorialSection: SECTION.skills })); };
     return (
       <div style={styles.modalOverlay}>
         <div style={{ ...styles.modalCard, maxWidth: 320 }}>

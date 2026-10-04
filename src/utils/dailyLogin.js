@@ -1,4 +1,4 @@
-import { todayKey } from "./day";
+import { todayKey, yesterdayKey } from "./day";
 import { DAILY_LOGIN_REWARDS } from "../data/dailySystems";
 import { highestUnlockedMap } from "../data/maps";
 import { addItemToInventory, makeScrollStack, makeBonusScrollStack } from "./inventory";
@@ -11,10 +11,6 @@ import { uid } from "./random";
 // zinciri. Ödül DAILY_LOGIN_REWARDS'ın 7 günlük döngüsünden gelir (streak
 // 8. günde tekrar 1. güne sarar), streak sayacının kendisi hiç sıfırlanmaz
 // (sadece hangi ödülün gösterileceğini belirler).
-function yesterdayKey() {
-  return new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
-}
-
 function freshLogin() {
   return { streak: 0, lastClaimDay: null };
 }

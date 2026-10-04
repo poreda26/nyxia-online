@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Skull, Users, ChevronDown, X } from "lucide-react";
 import { SCHEDULED_EVENTS } from "../data/scheduledEvents";
 import { SCHEDULED_EVENT_ICONS } from "../data/scheduledEventIcons";
@@ -26,7 +26,7 @@ function fmtCountdown(ms) {
 // açılmadan (Lv.50) anlamsız olduğu için daha düşük seviyede hiç gösterilmiyor.
 // Etkinlik tick'lerini XP'ye çevirme işi de (uygulama arka plandan dönse bile
 // kaçan tick'leri telafi eder) buradan yürütülüyor.
-export default function EventStrip({ player, setPlayer, pushToast, onOpenWarzone }) {
+export default function EventStrip({ player, act, pushToast, onOpenWarzone }) {
   const { t, tm } = useTranslation();
   const [now, setNow] = useState(Date.now());
   const [openId, setOpenId] = useState(null);
@@ -40,17 +40,24 @@ export default function EventStrip({ player, setPlayer, pushToast, onOpenWarzone
 
   const eventName = (event) => t(`scheduledEvent.eventName.${event.id}`);
 
+  // Tick'ler sunucu kurallarıyla XP'ye çevrilir (event/credit); burada yalnızca "bir şey var mı"
+  // diye yerelde bakılır, aynı etkinlik için yarım kalmış istek varken ikincisi gönderilmez.
+  const crediting = useRef(new Set());
   useEffect(() => {
     for (const event of SCHEDULED_EVENTS) {
-      const result = creditScheduledEventTicks(player, event, now);
-      if (!result) continue;
-      setPlayer(result.player);
-      pushToast(
-        result.levelsGained > 0
-          ? t("scheduledEvent.tickXpLeveledUp", { event: eventName(event), xp: result.xpGain, level: result.player.level })
-          : t("scheduledEvent.tickXp", { event: eventName(event), xp: result.xpGain }),
-        result.levelsGained > 0 ? "level" : "loot"
-      );
+      if (crediting.current.has(event.id)) continue;
+      if (!creditScheduledEventTicks(player, event, now)) continue;
+      crediting.current.add(event.id);
+      act("event/credit", { eventId: event.id }).then((result) => {
+        crediting.current.delete(event.id);
+        if (!result.ok || !result.credited) return;
+        pushToast(
+          result.levelsGained > 0
+            ? t("scheduledEvent.tickXpLeveledUp", { event: eventName(event), xp: result.xpGain, level: result.nextPlayer.level })
+            : t("scheduledEvent.tickXp", { event: eventName(event), xp: result.xpGain }),
+          result.levelsGained > 0 ? "level" : "loot"
+        );
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now]);
@@ -147,7 +154,7 @@ export default function EventStrip({ player, setPlayer, pushToast, onOpenWarzone
       )}
 
       {openEvent && (
-        <ScheduledEventModal event={openEvent} player={player} setPlayer={setPlayer} pushToast={pushToast} now={now} onClose={() => setOpenId(null)} />
+        <ScheduledEventModal event={openEvent} player={player} act={act} pushToast={pushToast} now={now} onClose={() => setOpenId(null)} />
       )}
     </>
   );

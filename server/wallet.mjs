@@ -95,7 +95,7 @@ export function createWallet(db, { fail }) {
   };
 
   // Günlük giriş: hak (gün başına bir kez, karakter başına) ve elmas kısmı sunucuda.
-  const dailyLogin = (id, characterKey, now = Date.now()) => atomic(() => {
+  const dailyLoginInTransaction = (id, characterKey, now = Date.now()) => {
     const today = dayKey(now);
     const claim = db.prepare('SELECT last_day,streak FROM daily_login_claims WHERE account=? AND character_key=?').get(id, characterKey);
     if (claim?.last_day === today) throw fail(409, 'DAILY_ALREADY_CLAIMED');
@@ -105,7 +105,8 @@ export function createWallet(db, { fail }) {
     db.prepare('INSERT INTO daily_login_claims(account,character_key,last_day,streak) VALUES(?,?,?,?) ON CONFLICT(account,character_key) DO UPDATE SET last_day=excluded.last_day, streak=excluded.streak').run(id, characterKey, today, streak);
     const total = diamonds > 0 ? move(id, diamonds, 'daily-login', `${characterKey}:${today}`, now) : ensure(id, now);
     return { streak, cycleIndex, diamondsAwarded: diamonds, diamonds: total };
-  });
+  };
+  const dailyLogin = (id, characterKey, now = Date.now()) => atomic(() => dailyLoginInTransaction(id, characterKey, now));
 
   // Haftalık sıralama ödülü: sıra istemcide hesaplanıyor (Savaş Alanı puanı henüz
   // sunucuda değil, Faz 3), bu yüzden en azından hafta başına TEK talep ve üst sınır
@@ -130,5 +131,5 @@ export function createWallet(db, { fail }) {
     return data;
   };
 
-  return { balance, spend, spendInTransaction, debitInTransaction, creditInTransaction, setBalanceInTransaction, credit, dailyLogin, weeklyRank, clampBackup, atomic };
+  return { balance, spend, spendInTransaction, debitInTransaction, creditInTransaction, setBalanceInTransaction, credit, dailyLogin, dailyLoginInTransaction, weeklyRank, clampBackup, atomic };
 }

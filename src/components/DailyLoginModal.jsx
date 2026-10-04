@@ -5,7 +5,8 @@ import { Coins, Gem, ScrollText, Gift, X, CheckCircle2 } from "lucide-react";
 import RewardChest from './icons/RewardChest';
 import './RewardPanels.css';
 import { DAILY_LOGIN_REWARDS } from "../data/dailySystems";
-import { previewDailyLoginReward, claimDailyLogin, canClaimDailyLogin } from "../utils/dailyLogin";
+import { previewDailyLoginReward, canClaimDailyLogin } from "../utils/dailyLogin";
+import { todayKey } from "../utils/day";
 import { formatGold } from "../utils/player";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
@@ -23,7 +24,7 @@ function RewardLine({ reward, t }) {
 // Kullanıcı isteği: her gün geri gelmek için somut bir sebep. Hub açılınca
 // (ya da TopBar'daki hediye ikonundan istenildiğinde) açılır — bkz.
 // utils/dailyLogin.js. 7 günlük döngü, gün atlanırsa streak 1'e döner.
-export default function DailyLoginModal({ player, setPlayer, onClose, pushToast }) {
+export default function DailyLoginModal({ player, setPlayer, act, onClose, pushToast }) {
   const { t } = useTranslation();
   const [claimedReward, setClaimedReward] = useState(() => canClaimDailyLogin(player) ? null : previewDailyLoginReward(player).reward);
   const { streak, reward } = previewDailyLoginReward(player);
@@ -33,22 +34,29 @@ export default function DailyLoginModal({ player, setPlayer, onClose, pushToast 
   const handleClaim = async () => {
     if (claiming) return;
     setClaiming(true);
+    // Sunucu ekonomisinde seri/elması eylem sunucuda kendisi alır; eski yolda uçtan alınıp eyleme verilir.
     let server;
     try {
-      server = await claimDailyLoginServer(getActiveCharacterKey());
+      if (!act.isServer()) server = await claimDailyLoginServer(getActiveCharacterKey());
     } catch (error) {
       setClaiming(false);
       if (error?.code === "DAILY_ALREADY_CLAIMED") {
         // Sunucuya göre bugünkü ödül zaten alınmış: yerel durumu da "alındı" yap.
-        setPlayer((p) => ({ ...p, dailyLogin: { streak: p.dailyLogin?.streak || 1, lastClaimDay: new Date().toDateString() } }));
+        setPlayer((p) => ({ ...p, dailyLogin: { streak: p.dailyLogin?.streak || 1, lastClaimDay: todayKey() } }));
         pushToast(t("dailyLogin.alreadyClaimed"), "warn"); onClose(); return;
       }
       pushToast(t("wallet.unavailable"), "warn"); return;
     }
+    const result = await act("dailyLogin/claim", { server });
     setClaiming(false);
-    const result = claimDailyLogin(player, server);
-    if (!result.claimed) { pushToast(t("dailyLogin.alreadyClaimed"), "warn"); onClose(); return; }
-    setPlayer(result.player);
+    if (!result.ok) {
+      if (result.code === "DAILY_ALREADY_CLAIMED") {
+        setPlayer((p) => ({ ...p, dailyLogin: { streak: p.dailyLogin?.streak || 1, lastClaimDay: todayKey() } }));
+        pushToast(t("dailyLogin.alreadyClaimed"), "warn"); onClose(); return;
+      }
+      if (result.reason === "network") { pushToast(t("wallet.unavailable"), "warn"); return; }
+      pushToast(t("dailyLogin.alreadyClaimed"), "warn"); onClose(); return;
+    }
     setClaimedReward(result.reward);
   };
 

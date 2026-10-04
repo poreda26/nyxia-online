@@ -13,7 +13,7 @@ const changedKeys = (before, after) => {
 };
 
 export function createActor({ getState, setPlayer, setBank, setBankGold, isServer, onRevision }) {
-  return async function act(type, payload = {}) {
+  const act = async function act(type, payload = {}) {
     const before = getState();
     if (!isServer()) {
       const { state, result } = applyAction(before, type, payload);
@@ -37,4 +37,8 @@ export function createActor({ getState, setPlayer, setBank, setBankGold, isServe
       return { ok: false, reason: "network", code: error?.code };
     }
   };
+  // Bazı eylemlerde (günlük giriş, çark) sunucu yolunda veriyi sunucu kendisi bulur; yerel yolda
+  // bileşen eski uçlardan alıp eyleme verir. Hangi yolda olduğunu bu işlev söyler.
+  act.isServer = isServer;
+  return act;
 }

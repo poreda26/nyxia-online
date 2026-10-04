@@ -4,16 +4,16 @@ import MonsterPortrait from './MonsterPortrait';
 import { useState } from "react";
 import { Gift, Crown, Skull, Flag, CalendarCheck, BookOpen, Trophy } from "lucide-react";
 import { MONSTER_QUESTS, AWAKENING_QUEST } from "../data/quests";
-import { questProgress, isQuestClaimed, claimQuest, awakeningProgress, claimAwakening } from "../utils/quests";
-import { dailyQuestProgress, claimDailyQuest } from "../utils/dailyQuests";
+import { questProgress, isQuestClaimed, awakeningProgress } from "../utils/quests";
+import { dailyQuestProgress } from "../utils/dailyQuests";
 import { DAILY_QUEST_SLOTS } from "../data/dailySystems";
 import { WEEKLY_QUESTS } from "../data/weeklyQuests";
-import { weeklyQuestProgress, claimWeeklyQuest } from "../utils/weeklyQuests";
-import { MAP_COLLECTIONS, collectionProgress, claimCollection } from "../utils/collection";
+import { weeklyQuestProgress } from "../utils/weeklyQuests";
+import { MAP_COLLECTIONS, collectionProgress } from "../utils/collection";
 import { displayClassName, formatGold } from "../utils/player";
 import { findMonster, MAPS } from "../data/maps";
 import { itemTierColor, tierName } from "../data/itemRarity";
-import { buyNationalPoint, canBuyNationalPoint } from "../utils/nationalPoint";
+import { canBuyNationalPoint } from "../utils/nationalPoint";
 import { NP_RECOVERY_GOLD_COST, NP_RECOVERY_NP_AMOUNT } from "../utils/nationalPointConstants";
 import { useTranslation, formatReason } from "../i18n/LanguageContext";
 import { captainSubtabNotices } from "../utils/captainNotices";
@@ -26,7 +26,7 @@ import CaptainPortrait from "./CaptainPortrait";
 // dialogue — every quest is always visible and just tracks itself off
 // player.monsterKills (see utils/quests.js). No accept/turn-in ceremony,
 // just "kill enough, then claim."
-export default function CaptainTab({ player, setPlayer, pushToast }) {
+export default function CaptainTab({ player, pushToast, act }) {
   // Kullanıcı isteği: içerik (Haftalık Görev Zinciri, Canavar Kitabı)
   // büyüyünce tek uzun kaydırma yorucu olmaya başladı — "önceki/sonraki"
   // sayfalama yerine (bkz. ScreenPanel'in kaldırılan versiyonu) bunun
@@ -35,46 +35,41 @@ export default function CaptainTab({ player, setPlayer, pushToast }) {
   const { t, tm, lang } = useTranslation();
   const [subtab, setSubtab] = useState("quests");
   const notices = captainSubtabNotices(player);
-  const claim = (questId) => {
-    const result = claimQuest(player, questId);
-    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
-    setPlayer(result.player);
+  const failToast = (result, fallbackKey) => pushToast(result.reason === "network" ? t("battle.actionFailed") : formatReason(t, result, fallbackKey), "warn");
+  const claim = async (questId) => {
+    const result = await act("captain/quest", { questId });
+    if (!result.ok) { failToast(result, "captain.toast.claimFailed"); return; }
     pushToast(t("captain.toast.questClaimed", { gold: formatGold(result.quest.goldReward), xp: result.quest.xpReward, tier: tierName(lang, result.quest.tier) }), "loot");
   };
 
-  const awaken = () => {
-    const result = claimAwakening(player);
-    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.awakenFailed"), "warn"); return; }
-    setPlayer(result.player);
-    pushToast(t("captain.toast.awakenSuccess", { cls: displayClassName(result.player) }), "loot");
+  const awaken = async () => {
+    const result = await act("captain/awaken");
+    if (!result.ok) { failToast(result, "captain.toast.awakenFailed"); return; }
+    pushToast(t("captain.toast.awakenSuccess", { cls: displayClassName(result.nextPlayer) }), "loot");
   };
 
-  const claimDaily = (slotIndex) => {
-    const result = claimDailyQuest(player, slotIndex);
-    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
-    setPlayer(result.player);
+  const claimDaily = async (slotIndex) => {
+    const result = await act("captain/daily", { slotIndex });
+    if (!result.ok) { failToast(result, "captain.toast.claimFailed"); return; }
     const extra = result.quest.chest ? `, ${t("captain.chestWord")}` : "";
     pushToast(t("captain.toast.dailyClaimed", { gold: formatGold(result.quest.goldReward), xp: result.quest.xpReward, extra }), "loot");
   };
 
-  const claimWeekly = (id) => {
-    const result = claimWeeklyQuest(player, id);
-    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
-    setPlayer(result.player);
+  const claimWeekly = async (id) => {
+    const result = await act("captain/weekly", { id });
+    if (!result.ok) { failToast(result, "captain.toast.claimFailed"); return; }
     const extra = result.quest.chest ? `, ${t("captain.chestWord")}` : "";
     pushToast(t("captain.toast.weeklyClaimed", { gold: formatGold(result.quest.goldReward), xp: result.quest.xpReward, extra }), "loot");
   };
-  const claimBook = (id) => {
-    const result = claimCollection(player, id);
-    if (!result.claimed) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
-    setPlayer(result.player);
+  const claimBook = async (id) => {
+    const result = await act("captain/book", { id });
+    if (!result.ok) { failToast(result, "captain.toast.claimFailed"); return; }
     pushToast(t("captain.toast.bookClaimed", { gold: formatGold(result.collection.goldReward), tier: tierName(lang, result.collection.chestTier) }), "loot");
   };
 
-  const buyNp = () => {
-    const result = buyNationalPoint(player);
-    if (!result.bought) { pushToast(formatReason(t, result, "captain.toast.claimFailed"), "warn"); return; }
-    setPlayer(result.player);
+  const buyNp = async () => {
+    const result = await act("captain/buyNp");
+    if (!result.ok) { failToast(result, "captain.toast.claimFailed"); return; }
     pushToast(t("captain.toast.npBought", { amount: NP_RECOVERY_NP_AMOUNT }), "loot");
   };
 

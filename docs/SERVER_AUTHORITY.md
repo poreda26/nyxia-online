@@ -110,3 +110,11 @@ alınır, satır aynı işlemde silinir), `warzone/huntSearch` → `huntStart` �
 asgari süre), `warzone/leave`. Av/boss ölümü ve potu `battle/death` ve `battle/potion` ile gider.
 Düello NP/kupa sonuçları 3c'de. `src/world/engine.js` (WorldTab) hiçbir yerde bağlı değil: ölü kod, taşınmadı.
 Pin listesine eklenecek: `warzone, huntSearch`.
+
+### Kaptan, günlük ödüller, çark, etkinlik, rehber (yapıldı)
+`src/game/progress.js`: `captain/quest|awaken|daily|weekly|book|buyNp`, `dailyLogin/claim`, `wheel/claimItem`,
+`event/join|credit`, `tutorial/gift|topUp`. `server/game.mjs` "kanca" (hooks) düzeni: hak kaynağı sunucuda olan
+eylemlerde (boss hakkı, günlük giriş cüzdan kaydı, çarkın bekleyen ödülü) istemcinin yolladığı veri sunucudaki kayıtla
+değiştirilir ve kayıt aynı işlemde tüketilir. Gün sınırı artık herkes için İstanbul (`utils/day.js`, `utils/week.js`).
+Pin listesine eklenecek: `dailyLogin, dailyQuests, weeklyQuests, claimedQuests, claimedCollections, awakened,
+scheduledEvents, tutorialGift, wheelAppliedAt, nationalPoint, weeklyPoint`.

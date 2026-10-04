@@ -287,7 +287,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
         onOpenDiamondShop={() => setDiamondShopOpen(true)}
       />
 
-      <EventStrip player={player} setPlayer={setPlayer} pushToast={pushToast} onOpenWarzone={() => setTab("warzone")} />
+      <EventStrip player={player} act={act} pushToast={pushToast} onOpenWarzone={() => setTab("warzone")} />
 
       {!firstPurchaseClaimed && (
         <button
@@ -319,7 +319,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
           <UpgradeTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
         )}
         {tab === "captain" && (
-          <CaptainTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
+          <CaptainTab player={player} pushToast={pushToast} act={act} />
         )}
         {tab === "warzone" && (
           <WarzoneTab player={player} setPlayer={setPlayer} pushToast={pushToast} onEnteredChange={setWarzoneEntered} act={act} />
@@ -343,7 +343,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
         )}
       </ScreenPanel>
 
-      {tutorialOpen && <TutorialCoach player={player} setPlayer={setPlayer} tab={tab} onFinish={closeTutorial} />}
+      {tutorialOpen && <TutorialCoach player={player} setPlayer={setPlayer} act={act} tab={tab} onFinish={closeTutorial} />}
 
       <BottomNav tab={tab} setTab={requestTabChange} notifications={notifications} />
 
@@ -363,11 +363,11 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
       )}
 
       {dailyLoginOpen && !tutorialOpen && (
-        <DailyLoginModal player={player} setPlayer={setPlayer} pushToast={pushToast} onClose={() => setDailyLoginOpen(false)} />
+        <DailyLoginModal player={player} setPlayer={setPlayer} act={act} pushToast={pushToast} onClose={() => setDailyLoginOpen(false)} />
       )}
 
       {wheelOpen && !tutorialOpen && (
-        <WheelModal player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast} onStatus={setWheelReady} onClose={() => setWheelOpen(false)} />
+        <WheelModal player={player} setPlayer={setPlayer} act={act} bank={bank} setBank={setBank} pushToast={pushToast} onStatus={setWheelReady} onClose={() => setWheelOpen(false)} />
       )}
 
       {firstPurchaseOfferOpen && !tutorialOpen && !dailyLoginOpen && !firstPurchaseClaimed && (

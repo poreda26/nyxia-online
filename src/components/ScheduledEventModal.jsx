@@ -1,5 +1,5 @@
 import { CheckCircle2, X } from "lucide-react";
-import { eventPhase, eventTotalTicks, scheduledEventProgress, canJoinScheduledEvent, joinScheduledEvent } from "../utils/scheduledEvents";
+import { eventPhase, eventTotalTicks, scheduledEventProgress, canJoinScheduledEvent } from "../utils/scheduledEvents";
 import { SCHEDULED_EVENT_ICONS } from "../data/scheduledEventIcons";
 import { styles } from "../styles";
 import BarTrack from "./shared/BarTrack";
@@ -18,7 +18,7 @@ function fmtCountdown(ms) {
 // KENDİSİ burada değil ScheduledEventBanner'ın periyodik kontrolünde
 // işleniyor — bu modal sadece o state'i okuyup gösteriyor, kapatılsa da
 // katılım/ilerleme kaybolmuyor.
-export default function ScheduledEventModal({ event, player, setPlayer, pushToast, now, onClose }) {
+export default function ScheduledEventModal({ event, player, act, pushToast, now, onClose }) {
   const { t } = useTranslation();
   const eventName = t(`scheduledEvent.eventName.${event.id}`);
   const Icon = SCHEDULED_EVENT_ICONS[event.id];
@@ -28,10 +28,9 @@ export default function ScheduledEventModal({ event, player, setPlayer, pushToas
 
   const JOIN_FAIL_KEY = { notOpen: "scheduledEvent.notOpen", alreadyJoined: "scheduledEvent.alreadyJoined" };
 
-  const handleJoin = () => {
-    const result = joinScheduledEvent(player, event, now);
-    if (!result.joined) { pushToast(t(JOIN_FAIL_KEY[result.reason] || "scheduledEvent.couldNotJoin"), "warn"); return; }
-    setPlayer(result.player);
+  const handleJoin = async () => {
+    const result = await act("event/join", { eventId: event.id });
+    if (!result.ok) { pushToast(t(JOIN_FAIL_KEY[result.reason] || "scheduledEvent.couldNotJoin"), "warn"); return; }
     pushToast(t("scheduledEvent.joined", { event: eventName }), "loot");
   };
 

@@ -20354,6 +20354,28 @@ function makeScrollStack(tier, count) {
     stackKey: scrollStackKey(tier)
   };
 }
+function makeBonusScrollStack() {
+  return {
+    id: uid(),
+    kind: "bonusScroll",
+    name: "Bonus Par\u015F\xF6men",
+    desc: "Silah ve z\u0131rh y\xFCkseltmesinde kullan\u0131lan bir e\u015Fya. Bu, e\u015Fyan\u0131n yok olmayaca\u011F\u0131n\u0131n garantisi de\u011Fildir. Sadece y\xFCkseltme \u015Fans\u0131n\u0131 art\u0131r\u0131r.",
+    weight: 0.5,
+    stackable: false
+  };
+}
+var ACCESSORY_SCROLL_ID = "accessory-upgrade-scroll";
+function makeAccessoryScrollStack(count = 1) {
+  return {
+    id: ACCESSORY_SCROLL_ID,
+    kind: "accessoryScroll",
+    name: "Aksesuar Y\xFCkseltme Ka\u011F\u0131d\u0131",
+    count,
+    weight: 0.5,
+    stackable: true,
+    stackKey: ACCESSORY_SCROLL_ID
+  };
+}
 function stackKeyOf(item) {
   return item.stackable ? item.stackKey || `${item.kind}:${item.name}` : null;
 }
@@ -20398,6 +20420,22 @@ function depositToBank(player, item, bank, pageIndex) {
   const inventory = player.inventory.filter((i) => i.id !== item.id);
   const nextBank = bank.map((p, idx) => idx !== pageIndex ? p : [...p, item]);
   return { player: { ...player, inventory }, bank: nextBank, moved: true };
+}
+function addItemToAnyBankPage(item, bank) {
+  if (item.stackable) {
+    const key = stackKeyOf(item);
+    for (let i = 0; i < bank.length; i++) {
+      const existingIdx = bank[i].findIndex((it) => it.stackable && stackKeyOf(it) === key);
+      if (existingIdx >= 0) {
+        const nextBank2 = bank.map((p, idx) => idx !== i ? p : p.map((it, j) => j === existingIdx ? { ...it, count: (it.count || 1) + (item.count || 1) } : it));
+        return { bank: nextBank2, added: true };
+      }
+    }
+  }
+  const pageIdx = bank.findIndex((p) => p.length < BANK_PAGE_SLOTS);
+  if (pageIdx === -1) return { bank, added: false, reason: "depo dolu." };
+  const nextBank = bank.map((p, idx) => idx !== pageIdx ? p : [...p, item]);
+  return { bank: nextBank, added: true };
 }
 function withdrawFromBank(player, item, bank, pageIndex) {
   const result = addItemToInventory(player, item);
@@ -21262,11 +21300,17 @@ var MAPS = RAW_MAPS.map((map, i) => ({ ...map, monsters: map.monsters.map((m) =>
 function findMap(mapId) {
   return MAPS.find((m) => m.id === mapId) || MAPS[0];
 }
+function highestUnlockedMap(level) {
+  let best = MAPS[0];
+  for (const m of MAPS) if (level >= m.levelMin) best = m;
+  return best;
+}
 
 // src/utils/week.js
 init_define_import_meta_env();
 function currentWeekId(date = /* @__PURE__ */ new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const ist = new Date(date.getTime() + 3 * 60 * 60 * 1e3);
+  const d = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
@@ -21277,6 +21321,8 @@ function currentWeekId(date = /* @__PURE__ */ new Date()) {
 // src/utils/nationalPointConstants.js
 init_define_import_meta_env();
 var STARTING_NATIONAL_POINT = 500;
+var NP_RECOVERY_GOLD_COST = 1500;
+var NP_RECOVERY_NP_AMOUNT = 250;
 
 // src/utils/loot.js
 init_define_import_meta_env();
@@ -23306,6 +23352,13 @@ var BOOST_SCROLLS = [
 function boostScrollDef(id) {
   return BOOST_SCROLLS.find((s) => s.id === id) || null;
 }
+var BOOST_NAMES = {
+  tr: { exp: "Deneyim Par\u015F\xF6meni", gold: "Alt\u0131n Par\u015F\xF6meni", np: "NP Par\u015F\xF6meni", hp: "G\xFC\xE7 Par\u015F\xF6meni", def: "Savunma Par\u015F\xF6meni", atk: "Sald\u0131r\u0131 Par\u015F\xF6meni" },
+  en: { exp: "Exp Scroll", gold: "Gold Scroll", np: "NP Scroll", hp: "Buff Scroll", def: "Def Scroll", atk: "Attack Scroll" }
+};
+function boostScrollName(id, lang = "tr") {
+  return (BOOST_NAMES[lang] || BOOST_NAMES.tr)[id] || id;
+}
 
 // src/utils/boosts.js
 var DURATION_MS = BOOST_DURATION_MIN * 60 * 1e3;
@@ -23322,6 +23375,21 @@ function boostFlatBonus(player, scrollId) {
   if (!activeExpiry(player, scrollId)) return 0;
   const def = boostScrollDef(scrollId);
   return def?.type === "flat" ? def.magnitude : 0;
+}
+function stackKeyFor(scrollId) {
+  return `boostScroll:${scrollId}`;
+}
+function makeBoostScrollStack(scrollId, count = 1) {
+  return {
+    id: stackKeyFor(scrollId),
+    kind: "boostScroll",
+    boostId: scrollId,
+    name: boostScrollName(scrollId, "tr"),
+    count,
+    weight: 0.5,
+    stackable: true,
+    stackKey: stackKeyFor(scrollId)
+  };
 }
 function useBoostScroll(player, scrollId) {
   const stack = player.inventory.find((i) => i.kind === "boostScroll" && i.boostId === scrollId);
@@ -23352,6 +23420,19 @@ function xpLevelPenaltyMultiplier(playerLevel, mapLevelMax) {
   return 0.2;
 }
 var MAX_LEVEL = 65;
+function gainXp(player, amount) {
+  if (player.level >= MAX_LEVEL || amount <= 0) return { player, levelsGained: 0 };
+  let np = { ...player, xp: player.xp + amount };
+  let levelsGained = 0;
+  while (np.level < MAX_LEVEL && np.xp >= xpToNext(np.level)) {
+    np.xp -= xpToNext(np.level);
+    np.level += 1;
+    np.statPoints += 3;
+    levelsGained += 1;
+  }
+  if (np.level >= MAX_LEVEL) np.xp = 0;
+  return { player: np, levelsGained };
+}
 var STARTING_STAT_POINTS = 10;
 function initialPlayer(cls, race, nickname) {
   const base = CLASSES[cls];
@@ -23822,8 +23903,16 @@ init_define_import_meta_env();
 
 // src/utils/day.js
 init_define_import_meta_env();
+var ISTANBUL_OFFSET_MS = 3 * 60 * 60 * 1e3;
+function dayKeyAt(ms) {
+  const [weekday, day, month, year] = new Date(ms + ISTANBUL_OFFSET_MS).toUTCString().split(" ");
+  return `${weekday.replace(",", "")} ${month} ${day} ${year}`;
+}
 function todayKey() {
-  return (/* @__PURE__ */ new Date()).toDateString();
+  return dayKeyAt(Date.now());
+}
+function yesterdayKey() {
+  return dayKeyAt(Date.now() - 24 * 60 * 60 * 1e3);
 }
 
 // src/data/clan.js
@@ -23983,6 +24072,55 @@ var MONSTER_QUESTS = MAPS.flatMap((map) => {
     xpReward: Math.round(table.xpReward * (m.xp / avgXp) / 10) * 10
   }));
 });
+var AWAKENING_QUEST = {
+  id: "awakening",
+  name: "2. Uyan\u0131\u015F S\u0131nav\u0131",
+  requiredLevel: 60,
+  targets: { kaos_iblisi: 40, kiyamet_ejderha: 40 }
+};
+
+// src/utils/quests.js
+function questProgress(player, quest) {
+  const current = player.monsterKills?.[quest.monsterId] || 0;
+  return { current: Math.min(current, quest.target), target: quest.target, done: current >= quest.target };
+}
+function isQuestClaimed(player, questId) {
+  return (player.claimedQuests || []).includes(questId);
+}
+function claimQuest(player, questId) {
+  const quest = MONSTER_QUESTS.find((q) => q.id === questId);
+  if (!quest) return { player, claimed: false, reason: "invalidQuest" };
+  if (isQuestClaimed(player, questId)) return { player, claimed: false, reason: "rewardAlreadyClaimed" };
+  const { done: done5 } = questProgress(player, quest);
+  if (!done5) return { player, claimed: false, reason: "questNotDone" };
+  const chest = { id: uid(), tier: quest.tier };
+  return {
+    player: {
+      ...player,
+      gold: player.gold + quest.goldReward,
+      xp: player.xp + quest.xpReward,
+      chests: [...player.chests || [], chest],
+      claimedQuests: [...player.claimedQuests || [], questId]
+    },
+    claimed: true,
+    quest
+  };
+}
+function awakeningProgress(player) {
+  const entries = Object.entries(AWAKENING_QUEST.targets).map(([monsterId, target]) => ({
+    monsterId,
+    current: Math.min(player.monsterKills?.[monsterId] || 0, target),
+    target
+  }));
+  const done5 = entries.every((e) => e.current >= e.target);
+  return { entries, done: done5 };
+}
+function claimAwakening(player) {
+  if (player.awakened) return { player, claimed: false, reason: "alreadyAwakened" };
+  if (player.level < AWAKENING_QUEST.requiredLevel) return { player, claimed: false, reason: "levelRequired", reasonVars: { level: AWAKENING_QUEST.requiredLevel } };
+  if (!awakeningProgress(player).done) return { player, claimed: false, reason: "trialNotDone" };
+  return { player: { ...player, awakened: true }, claimed: true };
+}
 
 // src/utils/combat.js
 init_define_import_meta_env();
@@ -24007,6 +24145,15 @@ init_define_import_meta_env();
 
 // src/data/dailySystems.js
 init_define_import_meta_env();
+var DAILY_LOGIN_REWARDS = [
+  { day: 1, gold: 100, diamonds: 0, scrollCount: 0, chestTier: null, bonusScroll: false },
+  { day: 2, gold: 200, diamonds: 0, scrollCount: 0, chestTier: null, bonusScroll: false },
+  { day: 3, gold: 150, diamonds: 0, scrollCount: 3, chestTier: null, bonusScroll: false },
+  { day: 4, gold: 400, diamonds: 0, scrollCount: 0, chestTier: null, bonusScroll: false },
+  { day: 5, gold: 250, diamonds: 0, scrollCount: 0, chestTier: "map", bonusScroll: false },
+  { day: 6, gold: 300, diamonds: 5, scrollCount: 0, chestTier: null, bonusScroll: false },
+  { day: 7, gold: 800, diamonds: 15, scrollCount: 0, chestTier: null, bonusScroll: true }
+];
 var DAILY_QUEST_SLOTS = [
   { target: 10, goldReward: 150, xpReward: 400, chest: false },
   { target: 25, goldReward: 400, xpReward: 1e3, chest: false },
@@ -24026,12 +24173,35 @@ function registerDailyKill(player) {
   const p = ensureDailyQuestsFresh(player);
   return { ...p, dailyQuests: { ...p.dailyQuests, killsToday: p.dailyQuests.killsToday + 1 } };
 }
+function claimDailyQuest(player, slotIndex) {
+  const p = ensureDailyQuestsFresh(player);
+  const dq = p.dailyQuests;
+  const slot = DAILY_QUEST_SLOTS[slotIndex];
+  if (!slot) return { player: p, claimed: false, reason: "invalidQuest" };
+  if (dq.claimed[slotIndex]) return { player: p, claimed: false, reason: "rewardAlreadyClaimed" };
+  if (dq.killsToday < slot.target) return { player: p, claimed: false, reason: "questNotDone" };
+  let next = {
+    ...p,
+    gold: p.gold + slot.goldReward,
+    xp: p.xp + slot.xpReward,
+    dailyQuests: { ...dq, claimed: dq.claimed.map((c, i) => i === slotIndex ? true : c) }
+  };
+  if (slot.chest) {
+    const tier = highestUnlockedMap(next.level).tier;
+    next = { ...next, chests: [...next.chests, { id: uid(), tier }] };
+  }
+  return { player: next, claimed: true, quest: slot };
+}
 
 // src/utils/weeklyQuests.js
 init_define_import_meta_env();
 
 // src/data/weeklyQuests.js
 init_define_import_meta_env();
+var WEEKLY_QUESTS = [
+  { id: "weekly_hunt", name: "Haftal\u0131k Av", desc: "75 canavar yen.", type: "kills", target: 75, goldReward: 1200, xpReward: 4500, chest: false },
+  { id: "weekly_boss", name: "Muhaf\u0131z Av\u0131", desc: "3 harita sonu boss'u yen.", type: "bosses", target: 3, goldReward: 2200, xpReward: 8500, chest: true }
+];
 
 // src/utils/weeklyQuests.js
 function freshWeeklyQuests() {
@@ -24043,6 +24213,22 @@ function ensureWeeklyQuestsFresh(player) {
 function registerWeeklyKill(player, monster) {
   const p = ensureWeeklyQuestsFresh(player);
   return { ...p, weeklyQuests: { ...p.weeklyQuests, kills: p.weeklyQuests.kills + 1, bosses: p.weeklyQuests.bosses + (monster.mapBoss ? 1 : 0) } };
+}
+function weeklyQuestProgress(player, quest) {
+  const state = player.weeklyQuests?.weekId === currentWeekId() ? player.weeklyQuests : freshWeeklyQuests();
+  const current = quest.type === "bosses" ? state.bosses : state.kills;
+  return { current: Math.min(current, quest.target), target: quest.target, done: current >= quest.target, claimed: state.claimed.includes(quest.id) };
+}
+function claimWeeklyQuest(player, id) {
+  const quest = WEEKLY_QUESTS.find((q) => q.id === id);
+  const p = ensureWeeklyQuestsFresh(player);
+  if (!quest) return { player: p, claimed: false, reason: "invalidQuest" };
+  const progress = weeklyQuestProgress(p, quest);
+  if (progress.claimed) return { player: p, claimed: false, reason: "rewardAlreadyClaimed" };
+  if (!progress.done) return { player: p, claimed: false, reason: "questNotDone" };
+  let next = { ...p, gold: p.gold + quest.goldReward, xp: p.xp + quest.xpReward, weeklyQuests: { ...p.weeklyQuests, claimed: [...p.weeklyQuests.claimed, id] } };
+  if (quest.chest) next = { ...next, chests: [...next.chests, { id: uid(), tier: highestUnlockedMap(next.level).tier }] };
+  return { player: next, claimed: true, quest };
 }
 
 // src/utils/mapBoss.js
@@ -24074,8 +24260,8 @@ function mapBossState(player) {
 }
 function mapCompletion(player, mapId, map = findMap(mapId)) {
   const total = map.monsters.length;
-  const done4 = map.monsters.filter((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT).length;
-  return { done: done4, total, complete: done4 >= total };
+  const done5 = map.monsters.filter((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT).length;
+  return { done: done5, total, complete: done5 >= total };
 }
 function canFightMapBoss(player, mapId, map) {
   if (mapBossState(player).defeatedMapIds.includes(mapId)) return { ok: false, reason: "defeatedToday" };
@@ -24446,6 +24632,307 @@ var warzoneReducers = {
   }
 };
 
+// src/game/progress.js
+init_define_import_meta_env();
+
+// src/utils/collection.js
+init_define_import_meta_env();
+var MAP_COLLECTIONS = MAPS.map((map) => ({
+  id: `collection_${map.id}`,
+  mapId: map.id,
+  name: `${map.name} Canavar Kitab\u0131`,
+  monsterIds: map.monsters.map((m) => m.id),
+  goldReward: map.tier * 350,
+  chestTier: map.tier
+}));
+function collectionProgress(player, collection) {
+  const current = collection.monsterIds.filter((id) => (player.monsterKills?.[id] || 0) > 0).length;
+  const claimed = (player.claimedCollections || []).includes(collection.id);
+  return { current, target: collection.monsterIds.length, done: current === collection.monsterIds.length, claimed };
+}
+function claimCollection(player, id) {
+  const collection = MAP_COLLECTIONS.find((c) => c.id === id);
+  if (!collection) return { player, claimed: false, reason: "invalidCollection" };
+  const progress = collectionProgress(player, collection);
+  if (progress.claimed) return { player, claimed: false, reason: "rewardAlreadyClaimed" };
+  if (!progress.done) return { player, claimed: false, reason: "mapNotFullyExplored" };
+  return { player: { ...player, gold: player.gold + collection.goldReward, chests: [...player.chests, { id: uid(), tier: collection.chestTier }], claimedCollections: [...player.claimedCollections || [], id] }, claimed: true, collection };
+}
+
+// src/utils/nationalPoint.js
+init_define_import_meta_env();
+
+// src/utils/leaderboard.js
+init_define_import_meta_env();
+
+// src/utils/nationalPoint.js
+function buyNationalPoint(player) {
+  if (player.nationalPoint > 0) return { player, bought: false, reason: "npStillAvailable" };
+  if (player.gold < NP_RECOVERY_GOLD_COST) return { player, bought: false, reason: "notEnoughGold" };
+  return {
+    player: {
+      ...player,
+      gold: player.gold - NP_RECOVERY_GOLD_COST,
+      nationalPoint: player.nationalPoint + NP_RECOVERY_NP_AMOUNT,
+      weeklyPoint: player.weeklyPoint + NP_RECOVERY_NP_AMOUNT
+    },
+    bought: true
+  };
+}
+
+// src/utils/dailyLogin.js
+init_define_import_meta_env();
+function freshLogin() {
+  return { streak: 0, lastClaimDay: null };
+}
+function nextStreakFor(login) {
+  if (login.lastClaimDay === todayKey()) return login.streak;
+  return login.lastClaimDay === yesterdayKey() ? login.streak + 1 : 1;
+}
+function cycleReward(streak) {
+  return DAILY_LOGIN_REWARDS[(streak - 1) % DAILY_LOGIN_REWARDS.length];
+}
+function canClaimDailyLogin(player) {
+  const login = player.dailyLogin || freshLogin();
+  return login.lastClaimDay !== todayKey();
+}
+function claimDailyLogin(player, server = null) {
+  if (!server && !canClaimDailyLogin(player)) return { player, claimed: false, reason: "dailyRewardAlreadyClaimed" };
+  const login = player.dailyLogin || freshLogin();
+  const streak = server ? server.streak : nextStreakFor(login);
+  const reward = cycleReward(streak);
+  let p = { ...player, gold: player.gold + reward.gold, diamonds: server ? server.diamonds : player.diamonds + reward.diamonds };
+  if (reward.scrollCount > 0) {
+    p = addItemToInventory(p, makeScrollStack(1, reward.scrollCount)).player;
+  }
+  if (reward.bonusScroll) {
+    p = addItemToInventory(p, makeBonusScrollStack()).player;
+  }
+  if (reward.chestTier === "map") {
+    const tier = highestUnlockedMap(p.level).tier;
+    p = { ...p, chests: [...p.chests, { id: uid(), tier }] };
+  }
+  p = { ...p, dailyLogin: { streak, lastClaimDay: todayKey() } };
+  return { player: p, claimed: true, reward, streak };
+}
+
+// src/utils/wheel.js
+init_define_import_meta_env();
+
+// src/utils/wings.js
+init_define_import_meta_env();
+function makeWings(wingId) {
+  const wing = wingDefinition(wingId);
+  if (!wing) return null;
+  return {
+    id: uid(),
+    kind: "wings",
+    slot: "wings",
+    wingId,
+    name: wing.name,
+    tier: 5,
+    weight: 0,
+    upgradeLevel: 0,
+    upgradeLocked: true,
+    noTrade: true,
+    attackPowerPct: 0.03,
+    expBonus: 0.05,
+    dropBonus: 0.05,
+    statBonus: { str: 3, sta: 3, dex: 3, int: 3, mag: 3 }
+  };
+}
+
+// src/utils/wheel.js
+var BOOST_OF = { boost_exp: "exp", boost_gold: "gold", boost_atk: "atk", boost_np: "np", boost_def: "def", boost_hp: "hp" };
+function buildItem(player, prizeId) {
+  if (prizeId === "scroll_upgrade") return makeScrollStack(highestUnlockedMap(player.level).tier, 1);
+  if (prizeId === "scroll_bonus") return makeBonusScrollStack();
+  if (prizeId === "scroll_accessory") return makeAccessoryScrollStack(1);
+  if (BOOST_OF[prizeId]) return makeBoostScrollStack(BOOST_OF[prizeId], 1);
+  if (prizeId === "wing") return makeWings(WINGS[Math.floor(Math.random() * WINGS.length)].id);
+  return null;
+}
+function applyWheelPrize(player, bank, prizeId, spunAt) {
+  const mark = (p) => ({ ...p, wheelAppliedAt: spunAt });
+  if (prizeId === "mythic_1d" || prizeId === "apex_3d") return { player, bank, delivered: false };
+  const item = buildItem(player, prizeId);
+  if (!item) return { player, bank, delivered: false };
+  const toBag = addItemToInventory(player, item);
+  if (toBag.added) return { player: mark(toBag.player), bank, delivered: true, toBank: false };
+  const toBank = addItemToAnyBankPage(item, bank);
+  if (toBank.added) return { player: mark(player), bank: toBank.bank, delivered: true, toBank: true };
+  return { player, bank, delivered: false };
+}
+
+// src/utils/scheduledEvents.js
+init_define_import_meta_env();
+var ISTANBUL_UTC_OFFSET_MS = 3 * 60 * 60 * 1e3;
+function istanbulNow(now = Date.now()) {
+  return new Date(now + ISTANBUL_UTC_OFFSET_MS);
+}
+function istanbulDateKey(now = Date.now()) {
+  return istanbulNow(now).toISOString().slice(0, 10);
+}
+function scheduledStart(event, now = Date.now()) {
+  const ist = istanbulNow(now);
+  const istanbulLocalAsUtc = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate(), event.hour, event.minute, 0, 0);
+  return istanbulLocalAsUtc - ISTANBUL_UTC_OFFSET_MS;
+}
+function eventTotalTicks(event) {
+  return Math.round(event.durationMinutes / event.tickIntervalMinutes);
+}
+function eventPhase(event, now = Date.now()) {
+  const start = scheduledStart(event, now);
+  const preOpenAt = start - event.preOpenMinutes * 6e4;
+  const end = start + event.durationMinutes * 6e4;
+  let phase;
+  if (now < preOpenAt) phase = "upcoming";
+  else if (now < start) phase = "preopen";
+  else if (now < end) phase = "active";
+  else phase = "ended";
+  return { phase, start, end, preOpenAt };
+}
+function ticksElapsed(event, now = Date.now()) {
+  const { phase, start } = eventPhase(event, now);
+  const total = eventTotalTicks(event);
+  if (phase === "upcoming" || phase === "preopen") return 0;
+  if (phase === "ended") return total;
+  return Math.min(total, Math.floor((now - start) / (event.tickIntervalMinutes * 6e4)));
+}
+function freshState(now) {
+  return { day: istanbulDateKey(now), joined: false, ticksCredited: 0 };
+}
+function stateFor(player, event, now = Date.now()) {
+  const s = player.scheduledEvents?.[event.id];
+  return s && s.day === istanbulDateKey(now) ? s : freshState(now);
+}
+function canJoinScheduledEvent(player, event, now = Date.now()) {
+  const { phase } = eventPhase(event, now);
+  if (phase !== "preopen" && phase !== "active") return { ok: false, reason: "notOpen" };
+  if (stateFor(player, event, now).joined) return { ok: false, reason: "alreadyJoined" };
+  return { ok: true };
+}
+function joinScheduledEvent(player, event, now = Date.now()) {
+  const check = canJoinScheduledEvent(player, event, now);
+  if (!check.ok) return { player, joined: false, reason: check.reason };
+  const next = { day: istanbulDateKey(now), joined: true, ticksCredited: ticksElapsed(event, now) };
+  return { player: { ...player, scheduledEvents: { ...player.scheduledEvents, [event.id]: next } }, joined: true };
+}
+function creditScheduledEventTicks(player, event, now = Date.now()) {
+  const s = stateFor(player, event, now);
+  if (!s.joined) return null;
+  const { phase } = eventPhase(event, now);
+  if (phase !== "active" && phase !== "ended") return null;
+  const elapsed = ticksElapsed(event, now);
+  if (elapsed <= s.ticksCredited) return null;
+  const newTicks = elapsed - s.ticksCredited;
+  const pct = event.tickPercent * newTicks / 100;
+  const xpAmount = player.level < MAX_LEVEL ? Math.round(xpToNext(player.level) * pct) : 0;
+  const { player: gained, levelsGained } = gainXp(player, xpAmount);
+  const next = { ...gained, scheduledEvents: { ...gained.scheduledEvents, [event.id]: { day: istanbulDateKey(now), joined: true, ticksCredited: elapsed } } };
+  return { player: next, xpGain: xpAmount, newTicks, levelsGained };
+}
+
+// src/data/scheduledEvents.js
+init_define_import_meta_env();
+var SCHEDULED_EVENTS = [
+  {
+    id: "noon_exp_rush",
+    name: "\xD6\u011Flen EXP Rush",
+    color: "#D4AF6A",
+    hour: 12,
+    minute: 30,
+    // günlük başlama saati (İSTANBUL saati)
+    preOpenMinutes: 5,
+    // etkinlik alanı bu kadar erken açılır (geri sayımla)
+    durationMinutes: 10,
+    tickIntervalMinutes: 2,
+    // her tick'te tickPercent kadar XP
+    tickPercent: 3
+    // xpToNext(level)'in yüzdesi — 5 tick x %3 = toplam %15
+  }
+];
+
+// src/utils/tutorial.js
+init_define_import_meta_env();
+var TUTORIAL_GIFT_GOLD = 200;
+function grantTutorialGift(player) {
+  if (player.tutorialGift) return { player, granted: false };
+  const withGold = { ...player, gold: player.gold + TUTORIAL_GIFT_GOLD, tutorialGift: true };
+  const result = addItemToInventory(withGold, makeScrollStack(1, 1));
+  return { player: result.added ? result.player : withGold, granted: true, scrollAdded: result.added };
+}
+var TUTORIAL_SCROLL_PRICE = 100;
+
+// src/game/progress.js
+var fail3 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done3 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+function fromClaim(state, result, flag, extra = {}) {
+  if (!result[flag]) return fail3(state, result.reason || "failed", result.reasonVars ? { reasonVars: result.reasonVars } : {});
+  return done3({ ...state, player: result.player }, extra);
+}
+var findEvent = (eventId) => SCHEDULED_EVENTS.find((e) => e.id === eventId) || null;
+var progressReducers = {
+  "captain/quest"(state, { questId }) {
+    const r = claimQuest(state.player, questId);
+    return fromClaim(state, r, "claimed", { quest: r.quest });
+  },
+  "captain/awaken"(state) {
+    return fromClaim(state, claimAwakening(state.player), "claimed");
+  },
+  "captain/daily"(state, { slotIndex }) {
+    if (!Number.isInteger(slotIndex)) return fail3(state, "invalidQuest");
+    const r = claimDailyQuest(state.player, slotIndex);
+    return fromClaim(state, r, "claimed", { quest: r.quest });
+  },
+  "captain/weekly"(state, { id }) {
+    const r = claimWeeklyQuest(state.player, id);
+    return fromClaim(state, r, "claimed", { quest: r.quest });
+  },
+  "captain/book"(state, { id }) {
+    const r = claimCollection(state.player, id);
+    return fromClaim(state, r, "claimed", { collection: r.collection });
+  },
+  "captain/buyNp"(state) {
+    return fromClaim(state, buyNationalPoint(state.player), "bought");
+  },
+  // Sunucu yolunda `server` alanı (seri, elmas bakiyesi) sunucunun kendi günlük kaydından gelir
+  // (bkz. server/app.mjs kancası); istemcinin yazdığı yok sayılır.
+  "dailyLogin/claim"(state, { server }) {
+    if (!server || !Number.isInteger(server.streak) || server.streak < 1) return fail3(state, "noServerData");
+    const r = claimDailyLogin(state.player, server);
+    return fromClaim(state, r, "claimed", { reward: r.reward, streak: r.streak });
+  },
+  // Çark: ödül (prize/spunAt) sunucuda seçilmiş bekleyen kayıttır; sunucu yolunda kancadan gelir.
+  "wheel/claimItem"(state, { prize, spunAt }) {
+    const out = applyWheelPrize(state.player, state.bank, prize, spunAt);
+    if (!out.delivered) return fail3(state, "bagFull");
+    return done3({ ...state, player: out.player, bank: out.bank }, { prize, toBank: !!out.toBank });
+  },
+  "event/join"(state, { eventId }) {
+    const event = findEvent(eventId);
+    if (!event) return fail3(state, "unknownEvent");
+    const r = joinScheduledEvent(state.player, event);
+    return fromClaim(state, r, "joined");
+  },
+  "event/credit"(state, { eventId }) {
+    const event = findEvent(eventId);
+    if (!event) return fail3(state, "unknownEvent");
+    const r = creditScheduledEventTicks(state.player, event);
+    if (!r) return done3(state, { credited: false });
+    return done3({ ...state, player: r.player }, { credited: true, xpGain: r.xpGain, newTicks: r.newTicks, levelsGained: r.levelsGained });
+  },
+  "tutorial/gift"(state) {
+    return done3({ ...state, player: grantTutorialGift(state.player).player });
+  },
+  // Rehber, "parşömen al" adımında altın yetmezse takılmasın diye yalnızca rehber sürerken tamamlar.
+  "tutorial/topUp"(state) {
+    const { player } = state;
+    if (player.tutorialSeen || player.gold >= TUTORIAL_SCROLL_PRICE) return done3(state);
+    return done3({ ...state, player: { ...player, gold: TUTORIAL_SCROLL_PRICE } });
+  }
+};
+
 // src/utils/chests.js
 init_define_import_meta_env();
 function openChestSafely(player, chestId, roll) {
@@ -24474,70 +24961,70 @@ function openChestsSafely(player, roll) {
 }
 
 // src/game/actions.js
-var fail3 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
-var done3 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var fail4 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done4 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
 var strip = ({ player, bank, ...rest }) => rest;
 var findOwned = (player, itemId) => player.inventory.find((i) => i.id === itemId) || Object.values(player.equipped || {}).find((i) => i && i.id === itemId) || null;
 var inventoryReducers = {
   "inventory/equip"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail3(state, "itemNotFound");
+    if (!item) return fail4(state, "itemNotFound");
     const result = equipItem(state.player, item);
-    if (result.blocked) return fail3(state, "blocked", { blocked: result.blocked });
-    return done3({ ...state, player: result.player });
+    if (result.blocked) return fail4(state, "blocked", { blocked: result.blocked });
+    return done4({ ...state, player: result.player });
   },
   "inventory/unequip"(state, { slot }) {
     const result = unequipItem(state.player, slot);
-    if (!result.removed) return fail3(state, result.reason || "nothingToRemove", strip(result));
-    return done3({ ...state, player: result.player });
+    if (!result.removed) return fail4(state, result.reason || "nothingToRemove", strip(result));
+    return done4({ ...state, player: result.player });
   },
   "inventory/sell"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail3(state, "itemNotFound");
-    if (item.noTrade) return fail3(state, "noTrade");
+    if (!item) return fail4(state, "itemNotFound");
+    if (item.noTrade) return fail4(state, "noTrade");
     const price = Math.round(sellPrice(item) * premiumSellMultiplier(state.player));
     const gold = Math.min(MAX_GOLD, state.player.gold + price);
-    return done3({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
+    return done4({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
   },
   "inventory/sellBulk"(state, { itemIds }) {
     const wanted = new Set(Array.isArray(itemIds) ? itemIds : []);
     const sellable = state.player.inventory.filter((i) => wanted.has(i.id) && !isConsumable(i) && !i.noTrade);
-    if (sellable.length === 0) return fail3(state, "noneSellable");
+    if (sellable.length === 0) return fail4(state, "noneSellable");
     const total = sellable.reduce((sum, i) => sum + Math.round(sellPrice(i) * premiumSellMultiplier(state.player)), 0);
     const sold = new Set(sellable.map((i) => i.id));
     const gold = Math.min(MAX_GOLD, state.player.gold + total);
-    return done3({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
+    return done4({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
   },
   "inventory/repair"(state, { itemId }) {
     const item = findOwned(state.player, itemId);
-    if (!item) return fail3(state, "itemNotFound");
+    if (!item) return fail4(state, "itemNotFound");
     const result = repairItem(state.player, item, premiumRepairDiscount(state.player), state.bank);
-    if (!result.repaired) return fail3(state, result.reason || "repairFailed", strip(result));
-    return done3({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
+    if (!result.repaired) return fail4(state, result.reason || "repairFailed", strip(result));
+    return done4({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
   },
   "inventory/repairAll"(state) {
     const result = repairAllEquipped(state.player, premiumRepairDiscount(state.player));
-    if (!result.repaired) return fail3(state, result.reason || "nothingToRepair", strip(result));
-    return done3({ ...state, player: result.player }, { cost: result.cost });
+    if (!result.repaired) return fail4(state, result.reason || "nothingToRepair", strip(result));
+    return done4({ ...state, player: result.player }, { cost: result.cost });
   },
   "inventory/depositItem"(state, { itemId, page }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail3(state, "itemNotFound");
-    if (!Number.isInteger(page) || !state.bank[page]) return fail3(state, "invalidPage");
+    if (!item) return fail4(state, "itemNotFound");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail4(state, "invalidPage");
     const result = depositToBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail3(state, result.reason || "depositFailed", strip(result));
-    return done3({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail4(state, result.reason || "depositFailed", strip(result));
+    return done4({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/withdrawItem"(state, { itemId, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail3(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail4(state, "invalidPage");
     const item = state.bank[page].find((i) => i.id === itemId);
-    if (!item) return fail3(state, "itemNotFound");
+    if (!item) return fail4(state, "itemNotFound");
     const result = withdrawFromBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail3(state, result.reason || "withdrawFailed", strip(result));
-    return done3({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail4(state, result.reason || "withdrawFailed", strip(result));
+    return done4({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/depositBulk"(state, { itemIds, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail3(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail4(state, "invalidPage");
     let player = state.player, bank = state.bank, moved = 0;
     for (const id of Array.isArray(itemIds) ? itemIds : []) {
       const item = player.inventory.find((i) => i.id === id);
@@ -24549,44 +25036,44 @@ var inventoryReducers = {
         moved++;
       }
     }
-    return done3({ ...state, player, bank }, { moved });
+    return done4({ ...state, player, bank }, { moved });
   },
   "inventory/depositGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail3(state, "invalidAmount");
-    if (state.player.gold < amount) return fail3(state, "notEnoughGold");
-    if (state.bankGold + amount > MAX_GOLD) return fail3(state, "bankGoldCap");
-    return done3({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail4(state, "invalidAmount");
+    if (state.player.gold < amount) return fail4(state, "notEnoughGold");
+    if (state.bankGold + amount > MAX_GOLD) return fail4(state, "bankGoldCap");
+    return done4({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
   },
   "inventory/withdrawGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail3(state, "invalidAmount");
-    if (state.bankGold < amount) return fail3(state, "notEnoughBankGold");
-    if (state.player.gold + amount > MAX_GOLD) return fail3(state, "carryGoldCap");
-    return done3({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail4(state, "invalidAmount");
+    if (state.bankGold < amount) return fail4(state, "notEnoughBankGold");
+    if (state.player.gold + amount > MAX_GOLD) return fail4(state, "carryGoldCap");
+    return done4({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
   },
   "inventory/openChest"(state, { chestId }) {
     const result = openChestSafely(state.player, chestId);
-    if (!result.opened) return fail3(state, result.reason || "chestFailed");
-    return done3({ ...state, player: result.player }, { item: result.item });
+    if (!result.opened) return fail4(state, result.reason || "chestFailed");
+    return done4({ ...state, player: result.player }, { item: result.item });
   },
   "inventory/openAllChests"(state) {
     const result = openChestsSafely(state.player);
-    if (!result.items.length) return fail3(state, result.reason || "noChests");
-    return done3({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
+    if (!result.items.length) return fail4(state, result.reason || "noChests");
+    return done4({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
   },
   "inventory/useBoostScroll"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId && i.kind === "boostScroll");
-    if (!item) return fail3(state, "itemNotFound");
+    if (!item) return fail4(state, "itemNotFound");
     const result = useBoostScroll(state.player, item.boostId);
-    if (!result.used) return fail3(state, "noScrollsLeft");
-    return done3({ ...state, player: result.player });
+    if (!result.used) return fail4(state, "noScrollsLeft");
+    return done4({ ...state, player: result.player });
   }
 };
-var reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers };
+var reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers, ...progressReducers };
 var ACTION_TYPES = Object.keys(reducers);
 function applyAction(state, type, payload = {}) {
   const reducer = Object.hasOwn(reducers, type) ? reducers[type] : null;
-  if (!reducer) return fail3(state, "unknownAction");
-  if (payload === null || typeof payload !== "object") return fail3(state, "invalidPayload");
+  if (!reducer) return fail4(state, "unknownAction");
+  if (payload === null || typeof payload !== "object") return fail4(state, "invalidPayload");
   return reducer(state, payload);
 }
 

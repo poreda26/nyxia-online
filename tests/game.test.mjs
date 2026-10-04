@@ -269,3 +269,68 @@ test('warzone: entry fee, boss loot only against a real claim (consumed once), h
     db.close();
   } finally { await api.close(); }
 });
+
+test('rewards the server owns: quests need real kills, daily login is once a day and takes streak/diamonds from the wallet, wheel item comes from the pending spin', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const cookie = (await call('register', { name: 'frank', password })).cookie;
+    const character = hero();
+    character.monsterKills = { sis_kurdu: 60 };
+    const data = { characters: [character, null, null], bank: [[], []], bankGold: 0, diamonds: 0 };
+    assert.equal((await call('backup', { revision: 0, data }, cookie, 'PUT')).status, 200);
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    const act = (type, payload = {}) => call('game/act', { characterKey: 'hero', type, payload }, cookie);
+    const state = async () => (await call('backup', null, cookie)).data.data.characters[0];
+
+    // Captain quest: claimable only with enough kills, only once.
+    assert.equal((await act('captain/quest', { questId: 'kabuklu_golem' })).data.result.reason, 'questNotDone');
+    assert.equal((await act('captain/quest', { questId: 'made_up' })).data.result.reason, 'invalidQuest');
+    const gold0 = (await state()).gold;
+    const quest = await act('captain/quest', { questId: 'sis_kurdu' });
+    assert.equal(quest.data.result.ok, true);
+    assert.ok((await state()).gold > gold0);
+    assert.equal((await act('captain/quest', { questId: 'sis_kurdu' })).data.result.reason, 'rewardAlreadyClaimed');
+    // Daily/weekly/book rewards need the counters the kills produce.
+    assert.equal((await act('captain/daily', { slotIndex: 0 })).data.result.reason, 'questNotDone');
+    assert.equal((await act('captain/daily', { slotIndex: 'x' })).data.result.reason, 'invalidQuest');
+    assert.equal((await act('captain/weekly', { id: 'nope' })).data.result.reason, 'invalidQuest');
+    assert.equal((await act('captain/book', { id: 'collection_fallow_valley' })).data.result.reason, 'mapNotFullyExplored');
+    assert.equal((await act('captain/buyNp')).data.result.reason, 'npStillAvailable');
+
+    // Daily login: the streak and diamonds come from the wallet; the client cannot forge them; once per day.
+    const first = await act('dailyLogin/claim', { server: { streak: 7, diamonds: 99999 } });
+    assert.equal(first.data.result.ok, true);
+    assert.equal(first.data.result.streak, 1, 'forged streak is ignored');
+    const wallet = (await call('wallet', null, cookie)).data;
+    assert.ok(wallet.diamonds < 99999);
+    const second = await act('dailyLogin/claim', { server: { streak: 1, diamonds: 0 } });
+    assert.equal(second.status, 409);
+    assert.equal(second.data.error, 'DAILY_ALREADY_CLAIMED');
+
+    // Wheel item: nothing to claim before a spin; afterwards the spin's own prize is delivered once.
+    assert.equal((await act('wheel/claimItem', { prize: 'wing', spunAt: 1 })).data.result.reason, 'noPendingPrize');
+    const spin = await call('wheel/spin', {}, cookie);
+    assert.equal(spin.status, 200);
+    if (['mythic_1d', 'apex_3d'].includes(spin.data.prize)) {
+      assert.equal((await act('wheel/claimItem', {})).data.result.reason, 'bagFull', 'premium prizes are delivered through the entitlement route, never as an item');
+    } else {
+      const before = await state();
+      const claimed = await act('wheel/claimItem', { prize: 'wing', spunAt: 1 });
+      assert.equal(claimed.data.result.ok, true);
+      assert.equal(claimed.data.result.prize, spin.data.prize, 'the client cannot pick its prize');
+      assert.notDeepEqual((await state()).inventory, before.inventory);
+      assert.equal((await act('wheel/claimItem', {})).data.result.reason, 'noPendingPrize');
+    }
+
+    // Tutorial gift once; top-up only while the tutorial runs.
+    assert.equal((await act('tutorial/gift')).data.result.ok, true);
+    const afterGift = (await state()).gold;
+    assert.equal((await act('tutorial/gift')).data.result.ok, true);
+    assert.equal((await state()).gold, afterGift, 'the gift is given once');
+    // Scheduled events: unknown event and not-open event are refused.
+    assert.equal((await act('event/join', { eventId: 'made_up' })).data.result.reason, 'unknownEvent');
+    assert.equal((await act('event/credit', { eventId: 'made_up' })).data.result.reason, 'unknownEvent');
+    db.close();
+  } finally { await api.close(); }
+});

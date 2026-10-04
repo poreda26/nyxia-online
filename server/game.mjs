@@ -12,7 +12,7 @@ const ECONOMY_FIELDS = ['gold', 'inventory', 'equipped', 'chests'];
 const SERVER_RANDOM_RANGE = 2 ** 48 - 1; // randomInt üst sınırı
 Math.random = () => randomInt(0, SERVER_RANDOM_RANGE) / (SERVER_RANDOM_RANGE + 1);
 
-export function createGame(db, { fail, logic, keyOf, all = false, drops = () => null }) {
+export function createGame(db, { fail, logic, keyOf, all = false, drops = () => null, hooks = {} }) {
   db.exec('CREATE TABLE IF NOT EXISTS economy_accounts(account INTEGER PRIMARY KEY REFERENCES accounts(id), enabled_at INTEGER NOT NULL)');
   const available = !!logic;
 
@@ -42,15 +42,15 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
         bank: Array.isArray(stored.data.bank) ? stored.data.bank : [],
         bankGold: Number.isFinite(stored.data.bankGold) ? stored.data.bankGold : 0,
       };
-      // Dünya Canavarı ödülü: hak, sunucudaki bekleyen kayıttır; boss kimliği ondan alınır
-      // (istemcinin söylediği yok sayılır) ve kayıt ödül verildiği işlemde silinir.
-      let claimId = null;
-      if (type === 'warzone/bossLoot') {
-        const id = Number(payload?.claimId);
-        const claim = Number.isInteger(id) ? db.prepare('SELECT id,boss_id FROM boss_loot_claims WHERE id=? AND account=?').get(id, account) : null;
-        if (!claim) { db.exec('ROLLBACK'); return { revision: stored.revision, result: { ok: false, reason: 'noClaim' } }; }
-        claimId = claim.id;
-        payload = { bossId: claim.boss_id };
+      // Hak/ödül kaynağı sunucuda olan eylemler (Dünya Canavarı hakkı, günlük giriş, çark) kancadan geçer:
+      // kanca aynı işlemde sunucudaki kaydı okur, istemcinin söylediği veriyi onunla DEĞİŞTİRİR ve
+      // eylem başarılı olursa `after` ile kaydı tüketir.
+      let after = null;
+      if (Object.hasOwn(hooks, type)) {
+        const prepared = hooks[type]({ account, characterKey, now, payload });
+        if (prepared.fail) { db.exec('ROLLBACK'); return { revision: stored.revision, result: { ok: false, reason: prepared.fail } }; }
+        payload = prepared.payload;
+        after = prepared.after || null;
       }
       // Sahibin yayınladığı canlı drop kuralları, istemcidekiyle aynı biçimde uygulanır.
       const live = drops();
@@ -63,7 +63,7 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
       const before = stored.data.characters[index];
       const patch = {};
       for (const key of Object.keys(next.player)) if (JSON.stringify(before[key]) !== JSON.stringify(next.player[key])) patch[key] = next.player[key];
-      if (claimId !== null) db.prepare('DELETE FROM boss_loot_claims WHERE id=? AND account=?').run(claimId, account);
+      after?.();
       const bankChanged = JSON.stringify(state.bank) !== JSON.stringify(next.bank);
       stored.data.characters[index] = next.player;
       stored.data.bank = next.bank;

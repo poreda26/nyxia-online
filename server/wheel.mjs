@@ -63,11 +63,17 @@ export function createWheel(db, { fail }) {
     } catch (error) { db.exec('ROLLBACK'); throw error; }
   };
 
+  // Bekleyen ödülü (varsa) olduğu gibi döner; act işleminin kancası kullanır.
+  const pendingPrize = (accountId) => {
+    const row = rowOf(accountId);
+    return row && !row.claimed ? { prize: row.prize, spunAt: row.spun_at } : null;
+  };
+
   const claim = (accountId) => {
     const result = db.prepare('UPDATE wheel_spins SET claimed=1 WHERE account_id=? AND claimed=0').run(accountId);
     if (!result.changes) throw fail(404, 'NO_PENDING_PRIZE');
     return { ok: true };
   };
 
-  return { status, spin, claim };
+  return { status, spin, claim, pendingPrize };
 }

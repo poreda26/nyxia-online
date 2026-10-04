@@ -227,7 +227,27 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   };
   const wallet = createWallet(db, { fail });
   const entitlements = createEntitlements(db, { fail });
-  const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll, drops: () => admin.drops.get().data });
+  const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll, drops: () => admin.drops.get().data,
+    hooks: {
+      // Dünya Canavarı: hak, sunucudaki bekleyen kayıttır.
+      'warzone/bossLoot': ({ account, payload }) => {
+        const id = Number(payload?.claimId);
+        const claim = Number.isInteger(id) ? db.prepare('SELECT id,boss_id FROM boss_loot_claims WHERE id=? AND account=?').get(id, account) : null;
+        if (!claim) return { fail: 'noClaim' };
+        return { payload: { bossId: claim.boss_id }, after: () => db.prepare('DELETE FROM boss_loot_claims WHERE id=? AND account=?').run(claim.id, account) };
+      },
+      // Günlük giriş: seri ve elmas bakiyesi cüzdanın günlük kaydından gelir (gün başına bir kez).
+      'dailyLogin/claim': ({ account, characterKey, now }) => {
+        const claim = wallet.dailyLoginInTransaction(account, characterKey, now);
+        return { payload: { server: { streak: claim.streak, diamonds: claim.diamonds } } };
+      },
+      // Çark: ödül, sunucunun çevirme sırasında seçtiği bekleyen kayıttır (premium ödüller ayrı yoldan).
+      'wheel/claimItem': ({ account }) => {
+        const pending = wheel.pendingPrize(account);
+        if (!pending) return { fail: 'noPendingPrize' };
+        return { payload: pending, after: () => wheel.claim(account) };
+      },
+    } });
   const actRateLimit = makeRateLimiter(240);
   const iap = createIap(db, { fail, wallet, secret: iapWebhookSecret, allowSandbox: iapAllowSandbox });
   const admin = createAdmin(db, { read, fail, wallet });

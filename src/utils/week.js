@@ -6,7 +6,9 @@
 // player.js'in de doğrudan nationalPoint.js'e bağımlı olması döngüsel import
 // yaratırdı.
 export function currentWeekId(date = new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  // Hafta sınırı da İstanbul takvimine göre (bkz. utils/day.js).
+  const ist = new Date(date.getTime() + 3 * 60 * 60 * 1000);
+  const d = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));

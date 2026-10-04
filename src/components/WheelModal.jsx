@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X, Crown, Feather, ScrollText, Coins, Swords, Shield, Heart, Sparkles, Gem, Flag } from "lucide-react";
 import "./RewardPanels.css";
 import "./WheelModal.css";
-import { WHEEL_SLICES, WHEEL_PREMIUM_IDS, applyWheelPrize, wheelAlreadyApplied } from "../utils/wheel";
+import { WHEEL_SLICES, WHEEL_PREMIUM_IDS, wheelAlreadyApplied } from "../utils/wheel";
 import { getActiveCharacterKey } from "../utils/api";
 import { applyEntitlement } from "../utils/diamondCharge";
 import { fetchWheel, spinWheel, claimWheel } from "../services/wheelService";
@@ -43,7 +43,7 @@ function formatCountdown(ms) {
 // Günde bir kez çevrilen Çark. Ödül ve oranlar sunucuda seçilir; burada yalnızca
 // sonuç gösterilip oyuncuya yazılır. Ödül uygulanamazsa (çanta+depo dolu)
 // sunucuda "alınmamış" kalır ve yer açılınca tekrar alınabilir.
-export default function WheelModal({ player, setPlayer, bank, setBank, onClose, onStatus, pushToast }) {
+export default function WheelModal({ player, setPlayer, act, onClose, onStatus, pushToast }) {
   const { t } = useTranslation();
   const [state, setState] = useState(null);
   const [error, setError] = useState(null);
@@ -55,7 +55,6 @@ export default function WheelModal({ player, setPlayer, bank, setBank, onClose, 
   const rotationRef = useRef(0);
   // setPlayer / setBank çağrıları animasyon sonrası çalışır; en güncel değeri okusun.
   const playerRef = useRef(player); playerRef.current = player;
-  const bankRef = useRef(bank); bankRef.current = bank;
 
   const publish = useCallback((next) => { setState(next); onStatus?.(next.canSpin || !!next.pending); }, [onStatus]);
 
@@ -91,17 +90,24 @@ export default function WheelModal({ player, setPlayer, bank, setBank, onClose, 
       }
       return;
     }
-    const out = applyWheelPrize(playerRef.current, bankRef.current, prizeId, spunAt);
-    if (!out.delivered) {
-      setResult({ prizeId, bagFull: true });
-      publish({ canSpin: false, pending: prizeId, spunAt, nextSpinAt: state?.nextSpinAt });
+    // Sunucu ekonomisinde ödülü sunucu kendi bekleyen kaydından verir; eski yolda istemcinin bildirdiği kullanılır.
+    const out = await act("wheel/claimItem", { prize: prizeId, spunAt });
+    if (!out.ok) {
+      if (out.reason === "bagFull") {
+        setResult({ prizeId, bagFull: true });
+        publish({ canSpin: false, pending: prizeId, spunAt, nextSpinAt: state?.nextSpinAt });
+      } else {
+        setResult(null);
+        setError("failed");
+        await refresh();
+      }
       return;
     }
-    setPlayer(out.player);
-    if (out.bank !== bankRef.current) setBank(out.bank);
     setResult({ prizeId, toBank: !!out.toBank });
     pushToast?.(t("wheel.applied", { name: prizeName(prizeId) }), "success");
-    try { await claimWheel(getActiveCharacterKey()); } catch { /* ödül yazıldı; bir sonraki açılışta onay tekrarlanır */ }
+    if (!act.isServer()) {
+      try { await claimWheel(getActiveCharacterKey()); } catch { /* ödül yazıldı; bir sonraki açılışta onay tekrarlanır */ }
+    }
     await refresh();
   };
 
