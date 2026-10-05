@@ -2,6 +2,7 @@
 // server/game-logic.generated.mjs paketinde (bkz. scripts/build-game-logic.mjs) kullanılır.
 import { initialPlayer } from "../utils/player";
 
+export { SERVER_OWNED_FIELDS } from "./fields";
 export { applyLiveDropConfig } from "../utils/dropConfig";
 export { applyAction, ACTION_TYPES, reducers } from "./actions";
 

@@ -23983,6 +23983,51 @@ function unequipItem(player, slot) {
   return { player: clampPlayerHp(result.player), removed: true };
 }
 
+// src/game/fields.js
+init_define_import_meta_env();
+var SERVER_OWNED_FIELDS = [
+  // ekonomi
+  "gold",
+  "inventory",
+  "equipped",
+  "chests",
+  // gelişim ve ilerleme
+  "xp",
+  "level",
+  "statPoints",
+  "stats",
+  "skills",
+  "class",
+  "monsterKills",
+  "claimedQuests",
+  "claimedCollections",
+  "awakened",
+  "activeTitle",
+  "dailyQuests",
+  "weeklyQuests",
+  "dailyLogin",
+  "scheduledEvents",
+  "tutorialGift",
+  "wheelAppliedAt",
+  // savaş, harita, forge
+  "currentMapId",
+  "mapBoss",
+  "soloDungeon",
+  "dungeonRun",
+  "fight",
+  "warzone",
+  "huntSearch",
+  "forge",
+  "accForge",
+  "activeBoosts",
+  "eventExpBonus",
+  // Savaş Alanı
+  "nationalPoint",
+  "weeklyPoint",
+  "weekId",
+  "pendingWeeklyClaim"
+];
+
 // src/game/actions.js
 init_define_import_meta_env();
 
@@ -26336,6 +26381,7 @@ function newCharacterEconomy(cls, race, nickname) {
 }
 export {
   ACTION_TYPES,
+  SERVER_OWNED_FIELDS,
   applyAction,
   applyLiveDropConfig,
   createCharacter,

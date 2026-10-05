@@ -278,6 +278,16 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     const seed = randomBytes(4).readUInt32BE(0) || 1;
     return { opponentAccountId: picked.accountId, opponentName: picked.character.nickname || picked.accountName, opponent: duelSnapshot(picked.character), seed };
   }
+  // Uygulama ayarları (en düşük istemci sürümü, güncelleme bağlantısı): DB'deki değer, yoksa ortam değişkeni.
+  db.exec('CREATE TABLE IF NOT EXISTS app_config(key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+  let configCache = { at: 0, value: { minBuild: 0, updateUrl: null } };
+  function appConfig() {
+    const now = Date.now();
+    if (now - configCache.at < 5000) return configCache.value;
+    const read = (key) => db.prepare('SELECT value FROM app_config WHERE key=?').get(key)?.value;
+    configCache = { at: now, value: { minBuild: Number(read('min_build') ?? process.env.MIN_CLIENT_BUILD ?? 0) || 0, updateUrl: read('update_url') ?? process.env.APP_UPDATE_URL ?? null } };
+    return configCache.value;
+  }
   const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll, drops: () => admin.drops.get().data,
     hooks: {
       // Dünya Canavarı: hak, sunucudaki bekleyen kayıttır.
@@ -604,7 +614,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Character-Key, X-Native-Client, Authorization');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Character-Key, X-Native-Client, X-Client-Build, Authorization');
         return send(204, null);
       }
       const path = new URL(req.url, 'http://localhost').pathname;
@@ -616,6 +626,14 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (!staticDir || req.method !== 'GET') throw fail(404, 'NOT_FOUND');
         return serveStatic(res, staticDir, path);
       }
+      // En düşük istemci sürümü: eski kurallarla çalışan istemciler (ör. eski APK) sunucu ekonomisini bozmasın diye
+      // reddedilir. Sağlık ucu, sahip paneli ve ödeme servisi (RevenueCat) bu denetimin dışındadır.
+      if (path.startsWith('/api/') && path !== '/api/health' && path !== '/api/version' && !path.startsWith('/api/admin')) {
+        const config = appConfig();
+        const build = Number(req.headers['x-client-build']) || 0;
+        if (config.minBuild > 0 && build < config.minBuild) return send(426, { error: 'CLIENT_OUTDATED', minBuild: config.minBuild, updateUrl: config.updateUrl || null });
+      }
+      if (path === '/api/version' && req.method === 'GET') { const config = appConfig(); return send(200, { minBuild: config.minBuild, updateUrl: config.updateUrl || null }); }
       if (path === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')) return send(200, { ok: true, mode: 'account-backup', authoritative: false });
       if (['/api/register', '/api/login'].includes(path) && req.method === 'POST') {
         rateLimit(clientAddress(req));

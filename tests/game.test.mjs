@@ -686,3 +686,27 @@ test('duels are decided by the server with the same engine, scrolls and GM tools
     db.close();
   } finally { await api.close(); }
 });
+
+test('minimum client build: outdated or header-less clients get 426 with the update link, current ones and health/admin pass', async () => {
+  const { api, database } = await boot();
+  try {
+    const db = new DatabaseSync(database);
+    db.prepare("INSERT OR REPLACE INTO app_config(key,value) VALUES('min_build','3')").run();
+    db.prepare("INSERT OR REPLACE INTO app_config(key,value) VALUES('update_url','https://example.com/update')").run();
+    db.close();
+    const base = `http://127.0.0.1:${api.server.address().port}/api/`;
+    const get = async (path, build) => {
+      const r = await fetch(base + path, { headers: { Origin: 'http://test.local', ...(build === undefined ? {} : { 'X-Client-Build': String(build) }) } });
+      return { status: r.status, data: await r.json().catch(() => ({})) };
+    };
+    const noHeader = await get('me');
+    assert.equal(noHeader.status, 426);
+    assert.equal(noHeader.data.error, 'CLIENT_OUTDATED');
+    assert.equal(noHeader.data.updateUrl, 'https://example.com/update');
+    assert.equal((await get('me', 2)).status, 426);
+    assert.equal((await get('me', 3)).status, 401, 'a current client reaches the normal login check');
+    assert.equal((await get('health')).status, 200, 'health is never blocked');
+    assert.deepEqual((await get('version')).data, { minBuild: 3, updateUrl: 'https://example.com/update' });
+    assert.notEqual((await get('admin/me')).status, 426, 'the owner panel is exempt');
+  } finally { await api.close(); }
+});

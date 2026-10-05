@@ -302,9 +302,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
     }
   };
   // Öldürme ödülü sunucu kurallarıyla verilir (act → battle/kill). Dönen değer: ödül verildi mi.
-  const applyLoot = async (m) => {
+  // İstek canavar ölür ölmez (animasyon beklenmeden) gider; sonuç animasyon bitince gösterilir. Böylece sunucu
+  // gecikmesi savaş akışına eklenmez. Sunucu "çok erken" derse (savaş bildirimi henüz 0,7 sn dolmadıysa) bir kez yeniden dener.
+  const requestLoot = async (m) => {
     await startRef.current;
-    const result = await act("battle/kill", { monsterId: m.id, wear: takeWear() });
+    const wear = takeWear();
+    let result = await act("battle/kill", { monsterId: m.id, wear });
+    if (!result.ok && result.reason === "tooFast") {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      result = await act("battle/kill", { monsterId: m.id, wear });
+    }
+    return result;
+  };
+
+  const applyLoot = async (m, pending = requestLoot(m)) => {
+    const result = await pending;
     if (!mountedRef.current) return result.ok;
     if (!result.ok) { pushToast(t("battle.actionFailed"), "warn"); return false; }
     setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
@@ -338,11 +350,12 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
     if (monsterHp <= 0) {
       log = pushLog(log, t("battle.log.monsterDefeated", { monster: tm(monster) }));
       const wonMonster = monster;
+      const lootRequest = requestLoot(wonMonster);
       setBattle({ ...battle, ...extra, monsterHp, log, finished: true });
       // lock stays engaged through this window so extra clicks can't
       // trigger a second loot/level-up off the same kill
       setTimeout(async () => {
-        const rewarded = await applyLoot(wonMonster);
+        const rewarded = await applyLoot(wonMonster, lootRequest);
         attackLockRef.current = false;
         if (!rewarded && dungeonRun) { setDungeonRun(null); setMonster(null); setBattle(null); return; }
 
@@ -408,6 +421,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
     setShake("player");
     setTimeout(() => setShake(null), 260);
 
+    // Ölüm isteği de ekranla beklemeden hemen gider.
+    const deathRequest = playerDied ? act("battle/death", { wear: takeWear() }) : null;
     if (playerDied) {
       setTimeout(() => {
         // Önceden burada sadece "canın kısmen yenilendi" diyen bir toast
@@ -417,7 +432,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
         // hp/mp'yi gerçekten tam dolduruyor hem de küçük bir XP cezası
         // uyguluyor, DeathModal da bunu net bir "Öldün!" uyarısıyla gösteriyor.
         (async () => {
-          const result = await act("battle/death", { wear: takeWear() });
+          const result = await deathRequest;
           setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
           setDeathInfo({ xpLost: result.xpLost || 0 });
           endBattle();

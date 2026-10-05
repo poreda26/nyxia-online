@@ -57,6 +57,13 @@ export default function App() {
   const [screen, setScreen] = useState("login");
   // Açılışta oturum çerezi kontrol edilirken giriş ekranı yanıp sönmesin.
   const [sessionChecked, setSessionChecked] = useState(false);
+  // Sunucu bu istemci sürümünü reddettiyse ({ updateUrl }) oyun yerine güncelleme ekranı gösterilir.
+  const [outdated, setOutdated] = useState(null);
+  useEffect(() => {
+    const onOutdated = (event) => setOutdated(event.detail || {});
+    window.addEventListener("nyxia:outdated", onOutdated);
+    return () => window.removeEventListener("nyxia:outdated", onOutdated);
+  }, []);
   // GM yetkisi sunucudan gelir (hesaba bağlı); yerel kayıttaki hiçbir değer yetki vermez.
   const [isGm, setIsGm] = useState(false);
   const [username, setUsername] = useState("");
@@ -210,7 +217,11 @@ export default function App() {
     setPlayer, setBank, setBankGold,
     isServer: () => economyRef.current,
     onRevision: (revision) => { backupRevisionRef.current = revision; },
+    // İyimser uygulanan bir işlemi sunucu reddettiyse ekran sunucudaki gerçek duruma döner; kullanıcıya haber ver.
+    onRollback: () => rollbackToastRef.current?.(),
   }), [setBank, setBankGold]);
+  const rollbackToastRef = useRef(null);
+  rollbackToastRef.current = () => pushToast(translateWith(audioSettings.language, "battle.actionFailed"), "warn");
 
   // Faz 2 — hesap artık sadece bu tarayıcıda değil, sunucudaki backup'a da
   // senkronlanıyor (bkz. utils/api.js#fetchBackup/pushBackup). backupRevisionRef
@@ -490,6 +501,18 @@ export default function App() {
     <LanguageProvider lang={audioSettings.language} setLang={(l) => updateAudioSetting("language", l)}>
     <div style={styles.appRoot}>
       <GlobalStyle />
+      {outdated && (
+        <div role="alertdialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-base, #0B0C10)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 28, textAlign: "center", color: "var(--text-primary, #e8e6e0)" }}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 22 }}>{translateWith(audioSettings.language, "app.outdatedTitle")}</div>
+          <div style={{ fontSize: 14, maxWidth: 320, lineHeight: 1.6, color: "var(--text-muted, #aaa)" }}>{translateWith(audioSettings.language, "app.outdatedBody")}</div>
+          <button
+            style={{ ...styles.primaryBtn, minWidth: 160 }}
+            onClick={() => (outdated.updateUrl ? window.open(outdated.updateUrl, "_blank") : window.location.reload())}
+          >
+            {translateWith(audioSettings.language, outdated.updateUrl ? "app.outdatedButton" : "app.outdatedReload")}
+          </button>
+        </div>
+      )}
       {screen === "login" && sessionChecked && <LoginScreen initialUsername={initialUsername} onLogin={handleLogin} />}
       {screen === "raceSelect" && <RaceSelect onChoose={handleChooseAccountRace} />}
       {screen === "characterSelect" && (

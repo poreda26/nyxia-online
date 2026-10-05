@@ -139,6 +139,10 @@ const base = {
       goldCapTrimmedBank: "Depoda en fazla {max} altın bulunabilir — fazlası silindi.",
       warzoneRankReward: "Geçen haftaki Savaş Alanı sıralamasında {rank}. oldun! +{diamonds} Elmas",
       backupSyncedFromOtherDevice: "Hesabın başka bir cihazda güncellenmiş — en güncel kayıt yüklendi.",
+      outdatedTitle: "Güncelleme gerekli",
+      outdatedBody: "Oyuna devam etmek için Nyxia Online'ın son sürümünü yüklemen gerekiyor.",
+      outdatedButton: "Güncelle",
+      outdatedReload: "Yenile",
     },
     scheduledEvent: {
       notOpen: "Etkinlik şu an açık değil.",
@@ -445,6 +449,10 @@ const base = {
       goldCapTrimmedBank: "The bank can hold at most {max} gold — the excess was removed.",
       warzoneRankReward: "You finished #{rank} in last week's Warzone rankings! +{diamonds} Diamonds",
       backupSyncedFromOtherDevice: "Your account was updated on another device — the latest save was loaded.",
+      outdatedTitle: "Update required",
+      outdatedBody: "You need the latest version of Nyxia Online to keep playing.",
+      outdatedButton: "Update",
+      outdatedReload: "Reload",
     },
     scheduledEvent: {
       notOpen: "The event isn't open right now.",

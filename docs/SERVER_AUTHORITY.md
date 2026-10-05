@@ -152,3 +152,13 @@ Kalan: ırk/meslek parşömeni KULLANIMI (envanterde kullanım eylemi), yeni kar
   görevler, günlük/haftalık sayaçlar, harita, zindan, forge, güç takviyeleri, NP/haftalık puan. Yeni (sunucuda kaydı olmayan) karakterin bu alanları
   kuralların başlangıç karakterinden alınır; ırk sunucudaki hesap değerine sabitlenir.
 - Bayrağı açmak: `DATABASE_PATH=... node server/set-economy.mjs <hesap>` (tek hesap) → test → sunucuda `ECONOMY_FOR_ALL=1`.
+
+### Akıcılık (iyimser eylemler) ve en düşük istemci sürümü
+- `src/game/client.js`: sunucu yolunda sonucu önceden bilinen eylemler (`OPTIMISTIC_ACTIONS`: çanta, onarım, depo, pot, statü, forge yerleştirme,
+  dükkân...) aynı saf kuralla önce yerelde uygulanır, ekran hemen güncellenir; onay sırayla arkadan gider. Sunucu reddederse ya da ağ
+  kopuksa sunucudaki gerçek durum yüklenir (`resync`) ve "işlem yapılamadı" uyarısı çıkar. Rastgele/sunucu verili eylemler sonucu beklemeye devam eder.
+  Savaşta ölüm/öldürme isteği canavar ölür ölmez gider (animasyon beklenmez).
+- En düşük istemci sürümü: `src/version.js` CLIENT_BUILD (şu an 1) her istekte `X-Client-Build` ile gider. Sunucu `app_config.min_build`
+  (ya da `MIN_CLIENT_BUILD` ortam değişkeni) daha büyükse 426 `CLIENT_OUTDATED` döner; uygulama "Güncelleme gerekli" ekranı açar.
+  Ayar: `DATABASE_PATH=... node server/set-min-build.mjs <build> [güncelleme-bağlantısı]` (0 = kapalı). Sağlık, sahip paneli ve ödeme servisi muaftır.
+  Eski APK'lar başlığı hiç göndermediği için min_build ≥ 1 olunca bloklanır. Kural/API değişince CLIENT_BUILD'i artırıp min_build'i ona çek.

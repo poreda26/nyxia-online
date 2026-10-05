@@ -4,6 +4,7 @@
 // yerel geliştirmede (Vite 5173, backend ayrı port 8787) .env.local'de
 // VITE_API_BASE=http://localhost:8787 ile ezilir.
 import { Capacitor } from "@capacitor/core";
+import { CLIENT_BUILD } from "../version";
 
 // Mağaza uygulamasında (Capacitor) sayfa https://localhost / capacitor://localhost
 // origin'inden çalışır: göreli /api yolu uygulamanın kendi yerel sunucusuna
@@ -27,6 +28,7 @@ export async function call(path, method, body, characterKey=activeCharacterKey) 
     credentials: NATIVE ? "omit" : "include",
     headers: {
       "Content-Type": "application/json",
+      "X-Client-Build": String(CLIENT_BUILD),
       ...(path.startsWith("clan")&&characterKey?{"X-Character-Key":characterKey}:{}),
       ...(NATIVE ? { "X-Native-Client": "1", ...(token ? { Authorization: `Bearer ${token}` } : {}) } : {}),
     },
@@ -38,6 +40,8 @@ export async function call(path, method, body, characterKey=activeCharacterKey) 
     if (res.ok && data.token && (path === "login" || path === "register")) writeToken(data.token);
     else if (path === "logout" || (res.ok && path === "account/delete") || (res.status === 401 && data.error === "LOGIN_REQUIRED")) writeToken(null);
   }
+  // Sunucu bu sürümü artık kabul etmiyor: uygulama güncelleme ekranını açar (bkz. App.jsx).
+  if (res.status === 426 && data.error === "CLIENT_OUTDATED" && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nyxia:outdated", { detail: data }));
   if (!res.ok) throw Object.assign(new Error(data.error || "REQUEST_FAILED"), { code: data.error });
   return data;
 }

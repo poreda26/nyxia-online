@@ -5,17 +5,7 @@ import { randomInt } from 'node:crypto';
 // bkz. scripts/build-game-logic.mjs). Hesap başına bir "sunucu ekonomisi" bayrağı vardır;
 // bayrak açıkken altın, envanter, kuşanılanlar, sandıklar ve depo yalnızca bu eylemlerle
 // değişir — istemci yedeğiyle yazdığı değerler yok sayılır.
-const ECONOMY_FIELDS = [
-  // ekonomi
-  'gold', 'inventory', 'equipped', 'chests',
-  // gelişim ve ilerleme
-  'xp', 'level', 'statPoints', 'stats', 'skills', 'class', 'monsterKills', 'claimedQuests', 'claimedCollections', 'awakened', 'activeTitle',
-  'dailyQuests', 'weeklyQuests', 'dailyLogin', 'scheduledEvents', 'tutorialGift', 'wheelAppliedAt',
-  // savaş, harita, forge
-  'currentMapId', 'mapBoss', 'soloDungeon', 'dungeonRun', 'fight', 'warzone', 'huntSearch', 'forge', 'accForge', 'activeBoosts', 'eventExpBonus',
-  // Savaş Alanı
-  'nationalPoint', 'weeklyPoint', 'weekId', 'pendingWeeklyClaim',
-];
+
 
 // Sunucuda rastgelelik (yükseltme şansı, sandık, düşenler) kriptografik kaynaktan gelir;
 // oyun kodu Math.random kullandığı için süreç genelinde değiştirilir.
@@ -108,7 +98,7 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
     (Array.isArray(data.characters) ? data.characters : []).forEach((c, i) => {
       if (!c || typeof c !== 'object') return;
       const known = storedChars.get(keyOf(c, i)) || logic.createCharacter(c.class, storedRace || c.race, c.nickname);
-      for (const field of ECONOMY_FIELDS) if (known[field] !== undefined) c[field] = known[field]; else delete c[field];
+      for (const field of logic.SERVER_OWNED_FIELDS) if (known[field] !== undefined) c[field] = known[field]; else delete c[field];
       if (storedRace) c.race = storedRace;
     });
     if (storedRace) data.race = storedRace;
