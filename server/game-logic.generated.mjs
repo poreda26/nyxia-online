@@ -23453,6 +23453,7 @@ var WINGS = [
 var wingDefinition = (id) => WINGS.find((w) => w.id === id);
 var equippedWing = (player) => player?.equipped?.wings?.kind === "wings" ? wingDefinition(player.equipped.wings.wingId) : null;
 var wingMultiplier = (player, bonus) => equippedWing(player) ? { exp: 1.05, drop: 1.05, atk: 1.03 }[bonus] || 1 : 1;
+var wingDexBonus = (player) => equippedWing(player) ? 3 : 0;
 
 // src/utils/boosts.js
 init_define_import_meta_env();
@@ -23870,6 +23871,12 @@ function playerMaxMp(player) {
   const quadratic = MP_COEFF[player.class] * level * level * (int_ + 30) * MP_SCALE;
   return Math.round(base.maxMp + quadratic + level * 0.3 + int_ * 0.1 + gearMp);
 }
+var DEF_COEFF = { warrior: 0.75, rogue: 0.95, mage: 1.1 };
+function playerDef(player) {
+  const { def: gearDef } = totalStats(player);
+  const base = DEF_COEFF[player.class] * (player.level + gearDef) + 2;
+  return Math.round(base * boostMultiplier(player, "def"));
+}
 function clampPlayerHp(player) {
   return { ...player, hp: Math.min(player.hp, playerMaxHp(player)), mp: Math.min(player.mp, playerMaxMp(player)) };
 }
@@ -24028,186 +24035,23 @@ var SERVER_OWNED_FIELDS = [
   "pendingWeeklyClaim"
 ];
 
-// src/game/actions.js
+// src/game/fight.js
 init_define_import_meta_env();
 
-// src/utils/premium.js
+// src/utils/combat.js
 init_define_import_meta_env();
-
-// src/data/premium.js
-init_define_import_meta_env();
-var PREMIUM_TIERS = {
-  mythic: {
-    id: "mythic",
-    name: "Mythic Premium",
-    price: 3e3,
-    durationDays: 15,
-    color: "#FF8C42",
-    expMult: 2,
-    dropMult: 1.1,
-    goldMult: 1.1,
-    sellMult: 1.1,
-    repairDiscount: 0.5,
-    bankBonusPages: 2,
-    giftScrolls: 1,
-    nationalPointBonus: 25,
-    nationalPointLossReduction: 0.1,
-    perks: ["goldBonus10", "expBonus100", "dropBonus10", "sellBonus10", "repairDiscount50", "giftScroll", "bankPages2", "npLossReduction10", "autoBattle"]
-  },
-  apex: {
-    id: "apex",
-    name: "Apex Premium",
-    price: 1500,
-    durationDays: 15,
-    color: "#8B6FC9",
-    expMult: 1.5,
-    dropMult: 1.03,
-    goldMult: 1.05,
-    sellMult: 1.05,
-    repairDiscount: 0.25,
-    bankBonusPages: 0,
-    giftScrolls: 1,
-    nationalPointBonus: 10,
-    nationalPointLossReduction: 0.05,
-    perks: ["goldBonus5", "expBonus50", "dropBonus3", "sellBonus5", "repairDiscount25", "giftScroll", "npLossReduction5", "autoBattle"]
-  }
-};
-
-// src/utils/premium.js
-var DAY_MS = 24 * 60 * 60 * 1e3;
-function activeEntry(entry) {
-  if (!entry?.tier || !entry.expiresAt || entry.expiresAt <= Date.now()) return null;
-  return PREMIUM_TIERS[entry.tier] ? entry : null;
+function mitigate(rawPower, def, K) {
+  return Math.max(0, rawPower) * K / (Math.max(0, def) + K);
 }
-function effectivePremium(player) {
-  const bought = activeEntry(player.premium);
-  const boost = activeEntry(player.premiumBoost);
-  if (!bought) return boost;
-  if (!boost) return bought;
-  return PREMIUM_TIERS[boost.tier].price > PREMIUM_TIERS[bought.tier].price ? boost : bought;
+var MONSTER_DEF_K = 120;
+var PLAYER_DEF_K = 170;
+function hitChance(attackerDex, defenderDex, attackerLevel) {
+  const diff = attackerDex - defenderDex;
+  const chance = 0.9 + Math.max(-0.04, Math.min(0.04, diff * 4e-4));
+  return Math.min(0.95, Math.max(0.85, chance));
 }
-function activePremiumTier(player) {
-  const entry = effectivePremium(player);
-  return entry ? PREMIUM_TIERS[entry.tier] : null;
-}
-function premiumGoldMultiplier(player) {
-  return activePremiumTier(player)?.goldMult ?? 1;
-}
-function premiumExpMultiplier(player) {
-  return activePremiumTier(player)?.expMult ?? 1;
-}
-function premiumDropMultiplier(player) {
-  return activePremiumTier(player)?.dropMult ?? 1;
-}
-function premiumSellMultiplier(player) {
-  return activePremiumTier(player)?.sellMult ?? 1;
-}
-function premiumRepairDiscount(player) {
-  return activePremiumTier(player)?.repairDiscount ?? 0;
-}
-function premiumNpBonus(player) {
-  return activePremiumTier(player)?.nationalPointBonus ?? 0;
-}
-function premiumNpLossReduction(player) {
-  return activePremiumTier(player)?.nationalPointLossReduction ?? 0;
-}
-function buyPremium(player, tierId, bank) {
-  const tier = PREMIUM_TIERS[tierId];
-  if (!tier) return { player, bank, bought: false, reason: "invalidPackage" };
-  if (player.diamonds < tier.price) return { player, bank, bought: false, reason: "notEnoughDiamonds" };
-  const now = Date.now();
-  const sameTierActive = player.premium?.tier === tierId && activePremiumTier(player);
-  const base = sameTierActive ? player.premium.expiresAt : now;
-  const expiresAt = base + tier.durationDays * DAY_MS;
-  let nextBank = bank;
-  const targetPages = BANK_PAGES + tier.bankBonusPages;
-  if (nextBank.length < targetPages) {
-    nextBank = [...nextBank, ...Array.from({ length: targetPages - nextBank.length }, () => [])];
-  }
-  let next = { ...player, diamonds: player.diamonds - tier.price, premium: { tier: tierId, expiresAt } };
-  for (let i = 0; i < tier.giftScrolls; i++) {
-    const result = addItemToInventory(next, makeBonusScrollStack());
-    next = result.player;
-  }
-  return { player: next, bank: nextBank, bought: true };
-}
-
-// src/game/battle.js
-init_define_import_meta_env();
-
-// src/data/mapBosses.js
-init_define_import_meta_env();
-function buildMapBoss(map) {
-  const base = map.monsters[map.monsters.length - 1];
-  const rewardCfg = getMonsterRewardConfig(base, map);
-  return {
-    id: `map_boss_${map.id}`,
-    name: `${map.name} Muhaf\u0131z\u0131`,
-    hp: Math.round(base.hp * 2.5),
-    atk: Math.round(base.atk * 1.15),
-    def: Math.round(base.def * 1.3),
-    xp: Math.round(rewardCfg.xp * 3),
-    goldMin: Math.round(rewardCfg.goldMin * 3),
-    goldMax: Math.round(rewardCfg.goldMax * 3),
-    mapBoss: true,
-    isBoss: true,
-    visualSourceId: base.id
-  };
-}
-
-// src/utils/monsterRewards.js
-init_define_import_meta_env();
-
-// src/utils/clan.js
-init_define_import_meta_env();
-
-// src/utils/day.js
-init_define_import_meta_env();
-var ISTANBUL_OFFSET_MS = 3 * 60 * 60 * 1e3;
-function dayKeyAt(ms) {
-  const [weekday, day, month, year] = new Date(ms + ISTANBUL_OFFSET_MS).toUTCString().split(" ");
-  return `${weekday.replace(",", "")} ${month} ${day} ${year}`;
-}
-function todayKey() {
-  return dayKeyAt(Date.now());
-}
-function yesterdayKey() {
-  return dayKeyAt(Date.now() - 24 * 60 * 60 * 1e3);
-}
-
-// src/data/clan.js
-init_define_import_meta_env();
-var CLAN_EXP_TIERS = [
-  { min: 31, bonus: 0.05 },
-  { min: 21, bonus: 0.02 },
-  { min: 11, bonus: 0.01 }
-];
-
-// src/utils/clan.js
-function onlineCountFor(clan) {
-  if (!clan) return 0;
-  return clan.members.length;
-}
-function clanExpBonus(onlineCount) {
-  for (const tier of CLAN_EXP_TIERS) {
-    if (onlineCount >= tier.min) return tier.bonus;
-  }
-  return 0;
-}
-function clanExpMultiplier(player) {
-  if (!player.clan) return 1;
-  return 1 + clanExpBonus(onlineCountFor(player.clan));
-}
-
-// src/utils/events.js
-init_define_import_meta_env();
-function activeExpEvent(player) {
-  if (!player.eventExpBonus?.expiresAt) return null;
-  if (player.eventExpBonus.expiresAt <= Date.now()) return null;
-  return player.eventExpBonus;
-}
-function eventExpMultiplier(player) {
-  return activeExpEvent(player)?.mult ?? 1;
+function varyDamage(base, random = Math.random) {
+  return Math.max(1, Math.round(base * (1 + (Math.max(0, Math.min(1, random())) * 2 - 1) / 13)));
 }
 
 // src/utils/skills.js
@@ -24386,17 +24230,6 @@ function claimAwakening(player) {
   return { player: { ...player, awakened: true }, claimed: true };
 }
 
-// src/utils/combat.js
-init_define_import_meta_env();
-function mitigate(rawPower, def, K) {
-  return Math.max(0, rawPower) * K / (Math.max(0, def) + K);
-}
-function hitChance(attackerDex, defenderDex, attackerLevel) {
-  const diff = attackerDex - defenderDex;
-  const chance = 0.9 + Math.max(-0.04, Math.min(0.04, diff * 4e-4));
-  return Math.min(0.95, Math.max(0.85, chance));
-}
-
 // src/utils/skills.js
 function classSkills(cls) {
   return SKILLS_BY_CLASS[cls] || [];
@@ -24454,6 +24287,369 @@ function setLoadoutSlot(player, slotIndex, skillId) {
     return id === skillId ? null : id;
   });
   return { ...player, skills: { ...player.skills, loadout } };
+}
+function computeSkillDamage(skill, { clsAtk, atk, monsterDef, monsterHpPct, rand: rand2 }) {
+  const e = skill.effect;
+  let mult = e.mult ?? 1;
+  if (e.type === "execute" && !(monsterHpPct <= e.hpPctThreshold)) mult = 1;
+  return varyDamage(mitigate((clsAtk + atk * 0.9) * mult, monsterDef, MONSTER_DEF_K), () => (rand2(-1e4, 1e4) + 1e4) / 2e4);
+}
+function computeSkillHeal(skill, maxHp) {
+  return Math.round((skill.effect.pct || 0) * maxHp);
+}
+function refreshSkillBuff(buffs, effect) {
+  const stat = effect.type === "buffAtk" ? "atk" : "def";
+  return [...buffs.filter((b) => b.stat !== stat), { stat, mult: effect.mult, turnsLeft: effect.turns + 1 }];
+}
+
+// src/game/fight.js
+var POTION_COOLDOWN_TURNS = 2;
+var MIN_TURN_MS = 300;
+var MAX_FIGHT_ACTIONS = 4e3;
+var nextSeed = (seed) => Math.imul(seed, 1664525) + 1013904223 >>> 0;
+function stockOf(player) {
+  const stock = { hp: {}, mp: {} };
+  for (const item of player.inventory || []) {
+    if (item.kind === "potion" && (item.potionType === "hp" || item.potionType === "mp") && item.count > 0) {
+      stock[item.potionType][item.tier] = (stock[item.potionType][item.tier] || 0) + item.count;
+    }
+  }
+  return stock;
+}
+function createFight(player, monster, seed) {
+  return {
+    seed: seed >>> 0 || 1,
+    turn: 0,
+    monsterHp: monster.hp,
+    monsterMaxHp: monster.hp,
+    hp: playerMaxHp(player),
+    mp: playerMaxMp(player),
+    buffs: [],
+    dot: null,
+    skillCooldowns: {},
+    potionCooldowns: { hp: 0, mp: 0 },
+    wear: { weapon: 0, armor: 0 },
+    stock: stockOf(player),
+    used: { hp: {}, mp: {} },
+    ended: null
+    // "win" | "lose"
+  };
+}
+var buffMult = (buffs, stat) => buffs.filter((b) => b.stat === stat).reduce((m, b) => m * b.mult, 1);
+function bestPotionTier(fight, kind) {
+  for (let tier = 1; tier <= potionTiersFor(kind).length; tier++) if ((fight.stock[kind]?.[tier] || 0) > 0) return tier;
+  return null;
+}
+function checkAction(fight, player, action) {
+  if (fight.ended) return "ended";
+  if (!action || typeof action !== "object") return "invalidAction";
+  if (action.type === "attack") return null;
+  if (action.type === "skill") {
+    const skill = classSkills(player.class).find((s) => s.id === action.id);
+    if (!skill || !(player.skills?.known || []).includes(skill.id)) return "unknownSkill";
+    if ((fight.skillCooldowns[skill.id] || 0) > 0) return "skillCooldown";
+    if (fight.mp < skill.mpCost) return "noMana";
+    return null;
+  }
+  if (action.type === "potion") {
+    if (action.kind !== "hp" && action.kind !== "mp") return "invalidAction";
+    if ((fight.potionCooldowns[action.kind] || 0) > 0) return "potionCooldown";
+    if (!bestPotionTier(fight, action.kind)) return "noPotion";
+    return null;
+  }
+  return "invalidAction";
+}
+function stepFight(fight, player, monster, levelCap, action) {
+  const error = checkAction(fight, player, action);
+  if (error) return { fight, events: [], error };
+  const s = {
+    ...fight,
+    turn: fight.turn + 1,
+    buffs: fight.buffs.map((b) => ({ ...b })),
+    dot: fight.dot ? { ...fight.dot } : null,
+    skillCooldowns: { ...fight.skillCooldowns },
+    potionCooldowns: { ...fight.potionCooldowns },
+    wear: { ...fight.wear },
+    stock: { hp: { ...fight.stock.hp }, mp: { ...fight.stock.mp } },
+    used: { hp: { ...fight.used.hp }, mp: { ...fight.used.mp } }
+  };
+  const rng = () => {
+    s.seed = nextSeed(s.seed);
+    return s.seed / 4294967296;
+  };
+  const randInt = (min, max) => Math.floor(rng() * (max - min + 1)) + min;
+  const events = [];
+  const cls = CLASSES[player.class];
+  const atk = totalStats(player).atk;
+  const def = playerDef(player);
+  const dex = player.stats.dex + wingDexBonus(player);
+  const maxHp = playerMaxHp(player);
+  if (s.dot && s.dot.turnsLeft > 0) {
+    s.monsterHp = Math.max(0, s.monsterHp - s.dot.dmgPerTurn);
+    events.push({ kind: "dot", dmg: s.dot.dmgPerTurn });
+  }
+  s.dot = s.dot && s.dot.turnsLeft > 1 ? { ...s.dot, turnsLeft: s.dot.turnsLeft - 1 } : null;
+  s.buffs = s.buffs.map((b) => ({ ...b, turnsLeft: b.turnsLeft - 1 })).filter((b) => b.turnsLeft > 0);
+  for (const id of Object.keys(s.skillCooldowns)) s.skillCooldowns[id] = Math.max(0, s.skillCooldowns[id] - 1);
+  for (const kind of Object.keys(s.potionCooldowns)) s.potionCooldowns[kind] = Math.max(0, s.potionCooldowns[kind] - 1);
+  const atkMult = buffMult(s.buffs, "atk");
+  const usePotionNow = () => {
+    const kind = action.kind;
+    const tier = bestPotionTier(s, kind);
+    s.stock[kind][tier] -= 1;
+    s.used[kind][tier] = (s.used[kind][tier] || 0) + 1;
+    s.potionCooldowns[kind] = POTION_COOLDOWN_TURNS;
+    const cur = kind === "hp" ? s.hp : s.mp;
+    const cap = kind === "hp" ? maxHp : playerMaxMp(player);
+    const next = Math.min(cap, cur + potionAmount(kind, tier));
+    if (kind === "hp") s.hp = next;
+    else s.mp = next;
+    events.push({ kind: "potion", potion: kind, tier, healed: next - cur });
+  };
+  if (s.monsterHp <= 0) {
+    if (action.type === "skill") {
+      const skill = classSkills(player.class).find((x) => x.id === action.id);
+      s.mp -= skill.mpCost;
+      s.skillCooldowns[skill.id] = skill.cooldown;
+    } else if (action.type === "potion") usePotionNow();
+    s.ended = "win";
+    return { fight: s, events };
+  }
+  if (action.type === "attack") {
+    const crit = rng() < cls.crit;
+    const hit = rng() < hitChance(dex, monster.atk, player.level);
+    const dmg = hit ? varyDamage(mitigate((cls.atk + atk * 0.9) * atkMult * (crit ? 1.8 : 1), monster.def, MONSTER_DEF_K), rng) : 0;
+    s.monsterHp = Math.max(0, s.monsterHp - dmg);
+    if (hit) s.wear.weapon += 1;
+    events.push({ kind: "attack", hit, crit, dmg });
+  } else if (action.type === "skill") {
+    const skill = classSkills(player.class).find((x) => x.id === action.id);
+    const e = skill.effect;
+    s.skillCooldowns[skill.id] = skill.cooldown;
+    s.mp -= skill.mpCost;
+    if (e.type === "damage" || e.type === "execute") {
+      const dmg = Math.max(1, Math.round(computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct: s.monsterHp / s.monsterMaxHp, rand: randInt }) * atkMult));
+      s.monsterHp = Math.max(0, s.monsterHp - dmg);
+      events.push({ kind: "skill", skillId: skill.id, effect: e.type, dmg });
+    } else if (e.type === "heal") {
+      const amount = computeSkillHeal(skill, maxHp);
+      const healed = Math.min(amount, maxHp - s.hp);
+      s.hp = Math.min(maxHp, s.hp + amount);
+      events.push({ kind: "skill", skillId: skill.id, effect: "heal", amount, healed });
+    } else if (e.type === "buffAtk" || e.type === "buffDef") {
+      s.buffs = refreshSkillBuff(s.buffs, e);
+      events.push({ kind: "skill", skillId: skill.id, effect: "buff" });
+    } else if (e.type === "dot") {
+      const perTick = computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct: 1, rand: () => 0 });
+      s.dot = { dmgPerTurn: Math.max(1, Math.round(perTick * atkMult)), turnsLeft: e.turns };
+      events.push({ kind: "skill", skillId: skill.id, effect: "dot" });
+    }
+  } else {
+    usePotionNow();
+  }
+  if (s.monsterHp <= 0) {
+    s.ended = "win";
+    return { fight: s, events };
+  }
+  const hits = rng() < hitChance(monster.atk, dex, levelCap);
+  const defMult = buffMult(s.buffs, "def");
+  const reduction = armorSetDamageReduction(player, "monster");
+  const mdmg = hits ? Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) * (1 - reduction) + randInt(-2, 3))) : 0;
+  s.hp = Math.max(0, s.hp - mdmg);
+  if (hits) s.wear.armor += 1;
+  events.push({ kind: "monster", hit: hits, dmg: mdmg });
+  if (s.hp <= 0) s.ended = "lose";
+  return { fight: s, events };
+}
+function replayFight(player, monster, levelCap, seed, actions) {
+  if (!Array.isArray(actions) || actions.length > MAX_FIGHT_ACTIONS) return { error: "invalidLog" };
+  let fight = createFight(player, monster, seed);
+  for (const action of actions) {
+    if (fight.ended) return { error: "actionsAfterEnd" };
+    const out = stepFight(fight, player, monster, levelCap, action);
+    if (out.error) return { error: out.error };
+    fight = out.fight;
+  }
+  return { fight };
+}
+
+// src/game/battle.js
+init_define_import_meta_env();
+
+// src/data/mapBosses.js
+init_define_import_meta_env();
+function buildMapBoss(map) {
+  const base = map.monsters[map.monsters.length - 1];
+  const rewardCfg = getMonsterRewardConfig(base, map);
+  return {
+    id: `map_boss_${map.id}`,
+    name: `${map.name} Muhaf\u0131z\u0131`,
+    hp: Math.round(base.hp * 2.5),
+    atk: Math.round(base.atk * 1.15),
+    def: Math.round(base.def * 1.3),
+    xp: Math.round(rewardCfg.xp * 3),
+    goldMin: Math.round(rewardCfg.goldMin * 3),
+    goldMax: Math.round(rewardCfg.goldMax * 3),
+    mapBoss: true,
+    isBoss: true,
+    visualSourceId: base.id
+  };
+}
+
+// src/utils/monsterRewards.js
+init_define_import_meta_env();
+
+// src/utils/premium.js
+init_define_import_meta_env();
+
+// src/data/premium.js
+init_define_import_meta_env();
+var PREMIUM_TIERS = {
+  mythic: {
+    id: "mythic",
+    name: "Mythic Premium",
+    price: 3e3,
+    durationDays: 15,
+    color: "#FF8C42",
+    expMult: 2,
+    dropMult: 1.1,
+    goldMult: 1.1,
+    sellMult: 1.1,
+    repairDiscount: 0.5,
+    bankBonusPages: 2,
+    giftScrolls: 1,
+    nationalPointBonus: 25,
+    nationalPointLossReduction: 0.1,
+    perks: ["goldBonus10", "expBonus100", "dropBonus10", "sellBonus10", "repairDiscount50", "giftScroll", "bankPages2", "npLossReduction10", "autoBattle"]
+  },
+  apex: {
+    id: "apex",
+    name: "Apex Premium",
+    price: 1500,
+    durationDays: 15,
+    color: "#8B6FC9",
+    expMult: 1.5,
+    dropMult: 1.03,
+    goldMult: 1.05,
+    sellMult: 1.05,
+    repairDiscount: 0.25,
+    bankBonusPages: 0,
+    giftScrolls: 1,
+    nationalPointBonus: 10,
+    nationalPointLossReduction: 0.05,
+    perks: ["goldBonus5", "expBonus50", "dropBonus3", "sellBonus5", "repairDiscount25", "giftScroll", "npLossReduction5", "autoBattle"]
+  }
+};
+
+// src/utils/premium.js
+var DAY_MS = 24 * 60 * 60 * 1e3;
+function activeEntry(entry) {
+  if (!entry?.tier || !entry.expiresAt || entry.expiresAt <= Date.now()) return null;
+  return PREMIUM_TIERS[entry.tier] ? entry : null;
+}
+function effectivePremium(player) {
+  const bought = activeEntry(player.premium);
+  const boost = activeEntry(player.premiumBoost);
+  if (!bought) return boost;
+  if (!boost) return bought;
+  return PREMIUM_TIERS[boost.tier].price > PREMIUM_TIERS[bought.tier].price ? boost : bought;
+}
+function activePremiumTier(player) {
+  const entry = effectivePremium(player);
+  return entry ? PREMIUM_TIERS[entry.tier] : null;
+}
+function premiumGoldMultiplier(player) {
+  return activePremiumTier(player)?.goldMult ?? 1;
+}
+function premiumExpMultiplier(player) {
+  return activePremiumTier(player)?.expMult ?? 1;
+}
+function premiumDropMultiplier(player) {
+  return activePremiumTier(player)?.dropMult ?? 1;
+}
+function premiumSellMultiplier(player) {
+  return activePremiumTier(player)?.sellMult ?? 1;
+}
+function premiumRepairDiscount(player) {
+  return activePremiumTier(player)?.repairDiscount ?? 0;
+}
+function premiumNpBonus(player) {
+  return activePremiumTier(player)?.nationalPointBonus ?? 0;
+}
+function premiumNpLossReduction(player) {
+  return activePremiumTier(player)?.nationalPointLossReduction ?? 0;
+}
+function buyPremium(player, tierId, bank) {
+  const tier = PREMIUM_TIERS[tierId];
+  if (!tier) return { player, bank, bought: false, reason: "invalidPackage" };
+  if (player.diamonds < tier.price) return { player, bank, bought: false, reason: "notEnoughDiamonds" };
+  const now = Date.now();
+  const sameTierActive = player.premium?.tier === tierId && activePremiumTier(player);
+  const base = sameTierActive ? player.premium.expiresAt : now;
+  const expiresAt = base + tier.durationDays * DAY_MS;
+  let nextBank = bank;
+  const targetPages = BANK_PAGES + tier.bankBonusPages;
+  if (nextBank.length < targetPages) {
+    nextBank = [...nextBank, ...Array.from({ length: targetPages - nextBank.length }, () => [])];
+  }
+  let next = { ...player, diamonds: player.diamonds - tier.price, premium: { tier: tierId, expiresAt } };
+  for (let i = 0; i < tier.giftScrolls; i++) {
+    const result = addItemToInventory(next, makeBonusScrollStack());
+    next = result.player;
+  }
+  return { player: next, bank: nextBank, bought: true };
+}
+
+// src/utils/clan.js
+init_define_import_meta_env();
+
+// src/utils/day.js
+init_define_import_meta_env();
+var ISTANBUL_OFFSET_MS = 3 * 60 * 60 * 1e3;
+function dayKeyAt(ms) {
+  const [weekday, day, month, year] = new Date(ms + ISTANBUL_OFFSET_MS).toUTCString().split(" ");
+  return `${weekday.replace(",", "")} ${month} ${day} ${year}`;
+}
+function todayKey() {
+  return dayKeyAt(Date.now());
+}
+function yesterdayKey() {
+  return dayKeyAt(Date.now() - 24 * 60 * 60 * 1e3);
+}
+
+// src/data/clan.js
+init_define_import_meta_env();
+var CLAN_EXP_TIERS = [
+  { min: 31, bonus: 0.05 },
+  { min: 21, bonus: 0.02 },
+  { min: 11, bonus: 0.01 }
+];
+
+// src/utils/clan.js
+function onlineCountFor(clan) {
+  if (!clan) return 0;
+  return clan.members.length;
+}
+function clanExpBonus(onlineCount) {
+  for (const tier of CLAN_EXP_TIERS) {
+    if (onlineCount >= tier.min) return tier.bonus;
+  }
+  return 0;
+}
+function clanExpMultiplier(player) {
+  if (!player.clan) return 1;
+  return 1 + clanExpBonus(onlineCountFor(player.clan));
+}
+
+// src/utils/events.js
+init_define_import_meta_env();
+function activeExpEvent(player) {
+  if (!player.eventExpBonus?.expiresAt) return null;
+  if (player.eventExpBonus.expiresAt <= Date.now()) return null;
+  return player.eventExpBonus;
+}
+function eventExpMultiplier(player) {
+  return activeExpEvent(player)?.mult ?? 1;
 }
 
 // src/utils/dailyQuests.js
@@ -24807,20 +25003,37 @@ var battleReducers = {
     if (!target) return fail(state, "unknownMonster");
     const denied = checkAccess(state.player, target);
     if (denied) return fail(state, denied);
-    const player = { ...state.player, fight: { monsterId, startedAt: Date.now() }, hp: playerMaxHp(state.player), mp: playerMaxMp(state.player) };
-    return done({ ...state, player });
+    const seed = Math.floor(Math.random() * 4294967296) >>> 0 || 1;
+    const player = { ...state.player, fight: { monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(state.player), mp: playerMaxMp(state.player) };
+    return done({ ...state, player }, { seed });
   },
-  "battle/kill"(state, { monsterId, wear }) {
+  // Savaşı sunucuda baştan oynatır ve sonucu uygular. Sonuç: "win" (ödül), "lose" (ölüm cezası) ya da
+  // "retreat" (bitmemiş savaş: yalnızca aşınma ve harcanan potlar). Savaş bir kez ödeme yapar.
+  "battle/settle"(state, { monsterId, actions }) {
     const target = resolveMonster(monsterId);
     if (!target) return fail(state, "unknownMonster");
     const fight = state.player.fight;
-    if (!fight || fight.monsterId !== monsterId) return fail(state, "noFight");
-    if (Date.now() - fight.startedAt < MIN_FIGHT_MS) return fail(state, "tooFast");
+    if (!fight || fight.monsterId !== monsterId || !Number.isInteger(fight.seed)) return fail(state, "noFight");
+    const replay = replayFight(state.player, target.monster, target.map.levelMax, fight.seed, actions);
+    if (replay.error) return fail(state, "invalidLog", { detail: replay.error });
+    const elapsed = Date.now() - fight.startedAt;
+    if (elapsed < replay.fight.turn * MIN_TURN_MS - 1500) return fail(state, "tooFast");
     const denied = checkAccess(state.player, target);
     if (denied) return fail(state, denied);
-    let player = applyWear({ ...state.player, fight: null }, wear);
+    let player = applyWear({ ...state.player, fight: null }, replay.fight.wear);
+    for (const kind of ["hp", "mp"]) {
+      for (const [tier, count] of Object.entries(replay.fight.used[kind])) {
+        for (let n = 0; n < count; n++) player = usePotion(player, kind, Number(tier)).player;
+      }
+    }
+    const outcome = replay.fight.ended || "retreat";
+    if (outcome === "lose") {
+      const penalty = applyDeathPenalty(clearFight(player));
+      return done({ ...state, player: penalty.player }, { outcome, xpLost: penalty.xpLost });
+    }
+    if (outcome === "retreat") return done({ ...state, player: clearFight(player) }, { outcome });
     const reward = grantMonsterReward(player, target.monster, target.map);
-    if (reward.blockedReasonKey) return done({ ...state, player }, { blockedReasonKey: reward.blockedReasonKey, tone: reward.tone, drops: [], levelUp: null });
+    if (reward.blockedReasonKey) return done({ ...state, player }, { outcome, blockedReasonKey: reward.blockedReasonKey, tone: reward.tone, drops: [], levelUp: null });
     player = reward.player;
     let completion = null;
     if (target.kind === "dungeon") {
@@ -24833,14 +25046,16 @@ var battleReducers = {
         player = { ...player, dungeonRun: { ...player.dungeonRun, stage: target.stage + 1 } };
       }
     }
-    return done({ ...state, player }, { drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp, completion });
+    return done({ ...state, player }, { outcome, drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp, completion });
   },
+  // Savaş Alanı/klan zindanı gibi henüz kendi savaş kaydı olmayan yerler için ölüm cezası.
   "battle/death"(state, { wear }) {
     const penalty = applyDeathPenalty(clearFight(applyWear(state.player, wear)));
     return done({ ...state, player: penalty.player }, { xpLost: penalty.xpLost });
   },
-  "battle/retreat"(state, { wear }) {
-    return done({ ...state, player: clearFight(applyWear(state.player, wear)) });
+  // Savaş kaydını ve zindan koşusunu temizler (sekmeden çıkış vb.); aşınma/pot için `battle/settle` kullanılır.
+  "battle/retreat"(state) {
+    return done({ ...state, player: clearFight(state.player) });
   },
   // hp/mp istemcide canlı tutulur; pot hesabı istemcinin söylediği güncel değerlerle yapılır
   // (yalnızca kendi savaş ekranındaki iyileşmeyi etkiler), tüketilen pot sunucuda düşer.
@@ -24877,6 +25092,9 @@ var battleReducers = {
     return done({ ...state, player });
   }
 };
+
+// src/game/actions.js
+init_define_import_meta_env();
 
 // src/game/warzone.js
 init_define_import_meta_env();
@@ -26381,10 +26599,18 @@ function newCharacterEconomy(cls, race, nickname) {
 }
 export {
   ACTION_TYPES,
+  MIN_TURN_MS,
+  POTION_COOLDOWN_TURNS,
   SERVER_OWNED_FIELDS,
   applyAction,
   applyLiveDropConfig,
+  bestPotionTier,
+  checkAction,
   createCharacter,
+  createFight,
   newCharacterEconomy,
-  reducers
+  reducers,
+  replayFight,
+  resolveMonster,
+  stepFight
 };

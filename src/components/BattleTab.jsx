@@ -1,7 +1,4 @@
 import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
-import { varyDamage } from '../utils/combat';
-import {refreshSkillBuff} from '../utils/skills';
-import {wingDexBonus} from '../data/wings';
 import MenuEmblem from './icons/MenuEmblem';
 import BattleScene, {hasBattleScene} from './BattleScene';
 import { useState, useEffect, useRef } from "react";
@@ -12,13 +9,13 @@ import { isMonsterUnlocked, isMapProgressUnlocked, monsterKillCount, KILLS_TO_UN
 import { buildSoloDungeonStages, buildDungeonStageChoices, SOLO_DUNGEON_DAILY_LIMIT } from "../data/soloDungeon";
 import { buildMapBoss } from "../data/mapBosses";
 import { canFightMapBoss } from "../utils/mapBoss";
-import { rand } from "../utils/random";
-import { playerMaxHp, playerMaxMp, displayClassName, armorSetDamageReduction, formatGold } from "../utils/player";
-import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
-import { bestAvailablePotionTier } from "../utils/potions";
+import { playerMaxHp, playerMaxMp, displayClassName, formatGold } from "../utils/player";
+import { bestAvailablePotionTier, usePotion } from "../utils/potions";
+import { createFight, stepFight, checkAction } from "../game/fight";
+import { resolveMonster } from "../game/battle";
 import { buyWithDiamonds, purchaseFailureText } from "../utils/diamondBuy";
 import { hasAutoBattleAccess } from "../utils/premium";
-import { classSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
+import { classSkills } from "../utils/skills";
 import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry, buyExtraDungeonEntries, hasBoughtExtraDungeonEntryToday } from "../utils/soloDungeon";
 import { EXTRA_DUNGEON_ENTRY_COST_DIAMONDS } from "../data/soloDungeon";
 import { playHit, playMiss, playHurt, playLevelUp, playSkill, playPotion } from "../audio/sfx";
@@ -98,16 +95,21 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
   const [dungeonComplete, setDungeonComplete] = useState(null); // { mapName, bonusGold, chestTier } | null
   const [dungeonChoice, setDungeonChoice] = useState(null); // { nextIndex, choices }
   const logRef = useRef(null);
-  // Savaşın gelirleri sunucu kurallarıyla (act) verilir: başlangıç bildirilir, ödül/ölüm/geri çekilme
-  // sonunda o savaşta yaşanan silah/zırh aşınması tek seferde raporlanır.
-  const wearRef = useRef({ weapon: 0, armor: 0 });
+  // Savaş motoru (game/fight.js): savaş burada oynanır, sunucu aynı tohum ve eylem dizisiyle baştan oynatıp sonucu
+  // kendisi hesaplar (`battle/settle`). fightRef: motor durumu, actionsRef: oynanan eylemler, fightMonsterRef: savaşılan canavar.
+  const fightRef = useRef(null);
+  const actionsRef = useRef([]);
+  const fightMonsterRef = useRef(null);
   const startRef = useRef(Promise.resolve());
-  const takeWear = () => { const w = wearRef.current; wearRef.current = { weapon: 0, armor: 0 }; return w; };
   const actRef = useRef(act);
   actRef.current = act;
+  // Sekmeden çıkarken yarım kalan savaş geri çekilme olarak bildirilir (aşınma ve harcanan potlar sunucuda işlenir).
   useEffect(() => () => {
-    const w = wearRef.current;
-    if (w.weapon || w.armor) { wearRef.current = { weapon: 0, armor: 0 }; actRef.current("battle/retreat", { wear: w }); }
+    const fight = fightRef.current;
+    if (fight && !fight.ended && fightMonsterRef.current && actionsRef.current.length > 0) {
+      actRef.current("battle/settle", { monsterId: fightMonsterRef.current, actions: actionsRef.current.slice() });
+    }
+    fightRef.current = null;
   }, []);
 
   // Oyuncunun en son ışınlandığı harita kalıcı — güvenlik amaçlı, artık
@@ -215,19 +217,26 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
   // Tekrar Savaş) her yeni savaş dolu can/manayla başlıyor.
   const startBattle = (m, { preserveAutoBattle = false } = {}) => {
     if(m.mapBoss){const gate=canFightMapBoss(latestPlayer.current,map.id);if(!gate.ok){pushToast(t(gate.reason==='mapIncomplete'?'battle.bossMapIncomplete':'battle.bossDefeatedToday'), 'warn');return;}}
-    attackLockRef.current = false;
-    wearRef.current = { weapon: 0, armor: 0 };
-    // Savaşı sunucuya bildir: ödül yalnızca bildirilmiş bir savaş için verilir. Reddedilirse
-    // (kilitli canavar, zindan sırası...) savaş hemen kapanır.
+    // Savaşı sunucuya bildir: ödül yalnızca bildirilmiş bir savaş için verilir ve savaşın tohumunu sunucu verir
+    // (ilk eylem tohum gelene kadar bekler). Reddedilirse (kilitli canavar, zindan sırası...) savaş hemen kapanır.
+    fightRef.current = null;
+    actionsRef.current = [];
+    fightMonsterRef.current = m.id;
+    attackLockRef.current = true;
     const started = act("battle/start", { monsterId: m.id });
     startRef.current = started;
     started.then((r) => {
-      if (r.ok || !mountedRef.current) return;
+      if (!mountedRef.current) return;
+      if (!r.ok || !Number.isInteger(r.seed)) {
+        attackLockRef.current = false;
+        setMonster(null);
+        setBattle(null);
+        setDungeonRun(null);
+        pushToast(t("battle.actionFailed"), "warn");
+        return;
+      }
+      fightRef.current = createFight(latestPlayer.current, resolveMonster(m.id)?.monster || m, r.seed);
       attackLockRef.current = false;
-      setMonster(null);
-      setBattle(null);
-      setDungeonRun(null);
-      pushToast(t("battle.actionFailed"), "warn");
     });
     setMonster(m);
     setVisual({id:0,type:'',label:''});
@@ -249,30 +258,14 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
   // Saldırı'yı her zaman kapatır — bir sonraki savaşa asla "açık" sızmaz.
   const endBattle = () => {
     attackLockRef.current = false;
+    fightRef.current = null;
+    actionsRef.current = [];
     setMonster(null);
     setBattle(null);
     setPlayer((p) => (p.autoBattle?.enabled ? { ...p, autoBattle: { ...p.autoBattle, enabled: false } } : p));
   };
 
   const pushLog = (log, line) => [...log.slice(-24), line];
-
-  // Resolves one "tick" of battle-scoped effects at the top of every player
-  // action (attack or skill) — süregelen (dot) damage lands, buff/dot/
-  // cooldown counters all shrink by one action. Doesn't touch React state
-  // itself; callers fold the result into their own setBattle call.
-  const tickBattleEffects = (b) => {
-    let monsterHp = b.monsterHp;
-    let log = b.log;
-    if (b.dot && b.dot.turnsLeft > 0) {
-      monsterHp = Math.max(0, monsterHp - b.dot.dmgPerTurn);
-      log = pushLog(log, t("battle.log.dotDamage", { dmg: b.dot.dmgPerTurn }));
-    }
-    const dot = b.dot && b.dot.turnsLeft > 1 ? { ...b.dot, turnsLeft: b.dot.turnsLeft - 1 } : null;
-    const buffs = b.buffs.map((buf) => ({ ...buf, turnsLeft: buf.turnsLeft - 1 })).filter((buf) => buf.turnsLeft > 0);
-    const skillCooldowns = Object.fromEntries(Object.entries(b.skillCooldowns).map(([id, t]) => [id, Math.max(0, t - 1)]));
-    const potionCooldowns = Object.fromEntries(Object.entries(b.potionCooldowns).map(([k, t]) => [k, Math.max(0, t - 1)]));
-    return { monsterHp, log, dot, buffs, skillCooldowns, potionCooldowns };
-  };
 
   // IMPORTANT: setState updater functions must be pure. React 18 StrictMode
   // (dev only) invokes them twice on purpose to catch side effects hiding
@@ -301,24 +294,23 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
       default: return "";
     }
   };
-  // Öldürme ödülü sunucu kurallarıyla verilir (act → battle/kill). Dönen değer: ödül verildi mi.
-  // İstek canavar ölür ölmez (animasyon beklenmeden) gider; sonuç animasyon bitince gösterilir. Böylece sunucu
-  // gecikmesi savaş akışına eklenmez. Sunucu "çok erken" derse (savaş bildirimi henüz 0,7 sn dolmadıysa) bir kez yeniden dener.
-  const requestLoot = async (m) => {
+  // Savaş sonucu sunucuda baştan oynatılarak hesaplanır (battle/settle). İstek, savaş biter bitmez (animasyon
+  // beklenmeden) gider; sonuç animasyon bitince gösterilir. Sunucu "çok erken" derse bir kez yeniden dener.
+  const requestSettle = async (m) => {
     await startRef.current;
-    const wear = takeWear();
-    let result = await act("battle/kill", { monsterId: m.id, wear });
+    const actions = actionsRef.current.slice();
+    let result = await act("battle/settle", { monsterId: m.id, actions });
     if (!result.ok && result.reason === "tooFast") {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      result = await act("battle/kill", { monsterId: m.id, wear });
+      await new Promise((resolve) => setTimeout(resolve, 1600));
+      result = await act("battle/settle", { monsterId: m.id, actions });
     }
     return result;
   };
 
-  const applyLoot = async (m, pending = requestLoot(m)) => {
+  const applyLoot = async (m, pending = requestSettle(m)) => {
     const result = await pending;
     if (!mountedRef.current) return result.ok;
-    if (!result.ok) { pushToast(t("battle.actionFailed"), "warn"); return false; }
+    if (!result.ok || result.outcome !== "win") { pushToast(t("battle.actionFailed"), "warn"); return false; }
     setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
     pushToast(result.blockedReasonKey ? t(result.blockedReasonKey) : result.drops.map(formatDrop).join("  ·  "), result.tone);
     // Kullanıcı isteği: "Seviye atladığımız zaman 5 Lvl oldun! tarzında bir
@@ -337,34 +329,87 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
     return true;
   };
 
-  // Shared tail-end for both attack() and useSkill(): the monster's counter
-  // swing (if it's still alive) plus win/loss resolution. `extra` folds in
-  // whatever the caller's own action already changed (buffs/dot/cooldowns/
-  // monsterHp/log) on top of the tick() result. `currentHp` defaults to the
-  // player prop's hp (fine for attack(), which never heals mid-action) but
-  // MUST be passed explicitly by any caller that just healed the player in
-  // this same action (useSkill's heal branch, handlePotion) — otherwise the
-  // death check below reads the stale pre-heal hp and can wrongly end the
-  // battle (or even show "Bayıldın") on a hit the player actually survived.
-  const resolveMonsterTurn = (monsterHp, log, extra, currentHp = player.hp) => {
-    if (monsterHp <= 0) {
-      log = pushLog(log, t("battle.log.monsterDefeated", { monster: tm(monster) }));
+  const ACTION_ERROR_KEY = { skillCooldown: "battle.skillOnCooldown", noMana: "battle.notEnoughMana", potionCooldown: "battle.potionOnCooldown", noPotion: "battle.noPotionsLeft" };
+
+  // Tek bir oyuncu eylemi (saldırı / beceri / pot): motor turu hesaplar, arayüz olayları çizer.
+  const doAction = (action) => {
+    if (attackLockRef.current) return;
+    const fight = fightRef.current;
+    if (!battle || battle.finished || !fight || player.hp <= 0) return;
+    const error = checkAction(fight, player, action);
+    if (error) { if (ACTION_ERROR_KEY[error]) pushToast(t(ACTION_ERROR_KEY[error]), "warn"); return; }
+    const engineMonster = resolveMonster(monster.id)?.monster || monster;
+    const out = stepFight(fight, player, engineMonster, map.levelMax, action);
+    if (out.error) return;
+    attackLockRef.current = true;
+    fightRef.current = out.fight;
+    actionsRef.current.push(action);
+
+    const skill = action.type === "skill" ? classSkills(player.class).find((x) => x.id === action.id) : null;
+    if (action.type === "attack") showAction("attack", t("battle.actionAttack"));
+    else if (skill) showAction(skill.effect.type, skillName(skill), skill.id);
+    else showAction("potion", action.kind === "hp" ? t("battle.actionHpPotion") : t("battle.actionMpPotion"));
+
+    let log = battle.log;
+    let potionUsed = null;
+    for (const ev of out.events) {
+      if (ev.kind === "dot") log = pushLog(log, t("battle.log.dotDamage", { dmg: ev.dmg }));
+      else if (ev.kind === "attack") {
+        log = pushLog(log, !ev.hit ? t("battle.log.playerMiss") : ev.crit ? t("battle.log.criticalHit", { dmg: ev.dmg }) : t("battle.log.hit", { dmg: ev.dmg }));
+        setVisual((v) => ({ ...v, outgoing: { hit: ev.hit, damage: ev.dmg, crit: ev.crit } }));
+        if (ev.hit) playHit({ crit: ev.crit, cls: player.class }); else playMiss();
+        setShake("monster");
+        setTimeout(() => setShake(null), 260);
+      } else if (ev.kind === "skill") {
+        playSkill(skill, player.class);
+        if (ev.effect === "damage" || ev.effect === "execute") {
+          log = pushLog(log, t("battle.log.skillDamage", { skill: skillName(skill), dmg: ev.dmg }));
+          setVisual((v) => ({ ...v, outgoing: { hit: true, damage: ev.dmg, crit: false } }));
+          setShake("monster");
+          setTimeout(() => setShake(null), 260);
+        } else if (ev.effect === "heal") {
+          log = pushLog(log, t("battle.log.skillHeal", { skill: skillName(skill), amount: ev.amount }));
+          if (ev.healed > 0) setVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: ev.healed } }));
+        } else if (ev.effect === "buff") {
+          log = pushLog(log, t("battle.log.skillBuff", { skill: skillName(skill) }));
+        } else if (ev.effect === "dot") {
+          log = pushLog(log, t("battle.log.skillDot", { skill: skillName(skill) }));
+          setShake("monster");
+          setTimeout(() => setShake(null), 260);
+        }
+      } else if (ev.kind === "potion") {
+        potionUsed = ev;
+        playPotion();
+        log = pushLog(log, ev.potion === "hp" ? t("battle.log.usedHpPotion", { n: ev.healed }) : t("battle.log.usedMpPotion", { n: ev.healed }));
+        if (ev.potion === "hp" && ev.healed > 0) setVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: ev.healed } }));
+      } else if (ev.kind === "monster") {
+        setVisual((v) => ({ ...v, incoming: { hit: ev.hit, damage: ev.dmg } }));
+        log = pushLog(log, ev.hit ? t("battle.log.monsterHit", { monster: tm(monster), dmg: ev.dmg }) : t("battle.log.monsterMiss", { monster: tm(monster) }));
+        if (ev.hit) playHurt(); else playMiss();
+        setShake("player");
+        setTimeout(() => setShake(null), 260);
+      }
+    }
+
+    const f = out.fight;
+    // Can/mana ve (varsa) harcanan pot ekranda hemen yansır; kalıcı kayıt sunucudaki savaş sonucunda işlenir.
+    setPlayer((p) => ({ ...p, hp: f.hp, mp: f.mp, ...(potionUsed ? { inventory: usePotion(p, potionUsed.potion, potionUsed.tier).player.inventory } : {}) }));
+    const won = f.ended === "win";
+    const lost = f.ended === "lose";
+    if (won) log = pushLog(log, t("battle.log.monsterDefeated", { monster: tm(monster) }));
+    setBattle({ ...battle, monsterHp: f.monsterHp, log, finished: won || lost, buffs: f.buffs, dot: f.dot, skillCooldowns: f.skillCooldowns, potionCooldowns: f.potionCooldowns });
+
+    if (won) {
       const wonMonster = monster;
-      const lootRequest = requestLoot(wonMonster);
-      setBattle({ ...battle, ...extra, monsterHp, log, finished: true });
-      // lock stays engaged through this window so extra clicks can't
-      // trigger a second loot/level-up off the same kill
+      const settleRequest = requestSettle(wonMonster);
+      // lock stays engaged through this window so extra clicks can't trigger a second loot/level-up off the same kill
       setTimeout(async () => {
-        const rewarded = await applyLoot(wonMonster, lootRequest);
+        const rewarded = await applyLoot(wonMonster, settleRequest);
         attackLockRef.current = false;
         if (!rewarded && dungeonRun) { setDungeonRun(null); setMonster(null); setBattle(null); return; }
 
-        // Solo Zindan koşusu sürüyorsa "Tekrar Savaş?" akışına hiç girmez —
-        // bir sonraki aşamaya (ya da boss'sa tamamlama ödülüne) otomatik
-        // geçer (kullanıcı isteği: "aşamalı olarak gitgide güçleşen ...
-        // etkinlik"). dungeonRun burada render zamanındaki değeriyle
-        // kapanıyor — attackLockRef zaten bu pencere boyunca yeni bir
-        // aksiyonu engellediği için state ile senkron kalır.
+        // Solo Zindan koşusu sürüyorsa "Tekrar Savaş?" akışına hiç girmez — bir sonraki aşamaya (ya da
+        // boss'sa tamamlama ödülüne) otomatik geçer.
         if (dungeonRun) {
           if (wonMonster.isBoss) {
             setDungeonRun(null);
@@ -388,208 +433,29 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
 
         setMonster(null);
         setBattle(null);
-        // Ana ekrana otomatik dönmek yerine "Tekrar Savaş?" onayı çıkıyor
-        // (kullanıcı isteği) — sonraki savaş hâlâ buradan "Evet"/"Hayır" ile
-        // elle karara bağlanıyor, sadece Otomatik Saldırı'nın açık durumu
-        // Evet dendiğinde korunuyor (bkz. render'daki victoryMonster modalı,
-        // startBattle'ın preserveAutoBattle parametresi).
-        if(!wonMonster.mapBoss)setVictoryMonster(wonMonster);
+        // Ana ekrana otomatik dönmek yerine "Tekrar Savaş?" onayı çıkıyor (kullanıcı isteği).
+        if (!wonMonster.mapBoss) setVictoryMonster(wonMonster);
       }, 700);
-      return;
-    }
-    const defMult = buffMultiplier(extra.buffs, "def");
-    const setReduction = armorSetDamageReduction(player, "monster");
-    // Gerçek KO'nun DEX→Hit Rate/Evasion Rate mantığı (bkz. utils/combat.js#
-    // hitChance) — canavarın gerçek bir DEX'i yok, kendi ATK'sini bir
-    // "çeviklik" vekili olarak kullanıyoruz. Iskalarsa hasar 0, zırh
-    // yıpranmıyor, ama canavarın vuruşu yine de bir tur harcıyor.
-    const monsterHits = rollHit(monster.atk, (player.stats.dex+wingDexBonus(player)), map.levelMax);
-    const mdmg = monsterHits
-      ? Math.max(1, Math.round(mitigate(monster.atk, def * defMult, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
-      : 0;
-    const playerDied = currentHp - mdmg <= 0;
-    setVisual(v => ({...v, incoming:{hit:monsterHits,damage:mdmg}}));
-    log = pushLog(log, monsterHits ? t("battle.log.monsterHit", { monster: tm(monster), dmg: mdmg }) : t("battle.log.monsterMiss", { monster: tm(monster) }));
-    if (monsterHits) playHurt(); else playMiss();
-
-    // Getting hit wears the armor down — same durability/repair loop as
-    // the weapon uses on a landed hit (see utils/player.js's repair
-    // system, the intended gold sink for this).
-    if (monsterHits) wearRef.current.armor += 1; // aşınma savaş sonunda sunucuya raporlanır
-    setPlayer((p) => ({ ...p, hp: Math.max(0, p.hp - mdmg) }));
-    setBattle({ ...battle, ...extra, monsterHp, log, finished: playerDied });
-    setShake("player");
-    setTimeout(() => setShake(null), 260);
-
-    // Ölüm isteği de ekranla beklemeden hemen gider.
-    const deathRequest = playerDied ? act("battle/death", { wear: takeWear() }) : null;
-    if (playerDied) {
-      setTimeout(() => {
-        // Önceden burada sadece "canın kısmen yenilendi" diyen bir toast
-        // vardı ama hiçbir kod gerçekten can/mana geri yüklemiyordu — hp 0'da
-        // kalıp bir sonraki savaşa öyle giriliyordu (kullanıcının bildirdiği
-        // "düşük canla başlıyoruz" bug'ı). Artık applyDeathPenalty hem
-        // hp/mp'yi gerçekten tam dolduruyor hem de küçük bir XP cezası
-        // uyguluyor, DeathModal da bunu net bir "Öldün!" uyarısıyla gösteriyor.
-        (async () => {
-          const result = await deathRequest;
-          setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
-          setDeathInfo({ xpLost: result.xpLost || 0 });
-          endBattle();
-          // Zindanda ölmek koşuyu bitirir — kalan aşamalar/boss ödülü kaybedilir,
-          // giriş hakkı zaten enterSoloDungeon'da harcanmıştı (geri gelmiyor).
-          if (dungeonRun) setDungeonRun(null);
-        })();
+    } else if (lost) {
+      const settleRequest = requestSettle(monster);
+      setTimeout(async () => {
+        const result = await settleRequest;
+        setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
+        setDeathInfo({ xpLost: result.xpLost || 0 });
+        endBattle();
+        // Zindanda ölmek koşuyu bitirir — kalan aşamalar/boss ödülü kaybedilir,
+        // giriş hakkı zaten enterSoloDungeon'da harcanmıştı (geri gelmiyor).
+        if (dungeonRun) setDungeonRun(null);
       }, 500);
     } else {
-      // normal exchange resolved — release the lock after a short cooldown
-      // so combat still feels turn-paced instead of instant multi-hits
+      // normal exchange resolved — release the lock after a short cooldown so combat still feels turn-paced
       setTimeout(() => { attackLockRef.current = false; }, 320);
     }
   };
 
-  const attack = () => {
-    if (attackLockRef.current) return;
-    if (!battle || battle.finished || player.hp <= 0) return;
-    attackLockRef.current = true;
-    showAction('attack', t('battle.actionAttack'));
-
-    const ticked = tickBattleEffects(battle);
-    if (ticked.monsterHp <= 0) { resolveMonsterTurn(ticked.monsterHp, ticked.log, ticked); return; }
-
-    const atkMult = buffMultiplier(ticked.buffs, "atk");
-    const isCrit = Math.random() < cls.crit;
-    // Aynı DEX→Hit Rate/Evasion Rate mekaniği (bkz. resolveMonsterTurn'daki
-    // aynı not) — oyuncu da ıskalayabiliyor artık, canavarın ATK'si yine
-    // onun "çeviklik" vekili.
-    const playerHits = rollHit((player.stats.dex+wingDexBonus(player)), monster.atk, player.level);
-    const dmg = playerHits
-      ? varyDamage(mitigate((cls.atk + atk * 0.9) * atkMult * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K))
-      : 0;
-    const monsterHp = Math.max(0, ticked.monsterHp - dmg);
-    const log = pushLog(ticked.log, !playerHits ? t("battle.log.playerMiss") : isCrit ? t("battle.log.criticalHit", { dmg }) : t("battle.log.hit", { dmg }));
-    // Kullanıcı isteği: canavarın bize vurunca gösterdiği "−X"/"Iskaladı"
-    // uçan yazı sadece o yönde çalışıyordu — bkz. resolveMonsterTurn'daki
-    // aynı desenin `incoming` karşılığı, BattleScene.jsx'te render ediliyor.
-    setVisual((v) => ({ ...v, outgoing: { hit: playerHits, damage: dmg, crit: isCrit } }));
-    if (playerHits) playHit({ crit: isCrit, cls: player.class }); else playMiss();
-
-    // Every swing wears the weapon down a little — see utils/player.js's
-    // repair system, the intended gold sink for this (misses don't wear it).
-    if (playerHits) wearRef.current.weapon += 1;
-
-    setShake("monster");
-    setTimeout(() => setShake(null), 260);
-
-    resolveMonsterTurn(monsterHp, log, ticked);
-  };
-
-  // Beceri kutucuklarından biri — aynı tur ritmine oturur (bkz. attack
-  // yukarıda): önce süregelen etkiler işler, sonra becerinin kendi etkisi,
-  // sonra canavarın karşılığı. effect.type ayrımı burada, hesap kısmı
-  // utils/skills.js#computeSkillDamage/computeSkillHeal'da.
-  const useSkill = (skillId) => {
-    if (attackLockRef.current) return;
-    if (!battle || battle.finished || player.hp <= 0) return;
-    const skill = classSkills(player.class).find((s) => s.id === skillId);
-    if (!skill || !player.skills.known.includes(skillId)) return;
-    if ((battle.skillCooldowns[skillId] || 0) > 0) { pushToast(t("battle.skillOnCooldown"), "warn"); return; }
-    if (player.mp < skill.mpCost) { pushToast(t("battle.notEnoughMana"), "warn"); return; }
-    attackLockRef.current = true;
-
-    const ticked = tickBattleEffects(battle);
-    const skillCooldowns = { ...ticked.skillCooldowns, [skillId]: skill.cooldown };
-    const maxHp = playerMaxHp(player);
-    const e = skill.effect;
-    showAction(e.type,skillName(skill),skill.id);
-
-    if (ticked.monsterHp <= 0) {
-      setPlayer((p) => ({ ...p, mp: p.mp - skill.mpCost }));
-      resolveMonsterTurn(ticked.monsterHp, ticked.log, { ...ticked, skillCooldowns });
-      return;
-    }
-
-    playSkill(skill, player.class);
-    let monsterHp = ticked.monsterHp;
-    let log = ticked.log;
-    let buffs = ticked.buffs;
-    let dot = ticked.dot;
-    let healAmt = 0;
-
-    if (e.type === "damage" || e.type === "execute") {
-      const monsterHpPct = ticked.monsterHp / battle.monsterMaxHp;
-      const atkMult = buffMultiplier(ticked.buffs, "atk");
-      const dmg = Math.max(1, Math.round(computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct, rand }) * atkMult));
-      monsterHp = Math.max(0, ticked.monsterHp - dmg);
-      log = pushLog(log, t("battle.log.skillDamage", { skill: skillName(skill), dmg }));
-      setVisual((v) => ({ ...v, outgoing: { hit: true, damage: dmg, crit: false } }));
-      setShake("monster");
-      setTimeout(() => setShake(null), 260);
-    } else if (e.type === "heal") {
-      healAmt = computeSkillHeal(skill, maxHp);
-      log = pushLog(log, t("battle.log.skillHeal", { skill: skillName(skill), amount: healAmt }));
-      // Kullanıcı isteği: hasar becerilerinde olduğu gibi (bkz. yukarıdaki
-      // "damage"/"execute" dalı) can çeken becerilerde de uçan bir "+X"
-      // yazısı görünsün — BattleScene.jsx#outgoing.heal, hero tarafında
-      // (savaşçının kendisinde, canavarda değil) gösteriliyor. Can zaten
-      // doluysa (gerçek kazanç 0) hiç göstermiyoruz — boş bir "+0" yanıltıcı olur.
-      const actualHeal = Math.min(healAmt, maxHp - player.hp);
-      if (actualHeal > 0) setVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: actualHeal } }));
-    } else if (e.type === "buffAtk" || e.type === "buffDef") {
-      buffs = refreshSkillBuff(buffs, e);
-      log = pushLog(log, t("battle.log.skillBuff", { skill: skillName(skill) }));
-    } else if (e.type === "dot") {
-      const perTick = computeSkillDamage(skill, { clsAtk: cls.atk, atk, monsterDef: monster.def, monsterHpPct: 1, rand: () => 0 });
-      dot = { dmgPerTurn: Math.max(1, Math.round(perTick * buffMultiplier(ticked.buffs, "atk"))), turnsLeft: e.turns };
-      log = pushLog(log, t("battle.log.skillDot", { skill: skillName(skill) }));
-      setShake("monster");
-      setTimeout(() => setShake(null), 260);
-    }
-
-    const nextHp = healAmt ? Math.min(playerMaxHp(player), player.hp + healAmt) : player.hp;
-    setPlayer((p) => ({ ...p, mp: p.mp - skill.mpCost, hp: healAmt ? Math.min(playerMaxHp(p), p.hp + healAmt) : p.hp }));
-    resolveMonsterTurn(monsterHp, log, { buffs, dot, skillCooldowns, potionCooldowns: ticked.potionCooldowns }, nextHp);
-  };
-
-  // Pot içmek de bir savaş aksiyonu — canavarın karşılığını tetikler, aynı
-  // 2 turluk bekleme her iki pot için de ayrı ayrı işler (bkz.
-  // EMPTY_BATTLE_EFFECTS). Bu yüzden aynı anda hem can hem mana potu
-  // basılamaz — her ikisi de kendi turunu harcar.
-  const handlePotion = async (kind) => {
-    if (attackLockRef.current) return;
-    if (!battle || battle.finished || player.hp <= 0) return;
-    if ((battle.potionCooldowns[kind] || 0) > 0) { pushToast(t("battle.potionOnCooldown"), "warn"); return; }
-    if (!bestAvailablePotionTier(player, kind)) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
-    attackLockRef.current = true;
-    // Tüketilen pot sunucuda düşer; can/mana istemcide canlı tutulur ve iyileşme burada uygulanır.
-    const result = await act("battle/potion", { kind, hp: player.hp, mp: player.mp });
-    if (!mountedRef.current) return;
-    if (!result.ok) {
-      attackLockRef.current = false;
-      pushToast(t(result.reason === "noPotionsLeft" ? "battle.noPotionsLeft" : "battle.actionFailed"), "warn");
-      return;
-    }
-    const healedTo = Math.min(kind === "hp" ? playerMaxHp(player) : playerMaxMp(player), player[kind] + result.healed);
-    setPlayer((p) => ({ ...p, [kind]: healedTo }));
-    showAction('potion', kind === 'hp' ? t('battle.actionHpPotion') : t('battle.actionMpPotion'));
-
-    const ticked = tickBattleEffects(battle);
-    const potionCooldowns = { ...ticked.potionCooldowns, [kind]: POTION_COOLDOWN_TURNS };
-
-    if (ticked.monsterHp <= 0) {
-      resolveMonsterTurn(ticked.monsterHp, ticked.log, { ...ticked, potionCooldowns });
-      return;
-    }
-
-    playPotion();
-    // Can potu da bir "can çekme" aksiyonu — beceri heal'iyle aynı "+X"
-    // uçan yazısı burada da görünsün (bkz. useSkill'in heal dalı). Mana
-    // potu "can" değil, o yüzden kapsam dışı. Can zaten doluysa (result.healed
-    // 0 olur) hiç göstermiyoruz.
-    if (kind === "hp" && result.healed > 0) setVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: result.healed } }));
-    const log = pushLog(ticked.log, kind === "hp" ? t("battle.log.usedHpPotion", { n: result.healed }) : t("battle.log.usedMpPotion", { n: result.healed }));
-    resolveMonsterTurn(ticked.monsterHp, log, { ...ticked, potionCooldowns }, kind === "hp" ? healedTo : player.hp);
-  };
+  const attack = () => doAction({ type: "attack" });
+  const useSkill = (skillId) => doAction({ type: "skill", id: skillId });
+  const handlePotion = (kind) => doAction({ type: "potion", kind });
 
   const maxHp = playerMaxHp(player);
   const maxMp = playerMaxMp(player);
@@ -916,7 +782,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
             <button
               style={{ ...styles.ghostBtn, flex: 1 }}
               onClick={() => {
-                act("battle/retreat", { wear: takeWear() });
+                if (monster && actionsRef.current.length > 0) requestSettle(monster);
                 endBattle();
                 // Zindan koşusu sürerken elle geri çekilmek koşuyu yarıda
                 // bırakır — kalan aşamalar/boss ödülü kaybedilir, giriş hakkı

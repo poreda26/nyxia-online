@@ -3,6 +3,8 @@
 import { initialPlayer } from "../utils/player";
 
 export { SERVER_OWNED_FIELDS } from "./fields";
+export { createFight, stepFight, checkAction, replayFight, bestPotionTier, POTION_COOLDOWN_TURNS, MIN_TURN_MS } from "./fight";
+export { resolveMonster } from "./battle";
 export { applyLiveDropConfig } from "../utils/dropConfig";
 export { applyAction, ACTION_TYPES, reducers } from "./actions";
 

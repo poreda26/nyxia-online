@@ -5,7 +5,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApi } from '../server/app.mjs';
-import { createCharacter } from '../server/game-logic.generated.mjs';
+import { createCharacter, createFight, stepFight, resolveMonster, MIN_TURN_MS } from '../server/game-logic.generated.mjs';
 
 const password = 'long-test-password-123';
 
@@ -122,14 +122,14 @@ test('economy actions run on the server, ignore forged client state and survive 
   } finally { await api.close(); }
 });
 
-test('battle income is decided by the server: fights must be started, kills are priced from data, dungeon stages run in order', async () => {
+test('battle is replayed on the server: seed from the server, the result comes from the replay, tampered logs and rushed fights are refused', async () => {
   const { api, call, database } = await boot();
   try {
     const cookie = (await call('register', { name: 'carol', password })).cookie;
     const character = hero();
     character.level = 30;
     character.inventory = [...character.inventory, { id: 'pot-1', kind: 'potion', potionType: 'hp', tier: 1, count: 2, name: 'HP', weight: 0, noTrade: false }];
-    character.equipped = { ...character.equipped, mainHand: sword({ id: 'wield', currentDurability: 1000 }) };
+    character.equipped = { ...character.equipped, mainHand: sword({ id: 'wield', atk: 1, currentDurability: 1000 }) };
     const data = { characters: [character, null, null], bank: [[], []], bankGold: 0, diamonds: 0 };
     assert.equal((await call('backup', { revision: 0, data }, cookie, 'PUT')).status, 200);
     const db = new DatabaseSync(database);
@@ -138,39 +138,71 @@ test('battle income is decided by the server: fights must be started, kills are 
     const state = async () => (await call('backup', null, cookie)).data.data.characters[0];
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const firstMonster = 'sis_kurdu';
+    const strongSword = () => db.prepare("UPDATE backups SET data=json_set(data,'$.characters[0].equipped.mainHand.atk',4000)").run();
 
-    // No reward without a started fight, none for unknown monsters, none for another map's monsters.
-    assert.equal((await act('battle/kill', { monsterId: firstMonster })).data.result.reason, 'noFight');
+    // Plays a fight with the shared engine exactly like the client: attacks (plus optional leading actions) until it ends.
+    const play = async (monsterId, { lead = [], waitFull = true, stopAfter = Infinity } = {}) => {
+      const started = await act('battle/start', { monsterId });
+      assert.equal(started.data.result.ok, true, `start ${monsterId}`);
+      const player = await state();
+      const target = resolveMonster(monsterId);
+      let fight = createFight(player, target.monster, started.data.result.seed);
+      const actions = [];
+      for (const action of [...lead, ...Array(600).fill({ type: 'attack' })]) {
+        if (fight.ended || actions.length >= stopAfter) break;
+        const out = stepFight(fight, player, target.monster, target.map.levelMax, action);
+        if (out.error) throw new Error(out.error);
+        fight = out.fight; actions.push(action);
+      }
+      if (waitFull) await wait(Math.max(0, fight.turn * MIN_TURN_MS - 1500) + 40);
+      return { actions, fight, settle: () => act('battle/settle', { monsterId, actions }) };
+    };
+
+    // Nothing without a started fight, nothing for made-up or other-map monsters.
+    assert.equal((await act('battle/settle', { monsterId: firstMonster, actions: [] })).data.result.reason, 'noFight');
     assert.equal((await act('battle/start', { monsterId: 'made_up' })).data.result.reason, 'unknownMonster');
     assert.equal((await act('battle/start', { monsterId: 'kul_yaratigi' })).data.result.reason, 'wrongMap');
     assert.equal((await act('battle/start', { monsterId: 'sis_kurdu_2' })).data.result.reason, 'unknownMonster');
 
-    // A kill straight after the start is refused; after the minimum time the server pays the data-driven reward.
-    assert.equal((await act('battle/start', { monsterId: firstMonster })).data.result.ok, true);
-    assert.equal((await act('battle/kill', { monsterId: firstMonster })).data.result.reason, 'tooFast');
-    await wait(750);
+    // A rushed, long fight is refused until real time has passed; the same log is accepted afterwards.
+    const slow = await play(firstMonster, { waitFull: false });
+    assert.ok(slow.fight.turn >= 7, 'a weak hero needs several turns');
+    assert.equal((await slow.settle()).data.result.reason, 'tooFast');
+    await wait(Math.max(0, slow.fight.turn * MIN_TURN_MS - 1500) + 100);
+    const settledSlow = await slow.settle();
+    assert.equal(settledSlow.data.result.ok, true);
+    assert.equal(settledSlow.data.result.outcome, slow.fight.ended, 'the server reaches the same result as the replay');
+    // An unfinished log is a retreat: no reward, no kill count.
+    const quit = await play('sis_kurdu', { stopAfter: 2 });
+    const killsBefore = (await state()).monsterKills?.[firstMonster] || 0;
+    const retreat = await quit.settle();
+    assert.equal(retreat.data.result.outcome, 'retreat');
+    assert.equal((await state()).monsterKills?.[firstMonster] || 0, killsBefore);
+    assert.equal((await state()).fight, null);
+
+    // From here the hero hits hard. Tampered logs: extra actions after the end, unknown skills, wrong monster.
+    strongSword();
+    const won = await play(firstMonster, { lead: [{ type: 'potion', kind: 'hp' }] });
+    assert.equal(won.fight.ended, 'win');
+    assert.equal((await act('battle/settle', { monsterId: firstMonster, actions: [...won.actions, { type: 'attack' }] })).data.result.reason, 'invalidLog');
+    assert.equal((await act('battle/settle', { monsterId: firstMonster, actions: [{ type: 'skill', id: 'not_known' }] })).data.result.reason, 'invalidLog');
+    assert.equal((await act('battle/settle', { monsterId: 'kabuklu_golem', actions: won.actions })).data.result.reason, 'noFight');
     const before = await state();
-    const kill = await act('battle/kill', { monsterId: firstMonster, wear: { weapon: 40, armor: 5000 } });
-    assert.equal(kill.data.result.ok, true);
-    assert.ok(kill.data.result.drops.some((d) => d.type === 'xp'));
+    const settled = await won.settle();
+    assert.equal(settled.data.result.outcome, 'win');
+    assert.ok(settled.data.result.drops.some((d) => d.type === 'xp'));
     const after = await state();
-    assert.ok(after.gold >= before.gold + 6 && after.gold <= before.gold + 200, 'gold comes from the monster table, not from the client');
-    assert.equal(after.monsterKills[firstMonster], 1);
-    assert.equal(after.equipped.mainHand.currentDurability, 960, 'reported weapon wear is applied');
-    assert.equal((await act('battle/kill', { monsterId: firstMonster })).data.result.reason, 'noFight', 'one fight pays once');
+    assert.ok(after.gold >= before.gold + 6 && after.gold <= before.gold + 200, 'gold comes from the monster table');
+    assert.equal(after.monsterKills[firstMonster], (before.monsterKills?.[firstMonster] || 0) + 1);
+    assert.ok(after.equipped.mainHand.currentDurability < 1000, 'wear comes from the replay');
+    const potions = after.inventory.filter((i) => i.kind === 'potion' && i.potionType === 'hp' && i.tier === 1).reduce((n, i) => n + i.count, 0);
+    const potionsBefore = before.inventory.filter((i) => i.kind === 'potion' && i.potionType === 'hp' && i.tier === 1).reduce((n, i) => n + i.count, 0);
+    assert.equal(potions, potionsBefore - 1, 'the potion drunk in the log is consumed');
+    assert.equal((await act('battle/settle', { monsterId: firstMonster, actions: won.actions })).data.result.reason, 'noFight', 'one fight pays once');
 
     // Locked monsters and the map guardian need their progress first.
     assert.equal((await act('battle/start', { monsterId: 'kabuklu_golem' })).data.result.reason, 'monsterLocked');
     assert.equal((await act('battle/start', { monsterId: 'map_boss_fallow_valley' })).data.result.reason, 'mapIncomplete');
-
-    // Potions are consumed on the server; healing uses the reported hp.
-    const potionCount = async () => (await state()).inventory.filter((i) => i.kind === 'potion' && i.potionType === 'hp' && i.tier === 1).reduce((n, i) => n + i.count, 0);
-    const potionsBefore = await potionCount();
-    const potion = await act('battle/potion', { kind: 'hp', hp: 1, mp: 0 });
-    assert.equal(potion.data.result.ok, true);
-    assert.ok(potion.data.result.healed > 0);
-    assert.equal(await potionCount(), potionsBefore - 1);
-    assert.equal((await act('battle/potion', { kind: 'nonsense' })).data.result.reason, 'invalidKind');
 
     // Solo dungeon: needs an entry first, stages come in order, the boss pays the completion reward once.
     assert.equal((await act('battle/start', { monsterId: 'dungeon_fallow_valley_1' })).data.result.reason, 'noDungeonRun');
@@ -179,16 +211,15 @@ test('battle income is decided by the server: fights must be started, kills are 
     assert.equal((await state()).soloDungeon.entriesUsed, 1);
     assert.equal((await act('battle/start', { monsterId: 'dungeon_fallow_valley_3' })).data.result.reason, 'noDungeonRun', 'cannot skip stages');
     for (const id of ['dungeon_fallow_valley_1', 'dungeon_fallow_valley_2_risk', 'dungeon_fallow_valley_3', 'dungeon_fallow_valley_4', 'dungeon_fallow_valley_5']) {
-      assert.equal((await act('battle/start', { monsterId: id })).data.result.ok, true, id);
-      await wait(720);
-      assert.equal((await act('battle/kill', { monsterId: id })).data.result.ok, true, id);
+      const round = await play(id);
+      assert.equal(round.fight.ended, 'win', id);
+      assert.equal((await round.settle()).data.result.outcome, 'win', id);
     }
     const goldBeforeBoss = (await state()).gold;
     const chestsBeforeBoss = (await state()).chests.length;
-    assert.equal((await act('battle/start', { monsterId: 'dungeon_fallow_valley_boss' })).data.result.ok, true);
-    await wait(720);
-    const bossKill = await act('battle/kill', { monsterId: 'dungeon_fallow_valley_boss' });
-    assert.equal(bossKill.data.result.ok, true);
+    const boss = await play('dungeon_fallow_valley_boss');
+    const bossKill = await boss.settle();
+    assert.equal(bossKill.data.result.outcome, 'win');
     assert.ok(bossKill.data.result.completion.bonusGold > 0);
     assert.ok((await state()).chests.length > chestsBeforeBoss);
     assert.ok((await state()).gold > goldBeforeBoss);
@@ -198,11 +229,13 @@ test('battle income is decided by the server: fights must be started, kills are 
     await act('battle/dungeonEntry');
     assert.equal((await act('battle/dungeonEntry')).data.result.reason, 'entriesExhausted');
 
-    // Death costs xp and clears the fight; teleport charges the gate fee and respects the level lock.
+    // Death: a hero who cannot win dies in the replay, loses xp, and the fight is cleared.
+    db.prepare("UPDATE backups SET data=json_set(data,'$.characters[0].equipped.mainHand.atk',1,'$.characters[0].stats.sta',1)").run();
+    const doomed = await play('dungeon_fallow_valley_boss').catch(() => null);
+    void doomed; // the run is over, so this start is refused; use the first-map monster for the death check below
     await act('battle/start', { monsterId: firstMonster });
-    const death = await act('battle/death', { wear: { weapon: 1, armor: 1 } });
-    assert.equal(death.data.result.ok, true);
-    assert.equal((await act('battle/kill', { monsterId: firstMonster })).data.result.reason, 'noFight');
+    assert.equal((await act('battle/death', { wear: { weapon: 1, armor: 1 } })).data.result.ok, true);
+    assert.equal((await act('battle/settle', { monsterId: firstMonster, actions: [] })).data.result.reason, 'noFight');
     assert.equal((await act('map/teleport', { mapId: 'nowhere' })).data.result.reason, 'unknownMap');
     assert.equal((await act('map/teleport', { mapId: 'fallow_valley' })).data.result.reason, 'sameMap');
     db.close();

@@ -8,12 +8,15 @@ import { canEnterSoloDungeon, consumeDungeonEntry } from "../utils/soloDungeon";
 import { usePotion, bestAvailablePotionTier } from "../utils/potions";
 import { applyDeathPenalty, damageEquippedDurability, WEAPON_SLOTS, ARMOR_SLOTS, playerMaxHp, playerMaxMp, clampGold } from "../utils/player";
 import { rand, uid } from "../utils/random";
+import { replayFight, MIN_TURN_MS } from "./fight";
 
 // Savaş gelirleri (Faz 3a): öldürme ödülü, ölüm cezası, pot, zindan, kapı. Savaşın kendisi
 // (vuruş/can) istemcide oynanır; sunucu yalnızca KİMİN NEYİ KAZANDIĞINI belirler: canavar
 // istemcinin gönderdiği nesneyle değil, kimliğiyle verilerden kurulur ve ödül ona göre verilir.
-// Hile sınırı: ödül için önce `battle/start` (sunucu saatiyle) çağrılmış olmalı ve en az
-// MIN_FIGHT_MS geçmiş olmalı; zindan aşamaları sırayla ilerler.
+// Savaşın kendisi: sunucu `battle/start`ta tohum verir; istemci savaşı aynı motorla (game/fight.js) oynar ve
+// bitince eylem dizisini `battle/settle` ile gönderir. Sunucu savaşı baştan oynatıp sonucu (kazanma/ölme/geri
+// çekilme), ödülü, silah/zırh aşınmasını ve harcanan potları KENDİ hesaplar; istemcinin söylediği hasar/ödül yoktur.
+// Hile sınırı: savaş başlamış olmalı, süre eylem sayısıyla orantılı geçmiş olmalı, zindan aşamaları sırayla ilerler.
 export const MIN_FIGHT_MS = 700;
 const MAX_WEAR_PER_REPORT = 1500;
 
@@ -84,22 +87,43 @@ export const battleReducers = {
     if (!target) return fail(state, "unknownMonster");
     const denied = checkAccess(state.player, target);
     if (denied) return fail(state, denied);
-    const player = { ...state.player, fight: { monsterId, startedAt: Date.now() }, hp: playerMaxHp(state.player), mp: playerMaxMp(state.player) };
-    return done({ ...state, player });
+    const seed = (Math.floor(Math.random() * 4294967296) >>> 0) || 1;
+    const player = { ...state.player, fight: { monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(state.player), mp: playerMaxMp(state.player) };
+    return done({ ...state, player }, { seed });
   },
 
-  "battle/kill"(state, { monsterId, wear }) {
+  // Savaşı sunucuda baştan oynatır ve sonucu uygular. Sonuç: "win" (ödül), "lose" (ölüm cezası) ya da
+  // "retreat" (bitmemiş savaş: yalnızca aşınma ve harcanan potlar). Savaş bir kez ödeme yapar.
+  "battle/settle"(state, { monsterId, actions }) {
     const target = resolveMonster(monsterId);
     if (!target) return fail(state, "unknownMonster");
     const fight = state.player.fight;
-    if (!fight || fight.monsterId !== monsterId) return fail(state, "noFight");
-    if (Date.now() - fight.startedAt < MIN_FIGHT_MS) return fail(state, "tooFast");
+    if (!fight || fight.monsterId !== monsterId || !Number.isInteger(fight.seed)) return fail(state, "noFight");
+    const replay = replayFight(state.player, target.monster, target.map.levelMax, fight.seed, actions);
+    if (replay.error) return fail(state, "invalidLog", { detail: replay.error });
+    // Süre tabanı: tur başına en az MIN_TURN_MS (ağ gecikmesi payı için 1,5 sn düşülür).
+    const elapsed = Date.now() - fight.startedAt;
+    if (elapsed < replay.fight.turn * MIN_TURN_MS - 1500) return fail(state, "tooFast");
     const denied = checkAccess(state.player, target);
     if (denied) return fail(state, denied);
 
-    let player = applyWear({ ...state.player, fight: null }, wear);
+    // Aşınma ve harcanan potlar savaşın sonucundan bağımsız uygulanır.
+    let player = applyWear({ ...state.player, fight: null }, replay.fight.wear);
+    for (const kind of ["hp", "mp"]) {
+      for (const [tier, count] of Object.entries(replay.fight.used[kind])) {
+        for (let n = 0; n < count; n++) player = usePotion(player, kind, Number(tier)).player;
+      }
+    }
+    const outcome = replay.fight.ended || "retreat";
+
+    if (outcome === "lose") {
+      const penalty = applyDeathPenalty(clearFight(player));
+      return done({ ...state, player: penalty.player }, { outcome, xpLost: penalty.xpLost });
+    }
+    if (outcome === "retreat") return done({ ...state, player: clearFight(player) }, { outcome });
+
     const reward = grantMonsterReward(player, target.monster, target.map);
-    if (reward.blockedReasonKey) return done({ ...state, player }, { blockedReasonKey: reward.blockedReasonKey, tone: reward.tone, drops: [], levelUp: null });
+    if (reward.blockedReasonKey) return done({ ...state, player }, { outcome, blockedReasonKey: reward.blockedReasonKey, tone: reward.tone, drops: [], levelUp: null });
     player = reward.player;
     let completion = null;
     if (target.kind === "dungeon") {
@@ -112,16 +136,18 @@ export const battleReducers = {
         player = { ...player, dungeonRun: { ...player.dungeonRun, stage: target.stage + 1 } };
       }
     }
-    return done({ ...state, player }, { drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp, completion });
+    return done({ ...state, player }, { outcome, drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp, completion });
   },
 
+  // Savaş Alanı/klan zindanı gibi henüz kendi savaş kaydı olmayan yerler için ölüm cezası.
   "battle/death"(state, { wear }) {
     const penalty = applyDeathPenalty(clearFight(applyWear(state.player, wear)));
     return done({ ...state, player: penalty.player }, { xpLost: penalty.xpLost });
   },
 
-  "battle/retreat"(state, { wear }) {
-    return done({ ...state, player: clearFight(applyWear(state.player, wear)) });
+  // Savaş kaydını ve zindan koşusunu temizler (sekmeden çıkış vb.); aşınma/pot için `battle/settle` kullanılır.
+  "battle/retreat"(state) {
+    return done({ ...state, player: clearFight(state.player) });
   },
 
   // hp/mp istemcide canlı tutulur; pot hesabı istemcinin söylediği güncel değerlerle yapılır

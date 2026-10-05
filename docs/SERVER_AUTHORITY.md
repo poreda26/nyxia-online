@@ -162,3 +162,11 @@ Kalan: ırk/meslek parşömeni KULLANIMI (envanterde kullanım eylemi), yeni kar
   (ya da `MIN_CLIENT_BUILD` ortam değişkeni) daha büyükse 426 `CLIENT_OUTDATED` döner; uygulama "Güncelleme gerekli" ekranı açar.
   Ayar: `DATABASE_PATH=... node server/set-min-build.mjs <build> [güncelleme-bağlantısı]` (0 = kapalı). Sağlık, sahip paneli ve ödeme servisi muaftır.
   Eski APK'lar başlığı hiç göndermediği için min_build ≥ 1 olunca bloklanır. Kural/API değişince CLIENT_BUILD'i artırıp min_build'i ona çek.
+
+### Savaşın kendisi sunucuda (yapıldı: normal savaş + solo zindan)
+`src/game/fight.js`: tohumlu, saf savaş motoru (`createFight`, `stepFight`, `replayFight`). `battle/start` sunucu tohumu verir; istemci savaşı bu motorla
+oynar (anında geri bildirim) ve bitince eylem dizisini `battle/settle` ile gönderir. Sunucu savaşı baştan oynatır; sonuç (kazan/öl/geri çekil),
+ödül, silah/zırh aşınması ve harcanan potlar sunucunun hesabıdır. Süre tabanı: tur başına 300 ms (1,5 sn ağ payı düşülür). İstemcinin hasar/ödül/aşınma
+söylemesi kalmadı; `battle/kill` kaldırıldı. CLIENT_BUILD = 2.
+Henüz bu motora geçmeyenler (sınırlı hile payı): Canavar Ara avı (`warzone/huntKill` yalnızca süre denetler), Dünya Canavarı hasarı ve klan zindanı
+hasarı (istemci hasarı yollar, sunucu üst sınır koyar).
