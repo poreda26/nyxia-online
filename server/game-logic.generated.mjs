@@ -5205,7 +5205,7 @@ var require_lucide_react = __commonJS({
         { d: "M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3", key: "11bfej" }
       ]
     ]);
-    var Compass = createLucideIcon("Compass", [
+    var Compass2 = createLucideIcon("Compass", [
       [
         "path",
         {
@@ -5444,7 +5444,7 @@ var require_lucide_react = __commonJS({
       ["line", { x1: "12", x2: "12", y1: "6", y2: "2", key: "10w3f3" }],
       ["line", { x1: "12", x2: "12", y1: "22", y2: "18", key: "15g9kq" }]
     ]);
-    var Crown = createLucideIcon("Crown", [
+    var Crown2 = createLucideIcon("Crown", [
       [
         "path",
         {
@@ -7235,7 +7235,7 @@ var require_lucide_react = __commonJS({
         }
       ]
     ]);
-    var Gift = createLucideIcon("Gift", [
+    var Gift2 = createLucideIcon("Gift", [
       ["rect", { x: "3", y: "8", width: "18", height: "4", rx: "1", key: "bkv52" }],
       ["path", { d: "M12 8v13", key: "1c76mn" }],
       ["path", { d: "M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7", key: "6wjy6b" }],
@@ -7534,7 +7534,7 @@ var require_lucide_react = __commonJS({
       ],
       ["path", { d: "m8.5 16.5-1-1", key: "otr954" }]
     ]);
-    var Hammer = createLucideIcon("Hammer", [
+    var Hammer2 = createLucideIcon("Hammer", [
       ["path", { d: "m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9", key: "eefl8a" }],
       ["path", { d: "m18 15 4-4", key: "16gjal" }],
       [
@@ -9291,7 +9291,7 @@ var require_lucide_react = __commonJS({
         { d: "M4.14 15.08c2.62-1.57 5.24-1.43 7.86.42 2.74 1.94 5.49 2 8.23.19", key: "1pvmmp" }
       ]
     ]);
-    var Mountain = createLucideIcon("Mountain", [
+    var Mountain2 = createLucideIcon("Mountain", [
       ["path", { d: "m8 3 4 8 5-5 5 15H2L8 3z", key: "otkl63" }]
     ]);
     var MouseOff = createLucideIcon("MouseOff", [
@@ -11460,7 +11460,7 @@ var require_lucide_react = __commonJS({
       ["path", { d: "m14.5 9.5-5 5", key: "17q4r4" }],
       ["path", { d: "m9.5 9.5 5 5", key: "18nt4w" }]
     ]);
-    var Shield2 = createLucideIcon("Shield", [
+    var Shield3 = createLucideIcon("Shield", [
       [
         "path",
         {
@@ -11630,7 +11630,7 @@ var require_lucide_react = __commonJS({
       ["polygon", { points: "5 4 15 12 5 20 5 4", key: "16p6eg" }],
       ["line", { x1: "19", x2: "19", y1: "5", y2: "19", key: "futhcm" }]
     ]);
-    var Skull = createLucideIcon("Skull", [
+    var Skull2 = createLucideIcon("Skull", [
       ["circle", { cx: "9", cy: "12", r: "1", key: "1vctgf" }],
       ["circle", { cx: "15", cy: "12", r: "1", key: "1tmaij" }],
       ["path", { d: "M8 20v2h8v-2", key: "ded4og" }],
@@ -11775,7 +11775,7 @@ var require_lucide_react = __commonJS({
         }
       ]
     ]);
-    var Sparkles = createLucideIcon("Sparkles", [
+    var Sparkles2 = createLucideIcon("Sparkles", [
       [
         "path",
         {
@@ -12416,7 +12416,7 @@ var require_lucide_react = __commonJS({
       ["line", { x1: "16", x2: "20", y1: "16", y2: "20", key: "1bron3" }],
       ["line", { x1: "19", x2: "21", y1: "21", y2: "19", key: "13pww6" }]
     ]);
-    var Swords = createLucideIcon("Swords", [
+    var Swords2 = createLucideIcon("Swords", [
       ["polyline", { points: "14.5 17.5 3 6 3 3 6 3 17.5 14.5", key: "1hfsw2" }],
       ["line", { x1: "13", x2: "19", y1: "19", y2: "13", key: "1vrmhu" }],
       ["line", { x1: "16", x2: "20", y1: "16", y2: "20", key: "1bron3" }],
@@ -14214,7 +14214,7 @@ var require_lucide_react = __commonJS({
       Columns4,
       Combine,
       Command,
-      Compass,
+      Compass: Compass2,
       Component,
       Computer,
       ConciergeBell,
@@ -14249,7 +14249,7 @@ var require_lucide_react = __commonJS({
       Crop,
       Cross,
       Crosshair,
-      Crown,
+      Crown: Crown2,
       Cuboid,
       CupSoda,
       Currency,
@@ -14459,7 +14459,7 @@ var require_lucide_react = __commonJS({
       Gavel,
       Gem,
       Ghost,
-      Gift,
+      Gift: Gift2,
       GitBranch,
       GitBranchPlus,
       GitCommitHorizontal,
@@ -14495,7 +14495,7 @@ var require_lucide_react = __commonJS({
       Group,
       Guitar,
       Ham,
-      Hammer,
+      Hammer: Hammer2,
       Hand,
       HandCoins,
       HandHeart,
@@ -14709,7 +14709,7 @@ var require_lucide_react = __commonJS({
       MonitorX,
       Moon,
       MoonStar,
-      Mountain,
+      Mountain: Mountain2,
       MountainSnow,
       Mouse,
       MouseOff,
@@ -14963,7 +14963,7 @@ var require_lucide_react = __commonJS({
       Share2,
       Sheet,
       Shell,
-      Shield: Shield2,
+      Shield: Shield3,
       ShieldAlert,
       ShieldBan,
       ShieldCheck,
@@ -14996,7 +14996,7 @@ var require_lucide_react = __commonJS({
       Siren,
       SkipBack,
       SkipForward,
-      Skull,
+      Skull: Skull2,
       Slack,
       Slash,
       Slice,
@@ -15014,7 +15014,7 @@ var require_lucide_react = __commonJS({
       Space,
       Spade,
       Sparkle,
-      Sparkles,
+      Sparkles: Sparkles2,
       Speaker,
       Speech,
       SpellCheck,
@@ -15109,7 +15109,7 @@ var require_lucide_react = __commonJS({
       SwissFranc,
       SwitchCamera,
       Sword,
-      Swords,
+      Swords: Swords2,
       Syringe,
       Table,
       Table2,
@@ -16187,8 +16187,8 @@ var require_lucide_react = __commonJS({
     exports.CombineIcon = Combine;
     exports.Command = Command;
     exports.CommandIcon = Command;
-    exports.Compass = Compass;
-    exports.CompassIcon = Compass;
+    exports.Compass = Compass2;
+    exports.CompassIcon = Compass2;
     exports.Component = Component;
     exports.ComponentIcon = Component;
     exports.Computer = Computer;
@@ -16259,8 +16259,8 @@ var require_lucide_react = __commonJS({
     exports.CrossIcon = Cross;
     exports.Crosshair = Crosshair;
     exports.CrosshairIcon = Crosshair;
-    exports.Crown = Crown;
-    exports.CrownIcon = Crown;
+    exports.Crown = Crown2;
+    exports.CrownIcon = Crown2;
     exports.Cuboid = Cuboid;
     exports.CuboidIcon = Cuboid;
     exports.CupSoda = CupSoda;
@@ -16717,8 +16717,8 @@ var require_lucide_react = __commonJS({
     exports.GemIcon = Gem;
     exports.Ghost = Ghost;
     exports.GhostIcon = Ghost;
-    exports.Gift = Gift;
-    exports.GiftIcon = Gift;
+    exports.Gift = Gift2;
+    exports.GiftIcon = Gift2;
     exports.GitBranch = GitBranch;
     exports.GitBranchIcon = GitBranch;
     exports.GitBranchPlus = GitBranchPlus;
@@ -16799,8 +16799,8 @@ var require_lucide_react = __commonJS({
     exports.GuitarIcon = Guitar;
     exports.Ham = Ham;
     exports.HamIcon = Ham;
-    exports.Hammer = Hammer;
-    exports.HammerIcon = Hammer;
+    exports.Hammer = Hammer2;
+    exports.HammerIcon = Hammer2;
     exports.Hand = Hand;
     exports.HandCoins = HandCoins;
     exports.HandCoinsIcon = HandCoins;
@@ -17549,7 +17549,7 @@ var require_lucide_react = __commonJS({
     exports.LucideColumns4 = Columns4;
     exports.LucideCombine = Combine;
     exports.LucideCommand = Command;
-    exports.LucideCompass = Compass;
+    exports.LucideCompass = Compass2;
     exports.LucideComponent = Component;
     exports.LucideComputer = Computer;
     exports.LucideConciergeBell = ConciergeBell;
@@ -17585,7 +17585,7 @@ var require_lucide_react = __commonJS({
     exports.LucideCrop = Crop;
     exports.LucideCross = Cross;
     exports.LucideCrosshair = Crosshair;
-    exports.LucideCrown = Crown;
+    exports.LucideCrown = Crown2;
     exports.LucideCuboid = Cuboid;
     exports.LucideCupSoda = CupSoda;
     exports.LucideCurlyBraces = Braces;
@@ -17814,7 +17814,7 @@ var require_lucide_react = __commonJS({
     exports.LucideGavel = Gavel;
     exports.LucideGem = Gem;
     exports.LucideGhost = Ghost;
-    exports.LucideGift = Gift;
+    exports.LucideGift = Gift2;
     exports.LucideGitBranch = GitBranch;
     exports.LucideGitBranchPlus = GitBranchPlus;
     exports.LucideGitCommit = GitCommitHorizontal;
@@ -17855,7 +17855,7 @@ var require_lucide_react = __commonJS({
     exports.LucideGroup = Group;
     exports.LucideGuitar = Guitar;
     exports.LucideHam = Ham;
-    exports.LucideHammer = Hammer;
+    exports.LucideHammer = Hammer2;
     exports.LucideHand = Hand;
     exports.LucideHandCoins = HandCoins;
     exports.LucideHandHeart = HandHeart;
@@ -18088,7 +18088,7 @@ var require_lucide_react = __commonJS({
     exports.LucideMoonStar = MoonStar;
     exports.LucideMoreHorizontal = Ellipsis;
     exports.LucideMoreVertical = EllipsisVertical;
-    exports.LucideMountain = Mountain;
+    exports.LucideMountain = Mountain2;
     exports.LucideMountainSnow = MountainSnow;
     exports.LucideMouse = Mouse;
     exports.LucideMouseOff = MouseOff;
@@ -18379,7 +18379,7 @@ var require_lucide_react = __commonJS({
     exports.LucideShare2 = Share2;
     exports.LucideSheet = Sheet;
     exports.LucideShell = Shell;
-    exports.LucideShield = Shield2;
+    exports.LucideShield = Shield3;
     exports.LucideShieldAlert = ShieldAlert;
     exports.LucideShieldBan = ShieldBan;
     exports.LucideShieldCheck = ShieldCheck;
@@ -18417,7 +18417,7 @@ var require_lucide_react = __commonJS({
     exports.LucideSiren = Siren;
     exports.LucideSkipBack = SkipBack;
     exports.LucideSkipForward = SkipForward;
-    exports.LucideSkull = Skull;
+    exports.LucideSkull = Skull2;
     exports.LucideSlack = Slack;
     exports.LucideSlash = Slash;
     exports.LucideSlashSquare = SquareSlash;
@@ -18439,7 +18439,7 @@ var require_lucide_react = __commonJS({
     exports.LucideSpace = Space;
     exports.LucideSpade = Spade;
     exports.LucideSparkle = Sparkle;
-    exports.LucideSparkles = Sparkles;
+    exports.LucideSparkles = Sparkles2;
     exports.LucideSpeaker = Speaker;
     exports.LucideSpeech = Speech;
     exports.LucideSpellCheck = SpellCheck;
@@ -18514,7 +18514,7 @@ var require_lucide_react = __commonJS({
     exports.LucideStar = Star;
     exports.LucideStarHalf = StarHalf;
     exports.LucideStarOff = StarOff;
-    exports.LucideStars = Sparkles;
+    exports.LucideStars = Sparkles2;
     exports.LucideStepBack = StepBack;
     exports.LucideStepForward = StepForward;
     exports.LucideStethoscope = Stethoscope;
@@ -18539,7 +18539,7 @@ var require_lucide_react = __commonJS({
     exports.LucideSwissFranc = SwissFranc;
     exports.LucideSwitchCamera = SwitchCamera;
     exports.LucideSword = Sword;
-    exports.LucideSwords = Swords;
+    exports.LucideSwords = Swords2;
     exports.LucideSyringe = Syringe;
     exports.LucideTable = Table;
     exports.LucideTable2 = Table2;
@@ -18902,8 +18902,8 @@ var require_lucide_react = __commonJS({
     exports.MoreHorizontalIcon = Ellipsis;
     exports.MoreVertical = EllipsisVertical;
     exports.MoreVerticalIcon = EllipsisVertical;
-    exports.Mountain = Mountain;
-    exports.MountainIcon = Mountain;
+    exports.Mountain = Mountain2;
+    exports.MountainIcon = Mountain2;
     exports.MountainSnow = MountainSnow;
     exports.MountainSnowIcon = MountainSnow;
     exports.Mouse = Mouse;
@@ -19484,7 +19484,7 @@ var require_lucide_react = __commonJS({
     exports.SheetIcon = Sheet;
     exports.Shell = Shell;
     exports.ShellIcon = Shell;
-    exports.Shield = Shield2;
+    exports.Shield = Shield3;
     exports.ShieldAlert = ShieldAlert;
     exports.ShieldAlertIcon = ShieldAlert;
     exports.ShieldBan = ShieldBan;
@@ -19497,7 +19497,7 @@ var require_lucide_react = __commonJS({
     exports.ShieldEllipsisIcon = ShieldEllipsis;
     exports.ShieldHalf = ShieldHalf2;
     exports.ShieldHalfIcon = ShieldHalf2;
-    exports.ShieldIcon = Shield2;
+    exports.ShieldIcon = Shield3;
     exports.ShieldMinus = ShieldMinus;
     exports.ShieldMinusIcon = ShieldMinus;
     exports.ShieldOff = ShieldOff;
@@ -19560,8 +19560,8 @@ var require_lucide_react = __commonJS({
     exports.SkipBackIcon = SkipBack;
     exports.SkipForward = SkipForward;
     exports.SkipForwardIcon = SkipForward;
-    exports.Skull = Skull;
-    exports.SkullIcon = Skull;
+    exports.Skull = Skull2;
+    exports.SkullIcon = Skull2;
     exports.Slack = Slack;
     exports.SlackIcon = Slack;
     exports.Slash = Slash;
@@ -19604,8 +19604,8 @@ var require_lucide_react = __commonJS({
     exports.SpadeIcon = Spade;
     exports.Sparkle = Sparkle;
     exports.SparkleIcon = Sparkle;
-    exports.Sparkles = Sparkles;
-    exports.SparklesIcon = Sparkles;
+    exports.Sparkles = Sparkles2;
+    exports.SparklesIcon = Sparkles2;
     exports.Speaker = Speaker;
     exports.SpeakerIcon = Speaker;
     exports.Speech = Speech;
@@ -19754,8 +19754,8 @@ var require_lucide_react = __commonJS({
     exports.StarIcon = Star;
     exports.StarOff = StarOff;
     exports.StarOffIcon = StarOff;
-    exports.Stars = Sparkles;
-    exports.StarsIcon = Sparkles;
+    exports.Stars = Sparkles2;
+    exports.StarsIcon = Sparkles2;
     exports.StepBack = StepBack;
     exports.StepBackIcon = StepBack;
     exports.StepForward = StepForward;
@@ -19804,8 +19804,8 @@ var require_lucide_react = __commonJS({
     exports.SwitchCameraIcon = SwitchCamera;
     exports.Sword = Sword;
     exports.SwordIcon = Sword;
-    exports.Swords = Swords;
-    exports.SwordsIcon = Swords;
+    exports.Swords = Swords2;
+    exports.SwordsIcon = Swords2;
     exports.Syringe = Syringe;
     exports.SyringeIcon = Syringe;
     exports.Table = Table;
@@ -22752,6 +22752,46 @@ function weaponIconKey(baseName) {
 
 // src/utils/upgrade.js
 init_define_import_meta_env();
+var SCROLL_PRICES = { 1: 100, 2: 300, 3: 750, 4: 2e3, 5: 5e3, 6: 1e4 };
+function scrollPrice(tierId) {
+  return SCROLL_PRICES[tierId] ?? 0;
+}
+var MAX_UPGRADE_LEVEL = 8;
+var UPGRADE_CHANCE = {
+  0: 1,
+  // +0 -> +1
+  1: 1,
+  // +1 -> +2
+  2: 1,
+  // +2 -> +3
+  3: 0.9,
+  // +3 -> +4
+  4: 0.75,
+  // +4 -> +5
+  5: 0.5,
+  // +5 -> +6
+  6: 0.25,
+  // +6 -> +7
+  7: 0.08
+  // +7 -> +8
+};
+var BONUS_SCROLL_CHANCE = {
+  0: 1,
+  1: 1,
+  2: 1,
+  3: 1,
+  4: 1,
+  // +0 through +5: guaranteed
+  5: 0.65,
+  // +5 -> +6
+  6: 0.35,
+  // +6 -> +7
+  7: 0.15
+  // +7 -> +8
+};
+function upgradeSuccessChance(level, useBonusScroll = false) {
+  return useBonusScroll ? BONUS_SCROLL_CHANCE[level] ?? 0 : UPGRADE_CHANCE[level] ?? 0;
+}
 function bumpedStats(item) {
   return {
     atk: item.atk ? Math.round(item.atk * 1.18) : 0,
@@ -24091,8 +24131,8 @@ function claimQuest(player, questId) {
   const quest = MONSTER_QUESTS.find((q) => q.id === questId);
   if (!quest) return { player, claimed: false, reason: "invalidQuest" };
   if (isQuestClaimed(player, questId)) return { player, claimed: false, reason: "rewardAlreadyClaimed" };
-  const { done: done5 } = questProgress(player, quest);
-  if (!done5) return { player, claimed: false, reason: "questNotDone" };
+  const { done: done6 } = questProgress(player, quest);
+  if (!done6) return { player, claimed: false, reason: "questNotDone" };
   const chest = { id: uid(), tier: quest.tier };
   return {
     player: {
@@ -24112,8 +24152,8 @@ function awakeningProgress(player) {
     current: Math.min(player.monsterKills?.[monsterId] || 0, target),
     target
   }));
-  const done5 = entries.every((e) => e.current >= e.target);
-  return { entries, done: done5 };
+  const done6 = entries.every((e) => e.current >= e.target);
+  return { entries, done: done6 };
 }
 function claimAwakening(player) {
   if (player.awakened) return { player, claimed: false, reason: "alreadyAwakened" };
@@ -24260,8 +24300,8 @@ function mapBossState(player) {
 }
 function mapCompletion(player, mapId, map = findMap(mapId)) {
   const total = map.monsters.length;
-  const done5 = map.monsters.filter((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT).length;
-  return { done: done5, total, complete: done5 >= total };
+  const done6 = map.monsters.filter((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT).length;
+  return { done: done6, total, complete: done6 >= total };
 }
 function canFightMapBoss(player, mapId, map) {
   if (mapBossState(player).defeatedMapIds.includes(mapId)) return { ok: false, reason: "defeatedToday" };
@@ -24933,6 +24973,264 @@ var progressReducers = {
   }
 };
 
+// src/game/upgrade.js
+init_define_import_meta_env();
+
+// src/data/tiers.js
+init_define_import_meta_env();
+var GEAR_TIERS = [1, 2, 3, 4, 5, 6];
+
+// src/utils/accessoryUpgrade.js
+init_define_import_meta_env();
+var ACCESSORY_UPGRADE_MAX_LEVEL = 3;
+function accessoryUpgradeBlocked(sample) {
+  if (sample.upgradeLocked) return { ok: false, reason: "accessoryUpgradeLocked" };
+  if ((sample.upgradeLevel || 0) >= ACCESSORY_UPGRADE_MAX_LEVEL) {
+    return { ok: false, reason: "accessoryMaxLevelLocked", reasonVars: { max: ACCESSORY_UPGRADE_MAX_LEVEL } };
+  }
+  return { ok: true };
+}
+function buildUpgradedAccessory(sample) {
+  const level = sample.upgradeLevel || 0;
+  return { ...applyLevelData(sample, level + 1), id: uid() };
+}
+
+// src/utils/achievements.js
+init_define_import_meta_env();
+
+// src/data/achievements.js
+init_define_import_meta_env();
+var import_lucide_react2 = __toESM(require_lucide_react(), 1);
+var ACHIEVEMENTS = [
+  { id: "first_blood", name: "\u0130lk Kan", title: "\xC7\u0131rak", desc: "\u0130lk canavar\u0131n\u0131 \xF6ld\xFCr.", icon: import_lucide_react2.Skull, color: "#9CA1B0", type: "kills", target: 1 },
+  { id: "monster_nightmare", name: "Canavar K\xE2busu", title: "Canavar Avc\u0131s\u0131", desc: "Toplam 200 canavar \xF6ld\xFCr.", icon: import_lucide_react2.Skull, color: "#C9425A", type: "kills", target: 200 },
+  { id: "dungeon_wanderer", name: "Zindan Gezgini", title: "Zindan Gezgini", desc: "Frostburn Summit'e ula\u015F (Lv.25).", icon: import_lucide_react2.Compass, color: "#6FD1E0", type: "level", target: 25 },
+  { id: "abyss_lord", name: "U\xE7urumun Efendisi", title: "U\xE7urum Fatihi", desc: "Abyssal Pit'e ula\u015F (Lv.50).", icon: import_lucide_react2.Mountain, color: "#A34FD9", type: "level", target: 50 },
+  { id: "max_level", name: "Zirve", title: "Efsane", desc: "Maksimum seviyeye ula\u015F (Lv.65).", icon: import_lucide_react2.Crown, color: "#D4AF6A", type: "level", target: 65 },
+  { id: "awakened", name: "Uyan\u0131\u015F", title: "Uyanm\u0131\u015F", desc: "2. Uyan\u0131\u015F\u0131 tamamla.", icon: import_lucide_react2.Sparkles, color: "#FF8C42", type: "awakened" },
+  { id: "master_smith", name: "Usta Zanaatkar", title: "Usta Zanaatkar", desc: "Bir e\u015Fyay\u0131 +8'e y\xFCkselt.", icon: import_lucide_react2.Hammer, color: "#8B6FC9", type: "flag", flag: "maxUpgradeReached" },
+  { id: "clan_founder", name: "Klan Kurucusu", title: "Klan Kurucusu", desc: "Kendi klan\u0131n\u0131 kur.", icon: import_lucide_react2.Shield, color: "#5FA8A0", type: "flag", flag: "hasFoundedClan" },
+  { id: "warzone_hero", name: "Sava\u015F Alan\u0131 Kahraman\u0131", title: "Sava\u015F Alan\u0131 Kahraman\u0131", desc: "Sava\u015F Alan\u0131'nda 10 d\xFCello kazan.", icon: import_lucide_react2.Swords, color: "#C9425A", type: "counter", counter: "duelsWon", target: 10 },
+  { id: "treasure_hunter", name: "Hazine Avc\u0131s\u0131", title: "Hazine Avc\u0131s\u0131", desc: "25 sand\u0131k a\xE7.", icon: import_lucide_react2.Gift, color: "#D4AF6A", type: "counter", counter: "chestsOpened", target: 25 },
+  { id: "veteran_hunter", name: "Bin \u0130z", title: "Usta Avc\u0131", desc: "Toplam 1.000 canavar \xF6ld\xFCr.", icon: import_lucide_react2.Skull, color: "#D4AF6A", type: "kills", target: 1e3 },
+  { id: "endless_hunt", name: "Bitmeyen Av", title: "Yaban Efsanesi", desc: "Toplam 5.000 canavar \xF6ld\xFCr.", icon: import_lucide_react2.Skull, color: "#D4AF6A", type: "kills", target: 5e3 },
+  { id: "vault_keeper", name: "Mahzen Bek\xE7isi", title: "Hazine Muhaf\u0131z\u0131", desc: "100 sand\u0131k a\xE7.", icon: import_lucide_react2.Gift, color: "#D4AF6A", type: "counter", target: 100, counter: "chestsOpened" },
+  { id: "arena_veteran", name: "Meydan\u0131n Efendisi", title: "D\xFCello Ustas\u0131", desc: "Sava\u015F Alan\u0131nda 50 d\xFCello kazan.", icon: import_lucide_react2.Swords, color: "#D4AF6A", type: "counter", target: 50, counter: "duelsWon" }
+];
+
+// src/utils/achievements.js
+function totalKills(player) {
+  return Object.values(player.monsterKills || {}).reduce((s, n) => s + n, 0);
+}
+function isAchievementUnlocked(player, ach) {
+  switch (ach.type) {
+    case "kills":
+      return totalKills(player) >= ach.target;
+    case "level":
+      return player.level >= ach.target;
+    case "awakened":
+      return !!player.awakened;
+    case "flag":
+      return !!player.milestones?.[ach.flag];
+    case "counter":
+      return (player.milestones?.[ach.counter] || 0) >= ach.target;
+    default:
+      return false;
+  }
+}
+function newlyUnlocked(prevPlayer, nextPlayer) {
+  return ACHIEVEMENTS.filter((a) => !isAchievementUnlocked(prevPlayer, a) && isAchievementUnlocked(nextPlayer, a));
+}
+
+// src/game/upgrade.js
+var SCROLL_BOX_COUNT = 9;
+var ACCESSORY_SLOT_COUNT = 3;
+var ACCESSORY_SCROLL_PRICE = 5e4;
+var fail4 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done4 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var emptyForge = () => ({ item: null, boxes: Array(SCROLL_BOX_COUNT).fill(null), bonus: false });
+var emptyAccForge = () => ({ slots: Array(ACCESSORY_SLOT_COUNT).fill(null), scroll: false });
+var forgeOf = (player) => {
+  const f = player.forge;
+  return { item: f?.item || null, boxes: Array.from({ length: SCROLL_BOX_COUNT }, (_, i) => f?.boxes?.[i] || null), bonus: !!f?.bonus };
+};
+var accForgeOf = (player) => {
+  const f = player.accForge;
+  return { slots: Array.from({ length: ACCESSORY_SLOT_COUNT }, (_, i) => f?.slots?.[i] || null), scroll: !!f?.scroll };
+};
+function giveBackScroll(inventory, tier) {
+  const existing = inventory.find((it) => it.kind === "scroll" && it.tier === tier);
+  return existing ? inventory.map((it) => it.id === existing.id ? { ...it, count: it.count + 1 } : it) : [...inventory, makeScrollStack(tier, 1)];
+}
+function takeScroll(inventory, matches) {
+  const stack = inventory.find(matches);
+  if (!stack || stack.count <= 0) return null;
+  return stack.count - 1 <= 0 ? inventory.filter((it) => it.id !== stack.id) : inventory.map((it) => it.id === stack.id ? { ...it, count: it.count - 1 } : it);
+}
+function returnAllForge(player) {
+  const f = forgeOf(player);
+  let inventory = [...player.inventory];
+  if (f.item) inventory.push(f.item);
+  f.boxes.forEach((box) => {
+    if (box) inventory = giveBackScroll(inventory, box.tier);
+  });
+  if (f.bonus) inventory.push(makeBonusScrollStack());
+  return { ...player, inventory, forge: emptyForge() };
+}
+function returnAllAccForge(player) {
+  const f = accForgeOf(player);
+  let inventory = [...player.inventory];
+  f.slots.forEach((it) => {
+    if (it) inventory.push(it);
+  });
+  if (f.scroll) {
+    const existing = inventory.find((it) => it.kind === "accessoryScroll");
+    inventory = existing ? inventory.map((it) => it.id === existing.id ? { ...it, count: it.count + 1 } : it) : [...inventory, makeAccessoryScrollStack(1)];
+  }
+  return { ...player, inventory, accForge: emptyAccForge() };
+}
+var upgradeReducers = {
+  "shop/buyScroll"(state, { tier }) {
+    if (!GEAR_TIERS.includes(tier)) return fail4(state, "invalidTier");
+    const price = scrollPrice(tier);
+    if (state.player.gold < price) return fail4(state, "notEnoughGold");
+    const result = addItemToInventory({ ...state.player, gold: state.player.gold - price }, makeScrollStack(tier, 1));
+    if (!result.added) return fail4(state, "purchaseFailed", { detail: result.reason });
+    return done4({ ...state, player: result.player });
+  },
+  "shop/buyAccessoryScroll"(state) {
+    if (state.player.gold < ACCESSORY_SCROLL_PRICE) return fail4(state, "notEnoughGold");
+    const result = addItemToInventory({ ...state.player, gold: state.player.gold - ACCESSORY_SCROLL_PRICE }, makeAccessoryScrollStack(1));
+    if (!result.added) return fail4(state, "purchaseFailed", { detail: result.reason });
+    return done4({ ...state, player: result.player });
+  },
+  // ---- Silah/zırh forge'u
+  "forge/stageItem"(state, { itemId }) {
+    const { player } = state;
+    const item = player.inventory.find((i) => i.id === itemId);
+    if (!item || item.kind !== "weapon" && item.kind !== "armor") return fail4(state, "itemNotFound");
+    if (item.noTrade) return fail4(state, "itemNoTrade");
+    const f = forgeOf(player);
+    let inventory = player.inventory.filter((i) => i.id !== itemId);
+    if (f.item) inventory = [...inventory, f.item];
+    return done4({ ...state, player: { ...player, inventory, forge: { ...f, item } } });
+  },
+  "forge/returnItem"(state) {
+    const { player } = state;
+    const f = forgeOf(player);
+    if (!f.item) return done4(state);
+    return done4({ ...state, player: { ...player, inventory: [...player.inventory, f.item], forge: { ...f, item: null } } });
+  },
+  "forge/stageScroll"(state, { tier }) {
+    const { player } = state;
+    const f = forgeOf(player);
+    const emptyIndex = f.boxes.findIndex((b) => b === null);
+    if (emptyIndex === -1) return fail4(state, "boxesFull");
+    const inventory = takeScroll(player.inventory, (it) => it.kind === "scroll" && it.tier === tier);
+    if (!inventory) return fail4(state, "scrollNotFound");
+    const boxes = f.boxes.map((b, i) => i === emptyIndex ? { tier } : b);
+    return done4({ ...state, player: { ...player, inventory, forge: { ...f, boxes } } });
+  },
+  "forge/returnScroll"(state, { box }) {
+    const { player } = state;
+    const f = forgeOf(player);
+    if (!Number.isInteger(box) || !f.boxes[box]) return done4(state);
+    return done4({ ...state, player: { ...player, inventory: giveBackScroll(player.inventory, f.boxes[box].tier), forge: { ...f, boxes: f.boxes.map((b, i) => i === box ? null : b) } } });
+  },
+  "forge/stageBonus"(state, { itemId }) {
+    const { player } = state;
+    const f = forgeOf(player);
+    if (f.bonus) return fail4(state, "bonusFull");
+    const item = player.inventory.find((i) => i.id === itemId && i.kind === "bonusScroll");
+    if (!item) return fail4(state, "itemNotFound");
+    return done4({ ...state, player: { ...player, inventory: player.inventory.filter((i) => i.id !== itemId), forge: { ...f, bonus: true } } });
+  },
+  "forge/returnBonus"(state) {
+    const { player } = state;
+    const f = forgeOf(player);
+    if (!f.bonus) return done4(state);
+    return done4({ ...state, player: { ...player, inventory: [...player.inventory, makeBonusScrollStack()], forge: { ...f, bonus: false } } });
+  },
+  "forge/clear"(state) {
+    const f = forgeOf(state.player);
+    if (!f.item && !f.bonus && f.boxes.every((b) => !b)) return done4(state);
+    return done4({ ...state, player: returnAllForge(state.player) });
+  },
+  // Yükseltme: forge'daki eşya + tam bir eşleşen parşömen. Zar sunucuda atılır; başarısızlıkta
+  // eşya yok olur (oyunun mevcut kuralı), başarıda aynı kimlikle +1 seviye olarak çantaya döner.
+  "forge/press"(state) {
+    const { player } = state;
+    const f = forgeOf(player);
+    const entry = f.item;
+    if (!entry) return fail4(state, "noItem");
+    const currentLevel = entry.upgradeLevel || 0;
+    if (currentLevel >= MAX_UPGRADE_LEVEL) return fail4(state, "alreadyMaxLevel");
+    const matching = f.boxes.map((b, i) => b && b.tier === entry.tier ? i : -1).filter((i) => i >= 0);
+    if (matching.length === 0) return fail4(state, "noScrollForTier");
+    if (matching.length >= 2) return fail4(state, "onlyOneScrollAllowed");
+    const success = Math.random() < upgradeSuccessChance(currentLevel, f.bonus);
+    const cleared = { item: null, boxes: f.boxes.map((b, i) => i === matching[0] ? null : b), bonus: false };
+    if (!success) return done4({ ...state, player: { ...player, forge: cleared } }, { success: false, item: entry });
+    const bumped = entry.levels ? applyLevelData(entry, currentLevel + 1) : { ...entry, upgradeLevel: currentLevel + 1, ...bumpedStats(entry) };
+    const next = {
+      ...player,
+      forge: cleared,
+      inventory: [...player.inventory, bumped],
+      milestones: bumped.upgradeLevel >= MAX_UPGRADE_LEVEL ? { ...player.milestones, maxUpgradeReached: true } : player.milestones
+    };
+    return done4({ ...state, player: next }, { success: true, item: entry, bumpedItem: bumped, unlocked: newlyUnlocked(player, next).map((a) => a.id) });
+  },
+  // ---- Takı forge'u (3 aynı takı + 1 Aksesuar Kağıdı → bir üst seviye, başarısızlık yok)
+  "accessory/stageItem"(state, { itemId }) {
+    const { player } = state;
+    const item = player.inventory.find((i) => i.id === itemId && i.kind === "accessory");
+    if (!item) return fail4(state, "itemNotFound");
+    const blocked = accessoryUpgradeBlocked(item);
+    if (!blocked.ok) return fail4(state, blocked.reason, blocked.reasonVars ? { reasonVars: blocked.reasonVars } : {});
+    const f = accForgeOf(player);
+    const first = f.slots.find(Boolean);
+    if (first && (first.name !== item.name || (first.upgradeLevel || 0) !== (item.upgradeLevel || 0))) return fail4(state, "mustMatch");
+    const emptyIndex = f.slots.findIndex((s) => s === null);
+    if (emptyIndex === -1) return fail4(state, "slotsFull");
+    return done4({ ...state, player: { ...player, inventory: player.inventory.filter((i) => i.id !== itemId), accForge: { ...f, slots: f.slots.map((s, i) => i === emptyIndex ? item : s) } } });
+  },
+  "accessory/returnItem"(state, { slot }) {
+    const { player } = state;
+    const f = accForgeOf(player);
+    if (!Number.isInteger(slot) || !f.slots[slot]) return done4(state);
+    return done4({ ...state, player: { ...player, inventory: [...player.inventory, f.slots[slot]], accForge: { ...f, slots: f.slots.map((s, i) => i === slot ? null : s) } } });
+  },
+  "accessory/stageScroll"(state) {
+    const { player } = state;
+    const f = accForgeOf(player);
+    if (f.scroll) return fail4(state, "scrollSlotFull");
+    const inventory = takeScroll(player.inventory, (it) => it.kind === "accessoryScroll");
+    if (!inventory) return fail4(state, "scrollNotFound");
+    return done4({ ...state, player: { ...player, inventory, accForge: { ...f, scroll: true } } });
+  },
+  "accessory/returnScroll"(state) {
+    const { player } = state;
+    const f = accForgeOf(player);
+    if (!f.scroll) return done4(state);
+    const existing = player.inventory.find((it) => it.kind === "accessoryScroll");
+    const inventory = existing ? player.inventory.map((it) => it.id === existing.id ? { ...it, count: it.count + 1 } : it) : [...player.inventory, makeAccessoryScrollStack(1)];
+    return done4({ ...state, player: { ...player, inventory, accForge: { ...f, scroll: false } } });
+  },
+  "accessory/clear"(state) {
+    const f = accForgeOf(state.player);
+    if (!f.scroll && f.slots.every((s) => !s)) return done4(state);
+    return done4({ ...state, player: returnAllAccForge(state.player) });
+  },
+  "accessory/press"(state) {
+    const { player } = state;
+    const f = accForgeOf(player);
+    if (!f.slots.every(Boolean) || !f.scroll) return fail4(state, "notReady");
+    const sample = f.slots[0];
+    const upgraded = buildUpgradedAccessory(sample);
+    return done4({ ...state, player: { ...player, inventory: [...player.inventory, upgraded], accForge: emptyAccForge() } }, { item: sample, bumpedItem: upgraded });
+  }
+};
+
 // src/utils/chests.js
 init_define_import_meta_env();
 function openChestSafely(player, chestId, roll) {
@@ -24961,70 +25259,70 @@ function openChestsSafely(player, roll) {
 }
 
 // src/game/actions.js
-var fail4 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
-var done4 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var fail5 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done5 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
 var strip = ({ player, bank, ...rest }) => rest;
 var findOwned = (player, itemId) => player.inventory.find((i) => i.id === itemId) || Object.values(player.equipped || {}).find((i) => i && i.id === itemId) || null;
 var inventoryReducers = {
   "inventory/equip"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail4(state, "itemNotFound");
+    if (!item) return fail5(state, "itemNotFound");
     const result = equipItem(state.player, item);
-    if (result.blocked) return fail4(state, "blocked", { blocked: result.blocked });
-    return done4({ ...state, player: result.player });
+    if (result.blocked) return fail5(state, "blocked", { blocked: result.blocked });
+    return done5({ ...state, player: result.player });
   },
   "inventory/unequip"(state, { slot }) {
     const result = unequipItem(state.player, slot);
-    if (!result.removed) return fail4(state, result.reason || "nothingToRemove", strip(result));
-    return done4({ ...state, player: result.player });
+    if (!result.removed) return fail5(state, result.reason || "nothingToRemove", strip(result));
+    return done5({ ...state, player: result.player });
   },
   "inventory/sell"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail4(state, "itemNotFound");
-    if (item.noTrade) return fail4(state, "noTrade");
+    if (!item) return fail5(state, "itemNotFound");
+    if (item.noTrade) return fail5(state, "noTrade");
     const price = Math.round(sellPrice(item) * premiumSellMultiplier(state.player));
     const gold = Math.min(MAX_GOLD, state.player.gold + price);
-    return done4({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
+    return done5({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
   },
   "inventory/sellBulk"(state, { itemIds }) {
     const wanted = new Set(Array.isArray(itemIds) ? itemIds : []);
     const sellable = state.player.inventory.filter((i) => wanted.has(i.id) && !isConsumable(i) && !i.noTrade);
-    if (sellable.length === 0) return fail4(state, "noneSellable");
+    if (sellable.length === 0) return fail5(state, "noneSellable");
     const total = sellable.reduce((sum, i) => sum + Math.round(sellPrice(i) * premiumSellMultiplier(state.player)), 0);
     const sold = new Set(sellable.map((i) => i.id));
     const gold = Math.min(MAX_GOLD, state.player.gold + total);
-    return done4({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
+    return done5({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
   },
   "inventory/repair"(state, { itemId }) {
     const item = findOwned(state.player, itemId);
-    if (!item) return fail4(state, "itemNotFound");
+    if (!item) return fail5(state, "itemNotFound");
     const result = repairItem(state.player, item, premiumRepairDiscount(state.player), state.bank);
-    if (!result.repaired) return fail4(state, result.reason || "repairFailed", strip(result));
-    return done4({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
+    if (!result.repaired) return fail5(state, result.reason || "repairFailed", strip(result));
+    return done5({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
   },
   "inventory/repairAll"(state) {
     const result = repairAllEquipped(state.player, premiumRepairDiscount(state.player));
-    if (!result.repaired) return fail4(state, result.reason || "nothingToRepair", strip(result));
-    return done4({ ...state, player: result.player }, { cost: result.cost });
+    if (!result.repaired) return fail5(state, result.reason || "nothingToRepair", strip(result));
+    return done5({ ...state, player: result.player }, { cost: result.cost });
   },
   "inventory/depositItem"(state, { itemId, page }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail4(state, "itemNotFound");
-    if (!Number.isInteger(page) || !state.bank[page]) return fail4(state, "invalidPage");
+    if (!item) return fail5(state, "itemNotFound");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail5(state, "invalidPage");
     const result = depositToBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail4(state, result.reason || "depositFailed", strip(result));
-    return done4({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail5(state, result.reason || "depositFailed", strip(result));
+    return done5({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/withdrawItem"(state, { itemId, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail4(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail5(state, "invalidPage");
     const item = state.bank[page].find((i) => i.id === itemId);
-    if (!item) return fail4(state, "itemNotFound");
+    if (!item) return fail5(state, "itemNotFound");
     const result = withdrawFromBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail4(state, result.reason || "withdrawFailed", strip(result));
-    return done4({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail5(state, result.reason || "withdrawFailed", strip(result));
+    return done5({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/depositBulk"(state, { itemIds, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail4(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail5(state, "invalidPage");
     let player = state.player, bank = state.bank, moved = 0;
     for (const id of Array.isArray(itemIds) ? itemIds : []) {
       const item = player.inventory.find((i) => i.id === id);
@@ -25036,44 +25334,44 @@ var inventoryReducers = {
         moved++;
       }
     }
-    return done4({ ...state, player, bank }, { moved });
+    return done5({ ...state, player, bank }, { moved });
   },
   "inventory/depositGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail4(state, "invalidAmount");
-    if (state.player.gold < amount) return fail4(state, "notEnoughGold");
-    if (state.bankGold + amount > MAX_GOLD) return fail4(state, "bankGoldCap");
-    return done4({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail5(state, "invalidAmount");
+    if (state.player.gold < amount) return fail5(state, "notEnoughGold");
+    if (state.bankGold + amount > MAX_GOLD) return fail5(state, "bankGoldCap");
+    return done5({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
   },
   "inventory/withdrawGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail4(state, "invalidAmount");
-    if (state.bankGold < amount) return fail4(state, "notEnoughBankGold");
-    if (state.player.gold + amount > MAX_GOLD) return fail4(state, "carryGoldCap");
-    return done4({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail5(state, "invalidAmount");
+    if (state.bankGold < amount) return fail5(state, "notEnoughBankGold");
+    if (state.player.gold + amount > MAX_GOLD) return fail5(state, "carryGoldCap");
+    return done5({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
   },
   "inventory/openChest"(state, { chestId }) {
     const result = openChestSafely(state.player, chestId);
-    if (!result.opened) return fail4(state, result.reason || "chestFailed");
-    return done4({ ...state, player: result.player }, { item: result.item });
+    if (!result.opened) return fail5(state, result.reason || "chestFailed");
+    return done5({ ...state, player: result.player }, { item: result.item });
   },
   "inventory/openAllChests"(state) {
     const result = openChestsSafely(state.player);
-    if (!result.items.length) return fail4(state, result.reason || "noChests");
-    return done4({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
+    if (!result.items.length) return fail5(state, result.reason || "noChests");
+    return done5({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
   },
   "inventory/useBoostScroll"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId && i.kind === "boostScroll");
-    if (!item) return fail4(state, "itemNotFound");
+    if (!item) return fail5(state, "itemNotFound");
     const result = useBoostScroll(state.player, item.boostId);
-    if (!result.used) return fail4(state, "noScrollsLeft");
-    return done4({ ...state, player: result.player });
+    if (!result.used) return fail5(state, "noScrollsLeft");
+    return done5({ ...state, player: result.player });
   }
 };
-var reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers, ...progressReducers };
+var reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers, ...progressReducers, ...upgradeReducers };
 var ACTION_TYPES = Object.keys(reducers);
 function applyAction(state, type, payload = {}) {
   const reducer = Object.hasOwn(reducers, type) ? reducers[type] : null;
-  if (!reducer) return fail4(state, "unknownAction");
-  if (payload === null || typeof payload !== "object") return fail4(state, "invalidPayload");
+  if (!reducer) return fail5(state, "unknownAction");
+  if (payload === null || typeof payload !== "object") return fail5(state, "invalidPayload");
   return reducer(state, payload);
 }
 

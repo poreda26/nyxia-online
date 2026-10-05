@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { itemTierColor } from "../data/itemRarity";
 import { ACCESSORY_UPGRADE_MAX_LEVEL, accessoryUpgradeBlocked, buildUpgradedAccessory } from "../utils/accessoryUpgrade";
-import { makeAccessoryScrollStack } from "../utils/inventory";
 import { displayItemName } from "../utils/player";
 import { useTranslation, formatReason } from "../i18n/LanguageContext";
 import { styles } from "../styles";
@@ -21,83 +20,55 @@ const SLOT_COUNT = 3;
 // bir takıya dokunmak onu ilk boş kutuya çeker (forge'daki handleBagTap gibi)
 // — üçü de aynı isim+seviyeden olmak zorunda, aksi halde reddedilir. Silah/
 // zırhın aksine başarısızlık ihtimali yok (bkz. utils/accessoryUpgrade.js).
-export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
+export default function AccessoryUpgradeTab({ player, setPlayer, act, pushToast }) {
   const { t, lang } = useTranslation();
-  const [slots, setSlots] = useState(() => Array(SLOT_COUNT).fill(null));
-  const [scrollStaged, setScrollStaged] = useState(false);
   const [outputItem, setOutputItem] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [pendingReveal, setPendingReveal] = useState(null); // { item, bumpedItem } | null
+  const [busy, setBusy] = useState(false);
 
-  // UpgradeTab'daki aynı desen: Hub sekme değişince bu bileşeni unmount
-  // ediyor, kutulardaki takı/parşömeni kaybetmemek için geri çantaya ver.
-  const latestRef = useRef({ slots, scrollStaged });
-  latestRef.current = { slots, scrollStaged };
-  useEffect(() => {
-    return () => {
-      const { slots: finalSlots, scrollStaged: finalScroll } = latestRef.current;
-      if (finalSlots.every((s) => !s) && !finalScroll) return;
-      setPlayer((p) => {
-        let inv = [...p.inventory];
-        finalSlots.forEach((it) => { if (it) inv.push(it); });
-        if (finalScroll) {
-          const existingIdx = inv.findIndex((it) => it.kind === "accessoryScroll");
-          if (existingIdx >= 0) inv[existingIdx] = { ...inv[existingIdx], count: inv[existingIdx].count + 1 };
-          else inv.push(makeAccessoryScrollStack(1));
-        }
-        return { ...p, inventory: inv };
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Kutulardaki takı/parşömen oyuncunun `accForge` alanında durur (bkz. game/upgrade.js).
+  const forge = player.accForge || {};
+  const slots = Array.from({ length: SLOT_COUNT }, (_, i) => forge.slots?.[i] || null);
+  const scrollStaged = !!forge.scroll;
+
+  // UpgradeTab'daki aynı desen: sekme değişince kutularda kalanı çantaya geri ver.
+  const actRef = useRef(act);
+  actRef.current = act;
+  useEffect(() => () => { actRef.current("accessory/clear"); }, []);
+
+  const run = async (type, payload, failKey) => {
+    const result = await act(type, payload);
+    if (!result.ok) {
+      if (result.reason === "network") pushToast(t("battle.actionFailed"), "warn");
+      else if (failKey?.[result.reason]) pushToast(t(failKey[result.reason]), "warn");
+      else pushToast(formatReason(t, result, "upgrade.accessory.cannotUpgrade"), "warn");
+    }
+    return result;
+  };
 
   const returnSlot = (i) => {
-    const item = slots[i];
-    if (!item) return;
-    setPlayer((p) => ({ ...p, inventory: [...p.inventory, item] }));
-    setSlots((s) => s.map((v, idx) => (idx === i ? null : v)));
+    if (!slots[i]) return;
     setShowPreview(false);
+    run("accessory/returnItem", { slot: i });
   };
 
   const returnScroll = () => {
     if (!scrollStaged) return;
-    setPlayer((p) => {
-      const existing = p.inventory.find((it) => it.kind === "accessoryScroll");
-      const inventory = existing
-        ? p.inventory.map((it) => (it.id === existing.id ? { ...it, count: it.count + 1 } : it))
-        : [...p.inventory, makeAccessoryScrollStack(1)];
-      return { ...p, inventory };
-    });
-    setScrollStaged(false);
+    run("accessory/returnScroll");
   };
 
   const handleBagTap = (item) => {
     if (item.kind === "accessory") {
       const blocked = accessoryUpgradeBlocked(item);
       if (!blocked.ok) { pushToast(formatReason(t, blocked, "upgrade.accessory.cannotUpgrade"), "warn"); return; }
-      const firstFilled = slots.find(Boolean);
-      if (firstFilled && (firstFilled.name !== item.name || (firstFilled.upgradeLevel || 0) !== (item.upgradeLevel || 0))) {
-        pushToast(t("upgrade.accessory.mustMatch"), "warn");
-        return;
-      }
-      const emptyIndex = slots.findIndex((s) => s === null);
-      if (emptyIndex === -1) { pushToast(t("upgrade.accessory.slotsFull"), "warn"); return; }
-      setPlayer((p) => ({ ...p, inventory: p.inventory.filter((it) => it.id !== item.id) }));
-      setSlots((s) => s.map((v, idx) => (idx === emptyIndex ? item : v)));
       setShowPreview(false);
+      run("accessory/stageItem", { itemId: item.id }, { mustMatch: "upgrade.accessory.mustMatch", slotsFull: "upgrade.accessory.slotsFull" });
       return;
     }
     if (item.kind === "accessoryScroll") {
       if (scrollStaged) { pushToast(t("upgrade.accessory.scrollSlotFull"), "warn"); return; }
-      setPlayer((p) => {
-        const stack = p.inventory.find((it) => it.kind === "accessoryScroll");
-        if (!stack || stack.count <= 0) return p;
-        const inventory = stack.count - 1 <= 0
-          ? p.inventory.filter((it) => it.id !== stack.id)
-          : p.inventory.map((it) => (it.id === stack.id ? { ...it, count: it.count - 1 } : it));
-        return { ...p, inventory };
-      });
-      setScrollStaged(true);
+      run("accessory/stageScroll", {}, { scrollSlotFull: "upgrade.accessory.scrollSlotFull" });
     }
   };
 
@@ -105,16 +76,16 @@ export default function AccessoryUpgradeTab({ player, setPlayer, pushToast }) {
   const canPress = filled && scrollStaged && !pendingReveal;
   const previewStats = canPress ? buildUpgradedAccessory(slots[0]) : null;
 
-  const press = () => {
-    if (!canPress) return;
-    const sample = slots[0];
-    const upgraded = buildUpgradedAccessory(sample);
-    setSlots(Array(SLOT_COUNT).fill(null));
-    setScrollStaged(false);
+  const press = async () => {
+    if (!canPress || busy) return;
+    setBusy(true);
     setShowPreview(false);
-    setPlayer((p) => ({ ...p, inventory: [...p.inventory, upgraded] }));
+    const result = await act("accessory/press");
+    setBusy(false);
+    if (!result.ok) { pushToast(t(result.reason === "network" ? "battle.actionFailed" : "upgrade.actionFailed"), "warn"); return; }
+    const sample = result.item;
     pushToast(t("upgrade.accessory.leveledUp", { name: displayItemName({ ...sample, upgradeLevel: 0 }, lang), level: (sample.upgradeLevel || 0) + 1 }), "loot");
-    setPendingReveal({ item: sample, bumpedItem: upgraded });
+    setPendingReveal({ item: sample, bumpedItem: result.bumpedItem });
   };
 
   const closeReveal = () => {

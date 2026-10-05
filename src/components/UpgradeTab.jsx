@@ -2,9 +2,7 @@ import ScrollArt from './icons/ScrollArt';
 import { useState, useRef, useEffect } from "react";
 import { Plus, ScrollText, Star, X } from "lucide-react";
 import { itemTierColor, tierName } from "../data/itemRarity";
-import { MAX_UPGRADE_LEVEL, upgradeSuccessChance, bumpedStats, applyLevelData } from "../utils/upgrade";
-import { makeScrollStack, makeBonusScrollStack } from "../utils/inventory";
-import { newlyUnlocked } from "../utils/achievements";
+import { MAX_UPGRADE_LEVEL, bumpedStats, applyLevelData } from "../utils/upgrade";
 import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
@@ -21,60 +19,42 @@ const SCROLL_BOX_COUNT = 9;
 // dropped into the bag before it shows up in this grid. That keeps the
 // staging model simple (every staged item always came from — and always
 // returns to — player.inventory, never player.equipped).
-export default function UpgradeTab({ player, setPlayer, pushToast }) {
+export default function UpgradeTab({ player, setPlayer, act, pushToast }) {
   const { t, lang } = useTranslation();
   const [subtab, setSubtab] = useState("forge"); // "forge" | "accessory"
-  const [stagedItem, setStagedItem] = useState(null); // item | null
-  const [scrollBoxes, setScrollBoxes] = useState(() => Array(SCROLL_BOX_COUNT).fill(null)); // { tier } | null
-  const [bonusScrollActive, setBonusScrollActive] = useState(false);
   const [outputItem, setOutputItem] = useState(null); // brief post-reveal flash in the "Sonuç" slot
   const [showPreview, setShowPreview] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [pendingReveal, setPendingReveal] = useState(null); // { item, success, bumpedItem } | null
+  const [busy, setBusy] = useState(false);
 
-  // Hub unmounts this tab when the player switches to another bottom-nav
-  // tab, which would silently wipe stagedItem/scrollBoxes — and with them,
-  // the item and scrolls that were pulled out of the bag to sit in the
-  // forge. Keep a ref in sync every render so the unmount cleanup can hand
-  // everything still staged back to the bag instead of losing it.
-  const latestForgeRef = useRef({ stagedItem, scrollBoxes, bonusScrollActive });
-  latestForgeRef.current = { stagedItem, scrollBoxes, bonusScrollActive };
+  // Forge'daki eşya/parşömenler oyuncunun `forge` alanında durur (bkz. game/upgrade.js): çantadan
+  // gerçekten çıkmışlardır, hepsini sunucu kuralları yönetir. Ekran yalnızca bunu gösterir.
+  const forge = player.forge || {};
+  const stagedItem = forge.item || null;
+  const scrollBoxes = Array.from({ length: SCROLL_BOX_COUNT }, (_, i) => forge.boxes?.[i] || null);
+  const bonusScrollActive = !!forge.bonus;
 
-  useEffect(() => {
-    return () => {
-      const { stagedItem: finalStaged, scrollBoxes: finalBoxes, bonusScrollActive: finalBonus } = latestForgeRef.current;
-      if (!finalStaged && finalBoxes.every((b) => !b) && !finalBonus) return;
-      setPlayer((p) => {
-        let inv = [...p.inventory];
-        if (finalStaged) inv.push(finalStaged);
-        finalBoxes.forEach((box) => {
-          if (!box) return;
-          const existingIdx = inv.findIndex((it) => it.kind === "scroll" && it.tier === box.tier);
-          if (existingIdx >= 0) inv[existingIdx] = { ...inv[existingIdx], count: inv[existingIdx].count + 1 };
-          else inv.push(makeScrollStack(box.tier, 1));
-        });
-        if (finalBonus) inv.push(makeBonusScrollStack());
-        return { ...p, inventory: inv };
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Hub başka sekmeye geçince bu bileşeni kaldırır: forge'da kalan her şeyi çantaya geri ver.
+  const actRef = useRef(act);
+  actRef.current = act;
+  useEffect(() => () => { actRef.current("forge/clear"); }, []);
 
-  const swapStagedItem = (newItem) => {
-    setPlayer((p) => {
-      let inv = p.inventory.filter((i) => i.id !== newItem.id);
-      if (stagedItem) inv = [...inv, stagedItem];
-      return { ...p, inventory: inv };
-    });
-    setStagedItem(newItem);
-    setShowPreview(false);
+  const run = async (type, payload, failKey) => {
+    const result = await act(type, payload);
+    if (!result.ok) pushToast(t(failKey?.[result.reason] || (result.reason === "network" ? "battle.actionFailed" : "upgrade.actionFailed")), "warn");
+    return result;
   };
 
-  const returnStagedItem = () => {
-    if (!stagedItem) return;
-    setPlayer((p) => ({ ...p, inventory: [...p.inventory, stagedItem] }));
-    setStagedItem(null);
+  const swapStagedItem = async (newItem) => {
     setShowPreview(false);
+    await run("forge/stageItem", { itemId: newItem.id }, { itemNoTrade: "upgrade.itemNoTrade" });
+  };
+
+  const returnStagedItem = async () => {
+    if (!stagedItem) return;
+    setShowPreview(false);
+    await run("forge/returnItem");
   };
 
   const handleBagTap = (item) => {
@@ -86,23 +66,13 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
       return;
     }
     if (item.kind === "scroll") {
-      const emptyIndex = scrollBoxes.findIndex((b) => b === null);
-      if (emptyIndex === -1) { pushToast(t("upgrade.scrollBoxesFull"), "warn"); return; }
-      setPlayer((p) => {
-        const stack = p.inventory.find((it) => it.kind === "scroll" && it.tier === item.tier);
-        if (!stack || stack.count <= 0) return p;
-        const inventory = stack.count - 1 <= 0
-          ? p.inventory.filter((it) => it.id !== stack.id)
-          : p.inventory.map((it) => (it.id === stack.id ? { ...it, count: it.count - 1 } : it));
-        return { ...p, inventory };
-      });
-      setScrollBoxes((boxes) => boxes.map((b, idx) => (idx === emptyIndex ? { tier: item.tier } : b)));
+      if (scrollBoxes.every((b) => b !== null)) { pushToast(t("upgrade.scrollBoxesFull"), "warn"); return; }
+      run("forge/stageScroll", { tier: item.tier }, { boxesFull: "upgrade.scrollBoxesFull" });
       return;
     }
     if (item.kind === "bonusScroll") {
       if (bonusScrollActive) { pushToast(t("upgrade.bonusScrollFull"), "warn"); return; }
-      setPlayer((p) => ({ ...p, inventory: p.inventory.filter((it) => it.id !== item.id) }));
-      setBonusScrollActive(true);
+      run("forge/stageBonus", { itemId: item.id }, { bonusFull: "upgrade.bonusScrollFull" });
       return;
     }
     if (item.kind === "potion") {
@@ -112,21 +82,12 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
 
   const returnBonusScroll = () => {
     if (!bonusScrollActive) return;
-    setPlayer((p) => ({ ...p, inventory: [...p.inventory, makeBonusScrollStack()] }));
-    setBonusScrollActive(false);
+    run("forge/returnBonus");
   };
 
   const returnScroll = (boxIndex) => {
-    const box = scrollBoxes[boxIndex];
-    if (!box) return;
-    setPlayer((p) => {
-      const existing = p.inventory.find((it) => it.kind === "scroll" && it.tier === box.tier);
-      const inventory = existing
-        ? p.inventory.map((it) => (it.id === existing.id ? { ...it, count: it.count + 1 } : it))
-        : [...p.inventory, makeScrollStack(box.tier, 1)];
-      return { ...p, inventory };
-    });
-    setScrollBoxes((boxes) => boxes.map((b, idx) => (idx === boxIndex ? null : b)));
+    if (!scrollBoxes[boxIndex]) return;
+    run("forge/returnScroll", { box: boxIndex });
   };
 
   const maxed = stagedItem ? (stagedItem.upgradeLevel || 0) >= MAX_UPGRADE_LEVEL : false;
@@ -143,46 +104,24 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
     ? (stagedItem.levels ? applyLevelData(stagedItem, (stagedItem.upgradeLevel || 0) + 1) : bumpedStats(stagedItem))
     : null;
 
-  const press = () => {
-    if (!stagedItem || pendingReveal) return;
+  const press = async () => {
+    if (!stagedItem || pendingReveal || busy) return;
     if (maxed) { pushToast(t("upgrade.alreadyMaxLevel"), "warn"); return; }
     if (matchingCount === 0) { pushToast(t("upgrade.noScrollForTier", { tier: tierName(lang, stagedItem.tier) }), "warn"); return; }
     if (matchingCount >= 2) { pushToast(t("upgrade.onlyOneScrollAllowed"), "warn"); return; }
 
-    const consumedBox = matchingIndexes[0];
-    const entry = stagedItem;
-    const currentLevel = entry.upgradeLevel || 0;
-    const success = Math.random() < upgradeSuccessChance(currentLevel, bonusScrollActive);
-
-    setScrollBoxes((boxes) => boxes.map((b, idx) => (idx === consumedBox ? null : b)));
-    setBonusScrollActive(false); // spent on this press whether it lands or not, same as the tier scroll
+    // Zar ve parşömen tüketimi sunucuda; sonuç (başarı + yeni eşya) hemen çantaya yazılmış gelir,
+    // açılış penceresi yalnızca üstteki sunum katmanıdır (animasyon sırasında sekme değişse de eşya kaybolmaz).
+    setBusy(true);
     setShowPreview(false);
-    setStagedItem(null);
-
-    if (success) {
-      // Aynı ayrım burada da geçerli — gerçek `levels` verisi olan bir eşya
-      // forge'da bumpedStats'ın tahminine değil, kendi gerçek bir sonraki
-      // satırına yükselmeli (bkz. utils/loot.js#applyUpgradeLevel'daki aynı
-      // dallanma, GM panelinin zaten doğru yaptığı şey).
-      const bumped = entry.levels
-        ? applyLevelData(entry, currentLevel + 1)
-        : { ...entry, upgradeLevel: currentLevel + 1, ...bumpedStats(entry) };
-      // Commit right away — the reveal modal is a presentational layer on
-      // top of state that has already safely landed, so a tab switch or
-      // navigation mid-animation can never lose the upgraded item.
-      let unlocked = [];
-      setPlayer((p) => {
-        const np = {
-          ...p, inventory: [...p.inventory, bumped],
-          milestones: bumped.upgradeLevel >= MAX_UPGRADE_LEVEL ? { ...p.milestones, maxUpgradeReached: true } : p.milestones,
-        };
-        unlocked = newlyUnlocked(p, np);
-        return np;
-      });
-      unlocked.forEach((a) => pushToast(t("upgrade.achievementUnlocked", { name: t(`character.achievements.${a.id}.name`), title: t(`character.achievements.${a.id}.title`) }), "level"));
-      setPendingReveal({ item: entry, success: true, bumpedItem: bumped });
+    const result = await act("forge/press");
+    setBusy(false);
+    if (!result.ok) { pushToast(t(result.reason === "network" ? "battle.actionFailed" : "upgrade.actionFailed"), "warn"); return; }
+    if (result.success) {
+      (result.unlocked || []).forEach((id) => pushToast(t("upgrade.achievementUnlocked", { name: t(`character.achievements.${id}.name`), title: t(`character.achievements.${id}.title`) }), "level"));
+      setPendingReveal({ item: result.item, success: true, bumpedItem: result.bumpedItem });
     } else {
-      setPendingReveal({ item: entry, success: false, bumpedItem: null });
+      setPendingReveal({ item: result.item, success: false, bumpedItem: null });
     }
   };
 
@@ -208,7 +147,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
       </div>
 
       {subtab === "accessory" ? (
-        <AccessoryUpgradeTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
+        <AccessoryUpgradeTab player={player} setPlayer={setPlayer} act={act} pushToast={pushToast} />
       ) : (
         <>
       <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, marginTop: 12, marginBottom: 12 }}>
@@ -336,7 +275,7 @@ export default function UpgradeTab({ player, setPlayer, pushToast }) {
               <X size={14} />
             </button>
           </div>
-          <ScrollShop player={player} setPlayer={setPlayer} pushToast={pushToast} />
+          <ScrollShop player={player} act={act} pushToast={pushToast} />
         </div>
       )}
 

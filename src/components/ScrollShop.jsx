@@ -2,7 +2,6 @@ import ScrollArt from './icons/ScrollArt';
 import { GEAR_TIERS } from "../data/tiers";
 import { itemTierColor, tierName } from "../data/itemRarity";
 import { scrollPrice } from "../utils/upgrade";
-import { addItemToInventory, makeScrollStack, makeAccessoryScrollStack } from "../utils/inventory";
 import { formatGold } from "../utils/player";
 import { useTranslation } from "../i18n/LanguageContext";
 import { styles } from "../styles";
@@ -13,22 +12,21 @@ import SectionLabel from "./shared/SectionLabel";
 // (bkz. utils/accessoryUpgrade.js).
 const ACCESSORY_SCROLL_PRICE = 50000;
 
-export default function ScrollShop({ player, setPlayer, pushToast }) {
+export default function ScrollShop({ player, act, pushToast }) {
   const { t, lang } = useTranslation();
-  const buyScroll = (tierId) => {
-    const price = scrollPrice(tierId);
-    if (player.gold < price) { pushToast(t("shop.notEnoughGold"), "warn"); return; }
-    const result = addItemToInventory({ ...player, gold: player.gold - price }, makeScrollStack(tierId, 1));
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
-    setPlayer(result.player);
+  const failToast = (result) => pushToast(
+    result.reason === "notEnoughGold" ? t("shop.notEnoughGold")
+      : result.reason === "network" ? t("battle.actionFailed")
+        : t("shop.purchaseFailed", { reason: result.detail || result.reason }), "warn");
+  const buyScroll = async (tierId) => {
+    const result = await act("shop/buyScroll", { tier: tierId });
+    if (!result.ok) { failToast(result); return; }
     pushToast(t("shop.upgradeScrollPurchased", { tier: tierName(lang, tierId) }), "loot");
   };
 
-  const buyAccessoryScroll = () => {
-    if (player.gold < ACCESSORY_SCROLL_PRICE) { pushToast(t("shop.notEnoughGold"), "warn"); return; }
-    const result = addItemToInventory({ ...player, gold: player.gold - ACCESSORY_SCROLL_PRICE }, makeAccessoryScrollStack(1));
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: result.reason }), "warn"); return; }
-    setPlayer(result.player);
+  const buyAccessoryScroll = async () => {
+    const result = await act("shop/buyAccessoryScroll");
+    if (!result.ok) { failToast(result); return; }
     pushToast(t("shop.accessoryScrollPurchased"), "loot");
   };
 

@@ -334,3 +334,81 @@ test('rewards the server owns: quests need real kills, daily login is once a day
     db.close();
   } finally { await api.close(); }
 });
+
+test('shop and forge run on the server: items leave the bag into the forge, the dice are rolled server-side, nothing can be duplicated', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const cookie = (await call('register', { name: 'gina', password })).cookie;
+    const character = hero();
+    character.gold = 100000;
+    character.inventory = [...character.inventory, sword({ id: 'blade-a' }), sword({ id: 'blade-b', noTrade: true }),
+      { id: 'ring-1', kind: 'accessory', name: 'Test Ring', tier: 1, upgradeLevel: 0, weight: 0.1, stats: {} },
+      { id: 'ring-2', kind: 'accessory', name: 'Test Ring', tier: 1, upgradeLevel: 0, weight: 0.1, stats: {} },
+      { id: 'ring-3', kind: 'accessory', name: 'Test Ring', tier: 1, upgradeLevel: 0, weight: 0.1, stats: {} },
+      { id: 'ring-x', kind: 'accessory', name: 'Other Ring', tier: 1, upgradeLevel: 0, weight: 0.1, stats: {} }];
+    const data = { characters: [character, null, null], bank: [[], []], bankGold: 0, diamonds: 0 };
+    assert.equal((await call('backup', { revision: 0, data }, cookie, 'PUT')).status, 200);
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    const act = (type, payload = {}) => call('game/act', { characterKey: 'hero', type, payload }, cookie);
+    const state = async () => (await call('backup', null, cookie)).data.data.characters[0];
+    const scrollCount = async (tier) => ((await state()).inventory.find((i) => i.kind === 'scroll' && i.tier === tier) || { count: 0 }).count;
+
+    // Shop: the server prices the scroll; a made-up tier or no gold buys nothing.
+    assert.equal((await act('shop/buyScroll', { tier: 99 })).data.result.reason, 'invalidTier');
+    const gold0 = (await state()).gold;
+    assert.equal((await act('shop/buyScroll', { tier: 1 })).data.result.ok, true);
+    assert.ok((await state()).gold < gold0);
+    assert.equal(await scrollCount(1), 1);
+    assert.equal((await act('shop/buyAccessoryScroll')).data.result.ok, true);
+
+    // Forge: bound items refused; the staged item really leaves the bag; swapping returns the old one.
+    assert.equal((await act('forge/stageItem', { itemId: 'blade-b' })).data.result.reason, 'itemNoTrade');
+    assert.equal((await act('forge/stageItem', { itemId: 'ghost' })).data.result.reason, 'itemNotFound');
+    assert.equal((await act('forge/stageItem', { itemId: 'blade-a' })).data.result.ok, true);
+    let s = await state();
+    assert.equal(s.inventory.some((i) => i.id === 'blade-a'), false);
+    assert.equal(s.forge.item.id, 'blade-a');
+    assert.equal((await act('forge/press')).data.result.reason, 'noScrollForTier');
+    assert.equal((await act('forge/stageScroll', { tier: 1 })).data.result.ok, true);
+    assert.equal(await scrollCount(1), 0);
+    assert.equal((await act('forge/stageScroll', { tier: 1 })).data.result.reason, 'scrollNotFound');
+
+    // Press: success keeps the id and adds a level; failure destroys the item. Either way the scroll is spent.
+    const pressed = await act('forge/press');
+    assert.equal(pressed.data.result.ok, true);
+    s = await state();
+    assert.equal(s.forge.item, null);
+    assert.ok(s.forge.boxes.every((b) => b === null));
+    if (pressed.data.result.success) {
+      const upgraded = s.inventory.find((i) => i.id === 'blade-a');
+      assert.equal(upgraded.upgradeLevel, 1);
+    } else {
+      assert.equal(s.inventory.some((i) => i.id === 'blade-a'), false);
+    }
+    assert.equal((await act('forge/press')).data.result.reason, 'noItem');
+
+    // Leaving the screen hands everything back, nothing is duplicated or lost.
+    await act('shop/buyScroll', { tier: 1 });
+    await act('forge/stageScroll', { tier: 1 });
+    const before = await state();
+    assert.equal(before.forge.boxes.filter(Boolean).length, 1);
+    assert.equal((await act('forge/clear')).data.result.ok, true);
+    assert.equal(await scrollCount(1), 1);
+    assert.ok((await state()).forge.boxes.every((b) => b === null));
+
+    // Accessories: must match, three of them plus a scroll; always succeeds and merges into one.
+    assert.equal((await act('accessory/stageItem', { itemId: 'ring-1' })).data.result.ok, true);
+    assert.equal((await act('accessory/stageItem', { itemId: 'ring-x' })).data.result.reason, 'mustMatch');
+    assert.equal((await act('accessory/press')).data.result.reason, 'notReady');
+    await act('accessory/stageItem', { itemId: 'ring-2' });
+    await act('accessory/stageItem', { itemId: 'ring-3' });
+    assert.equal((await act('accessory/stageScroll')).data.result.ok, true);
+    const merged = await act('accessory/press');
+    assert.equal(merged.data.result.ok, true);
+    s = await state();
+    assert.equal(s.inventory.filter((i) => i.name === 'Test Ring').length, 1);
+    assert.equal(s.inventory.some((i) => ['ring-1', 'ring-2', 'ring-3'].includes(i.id)), false, 'the three rings are consumed');
+    db.close();
+  } finally { await api.close(); }
+});

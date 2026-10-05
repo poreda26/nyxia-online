@@ -118,3 +118,10 @@ eylemlerde (boss hakkı, günlük giriş cüzdan kaydı, çarkın bekleyen ödü
 değiştirilir ve kayıt aynı işlemde tüketilir. Gün sınırı artık herkes için İstanbul (`utils/day.js`, `utils/week.js`).
 Pin listesine eklenecek: `dailyLogin, dailyQuests, weeklyQuests, claimedQuests, claimedCollections, awakened,
 scheduledEvents, tutorialGift, wheelAppliedAt, nationalPoint, weeklyPoint`.
+
+### Dükkân + yükseltme (yapıldı)
+`src/game/upgrade.js`: `shop/buyScroll|buyAccessoryScroll`, `forge/stageItem|returnItem|stageScroll|returnScroll|stageBonus|returnBonus|clear|press`,
+`accessory/stageItem|returnItem|stageScroll|returnScroll|clear|press`. Forge'a konanlar çantadan gerçekten çıkıp
+`player.forge` / `player.accForge` alanında durur (sekme kapanınca `clear` ile geri döner); zar sunucuda atılır.
+Pin listesine eklenecek: `forge, accForge`.
+Kontrol aracı: tanımsız isim yakalamak için `eslint` + `no-undef` kuralı (bkz. oturum scratchpad'i) src'de temiz çalışır.

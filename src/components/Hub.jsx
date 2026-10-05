@@ -316,7 +316,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
           <MarketTab onOpenDiamondShop={() => setDiamondShopOpen(true)} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} username={username} pushToast={pushToast} />
         )}
         {tab === "upgrade" && (
-          <UpgradeTab player={player} setPlayer={setPlayer} pushToast={pushToast} />
+          <UpgradeTab player={player} setPlayer={setPlayer} act={act} pushToast={pushToast} />
         )}
         {tab === "captain" && (
           <CaptainTab player={player} pushToast={pushToast} act={act} />
