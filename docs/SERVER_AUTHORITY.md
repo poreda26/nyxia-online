@@ -133,3 +133,11 @@ işlemde yazılır; satıcıya ödeme satıcının depo altınına; çanta doluy
 `clan/claimMaterials` (klan zindanı düşenleri `pending_grants` tablosuna yazılır, eylemle verilir). Bayrak açıkken eski
 pazar-yazma uçları, altın/malzeme bağışı ve klan ayrılma ucu 409 `USE_GAME_ACT` döner.
 Klan zindanı potu/ölümü `battle/potion` ve `battle/death` ile gider. Yerel mod (bayrak kapalı) pazar/klan için eski uçları kullanır.
+
+### Elmas mağazası teslimleri, statü, beceri (yapıldı)
+`src/game/diamonds.js`: `diamond/buy` (kancası cüzdan tahsilatını `spendInTransaction` ile aynı işlemde yapar; premium hakkı da orada
+verilir; teslim başarısız olursa — çanta dolu, günlük sınır vb. — işlem geri alınır, elmas düşmez). Türler: premium, wings,
+bonusScroll, raceScroll, jobScroll, dungeonEntry, bankPage, boostPack. Boya/avatar/çerçeve/3. slot hâlâ `/api/wallet/spend` hak yolundan.
+`src/game/character.js`: `stat/allocate` (basılı tutma 250 ms'de tek istekte yığınlanır), `stat/respec`, `skill/learn`,
+`skill/loadout`, `title/set`. Pin listesine eklenecek: `stats, statPoints, skills, activeTitle, premium (zaten), unlockedSlots (zaten)`.
+Kalan: ırk/meslek parşömeni KULLANIMI (envanterde kullanım eylemi), yeni karakter oluşturma, pin listesi + bayrak.

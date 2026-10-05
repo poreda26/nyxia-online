@@ -16,6 +16,7 @@ import { rand } from "../utils/random";
 import { playerMaxHp, playerMaxMp, displayClassName, armorSetDamageReduction, formatGold } from "../utils/player";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
 import { bestAvailablePotionTier } from "../utils/potions";
+import { buyWithDiamonds, purchaseFailureText } from "../utils/diamondBuy";
 import { hasAutoBattleAccess } from "../utils/premium";
 import { classSkills, computeSkillDamage, computeSkillHeal } from "../utils/skills";
 import { dungeonEntriesLeft, canEnterSoloDungeon, consumeDungeonEntry, buyExtraDungeonEntries, hasBoughtExtraDungeonEntryToday } from "../utils/soloDungeon";
@@ -161,6 +162,12 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
   };
 
   const handleBuyDungeonEntries = async () => {
+    if (act.isServer()) {
+      const bought = await buyWithDiamonds(act, "dungeonEntry");
+      if (!bought.ok) { pushToast(purchaseFailureText(t, bought), "warn"); return; }
+      pushToast(t("battle.dungeonEntriesBought"), "loot");
+      return;
+    }
     const dry = buyExtraDungeonEntries(player);
     if (!dry.bought) {
       pushToast(t(dry.reason === "alreadyBoughtToday" ? "battle.dungeonEntriesAlreadyBoughtToday" : "battle.notEnoughDiamondsForEntries"), "warn");

@@ -7,12 +7,22 @@ import {PREMIUM_TIERS} from '../data/premium';
 import {activePremiumTier,premiumDaysLeft,buyPremium} from '../utils/premium';
 import {addItemToInventory,makeRaceScroll,makeJobScroll,makeBonusScrollStack} from '../utils/inventory';
 import {useTranslation,formatReason} from '../i18n/LanguageContext';
+import {buyWithDiamonds,purchaseFailureText} from '../utils/diamondBuy';
 import {styles} from '../styles';
 const RACE_SCROLL_PRICE=DIAMOND_PRICES.raceScroll,JOB_SCROLL_PRICE=DIAMOND_PRICES.jobScroll,BONUS_SCROLL_PRICE=DIAMOND_PRICES.bonusScroll;
-export default function PremiumShop({player,setPlayer,bank,setBank,pushToast}){
+export default function PremiumShop({player,setPlayer,bank,setBank,act,pushToast}){
  const {t}=useTranslation();
  const [upgradeConfirmStep,setUpgradeConfirmStep]=useState(0);
+  // Sunucu ekonomisinde alım tek eylemdir (tahsilat + teslim aynı işlemde); eski yolda önce tahsil edilip sonra uygulanır.
+  const serverBuy = async (kind, key, successToast) => {
+    const result = await buyWithDiamonds(act, kind, key);
+    if (!result.ok) { pushToast(purchaseFailureText(t, result), "warn"); return false; }
+    pushToast(successToast, "loot");
+    return true;
+  };
+
   const purchasePremium = async (tierId) => {
+    if (act.isServer()) { await serverBuy("premium", tierId, t("shop.premiumActivated", { tier: PREMIUM_TIERS[tierId].name })); return; }
     const dry = buyPremium(player, tierId, bank);
     if (!dry.bought) { pushToast(formatReason(t, dry, "market.purchaseFailed"), "warn"); return; }
     const charge = await chargeDiamonds("premium", tierId);
@@ -45,6 +55,7 @@ export default function PremiumShop({player,setPlayer,bank,setBank,pushToast}){
   };
 
   const buyBonusScroll = async () => {
+    if (act.isServer()) { await serverBuy("bonusScroll", null, t("shop.bonusScrollPurchased")); return; }
     if (player.diamonds < BONUS_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     const dry = addItemToInventory(player, makeBonusScrollStack());
     if (!dry.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, dry) }), "warn"); return; }
@@ -56,6 +67,7 @@ export default function PremiumShop({player,setPlayer,bank,setBank,pushToast}){
   };
 
   const buyRaceScroll = async () => {
+    if (act.isServer()) { await serverBuy("raceScroll", null, t("shop.raceScrollPurchased")); return; }
     if (player.diamonds < RACE_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     const dry = addItemToInventory(player, makeRaceScroll(1));
     if (!dry.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, dry) }), "warn"); return; }
@@ -67,6 +79,7 @@ export default function PremiumShop({player,setPlayer,bank,setBank,pushToast}){
   };
 
   const buyJobScroll = async () => {
+    if (act.isServer()) { await serverBuy("jobScroll", null, t("shop.jobScrollPurchased")); return; }
     if (player.diamonds < JOB_SCROLL_PRICE) { pushToast(t("shop.notEnoughDiamonds"), "warn"); return; }
     const dry = addItemToInventory(player, makeJobScroll(1));
     if (!dry.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, dry) }), "warn"); return; }

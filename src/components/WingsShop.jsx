@@ -1,4 +1,5 @@
 import { chargeDiamonds, settle, reportChargeFailure } from '../utils/diamondCharge';
+import { buyWithDiamonds, purchaseFailureText } from '../utils/diamondBuy';
 import {useState} from 'react';
 import {Gem,Check} from 'lucide-react';
 import {WINGS} from '../data/wings';
@@ -7,7 +8,7 @@ import {useTranslation,formatReason} from '../i18n/LanguageContext';
 import CharacterFigure from './CharacterFigure';
 import WingArt from './WingArt';
 
-export default function WingsShop({player,setPlayer,pushToast}) {
+export default function WingsShop({player,setPlayer,act,pushToast}) {
   const {t,lang}=useTranslation();
   const [selected,setSelected]=useState(player.equipped.wings?.wingId||WINGS[0].id);
   const [confirm,setConfirm]=useState(false);
@@ -16,6 +17,12 @@ export default function WingsShop({player,setPlayer,pushToast}) {
   const name=lang==='tr'?wing.name:wing.nameEn;
   const purchase=async()=>{
     setConfirm(false);
+    if(act.isServer()){
+      const bought=await buyWithDiamonds(act,'wings',selected);
+      if(!bought.ok){pushToast(purchaseFailureText(t,bought),'warn');return;}
+      pushToast(lang==='tr'?`${name} çantana eklendi. Envanterden kuşanabilirsin.`:`${name} added to your bag. Equip it from Inventory.`,'loot');
+      return;
+    }
     const dry=buyWings(player,selected);
     if(!dry.bought){pushToast(formatReason(t,dry,'shop.purchaseFailed'),'warn');return;}
     const charge=await chargeDiamonds('wings',selected);

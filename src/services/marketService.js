@@ -8,7 +8,8 @@
 // oyundaki diğer her ekonomi hareketiyle aynı güven seviyesinde).
 import { call } from "../utils/api";
 
-export { MARKET_DURATIONS_HOURS, MARKET_DURATION_FEE, MARKET_STALL_MAX_ITEMS } from "../data/market";
+import { MARKET_DURATIONS_HOURS, MARKET_DURATION_FEE, MARKET_STALL_MAX_ITEMS } from "../data/market";
+export { MARKET_DURATIONS_HOURS, MARKET_DURATION_FEE, MARKET_STALL_MAX_ITEMS };
 
 // GET /market — kendi tezgahım + diğer oyuncuların aktif tezgahları.
 export async function fetchMarket() {

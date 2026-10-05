@@ -539,3 +539,63 @@ test('clan donations and leaving run on the server: the player pays and the trea
     db.close();
   } finally { await api.close(); }
 });
+
+test('diamond purchases deliver in the same step as the charge; stats and skills follow the rules on the server', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const cookie = (await call('register', { name: 'iris', password })).cookie;
+    const character = hero();
+    character.statPoints = 5;
+    character.level = 20;
+    character.gold = 100000;
+    const data = { characters: [character, null, null], bank: [[], []], bankGold: 0, diamonds: 0 };
+    assert.equal((await call('backup', { revision: 0, data }, cookie, 'PUT')).status, 200);
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    const act = (type, payload = {}) => call('game/act', { characterKey: 'hero', type, payload }, cookie);
+    const state = async () => (await call('backup', null, cookie)).data.data.characters[0];
+    const balance = async () => (await call('wallet', null, cookie)).data.diamonds;
+
+    // No diamonds: nothing is delivered; with diamonds the price comes from the server table.
+    const refused = await act('diamond/buy', { kind: 'bonusScroll' });
+    assert.equal(refused.status, 409);
+    assert.equal(refused.data.error, 'NOT_ENOUGH_DIAMONDS');
+    assert.equal((await state()).inventory.some((i) => i.kind === 'bonusScroll'), false);
+    assert.equal((await act('diamond/buy', { kind: 'madeUp' })).data.result.reason, 'invalidPurchase');
+    db.prepare('UPDATE wallets SET diamonds=2000').run();
+    assert.equal((await act('diamond/buy', { kind: 'bonusScroll', diamonds: 999999, price: 0 })).data.result.ok, true);
+    assert.equal(await balance(), 1200, 'forged price/balance in the request is ignored');
+    assert.equal((await state()).inventory.some((i) => i.kind === 'bonusScroll'), true);
+    assert.equal((await act('diamond/buy', { kind: 'bankPage' })).data.result.ok, true);
+    assert.equal((await call('backup', null, cookie)).data.data.bank.length, 3);
+    assert.equal((await act('diamond/buy', { kind: 'dungeonEntry' })).data.result.ok, true);
+    const afterFirst = await balance();
+    assert.ok(afterFirst < 1200);
+    assert.equal((await act('diamond/buy', { kind: 'dungeonEntry' })).data.result.reason, 'alreadyBoughtToday');
+    assert.equal(await balance(), afterFirst, 'a refused delivery does not cost diamonds');
+    db.prepare('UPDATE wallets SET diamonds=20000').run();
+    assert.equal((await act('diamond/buy', { kind: 'premium', key: 'apex' })).data.result.ok, true);
+    assert.ok((await state()).premium?.tier === 'apex');
+    assert.equal((await act('diamond/buy', { kind: 'premium', key: 'apex' })).status, 409, 'cannot buy the active premium again');
+
+    // Stats: points are spent one by one up to the cap; hold-to-add batches are one request.
+    const before = await state();
+    assert.equal((await act('stat/allocate', { stat: 'bogus', count: 1 })).data.result.reason, 'invalidStat');
+    assert.equal((await act('stat/allocate', { stat: 'str', count: 0 })).data.result.reason, 'invalidAmount');
+    const spent = await act('stat/allocate', { stat: 'str', count: 3 });
+    assert.equal(spent.data.result.applied, 3);
+    assert.equal((await state()).stats.str, before.stats.str + 3);
+    assert.equal((await state()).statPoints, 2);
+    assert.equal((await act('stat/allocate', { stat: 'str', count: 50 })).data.result.applied, 2, 'stops when points run out');
+    assert.equal((await act('stat/allocate', { stat: 'str', count: 1 })).data.result.reason, 'noStatPoints');
+    const respec = await act('stat/respec');
+    assert.equal(respec.data.result.ok, true);
+    assert.equal((await state()).gold, 100000 - 20 * 200);
+
+    // Skills: unknown loadout entries and locked skills are refused.
+    assert.equal((await act('skill/loadout', { slot: 0, skillId: 'not_known' })).data.result.reason, 'skillNotKnown');
+    assert.equal((await act('skill/loadout', { slot: 99, skillId: null })).data.result.reason, 'invalidSlot');
+    assert.equal((await act('skill/learn', { skillId: 'nope' })).data.result.reason, 'skillLocked');
+    db.close();
+  } finally { await api.close(); }
+});

@@ -339,7 +339,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
           <FriendsPanel player={player} pushToast={pushToast} dmUnreadIds={dmUnreadIds} onOpenDm={openDm} />
         )}
         {tab === "character" && (
-          <CharacterTab player={player} setPlayer={setPlayer} cls={cls} maxHp={maxHp} def={def} atk={atk} pushToast={pushToast} onChangeCharacter={onChangeCharacter} onReplayTutorial={reopenTutorial} />
+          <CharacterTab player={player} setPlayer={setPlayer} act={act} cls={cls} maxHp={maxHp} def={def} atk={atk} pushToast={pushToast} onChangeCharacter={onChangeCharacter} onReplayTutorial={reopenTutorial} />
         )}
       </ScreenPanel>
 
@@ -387,6 +387,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
 
       {diamondShopOpen && (
         <DiamondShopModal
+          act={act}
           player={player} setPlayer={setPlayer}
           bank={bank} setBank={setBank}
           unlockedSlots={unlockedSlots} onUnlockSlot={onUnlockSlot}

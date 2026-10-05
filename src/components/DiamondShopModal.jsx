@@ -1,4 +1,5 @@
 import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
+import { buyWithDiamonds, purchaseFailureText } from "../utils/diamondBuy";
 import ScrollArt from './icons/ScrollArt';
 import {useState} from 'react';
 import WingsShop from './WingsShop';
@@ -24,7 +25,7 @@ import { useTranslation } from "../i18n/LanguageContext";
 // elmas harcamaları (mevcut oyun içi elmas havuzundan) — sadece alttaki para
 // paketleri (DIAMOND_PACKS) henüz gerçek ödeme almıyor, RevenueCat bağlanana
 // kadar "yakında" toast'ı gösteriyor.
-export default function DiamondShopModal({ player, setPlayer, bank, setBank, unlockedSlots, onUnlockSlot, onClose, pushToast }) {
+export default function DiamondShopModal({ player, setPlayer, bank, setBank, act, unlockedSlots, onUnlockSlot, onClose, pushToast }) {
   const { t, lang } = useTranslation();
   const [category,setCategory]=useState("wings");
 
@@ -32,7 +33,14 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
     pushToast(t("diamondShop.comingSoonToast"), "default");
   };
 
+  const serverBuy = async (kind, key, successToast) => {
+    const result = await buyWithDiamonds(act, kind, key);
+    if (!result.ok) { pushToast(purchaseFailureText(t, result), "warn"); return; }
+    pushToast(successToast, "loot");
+  };
+
   const handleBuyDungeonEntries = async () => {
+    if (act.isServer()) { await serverBuy("dungeonEntry", null, t("battle.dungeonEntriesBought")); return; }
     const dry = buyExtraDungeonEntries(player);
     if (!dry.bought) {
       pushToast(t(dry.reason === "alreadyBoughtToday" ? "battle.dungeonEntriesAlreadyBoughtToday" : "shop.notEnoughDiamonds"), "warn");
@@ -46,6 +54,7 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
   };
 
   const handleBuyBankPage = async () => {
+    if (act.isServer()) { await serverBuy("bankPage", null, t("inventory.bankPageBought")); return; }
     const dry = buyExtraBankPage(player, bank);
     if (!dry.bought) {
       pushToast(dry.reason === "maxBankPages" ? t("inventory.maxBankPagesReached") : t("shop.notEnoughDiamonds"), "warn");
@@ -66,6 +75,7 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
   };
 
   const handleBuyBoostPack = async (scrollId) => {
+    if (act.isServer()) { await serverBuy("boostPack", scrollId, t("boosts.boughtToast", { name: boostScrollName(scrollId, lang), pack: BOOST_SCROLL_PACK_SIZE })); return; }
     const dry = buyBoostScrollPack(player, scrollId);
     if (!dry.bought) {
       pushToast(dry.reason === "notEnoughDiamonds" ? t("shop.notEnoughDiamonds") : t("shop.purchaseFailed", { reason: dry.reason }), "warn");
@@ -90,8 +100,8 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, unl
 
         <header className="diamond-store-header"><Gem size={30}/><div><small>NYXIA BOUTIQUE</small><h2>{lang==='tr'?'Elmas Mağazası':'Diamond Store'}</h2></div><b>♦ {player.diamonds.toLocaleString()}</b></header>
         <nav className="diamond-store-tabs">{[['wings','Kanatlar','Wings'],['premium','Premium','Premium'],['services','Destekler','Services'],['diamonds','Elmas Al','Diamonds']].map(([key,tr,en])=><button key={key} aria-pressed={category===key} onClick={e=>{setCategory(key);e.currentTarget.closest(".diamond-store").scrollTop=0;}}>{lang==='tr'?tr:en}</button>)}</nav>
-        {category==='wings'&&<WingsShop player={player} setPlayer={setPlayer} pushToast={pushToast}/>}
-        {category==='premium'&&<PremiumShop player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast}/>}
+        {category==='wings'&&<WingsShop player={player} setPlayer={setPlayer} act={act} pushToast={pushToast}/>}
+        {category==='premium'&&<PremiumShop player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} act={act} pushToast={pushToast}/>}
         {category==='diamonds'&&<>
         <p className="store-payment-note">{lang==='tr'?'Gerçek para ile ödeme yakında açılacak. Elmas paketleri şu an satın alınamaz.':'Real-money payments are coming soon. Diamond packs cannot be purchased yet.'}</p>
         <div style={{ ...styles.itemDetailCard, width: "100%", marginTop: 16, borderColor: "var(--gold-text)", display: "flex", flexDirection: "column", gap: 8 }}>

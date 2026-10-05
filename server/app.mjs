@@ -359,6 +359,16 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           after: (result) => { for (const row of rows.slice(0, result.placed)) db.prepare('DELETE FROM pending_grants WHERE id=?').run(row.id); },
         };
       },
+      // Elmasla alınan eşya/paketler: tahsilat (fiyatı sunucu belirler) ve teslim aynı işlemde; teslim olmazsa elmas düşmez.
+      'diamond/buy': ({ account, characterKey: ck, payload, now }) => {
+        const kind = String(payload?.kind);
+        const key = payload?.key == null ? null : String(payload.key);
+        if (!['premium', 'wings', 'bonusScroll', 'raceScroll', 'jobScroll', 'dungeonEntry', 'bankPage', 'boostPack'].includes(kind)) return { fail: 'invalidPurchase' };
+        if (kind === 'premium') entitlements.checkPremium(account, ck, key, characterKey, now);
+        const paid = wallet.spendInTransaction(account, kind, key, ck, now);
+        if (kind === 'premium') entitlements.grantPremium(account, ck, key, 'purchase', now);
+        return { payload: { kind, key, diamonds: paid.diamonds, price: paid.price } };
+      },
       // Çark: ödül, sunucunun çevirme sırasında seçtiği bekleyen kayıttır (premium ödüller ayrı yoldan).
       'wheel/claimItem': ({ account }) => {
         const pending = wheel.pendingPrize(account);

@@ -23,22 +23,36 @@ import SkillIcon from "./SkillIcon";
 import CharacterFigure from "./CharacterFigure";
 import { useTranslation, formatReason } from "../i18n/LanguageContext";
 
-export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, pushToast, onChangeCharacter, onReplayTutorial }) {
+export default function CharacterTab({ player, setPlayer, act, cls, maxHp, def, atk, pushToast, onChangeCharacter, onReplayTutorial }) {
   const { t, lang } = useTranslation();
   const [subtab, setSubtab] = useState("stats");
   const [skillFilter,setSkillFilter]=useState("all");
   const [previewDye,setPreviewDye]=useState(player.armorDye||null);
   const [confirmingRespec, setConfirmingRespec] = useState(false);
-  const addStat = (key) => setPlayer((p) => allocateStat(p, key));
+  // Statü dağıtma sunucu kurallarıyla yapılır; basılı tutunca gelen hızlı tıklamalar 250 ms'lik tek istekte yığınlanır.
+  const pendingStats = useRef({});
+  const flushTimer = useRef(null);
+  const flushStats = async () => {
+    flushTimer.current = null;
+    const batch = pendingStats.current;
+    pendingStats.current = {};
+    for (const [stat, count] of Object.entries(batch)) {
+      const result = await act("stat/allocate", { stat, count });
+      if (!result.ok && result.reason === "network") pushToast(t("battle.actionFailed"), "warn");
+    }
+  };
+  const addStat = (key) => {
+    pendingStats.current[key] = (pendingStats.current[key] || 0) + 1;
+    if (!flushTimer.current) flushTimer.current = setTimeout(flushStats, 250);
+  };
   const race = RACES[player.race];
   const premiumTier = activePremiumTier(player);
   const respecCheck = canRespecStats(player);
 
-  const handleRespec = () => {
-    const result = respecStats(player);
-    if (!result.reset) { pushToast(formatReason(t, result, "character.stats.respecFailedDefault"), "warn"); return; }
-    setPlayer(result.player);
-    pushToast(t("character.stats.respecSuccessToast", { n: result.player.statPoints }), "loot");
+  const handleRespec = async () => {
+    const result = await act("stat/respec");
+    if (!result.ok) { pushToast(result.reason === "network" ? t("battle.actionFailed") : formatReason(t, result, "character.stats.respecFailedDefault"), "warn"); return; }
+    pushToast(t("character.stats.respecSuccessToast", { n: result.statPoints }), "loot");
     setConfirmingRespec(false);
   };
 
@@ -61,20 +75,24 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
   };
   useEffect(() => stopHold, []);
 
-  const learn = (skillId) => {
-    const result = unlockSkill(player, skillId, t, lang);
-    if (!result.unlocked) { pushToast(result.reason || t("character.skills.learnFailedDefault"), "warn"); return; }
-    setPlayer(result.player);
+  // Sunucu, red nedenini {anahtar, değişkenler} olarak verir; metni burada kendi dilimizde yazarız.
+  const skillReason = (detail) => {
+    try { const { key, vars } = JSON.parse(detail); return t(key, vars); }
+    catch { return detail; }
+  };
+  const learn = async (skillId) => {
+    const result = await act("skill/learn", { skillId });
+    if (!result.ok) { pushToast(result.reason === "network" ? t("battle.actionFailed") : (result.detail ? skillReason(result.detail) : t("character.skills.learnFailedDefault")), "warn"); return; }
     pushToast(t("character.skills.learnSuccessToast"), "loot");
   };
 
   const toggleLoadout = (skillId) => {
     const loadout = player.skills.loadout;
     const currentSlot = loadout.indexOf(skillId);
-    if (currentSlot >= 0) { setPlayer((p) => setLoadoutSlot(p, currentSlot, null)); return; }
+    if (currentSlot >= 0) { act("skill/loadout", { slot: currentSlot, skillId: null }); return; }
     const emptySlot = loadout.indexOf(null);
     if (emptySlot === -1) { pushToast(t("character.skills.loadoutFullToast"), "warn"); return; }
-    setPlayer((p) => setLoadoutSlot(p, emptySlot, skillId));
+    act("skill/loadout", { slot: emptySlot, skillId });
   };
 
   const unlockedCount = ACHIEVEMENTS.filter((a) => isAchievementUnlocked(player, a)).length;
@@ -93,7 +111,7 @@ export default function CharacterTab({ player, setPlayer, cls, maxHp, def, atk, 
   };
 
   const pickTitle = (achievementId) => {
-    setPlayer((p) => setActiveTitle(p, achievementId));
+    act("title/set", { achievementId: achievementId ?? null });
     pushToast(achievementId ? t("character.achievements.setTitleToast") : t("character.achievements.removeTitleToast"), "default");
   };
 
