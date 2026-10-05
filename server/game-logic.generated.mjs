@@ -24196,8 +24196,8 @@ function claimQuest(player, questId) {
   const quest = MONSTER_QUESTS.find((q) => q.id === questId);
   if (!quest) return { player, claimed: false, reason: "invalidQuest" };
   if (isQuestClaimed(player, questId)) return { player, claimed: false, reason: "rewardAlreadyClaimed" };
-  const { done: done12 } = questProgress(player, quest);
-  if (!done12) return { player, claimed: false, reason: "questNotDone" };
+  const { done: done13 } = questProgress(player, quest);
+  if (!done13) return { player, claimed: false, reason: "questNotDone" };
   const chest = { id: uid(), tier: quest.tier };
   return {
     player: {
@@ -24220,8 +24220,8 @@ function awakeningProgress(player) {
     current: Math.min(player.monsterKills?.[monsterId] || 0, target),
     target
   }));
-  const done12 = entries.every((e) => e.current >= e.target);
-  return { entries, done: done12 };
+  const done13 = entries.every((e) => e.current >= e.target);
+  return { entries, done: done13 };
 }
 function claimAwakening(player) {
   if (player.awakened) return { player, claimed: false, reason: "alreadyAwakened" };
@@ -24787,8 +24787,8 @@ function mapBossState(player) {
 }
 function mapCompletion(player, mapId, map = findMap(mapId)) {
   const total = map.monsters.length;
-  const done12 = map.monsters.filter((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT).length;
-  return { done: done12, total, complete: done12 >= total };
+  const done13 = map.monsters.filter((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT).length;
+  return { done: done13, total, complete: done13 >= total };
 }
 function canFightMapBoss(player, mapId, map) {
   if (mapBossState(player).defeatedMapIds.includes(mapId)) return { ok: false, reason: "defeatedToday" };
@@ -26481,6 +26481,34 @@ var duelReducers = {
   }
 };
 
+// src/game/shared.js
+init_define_import_meta_env();
+var fail11 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done11 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var SHARED_REST_MS = 6e4;
+var sharedReducers = {
+  "shared/attack"(state, { fighter, monster, sharedHp, action, seed, now }) {
+    if (!monster || !Number.isFinite(monster.hp) || !Number.isFinite(sharedHp) || !Number.isFinite(now)) return fail11(state, "noServerData");
+    const { player } = state;
+    let base = fighter && Number.isFinite(fighter.turn) ? fighter : createFight(player, monster, seed);
+    if (fighter && now - (fighter.lastAt || 0) > SHARED_REST_MS) base = { ...base, hp: playerMaxHp(player), mp: playerMaxMp(player) };
+    const fight = { ...base, monsterHp: Math.max(1, sharedHp), monsterMaxHp: monster.hp, stock: stockOf(player), used: { hp: {}, mp: {} }, wear: { weapon: 0, armor: 0 }, ended: null };
+    const out = stepFight(fight, player, monster, 65, action);
+    if (out.error) return fail11(state, out.error);
+    const f = out.fight;
+    const damage = Math.max(0, Math.min(sharedHp, fight.monsterHp - f.monsterHp));
+    let next = applyFightAftermath(player, f);
+    let xpLost = 0;
+    if (f.ended === "lose") {
+      const penalty = applyDeathPenalty(next);
+      next = penalty.player;
+      xpLost = penalty.xpLost;
+    }
+    const persisted = f.ended === "lose" ? null : { seed: f.seed, turn: f.turn, hp: f.hp, mp: f.mp, buffs: f.buffs, dot: f.dot, skillCooldowns: f.skillCooldowns, potionCooldowns: f.potionCooldowns, lastAt: now };
+    return done11({ ...state, player: next }, { events: out.events, damage, died: f.ended === "lose", targetDown: f.ended === "win", xpLost, fighter: persisted, hp: f.hp, mp: f.mp, skillCooldowns: f.skillCooldowns, potionCooldowns: f.potionCooldowns, buffs: f.buffs, dot: f.dot });
+  }
+};
+
 // src/utils/chests.js
 init_define_import_meta_env();
 function openChestSafely(player, chestId, roll) {
@@ -26509,70 +26537,70 @@ function openChestsSafely(player, roll) {
 }
 
 // src/game/actions.js
-var fail11 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
-var done11 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var fail12 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done12 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
 var strip = ({ player, bank, ...rest }) => rest;
 var findOwned = (player, itemId) => player.inventory.find((i) => i.id === itemId) || Object.values(player.equipped || {}).find((i) => i && i.id === itemId) || null;
 var inventoryReducers = {
   "inventory/equip"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail11(state, "itemNotFound");
+    if (!item) return fail12(state, "itemNotFound");
     const result = equipItem(state.player, item);
-    if (result.blocked) return fail11(state, "blocked", { blocked: result.blocked });
-    return done11({ ...state, player: result.player });
+    if (result.blocked) return fail12(state, "blocked", { blocked: result.blocked });
+    return done12({ ...state, player: result.player });
   },
   "inventory/unequip"(state, { slot }) {
     const result = unequipItem(state.player, slot);
-    if (!result.removed) return fail11(state, result.reason || "nothingToRemove", strip(result));
-    return done11({ ...state, player: result.player });
+    if (!result.removed) return fail12(state, result.reason || "nothingToRemove", strip(result));
+    return done12({ ...state, player: result.player });
   },
   "inventory/sell"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail11(state, "itemNotFound");
-    if (item.noTrade) return fail11(state, "noTrade");
+    if (!item) return fail12(state, "itemNotFound");
+    if (item.noTrade) return fail12(state, "noTrade");
     const price = Math.round(sellPrice(item) * premiumSellMultiplier(state.player));
     const gold = Math.min(MAX_GOLD, state.player.gold + price);
-    return done11({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
+    return done12({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
   },
   "inventory/sellBulk"(state, { itemIds }) {
     const wanted = new Set(Array.isArray(itemIds) ? itemIds : []);
     const sellable = state.player.inventory.filter((i) => wanted.has(i.id) && !isConsumable(i) && !i.noTrade);
-    if (sellable.length === 0) return fail11(state, "noneSellable");
+    if (sellable.length === 0) return fail12(state, "noneSellable");
     const total = sellable.reduce((sum, i) => sum + Math.round(sellPrice(i) * premiumSellMultiplier(state.player)), 0);
     const sold = new Set(sellable.map((i) => i.id));
     const gold = Math.min(MAX_GOLD, state.player.gold + total);
-    return done11({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
+    return done12({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
   },
   "inventory/repair"(state, { itemId }) {
     const item = findOwned(state.player, itemId);
-    if (!item) return fail11(state, "itemNotFound");
+    if (!item) return fail12(state, "itemNotFound");
     const result = repairItem(state.player, item, premiumRepairDiscount(state.player), state.bank);
-    if (!result.repaired) return fail11(state, result.reason || "repairFailed", strip(result));
-    return done11({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
+    if (!result.repaired) return fail12(state, result.reason || "repairFailed", strip(result));
+    return done12({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
   },
   "inventory/repairAll"(state) {
     const result = repairAllEquipped(state.player, premiumRepairDiscount(state.player));
-    if (!result.repaired) return fail11(state, result.reason || "nothingToRepair", strip(result));
-    return done11({ ...state, player: result.player }, { cost: result.cost });
+    if (!result.repaired) return fail12(state, result.reason || "nothingToRepair", strip(result));
+    return done12({ ...state, player: result.player }, { cost: result.cost });
   },
   "inventory/depositItem"(state, { itemId, page }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail11(state, "itemNotFound");
-    if (!Number.isInteger(page) || !state.bank[page]) return fail11(state, "invalidPage");
+    if (!item) return fail12(state, "itemNotFound");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail12(state, "invalidPage");
     const result = depositToBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail11(state, result.reason || "depositFailed", strip(result));
-    return done11({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail12(state, result.reason || "depositFailed", strip(result));
+    return done12({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/withdrawItem"(state, { itemId, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail11(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail12(state, "invalidPage");
     const item = state.bank[page].find((i) => i.id === itemId);
-    if (!item) return fail11(state, "itemNotFound");
+    if (!item) return fail12(state, "itemNotFound");
     const result = withdrawFromBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail11(state, result.reason || "withdrawFailed", strip(result));
-    return done11({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail12(state, result.reason || "withdrawFailed", strip(result));
+    return done12({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/depositBulk"(state, { itemIds, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail11(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail12(state, "invalidPage");
     let player = state.player, bank = state.bank, moved = 0;
     for (const id of Array.isArray(itemIds) ? itemIds : []) {
       const item = player.inventory.find((i) => i.id === id);
@@ -26584,44 +26612,44 @@ var inventoryReducers = {
         moved++;
       }
     }
-    return done11({ ...state, player, bank }, { moved });
+    return done12({ ...state, player, bank }, { moved });
   },
   "inventory/depositGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail11(state, "invalidAmount");
-    if (state.player.gold < amount) return fail11(state, "notEnoughGold");
-    if (state.bankGold + amount > MAX_GOLD) return fail11(state, "bankGoldCap");
-    return done11({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail12(state, "invalidAmount");
+    if (state.player.gold < amount) return fail12(state, "notEnoughGold");
+    if (state.bankGold + amount > MAX_GOLD) return fail12(state, "bankGoldCap");
+    return done12({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
   },
   "inventory/withdrawGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail11(state, "invalidAmount");
-    if (state.bankGold < amount) return fail11(state, "notEnoughBankGold");
-    if (state.player.gold + amount > MAX_GOLD) return fail11(state, "carryGoldCap");
-    return done11({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail12(state, "invalidAmount");
+    if (state.bankGold < amount) return fail12(state, "notEnoughBankGold");
+    if (state.player.gold + amount > MAX_GOLD) return fail12(state, "carryGoldCap");
+    return done12({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
   },
   "inventory/openChest"(state, { chestId }) {
     const result = openChestSafely(state.player, chestId);
-    if (!result.opened) return fail11(state, result.reason || "chestFailed");
-    return done11({ ...state, player: result.player }, { item: result.item });
+    if (!result.opened) return fail12(state, result.reason || "chestFailed");
+    return done12({ ...state, player: result.player }, { item: result.item });
   },
   "inventory/openAllChests"(state) {
     const result = openChestsSafely(state.player);
-    if (!result.items.length) return fail11(state, result.reason || "noChests");
-    return done11({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
+    if (!result.items.length) return fail12(state, result.reason || "noChests");
+    return done12({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
   },
   "inventory/useBoostScroll"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId && i.kind === "boostScroll");
-    if (!item) return fail11(state, "itemNotFound");
+    if (!item) return fail12(state, "itemNotFound");
     const result = useBoostScroll(state.player, item.boostId);
-    if (!result.used) return fail11(state, "noScrollsLeft");
-    return done11({ ...state, player: result.player });
+    if (!result.used) return fail12(state, "noScrollsLeft");
+    return done12({ ...state, player: result.player });
   }
 };
-var reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers, ...progressReducers, ...upgradeReducers, ...marketReducers, ...clanReducers, ...diamondReducers, ...characterReducers, ...gmReducers, ...duelReducers };
+var reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers, ...progressReducers, ...upgradeReducers, ...marketReducers, ...clanReducers, ...diamondReducers, ...characterReducers, ...gmReducers, ...duelReducers, ...sharedReducers };
 var ACTION_TYPES = Object.keys(reducers);
 function applyAction(state, type, payload = {}) {
   const reducer = Object.hasOwn(reducers, type) ? reducers[type] : null;
-  if (!reducer) return fail11(state, "unknownAction");
-  if (payload === null || typeof payload !== "object") return fail11(state, "invalidPayload");
+  if (!reducer) return fail12(state, "unknownAction");
+  if (payload === null || typeof payload !== "object") return fail12(state, "invalidPayload");
   return reducer(state, payload);
 }
 

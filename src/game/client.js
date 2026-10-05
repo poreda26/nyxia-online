@@ -126,5 +126,13 @@ export function createActor({ getState, setPlayer, setBank, setBankGold, isServe
   // Bazı eylemlerde (günlük giriş, çark) sunucu yolunda veriyi sunucu kendisi bulur; yerel yolda
   // bileşen eski uçlardan alıp eyleme verir. Hangi yolda olduğunu bu işlev söyler.
   act.isServer = isServer;
+  // Sunucunun kendi yolundan (Dünya Canavarı / klan zindanı vuruşu) gelen { patch, revision } yanıtını oyuncuya yazar.
+  act.applyServerPatch = (shared) => {
+    if (!shared) return;
+    if (Number.isFinite(shared.revision)) onRevision?.(shared.revision);
+    const { hp, mp, ...patch } = shared.patch || {};
+    void hp; void mp;
+    applyPatch(patch, shared.bank, shared.bankGold);
+  };
   return act;
 }

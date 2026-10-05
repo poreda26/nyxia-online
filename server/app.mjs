@@ -1000,17 +1000,33 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const sched = bossSchedule(boss, Date.now());
         if (sched.phase !== 'active') throw fail(409, 'BOSS_NOT_ACTIVE');
         const body = await read(req);
-        const damage = Number(body?.damage);
-        const BOSS_HIT_CAP_RATIO = 0.5; // bkz. yukarıdaki genel not — tek vuruş boss canının yarısını aşamaz
-        if (!Number.isSafeInteger(damage) || damage <= 0 || damage > boss.hp * BOSS_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
-        checkSharedHit(account.id, boss.def, damage);
+        // Sunucu ekonomisinde hasarı istemci söylemez: eylem (saldır/beceri) bildirilir, vuruşu sunucu motoru hesaplar.
+        const engine = game.enabled(account.id);
+        let damage = Number(body?.damage);
+        if (!engine) {
+          const BOSS_HIT_CAP_RATIO = 0.5; // bkz. yukarıdaki genel not — tek vuruş boss canının yarısını aşamaz
+          if (!Number.isSafeInteger(damage) || damage <= 0 || damage > boss.hp * BOSS_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
+          checkSharedHit(account.id, boss.def, damage);
+        } else {
+          const last = lastSharedHit.get(account.id) || 0;
+          if (Date.now() - last < 300) throw fail(429, 'TOO_FAST');
+          lastSharedHit.set(account.id, Date.now());
+        }
         db.exec('BEGIN IMMEDIATE');
         try {
           let fight = db.prepare('SELECT * FROM boss_fights WHERE boss_id=? AND spawn_at=?').get(boss.id, sched.spawnAt);
           if (!fight) { db.prepare('INSERT INTO boss_fights(boss_id,spawn_at,hp,resolved) VALUES(?,?,?,0)').run(boss.id, sched.spawnAt, boss.hp); fight = { hp: boss.hp, resolved: 0 }; }
           if (fight.resolved) throw fail(409, 'BOSS_ALREADY_DEFEATED');
-          const hp = Math.max(0, fight.hp - damage);
-          const resolved = hp <= 0;
+          let shared = null;
+          if (engine) {
+            const ck = validCharacterKey(body?.characterKey);
+            if (!ck) throw fail(400, 'INVALID_CHARACTER');
+            shared = game.sharedAttack(account.id, ck, `boss:${boss.id}`, sched.spawnAt, { hp: boss.hp, atk: boss.atk, def: boss.def }, fight.hp, body?.action);
+            if (!shared.result.ok) { db.exec('ROLLBACK'); return send(200, { ok: false, reason: shared.result.reason, hp: fight.hp, resolved: false }); }
+            damage = shared.damage;
+          }
+          const hp = Math.max(0, fight.hp - (damage > 0 ? damage : 0));
+          const resolved = hp <= 0 && damage > 0;
           db.prepare('UPDATE boss_fights SET hp=?, resolved=? WHERE boss_id=? AND spawn_at=?').run(hp, resolved ? 1 : 0, boss.id, sched.spawnAt);
           const prevMine = db.prepare('SELECT damage FROM boss_contributions WHERE boss_id=? AND spawn_at=? AND account=?').get(boss.id, sched.spawnAt, account.id)?.damage || 0;
           db.prepare('INSERT INTO boss_contributions(boss_id,spawn_at,account,damage) VALUES(?,?,?,?) ON CONFLICT(boss_id,spawn_at,account) DO UPDATE SET damage=excluded.damage').run(boss.id, sched.spawnAt, account.id, prevMine + damage);
@@ -1030,7 +1046,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
             }
           }
           db.exec('COMMIT');
-          return send(200, { hp, resolved, wonByMe });
+          return send(200, { hp, resolved, wonByMe, ...(shared ? { ok: true, shared: { result: shared.result, patch: shared.patch, revision: shared.revision } } : {}) });
         } catch (error) { db.exec('ROLLBACK'); throw error; }
       }
       if (path === '/api/warzone/loot-claims' && req.method === 'GET') {
@@ -1640,16 +1656,28 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const membership = myMembership();
         if (!membership) throw fail(409, 'NOT_IN_CLAN');
         const body = await read(req);
-        const damage = Number(body?.damage);
+        const engine = game.enabled(account.id);
+        let damage = Number(body?.damage);
         db.exec('BEGIN IMMEDIATE');
         try {
           const row = clanDungeonRow(membership.clan_id);
           if (row.completed) throw fail(409, 'DUNGEON_COMPLETE');
           if (row.locked_by !== account.id||row.locked_character!==myCharacterKey) throw fail(403, 'NOT_YOUR_TURN');
           const stage = clanDungeonStage(row.stage_index);
-          const DUNGEON_HIT_CAP_RATIO = 0.5; // bkz. World Boss'taki aynı ilke — tek vuruş canavar canının yarısını aşamaz
-          if (!Number.isSafeInteger(damage) || damage < 0 || damage > stage.hp * DUNGEON_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
-          checkSharedHit(account.id, stage.def, damage);
+          let shared = null;
+          if (engine) {
+            // Sunucu ekonomisinde hasarı istemci söylemez: eylemi bildirir, vuruşu sunucu motoru hesaplar.
+            const last = lastSharedHit.get(account.id) || 0;
+            if (Date.now() - last < 300) throw fail(429, 'TOO_FAST');
+            lastSharedHit.set(account.id, Date.now());
+            shared = game.sharedAttack(account.id, myCharacterKey, 'clan', `${row.day_key}:${row.stage_index}`, { hp: stage.hp, atk: stage.atk, def: stage.def }, row.monster_hp, body?.action);
+            if (!shared.result.ok) { db.exec('ROLLBACK'); return send(200, { ok: false, reason: shared.result.reason }); }
+            damage = shared.damage;
+          } else {
+            const DUNGEON_HIT_CAP_RATIO = 0.5; // bkz. World Boss'taki aynı ilke — tek vuruş canavar canının yarısını aşamaz
+            if (!Number.isSafeInteger(damage) || damage < 0 || damage > stage.hp * DUNGEON_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
+            checkSharedHit(account.id, stage.def, damage);
+          }
           const hp = Math.max(0, row.monster_hp - damage);
           let droppedMaterial = null;
           const killed = hp <= 0;
@@ -1682,6 +1710,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
             stageIndex: fresh.stage_index, stage: clanDungeonStage(fresh.stage_index), monsterHp: fresh.monster_hp,
             lockedUntil: fresh.locked_until || null,
             completed: !!fresh.completed, stageCleared: killed, droppedMaterial,
+            ...(shared ? { ok: true, shared: { result: shared.result, patch: shared.patch, revision: shared.revision } } : {}),
           });
         } catch (error) { db.exec('ROLLBACK'); throw error; }
       }

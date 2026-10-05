@@ -176,3 +176,10 @@ hasarı (istemci hasarı yollar, sunucu üst sınır koyar).
   `warzone/huntKill` kaldırıldı. CLIENT_BUILD = 3.
 - Dünya Canavarı ve klan zindanı: tek istek hasarı, hesabın karakterlerinin yapabileceği EN YÜKSEK hasarla sınırlı (`maxActionDamage`, şanslı zar + kritik + beceri +
   en iyi güçlendirme varsayılır) ve hesap başına en az 450 ms vuruş aralığı vardır. Bu tam benzetim değil ama hileli devasa vuruşları ve saniyede onlarca vuruşu keser.
+
+### Paylaşımlı hedefler tam sunucu hesabı (yapıldı)
+Sunucu ekonomisi açık hesaplarda Dünya Canavarı (`/api/warzone/boss/:id/attack`) ve klan zindanı (`/api/clan/dungeon/attack`) vuruşlarında istemci artık
+HASAR söylemez; yalnızca eylem (`{action}`: saldır / beceri / pot) gönderir. `src/game/shared.js` `shared/attack` aynı savaş motoruyla vuruşu, canavarın
+karşılığını, aşınmayı, harcanan potu ve ölüm cezasını hesaplar; oyuncunun savaştaki can/mana/bekleme/güçlendirme durumu `shared_fighters` tablosunda tutulur
+(60 sn vuruş yoksa dinlenmiş sayılır). Paylaşımlı can/kayıt yazımı aynı işlemde. Eski hesaplar için eski yol (hasar + tavan) korunur. Klan zindanı malzeme
+düşenleri `pending_grants` → `clan/claimMaterials`. CLIENT_BUILD = 4.

@@ -25,6 +25,7 @@ export const upgradeClanBuildingApi = () => call("clan/building/upgrade", "POST"
 // akla yatkın bir üst sınırla kabul ediyor.
 export const fetchClanDungeon = () => call("clan/dungeon", "GET");
 export const enterClanDungeon = () => call("clan/dungeon/enter", "POST");
-export const attackClanDungeon = (damage) => call("clan/dungeon/attack", "POST", { damage });
+// Sunucu ekonomisinde gövde { action }, eski yolda { damage }.
+export const attackClanDungeon = (payload) => call("clan/dungeon/attack", "POST", typeof payload === "number" ? { damage: payload } : payload);
 export const leaveClanDungeon = (characterKey) => call("clan/dungeon/leave", "POST",{},characterKey);
 export const fetchClanDungeonLog = () => call("clan/dungeon/log", "GET");

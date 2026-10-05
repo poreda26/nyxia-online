@@ -1,3 +1,4 @@
+import { playHit, playMiss, playHurt, playPotion, playSkill } from "../audio/sfx";
 import {usePotion,bestAvailablePotionTier} from '../utils/potions';
 import {getActiveCharacterKey} from '../utils/api';
 import EncounterScreen from './EncounterScreen';
@@ -98,7 +99,45 @@ export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def
     finally { setBusy(false); }
   };
 
+  // Sunucu ekonomisinde klan zindanı vuruşu: istemci yalnızca eylemi (saldır/beceri/pot) bildirir; hasarı, canavarın
+  // karşılığını, aşınmayı, harcanan potu ve ölümü sunucu savaş motoru hesaplar (bkz. src/game/shared.js).
+  const handleAttackServer = async (actionId=null) => {
+    if(defeated||attackingRef.current||!state?.lockedByMe||player.hp<=0||Date.now()-lastAttack.current<900)return;
+    const stageMon=state.stage;
+    const potionKind=actionId==='potion_hp'?'hp':actionId==='potion_mp'?'mp':null;
+    const skillId=potionKind?null:actionId;
+    if(potionKind&&(effects.potionCooldowns?.[potionKind]||0)>0)return;
+    const skill=skillId?classSkills(player.class).find(x=>x.id===skillId):null;
+    attackingRef.current=true;setBusy(true);lastAttack.current=Date.now();
+    try{
+      const res=await attackClanDungeon({action:potionKind?{type:'potion',kind:potionKind}:skillId?{type:'skill',id:skillId}:{type:'attack'}});
+      if(res.ok===false){
+        const key={skillCooldown:'battle.skillOnCooldown',noMana:'battle.notEnoughMana',potionCooldown:'battle.potionOnCooldown',noPotion:'battle.noPotionsLeft'}[res.reason];
+        if(key)pushToast(t(key),'warn');
+        return;
+      }
+      act.applyServerPatch(res.shared);
+      const r=res.shared.result;
+      let outgoing=null,incoming=null;
+      for(const ev of r.events){
+        if(ev.kind==='attack'){outgoing={hit:ev.hit,crit:ev.crit,damage:ev.dmg};if(ev.hit)playHit({crit:ev.crit,cls:player.class});else playMiss();}
+        else if(ev.kind==='skill'){outgoing={hit:true,heal:ev.effect==='heal',damage:ev.effect==='heal'?ev.healed:ev.dmg||0};playSkill(skill,player.class);}
+        else if(ev.kind==='potion'){playPotion();if(ev.potion==='hp'&&ev.healed>0)outgoing={hit:true,heal:true,damage:ev.healed};}
+        else if(ev.kind==='monster'){incoming={hit:ev.hit,damage:ev.dmg};if(ev.hit)playHurt();else playMiss();}
+      }
+      if(res.droppedMaterial){await act('clan/claimMaterials');pushToast(t('clan.toastMaterialDropped',{material:CLAN_DUNGEON_MATERIALS[res.droppedMaterial].name}),'loot');}
+      if(res.stageCleared)pushToast(res.completed?t('clan.toastDungeonCompleted'):t('clan.toastStageCleared',{index:state.stageIndex}),'loot');
+      setEffects({skillCooldowns:r.skillCooldowns,buffs:r.buffs,dot:r.dot,potionCooldowns:r.potionCooldowns});
+      setVisual({id:Date.now(),skillId,label:skill?.name||(potionKind?(potionKind==='hp'?'Can İksiri':'Mana İksiri'):t('clan.dungeonAttackBtn')),type:potionKind?'potion':skill?.effect.type||'attack',outgoing,incoming});
+      setPlayer(p=>({...p,hp:r.died?playerMaxHp(p):r.hp,mp:r.died?playerMaxMp(p):r.mp}));
+      if(r.died){setDefeated(true);pushToast(t('clan.toastDefeated'),'warn');await leaveClanDungeon();}
+      await refresh();
+    }catch(error){pushToast(formatServerError(t,error),'warn');await refresh();}
+    finally{attackingRef.current=false;setBusy(false);}
+  };
+
   const handleAttack = async (actionId=null) => {
+    if(act.isServer())return handleAttackServer(actionId);
     if(defeated||attackingRef.current||!state?.lockedByMe||player.hp<=0||Date.now()-lastAttack.current<900)return;
     const stageMon=state.stage;
     const potionKind=actionId==='potion_hp'?'hp':actionId==='potion_mp'?'mp':null;

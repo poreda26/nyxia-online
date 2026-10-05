@@ -15,6 +15,7 @@ Math.random = () => randomInt(0, SERVER_RANDOM_RANGE) / (SERVER_RANDOM_RANGE + 1
 export function createGame(db, { fail, logic, keyOf, all = false, drops = () => null, hooks = {} }) {
   db.exec('CREATE TABLE IF NOT EXISTS economy_accounts(account INTEGER PRIMARY KEY REFERENCES accounts(id), enabled_at INTEGER NOT NULL)');
   const available = !!logic;
+  db.exec('CREATE TABLE IF NOT EXISTS shared_fighters(account INTEGER NOT NULL REFERENCES accounts(id), kind TEXT NOT NULL, ref TEXT NOT NULL, state TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY(account, kind))');
 
   const enabled = (account) => available && (all || !!db.prepare('SELECT 1 FROM economy_accounts WHERE account=?').get(account));
   const setEnabled = (account, on, now = Date.now()) => {
@@ -86,6 +87,38 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
     } catch (error) { try { db.exec('ROLLBACK'); } catch { /* işlem zaten bitti */ } throw error; }
   };
 
+  // Paylaşımlı hedeflere (Dünya Canavarı, klan zindanı) tek vuruş: eylemi sunucu hesaplar (bkz. src/game/shared.js).
+  // ÇAĞIRAN işlem zaten açıktır (paylaşımlı hedefin kaydıyla aynı işlemde yazılsın diye); burada işlem açılıp kapatılmaz.
+  // `kind`/`ref`: savaşçı kaydının türü ve hangi hedef/doğuşa ait olduğu (ref değişirse eski savaşçı durumu atılır).
+  const sharedAttack = (account, characterKey, kind, ref, monster, sharedHp, action, now = Date.now()) => {
+    if (!available || !enabled(account)) throw fail(409, 'ECONOMY_DISABLED');
+    const stored = readBackup(account);
+    if (!stored || !Array.isArray(stored.data?.characters)) throw fail(404, 'NO_CHARACTER');
+    const index = stored.data.characters.findIndex((c, i) => c && keyOf(c, i) === characterKey);
+    if (index < 0) throw fail(404, 'NO_CHARACTER');
+    const state = {
+      player: stored.data.characters[index],
+      bank: Array.isArray(stored.data.bank) ? stored.data.bank : [],
+      bankGold: Number.isFinite(stored.data.bankGold) ? stored.data.bankGold : 0,
+    };
+    const row = db.prepare('SELECT ref,state FROM shared_fighters WHERE account=? AND kind=?').get(account, kind);
+    const fighter = row && row.ref === String(ref) ? JSON.parse(row.state) : null;
+    const clean = action && typeof action === 'object' ? (action.type === 'skill' ? { type: 'skill', id: String(action.id) } : action.type === 'potion' ? { type: 'potion', kind: action.kind === 'mp' ? 'mp' : 'hp' } : { type: 'attack' }) : { type: 'attack' };
+    const seed = (Math.floor(Math.random() * 4294967296) >>> 0) || 1;
+    const { state: next, result } = logic.applyAction(state, 'shared/attack', { fighter, monster, sharedHp, action: clean, seed, now });
+    if (!result.ok) return { result, damage: 0 };
+    if (result.fighter) db.prepare('INSERT OR REPLACE INTO shared_fighters(account,kind,ref,state,updated_at) VALUES(?,?,?,?,?)').run(account, kind, String(ref), JSON.stringify(result.fighter), now);
+    else db.prepare('DELETE FROM shared_fighters WHERE account=? AND kind=?').run(account, kind);
+    const before = stored.data.characters[index];
+    const patch = {};
+    for (const key of Object.keys(next.player)) if (JSON.stringify(before[key]) !== JSON.stringify(next.player[key])) patch[key] = next.player[key];
+    stored.data.characters[index] = next.player;
+    const revision = stored.revision + 1;
+    db.prepare('UPDATE backups SET revision=?,data=?,updated=? WHERE account=?').run(revision, JSON.stringify(stored.data), now, account);
+    const { fighter: _kept, ...visible } = result;
+    return { result: visible, damage: result.damage, revision, patch };
+  };
+
   // İstemcinin yedekle yazdığı ekonomi/ilerleme alanlarını sunucudaki gerçeğe geri çevirir. Sunucuda henüz
   // kaydı olmayan (yeni) bir karakterin bu alanları kuralların başlangıç karakterinden alınır: istemcinin
   // söylediği seviye, altın, eşya vb. dikkate alınmaz. Irk hesap geneli olduğundan sunucudaki değer esastır.
@@ -107,5 +140,5 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
     return data;
   };
 
-  return { available, enabled, setEnabled, act, pin };
+  return { available, enabled, setEnabled, act, pin, sharedAttack };
 }

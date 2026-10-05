@@ -9,6 +9,7 @@ import {createDuel,stepDuel} from '../utils/duelEngine';
 import RankBadge from './shared/RankBadge';
 import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useRef } from "react";
+import { getActiveCharacterKey } from "../utils/api";
 import MonsterPortrait from './MonsterPortrait';
 import { Skull, Swords, Heart, Zap, Lock, Gift, LogOut, DoorOpen, Loader2, X, Users } from "lucide-react";
 import {
@@ -360,7 +361,69 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // başka gerçek oyuncular da aynı düşüşü görüyor. Boss ölürse ödül HER
   // ZAMAN bana gitmez (ağırlıklı çekiliş sunucuda, bkz. server/app.mjs) —
   // kazanırsam loot-claims yoklamasıyla (yukarıdaki effect) ayrıca gelir.
+  // Sunucu ekonomisinde Dünya Canavarı vuruşu: istemci yalnızca eylemi bildirir; hasarı, canavarın karşılığını, aşınmayı ve
+  // ölümü sunucu savaş motoru hesaplar (bkz. src/game/shared.js).
+  const attackBossServer = async (bossId, skillId) => {
+    const rawBoss = WARZONE_BOSSES.find((b) => b.id === bossId);
+    const boss = rawBoss && effectiveBoss(rawBoss);
+    const activeState = sharedBosses[bossId];
+    if (lockRef.current || !boss || !activeState || activeState.resolved || player.hp <= 0) return;
+    const effectKey = `${bossId}:${bossSchedule(boss, now).spawnAt}`;
+    const skill = skillId ? classSkills(player.class).find((x) => x.id === skillId) : null;
+    lockRef.current = true;
+    setBossVisuals((bv) => ({ ...bv, [bossId]: { id: (bv[bossId]?.id || 0) + 1, type: skill ? "skill" : "attack", skillId, label: skill?.name || t("battle.actionAttack") } }));
+    let res;
+    try {
+      res = await warzoneBossService.attackBoss(bossId, { action: skillId ? { type: "skill", id: skillId } : { type: "attack" }, characterKey: getActiveCharacterKey() });
+    } catch { lockRef.current = false; return; }
+    if (res.ok === false) {
+      const key = { skillCooldown: "battle.skillOnCooldown", noMana: "battle.notEnoughMana" }[res.reason];
+      if (key) pushToast(t(key), "warn");
+      lockRef.current = false;
+      return;
+    }
+    act.applyServerPatch(res.shared);
+    const r = res.shared.result;
+    let log = [];
+    let dealt = 0;
+    for (const ev of r.events) {
+      if (ev.kind === "dot") { dealt += ev.dmg; }
+      else if (ev.kind === "attack") {
+        dealt += ev.dmg;
+        log.push(!ev.hit ? t("warzone.log.youMissedBoss", { boss: tm(boss) }) : ev.crit ? t("warzone.log.youCritBoss", { boss: tm(boss), dmg: ev.dmg }) : t("warzone.log.youHitBoss", { boss: tm(boss), dmg: ev.dmg }));
+        setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], outgoing: { hit: ev.hit, damage: ev.dmg, crit: ev.crit } } }));
+        if (ev.hit) playHit({ crit: ev.crit, cls: player.class }); else playMiss();
+      } else if (ev.kind === "skill") {
+        playSkill(skill, player.class);
+        dealt += ev.dmg || 0;
+        log.push(`${skill.name}: ${ev.effect === "heal" ? `+${ev.healed} HP` : ev.dmg ? `${ev.dmg} hasar` : "Etki uygulandı"}`);
+        setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], outgoing: { hit: true, heal: ev.effect === "heal", damage: ev.effect === "heal" ? ev.healed : ev.dmg || 0 } } }));
+      } else if (ev.kind === "monster") {
+        setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], incoming: { hit: ev.hit, damage: ev.dmg } } }));
+        if (ev.hit) playHurt(); else playMiss();
+        log.push(ev.hit ? t("warzone.log.bossHitYou", { boss: tm(boss), dmg: ev.dmg }) : t("warzone.log.bossMissedYou", { boss: tm(boss) }));
+      }
+    }
+    setSharedBosses((prev) => ({
+      ...prev,
+      [bossId]: { ...prev[bossId], hp: res.hp, resolved: res.resolved, myDamage: (prev[bossId]?.myDamage || 0) + r.damage, totalDamage: (prev[bossId]?.totalDamage || 0) + r.damage },
+    }));
+    setWz((prev) => ({ ...prev, log: [...prev.log, ...log].slice(-24) }));
+    setBossEffects((prev) => ({ ...prev, [effectKey]: { skillCooldowns: r.skillCooldowns, buffs: r.buffs, dot: r.dot } }));
+    setPlayer((p) => ({ ...p, hp: r.hp, mp: r.mp }));
+    void dealt;
+    if (r.died) {
+      setTimeout(() => {
+        setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
+        setDeathInfo({ xpLost: r.xpLost || 0 });
+        setBossEffects((prev) => ({ ...prev, [effectKey]: {} }));
+      }, 400);
+    }
+    setTimeout(() => { lockRef.current = false; }, 320);
+  };
+
   const attackBoss = async (bossId,skillId=null) => {
+    if (act.isServer()) return attackBossServer(bossId, skillId);
     const rawBoss = WARZONE_BOSSES.find((b) => b.id === bossId);
     const boss = rawBoss && effectiveBoss(rawBoss);
     const activeState = sharedBosses[bossId];

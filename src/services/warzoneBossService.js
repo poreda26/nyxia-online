@@ -10,6 +10,7 @@
 import { call } from "../utils/api";
 
 export const fetchActiveBosses = () => call("warzone/bosses", "GET");
-export const attackBoss = (bossId, damage) => call(`warzone/boss/${bossId}/attack`, "POST", { damage });
+// Sunucu ekonomisinde gövde { action, characterKey }, eski yolda { damage } (bkz. server/app.mjs).
+export const attackBoss = (bossId, payload) => call(`warzone/boss/${bossId}/attack`, "POST", typeof payload === "number" ? { damage: payload } : payload);
 export const fetchLootClaims = () => call("warzone/loot-claims", "GET");
 export const claimLoot = (claimId) => call(`warzone/loot-claims/${claimId}/claim`, "POST");

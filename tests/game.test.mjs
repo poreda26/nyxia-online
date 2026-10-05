@@ -781,3 +781,68 @@ test('shared targets: damage above what the character can possibly deal is refus
     db.close();
   } finally { await api.close(); }
 });
+
+test('shared targets are fought on the server: the action decides the hit, no client damage is accepted, skills and cooldowns are tracked server-side', async () => {
+  const { api, call, database } = await boot();
+  const realNow = Date.now.bind(Date);
+  try {
+    const cookie = (await call('register', { name: 'ivy', password })).cookie;
+    const strong = hero();
+    strong.level = 55;
+    strong.skills = { known: [], loadout: [null, null, null, null, null] };
+    strong.equipped = { ...strong.equipped, mainHand: sword({ id: 'wield', atk: 300 }) };
+    assert.equal((await call('backup', { revision: 0, data: { characters: [strong, null, null], bank: [[], []], bankGold: 0, diamonds: 0 } }, cookie, 'PUT')).status, 200);
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    db.prepare('UPDATE wallets SET diamonds=5000').run();
+    const asHero = async (path, body) => {
+      const r = await fetch(`http://127.0.0.1:${api.server.address().port}/api/${path}`, { method: body ? 'POST' : 'GET', headers: { Origin: 'http://test.local', 'Content-Type': 'application/json', Cookie: cookie, 'X-Character-Key': 'hero' }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      return { status: r.status, data: await r.json().catch(() => ({})) };
+    };
+    const state = async () => (await call('backup', null, cookie)).data.data.characters[0];
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // Clan dungeon: the hit comes from the action; a forged damage number is ignored.
+    assert.equal((await asHero('clan', { name: 'Hitters' })).status, 200);
+    assert.equal((await asHero('clan/dungeon/enter', {})).status, 200);
+    const before = (await asHero('clan/dungeon')).data;
+    const hit = await asHero('clan/dungeon/attack', { damage: 99999999, action: { type: 'attack' } });
+    assert.equal(hit.status, 200);
+    assert.equal(hit.data.ok, true);
+    const dealt = before.monsterHp - hit.data.monsterHp;
+    assert.ok(dealt >= 0 && dealt < 99999999, 'the forged damage did not reach the monster');
+    assert.ok(Array.isArray(hit.data.shared.result.events));
+    assert.equal(hit.data.shared.result.damage, dealt);
+    await wait(350);
+    const bad = await asHero('clan/dungeon/attack', { action: { type: 'skill', id: 'not_known' } });
+    assert.equal(bad.data.ok, false);
+    assert.equal(bad.data.reason, 'unknownSkill');
+    const quick = await asHero('clan/dungeon/attack', { action: { type: 'attack' } });
+    await wait(350);
+    assert.ok([200, 429].includes(quick.status));
+
+    // World boss: pretend a boss window is open (the schedule is a pure function of the clock).
+    const { bossSchedule } = await import('../src/utils/warzoneBoss.js');
+    const { WARZONE_BOSSES } = await import('../src/data/warzone.js');
+    const boss = WARZONE_BOSSES[0];
+    let at = realNow() + 3600_000;
+    while (bossSchedule(boss, at).phase !== 'active' && at < realNow() + 14 * 86400_000) at += 20_000;
+    assert.equal(bossSchedule(boss, at).phase, 'active');
+    const shift = at - realNow();
+    Date.now = () => realNow() + shift;
+    try {
+      const mine = await call(`warzone/boss/${boss.id}/attack`, { damage: 5, action: { type: 'attack' }, characterKey: 'hero' }, cookie);
+      assert.equal(mine.status, 200);
+      assert.equal(mine.data.ok, true);
+      assert.ok(mine.data.hp <= boss.hp);
+      assert.ok(mine.data.hp >= boss.hp - 5000, 'a single weak hero cannot dent the boss with a forged number');
+      await wait(350);
+      const second = await call(`warzone/boss/${boss.id}/attack`, { action: { type: 'attack' }, characterKey: 'hero' }, cookie);
+      assert.equal(second.status, 200);
+      await wait(350);
+      assert.equal((await call(`warzone/boss/${boss.id}/attack`, { damage: 1 }, cookie)).status, 400, 'no character: refused');
+    } finally { Date.now = realNow; }
+    void state;
+    db.close();
+  } finally { Date.now = realNow; await api.close(); }
+});
