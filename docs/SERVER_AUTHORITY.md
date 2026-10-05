@@ -170,3 +170,9 @@ oynar (anında geri bildirim) ve bitince eylem dizisini `battle/settle` ile gön
 söylemesi kalmadı; `battle/kill` kaldırıldı. CLIENT_BUILD = 2.
 Henüz bu motora geçmeyenler (sınırlı hile payı): Canavar Ara avı (`warzone/huntKill` yalnızca süre denetler), Dünya Canavarı hasarı ve klan zindanı
 hasarı (istemci hasarı yollar, sunucu üst sınır koyar).
+
+### Av ve paylaşımlı hedefler (yapıldı)
+- Canavar Ara avı da aynı savaş motoruyla: `warzone/huntStart` tohum verir, `warzone/huntSettle` eylem dizisini baştan oynatır (kazan/öl/geri çekil, ödül, aşınma, potlar).
+  `warzone/huntKill` kaldırıldı. CLIENT_BUILD = 3.
+- Dünya Canavarı ve klan zindanı: tek istek hasarı, hesabın karakterlerinin yapabileceği EN YÜKSEK hasarla sınırlı (`maxActionDamage`, şanslı zar + kritik + beceri +
+  en iyi güçlendirme varsayılır) ve hesap başına en az 450 ms vuruş aralığı vardır. Bu tam benzetim değil ama hileli devasa vuruşları ve saniyede onlarca vuruşu keser.

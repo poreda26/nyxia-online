@@ -288,6 +288,20 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     configCache = { at: now, value: { minBuild: Number(read('min_build') ?? process.env.MIN_CLIENT_BUILD ?? 0) || 0, updateUrl: read('update_url') ?? process.env.APP_UPDATE_URL ?? null } };
     return configCache.value;
   }
+  // Paylaşımlı hedeflere (Dünya Canavarı / klan zindanı) tek istekte vurulabilecek en yüksek hasar: hesabın
+  // karakterlerinin en güçlüsüne göre (bkz. src/game/fight.js maxActionDamage). Ayrıca hesap başına en kısa vuruş aralığı.
+  const lastSharedHit = new Map();
+  function checkSharedHit(accountId, targetDef, damage, now = Date.now()) {
+    if (gameLogic?.maxActionDamage) {
+      const row = db.prepare('SELECT data FROM backups WHERE account=?').get(accountId);
+      let ceiling = 0;
+      try { for (const c of JSON.parse(row?.data || '{}').characters || []) if (c) ceiling = Math.max(ceiling, gameLogic.maxActionDamage(c, targetDef)); } catch { /* bozuk yedek */ }
+      if (ceiling > 0 && damage > ceiling) throw fail(400, 'INVALID_DAMAGE');
+    }
+    const last = lastSharedHit.get(accountId) || 0;
+    if (now - last < 450) throw fail(429, 'TOO_FAST');
+    lastSharedHit.set(accountId, now);
+  }
   const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll, drops: () => admin.drops.get().data,
     hooks: {
       // Dünya Canavarı: hak, sunucudaki bekleyen kayıttır.
@@ -989,6 +1003,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const damage = Number(body?.damage);
         const BOSS_HIT_CAP_RATIO = 0.5; // bkz. yukarıdaki genel not — tek vuruş boss canının yarısını aşamaz
         if (!Number.isSafeInteger(damage) || damage <= 0 || damage > boss.hp * BOSS_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
+        checkSharedHit(account.id, boss.def, damage);
         db.exec('BEGIN IMMEDIATE');
         try {
           let fight = db.prepare('SELECT * FROM boss_fights WHERE boss_id=? AND spawn_at=?').get(boss.id, sched.spawnAt);
@@ -1634,6 +1649,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           const stage = clanDungeonStage(row.stage_index);
           const DUNGEON_HIT_CAP_RATIO = 0.5; // bkz. World Boss'taki aynı ilke — tek vuruş canavar canının yarısını aşamaz
           if (!Number.isSafeInteger(damage) || damage < 0 || damage > stage.hp * DUNGEON_HIT_CAP_RATIO) throw fail(400, 'INVALID_DAMAGE');
+          checkSharedHit(account.id, stage.def, damage);
           const hp = Math.max(0, row.monster_hp - damage);
           let droppedMaterial = null;
           const killed = hp <= 0;

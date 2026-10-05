@@ -3,8 +3,11 @@
 import { initialPlayer } from "../utils/player";
 
 export { SERVER_OWNED_FIELDS } from "./fields";
-export { createFight, stepFight, checkAction, replayFight, bestPotionTier, POTION_COOLDOWN_TURNS, MIN_TURN_MS } from "./fight";
+export { createFight, stepFight, checkAction, replayFight, maxActionDamage, bestPotionTier, POTION_COOLDOWN_TURNS, MIN_TURN_MS } from "./fight";
 export { resolveMonster } from "./battle";
+export { MAPS } from "../data/maps";
+export { buildHuntMonster } from "../utils/warzoneCombat";
+export { getWarzoneHuntConfig } from "../utils/dropConfig";
 export { applyLiveDropConfig } from "../utils/dropConfig";
 export { applyAction, ACTION_TYPES, reducers } from "./actions";
 

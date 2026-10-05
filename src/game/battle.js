@@ -79,7 +79,18 @@ function applyWear(player, wear) {
   return next;
 }
 
-const clearFight = (player) => (player.fight || player.dungeonRun ? { ...player, fight: null, dungeonRun: null } : player);
+// Savaşın (motor sonucunun) kalıcı yan etkileri: silah/zırh aşınması ve harcanan potlar.
+export function applyFightAftermath(player, fight) {
+  let next = applyWear(player, fight.wear);
+  for (const kind of ["hp", "mp"]) {
+    for (const [tier, count] of Object.entries(fight.used[kind])) {
+      for (let n = 0; n < count; n++) next = usePotion(next, kind, Number(tier)).player;
+    }
+  }
+  return next;
+}
+
+export const clearFight = (player) => (player.fight || player.dungeonRun ? { ...player, fight: null, dungeonRun: null } : player);
 
 export const battleReducers = {
   "battle/start"(state, { monsterId }) {
@@ -108,12 +119,7 @@ export const battleReducers = {
     if (denied) return fail(state, denied);
 
     // Aşınma ve harcanan potlar savaşın sonucundan bağımsız uygulanır.
-    let player = applyWear({ ...state.player, fight: null }, replay.fight.wear);
-    for (const kind of ["hp", "mp"]) {
-      for (const [tier, count] of Object.entries(replay.fight.used[kind])) {
-        for (let n = 0; n < count; n++) player = usePotion(player, kind, Number(tier)).player;
-      }
-    }
+    let player = applyFightAftermath({ ...state.player, fight: null }, replay.fight);
     const outcome = replay.fight.ended || "retreat";
 
     if (outcome === "lose") {

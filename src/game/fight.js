@@ -194,3 +194,22 @@ export function replayFight(player, monster, levelCap, seed, actions) {
   }
   return { fight };
 }
+
+// Paylaşımlı hedeflere (Dünya Canavarı, klan zindanı) tek bir isteğin verebileceği EN YÜKSEK hasar: oyuncunun bilinen
+// becerileri ve gücüyle, şanslı zar ve kritik varsayılarak hesaplanır. Sunucu bunun üstündeki hasarı reddeder; dürüst
+// istemci bu sınırın altında kalır (bkz. server/app.mjs).
+export function maxActionDamage(player, monsterDef) {
+  const cls = CLASSES[player.class];
+  if (!cls) return 0;
+  const base = cls.atk + totalStats(player).atk * 0.9;
+  const known = classSkills(player.class).filter((s) => (player.skills?.known || []).includes(s.id));
+  const buff = known.filter((s) => s.effect.type === "buffAtk").reduce((m, s) => Math.max(m, s.effect.mult || 1), 1);
+  let best = mitigate(base * 1.8 * buff, monsterDef, MONSTER_DEF_K);
+  let dot = 0;
+  for (const skill of known) {
+    const e = skill.effect;
+    if (e.type === "damage" || e.type === "execute") best = Math.max(best, mitigate(base * (e.mult || 1) * buff, monsterDef, MONSTER_DEF_K));
+    else if (e.type === "dot") dot = Math.max(dot, mitigate(base * (e.mult || 1) * buff, monsterDef, MONSTER_DEF_K));
+  }
+  return Math.ceil((best + dot) * (1 + 1 / 13) * 1.1) + 5;
+}

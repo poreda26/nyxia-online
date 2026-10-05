@@ -5,7 +5,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApi } from '../server/app.mjs';
-import { createCharacter, createFight, stepFight, resolveMonster, MIN_TURN_MS } from '../server/game-logic.generated.mjs';
+import { createCharacter, createFight, stepFight, resolveMonster, MIN_TURN_MS, MAPS, buildHuntMonster, getWarzoneHuntConfig } from '../server/game-logic.generated.mjs';
 
 const password = 'long-test-password-123';
 
@@ -279,22 +279,31 @@ test('warzone: entry fee, boss loot only against a real claim (consumed once), h
     const bob = (await call('register', { name: 'erin', password })).cookie;
     assert.equal((await call('game/act', { characterKey: 'hero', type: 'warzone/bossLoot', payload: { claimId: 2 } }, bob)).status, 409);
 
-    // Hunts: need a search, enough search time, then a started fight, then the minimum fight time.
+    // Hunts: need a search, enough search time, a started fight; the result is the server's replay of the action log.
     assert.equal((await act('warzone/huntStart', { monsterId: crimson })).data.result.reason, 'searchTooShort');
-    assert.equal((await act('warzone/huntKill', { monsterId: crimson })).data.result.reason, 'noFight');
+    assert.equal((await act('warzone/huntSettle', { monsterId: crimson, actions: [] })).data.result.reason, 'noFight');
     assert.equal((await act('warzone/huntSearch')).data.result.ok, true);
     assert.equal((await act('warzone/huntStart', { monsterId: crimson })).data.result.reason, 'searchTooShort');
     await wait(4600);
     assert.equal((await act('warzone/huntStart', { monsterId: 'made_up' })).data.result.reason, 'unknownMonster');
-    assert.equal((await act('warzone/huntStart', { monsterId: crimson })).data.result.ok, true);
-    assert.equal((await act('warzone/huntKill', { monsterId: crimson })).data.result.reason, 'tooFast');
-    await wait(750);
+    db.prepare("UPDATE backups SET data=json_set(data,'$.characters[0].equipped.mainHand', json('{\"id\":\"big\",\"kind\":\"weapon\",\"weaponType\":\"sword\",\"weaponSlot\":\"mainHand\",\"cls\":\"warrior\",\"tier\":1,\"atk\":200000,\"def\":0,\"hp\":0,\"mp\":0,\"weight\":1,\"durability\":1000,\"currentDurability\":1000,\"upgradeLevel\":0,\"reqStats\":[]}'))").run();
+    const started = await act('warzone/huntStart', { monsterId: crimson });
+    assert.equal(started.data.result.ok, true);
+    const hero1 = await state();
+    const template = MAPS.find((m) => m.id === 'crimson_battlefront').monsters.find((m) => m.id === crimson);
+    const monster = buildHuntMonster(template, getWarzoneHuntConfig().powerMult);
+    let fight = createFight(hero1, monster, started.data.result.seed);
+    const actions = [];
+    while (!fight.ended && actions.length < 100) { fight = stepFight(fight, hero1, monster, 65, { type: 'attack' }).fight; actions.push({ type: 'attack' }); }
+    assert.equal(fight.ended, 'win');
+    assert.equal((await act('warzone/huntSettle', { monsterId: crimson, actions: [...actions, { type: 'attack' }] })).data.result.reason, 'invalidLog');
+    await wait(Math.max(0, fight.turn * MIN_TURN_MS - 1500) + 40);
     const before = await state();
-    const kill = await act('warzone/huntKill', { monsterId: crimson });
-    assert.equal(kill.data.result.ok, true);
+    const kill = await act('warzone/huntSettle', { monsterId: crimson, actions });
+    assert.equal(kill.data.result.outcome, 'win');
     assert.ok(kill.data.result.drops.some((d) => d.type === 'xp'));
     assert.ok((await state()).gold > before.gold);
-    assert.equal((await act('warzone/huntKill', { monsterId: crimson })).data.result.reason, 'noFight', 'one hunt pays once');
+    assert.equal((await act('warzone/huntSettle', { monsterId: crimson, actions })).data.result.reason, 'noFight', 'one hunt pays once');
 
     // Leaving clears the entry.
     assert.equal((await act('warzone/leave')).data.result.ok, true);
@@ -741,5 +750,34 @@ test('minimum client build: outdated or header-less clients get 426 with the upd
     assert.equal((await get('health')).status, 200, 'health is never blocked');
     assert.deepEqual((await get('version')).data, { minBuild: 3, updateUrl: 'https://example.com/update' });
     assert.notEqual((await get('admin/me')).status, 426, 'the owner panel is exempt');
+  } finally { await api.close(); }
+});
+
+test('shared targets: damage above what the character can possibly deal is refused, and hits cannot come faster than a real player', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const cookie = (await call('register', { name: 'zed', password })).cookie;
+    const strong = hero();
+    strong.level = 55;
+    strong.equipped = { ...strong.equipped, mainHand: sword({ id: 'wield', atk: 200 }) };
+    assert.equal((await call('backup', { revision: 0, data: { characters: [strong, null, null], bank: [[], []], bankGold: 0, diamonds: 0 } }, cookie, 'PUT')).status, 200);
+    const db = new DatabaseSync(database);
+    // Pretend the first boss is open right now by asking for its state; if it is not active the attack is refused before damage is checked,
+    // so exercise the clan dungeon path instead, which only needs a clan.
+    db.prepare('UPDATE wallets SET diamonds=5000').run();
+    const asHero = async (path, body) => {
+      const r = await fetch(`http://127.0.0.1:${api.server.address().port}/api/${path}`, { method: body ? 'POST' : 'GET', headers: { Origin: 'http://test.local', 'Content-Type': 'application/json', Cookie: cookie, 'X-Character-Key': 'hero' }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      return { status: r.status, data: await r.json().catch(() => ({})) };
+    };
+    assert.equal((await asHero('clan', { name: 'Hitters' })).status, 200);
+    assert.equal((await asHero('clan/dungeon/enter', {})).status, 200);
+    const huge = await asHero('clan/dungeon/attack', { damage: 1_000_000 });
+    assert.equal(huge.status, 400);
+    assert.equal(huge.data.error, 'INVALID_DAMAGE');
+    const fine = await asHero('clan/dungeon/attack', { damage: 1 });
+    assert.equal(fine.status, 200);
+    const quick = await asHero('clan/dungeon/attack', { damage: 1 });
+    assert.equal(quick.status, 429);
+    db.close();
   } finally { await api.close(); }
 });

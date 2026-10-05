@@ -1,5 +1,6 @@
 import EncounterScreen from './EncounterScreen';
 import {prepareWarzoneAction,buildHuntMonster} from '../utils/warzoneCombat';
+import {createFight,stepFight,checkAction} from '../game/fight';
 import WarzoneSkills from './WarzoneSkills';
 import './WarzoneTab.css';
 import { varyDamage } from '../utils/combat';
@@ -25,7 +26,8 @@ import { premiumNpLossReduction } from "../utils/premium";
 import { leaderboardFor } from "../utils/leaderboard";
 import { totalStats, playerDef, playerMaxHp, playerMaxMp, displayClassName, armorSetDamageReduction, formatGold } from "../utils/player";
 import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit } from "../utils/combat";
-import { bestAvailablePotionTier } from "../utils/potions";
+import { bestAvailablePotionTier, usePotion } from "../utils/potions";
+import { classSkills } from "../utils/skills";
 import { rand, pick } from "../utils/random";
 import { playLevelUp, playHit, playMiss, playHurt, playPotion, playSkill } from "../audio/sfx";
 import { styles } from "../styles";
@@ -106,6 +108,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   const [sharedBosses, setSharedBosses] = useState({});
   const knownActiveRef = useRef(new Set());
   const claimedRef = useRef(new Set());
+  // Av savaşı da oyun savaşıyla aynı tohumlu motorla oynanır; sunucu eylem dizisini baştan oynatıp sonucu kendisi hesaplar.
+  const huntActionsRef = useRef([]);
+  const playerRef = useRef(player);
+  playerRef.current = player;
   // Faz 5 — düellodaki rakip GERÇEK bir hesabın anlık görüntüsü (bkz.
   // services/warzoneDuelService.js). opponentAccountRef sonucu sunucuya
   // bildirirken (reportDuelResult) hangi hesap olduğunu hatırlamak için.
@@ -236,7 +242,9 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       // bir override varsa onu kullanıyor (bkz. utils/dropConfig.js#getWarzoneHuntConfig).
       const huntPowerMult = getWarzoneHuntConfig().powerMult;
       const monster=buildHuntMonster(template,huntPowerMult);
-      setWz((prev) => (prev.searching ? { ...prev, searching: null, hunt: { monster, potionCooldowns: { hp: 0, mp: 0 }, log: [t("warzone.log.huntAppeared", { monster: monster.name })] } } : prev));
+      huntActionsRef.current = [];
+      const fight = createFight(playerRef.current, monster, started.seed);
+      setWz((prev) => (prev.searching ? { ...prev, searching: null, hunt: { monster, baseMonster: monster, fight, potionCooldowns: { hp: 0, mp: 0 }, effects: {}, log: [t("warzone.log.huntAppeared", { monster: monster.name })] } } : prev));
     }, wz.searching.durationMs);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -598,7 +606,12 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     setWz((prev) => ({ ...prev, searching: { durationMs: rand(5, 15) * 1000 } }));
   };
 
-  const abandonHunt = () => setWz((prev) => ({ ...prev, hunt: null }));
+  const abandonHunt = () => {
+    const hunt = wz.hunt;
+    if (hunt && huntActionsRef.current.length > 0) act("warzone/huntSettle", { monsterId: hunt.baseMonster.id, actions: huntActionsRef.current.slice() });
+    huntActionsRef.current = [];
+    setWz((prev) => ({ ...prev, hunt: null }));
+  };
 
   // Kullanıcı isteği: "Canavar Ara kısmında ara dediğimiz zaman ekrana
   // Widget açılsın Aranıyor... Bekleme ekranı yükleniyor gibi. Aramayı
@@ -612,84 +625,78 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // #attack ile aynı PvE hasar formülü (mitigate + MONSTER_DEF_K/PLAYER_DEF_K),
   // sadece burada tek tıkla hem oyuncunun hem canavarın vuruşu birlikte
   // çözülüyor (Dünya Canavarı'nın #attackBoss'uyla aynı ritim).
-  const huntAction = async (actionType) => {
-    if (lockRef.current || !wz.hunt || player.hp <= 0) return;
-    const isPotion = actionType === "potion_hp" || actionType === "potion_mp";
+  const HUNT_ERROR_KEY = { skillCooldown: "battle.skillOnCooldown", noMana: "battle.notEnoughMana", potionCooldown: "battle.potionOnCooldown", noPotion: "battle.noPotionsLeft" };
+
+  const settleHunt = async (monsterId) => {
+    let result = await act("warzone/huntSettle", { monsterId, actions: huntActionsRef.current.slice() });
+    if (!result.ok && result.reason === "tooFast") {
+      await new Promise((resolve) => setTimeout(resolve, 1600));
+      result = await act("warzone/huntSettle", { monsterId, actions: huntActionsRef.current.slice() });
+    }
+    return result;
+  };
+
+  const huntAction = (actionType) => {
+    const hunt = wz.hunt;
+    if (lockRef.current || !hunt?.fight || player.hp <= 0) return;
     const potionKind = actionType === "potion_hp" ? "hp" : actionType === "potion_mp" ? "mp" : null;
-    let potionResult = null;
-    let potionTier = null;
-    if (isPotion) {
-      if ((wz.hunt.potionCooldowns[potionKind] || 0) > 0) { pushToast(t("battle.potionOnCooldown"), "warn"); return; }
-      potionTier = bestAvailablePotionTier(player, potionKind);
-      if (!potionTier) { pushToast(t("battle.noPotionsLeft"), "warn"); return; }
-      lockRef.current = true;
-      const used = await act("battle/potion", { kind: potionKind, hp: player.hp, mp: player.mp });
-      if (!used.ok) { lockRef.current = false; pushToast(t(used.reason === "noPotionsLeft" ? "battle.noPotionsLeft" : "battle.actionFailed"), "warn"); return; }
-      potionResult = { healed: used.healed, player: { ...used.nextPlayer, [potionKind]: Math.min(potionKind === "hp" ? maxHp : maxMp, player[potionKind] + used.healed) } };
-    }
-    const skillId=!isPotion?actionType:null;
-    const action=prepareWarzoneAction(potionResult?.player||player,wz.hunt.monster,wz.hunt.effects,skillId);
-    if(action.error){pushToast(action.error,'warn');lockRef.current = false;return;}
+    const action = potionKind ? { type: "potion", kind: potionKind } : actionType ? { type: "skill", id: actionType } : { type: "attack" };
+    const error = checkAction(hunt.fight, player, action);
+    if (error) { if (HUNT_ERROR_KEY[error]) pushToast(t(HUNT_ERROR_KEY[error]), "warn"); return; }
+    const out = stepFight(hunt.fight, player, hunt.baseMonster, CRIMSON_MAP.levelMax, action);
+    if (out.error) return;
     lockRef.current = true;
-    setHuntVisual((v) => ({ id: v.id + 1, type: isPotion ? "potion" : action.skill?"skill":"attack", skillId, label: isPotion ? (potionKind === "hp" ? t("battle.actionHpPotion") : t("battle.actionMpPotion")) : t("battle.actionAttack") }));
-    if(isPotion)playPotion();
+    huntActionsRef.current.push(action);
+    const monster = hunt.baseMonster;
+    const f = out.fight;
+    const skill = action.type === "skill" ? classSkills(player.class).find((x) => x.id === action.id) : null;
+    const huntName = lang === "tr" ? accusativeName(monster.name) : monster.name;
+    setHuntVisual((v) => ({ id: v.id + 1, type: potionKind ? "potion" : skill ? "skill" : "attack", skillId: skill?.id, label: potionKind ? (potionKind === "hp" ? t("battle.actionHpPotion") : t("battle.actionMpPotion")) : t("battle.actionAttack") }));
 
-    const monster = wz.hunt.monster;
-    const potionCooldowns = Object.fromEntries(Object.entries(wz.hunt.potionCooldowns).map(([k, v]) => [k, Math.max(0, v - 1)]));
-    let log = [...wz.hunt.log];
-    let monsterHp = Math.max(0,monster.hp-action.damage);
-    let currentHp = action.player.hp;
-    setPlayer(action.player);
-
-    if (isPotion) {
-      potionCooldowns[potionKind] = POTION_COOLDOWN_TURNS;
-      setPlayer(() => potionResult.player);
-      currentHp = potionResult.player.hp;
-      log.push(potionKind === "hp" ? t("warzone.log.potionUsedHp", { healed: potionResult.healed }) : t("warzone.log.potionUsedMp", { healed: potionResult.healed }));
-      if (potionKind === "hp" && potionResult.healed > 0) setHuntVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: potionResult.healed } }));
-    } else if(action.skill){
-      log.push(`${action.skill.name}: ${action.heal?`+${action.heal} HP`:action.damage?`${action.damage} hasar`:'Etki uygulandı'}`);
-      setHuntVisual(v=>({...v,label:action.skill.name,outgoing:{hit:true,heal:!!action.heal,damage:action.heal||action.damage}}));
-      playSkill(action.skill,player.class);
-    } else {
-      const isCrit = Math.random() < cls.crit;
-      const playerHits = rollHit(player.stats.dex, monster.atk, player.level);
-      const dmg = playerHits
-        ? Math.round(varyDamage(mitigate((cls.atk + atk * 0.9) * (isCrit ? 1.8 : 1), monster.def, MONSTER_DEF_K))*action.atkMult)
-        : 0;
-      monsterHp = Math.max(0, monsterHp - dmg);
-      log.push(!playerHits ? t("warzone.log.huntMissed", { monster: lang === "tr" ? accusativeName(monster.name) : monster.name }) : isCrit ? t("warzone.log.huntCrit", { monster: monster.name, dmg }) : t("warzone.log.huntHit", { monster: monster.name, dmg }));
-      setHuntVisual((v) => ({ ...v, outgoing: { hit: playerHits, damage: dmg, crit: isCrit } }));
-      if(playerHits)playHit({crit:isCrit,cls:player.class});else playMiss();
+    let log = [...hunt.log];
+    let potionUsed = null;
+    for (const ev of out.events) {
+      if (ev.kind === "attack") {
+        log.push(!ev.hit ? t("warzone.log.huntMissed", { monster: huntName }) : ev.crit ? t("warzone.log.huntCrit", { monster: monster.name, dmg: ev.dmg }) : t("warzone.log.huntHit", { monster: monster.name, dmg: ev.dmg }));
+        setHuntVisual((v) => ({ ...v, outgoing: { hit: ev.hit, damage: ev.dmg, crit: ev.crit } }));
+        if (ev.hit) playHit({ crit: ev.crit, cls: player.class }); else playMiss();
+      } else if (ev.kind === "skill") {
+        playSkill(skill, player.class);
+        const shown = ev.effect === "heal" ? ev.healed : ev.dmg || 0;
+        log.push(`${skill.name}: ${ev.effect === "heal" ? `+${ev.healed} HP` : ev.dmg ? `${ev.dmg} hasar` : "Etki uygulandı"}`);
+        setHuntVisual((v) => ({ ...v, label: skill.name, outgoing: { hit: true, heal: ev.effect === "heal", damage: shown } }));
+      } else if (ev.kind === "potion") {
+        potionUsed = ev;
+        playPotion();
+        log.push(ev.potion === "hp" ? t("warzone.log.potionUsedHp", { healed: ev.healed }) : t("warzone.log.potionUsedMp", { healed: ev.healed }));
+        if (ev.potion === "hp" && ev.healed > 0) setHuntVisual((v) => ({ ...v, outgoing: { hit: true, heal: true, damage: ev.healed } }));
+      } else if (ev.kind === "monster") {
+        setHuntVisual((v) => ({ ...v, incoming: { hit: ev.hit, damage: ev.dmg } }));
+        if (ev.hit) playHurt(); else playMiss();
+        log.push(ev.hit ? t("warzone.log.huntHitYou", { monster: monster.name, dmg: ev.dmg }) : t("warzone.log.huntMissedYou", { monster: monster.name }));
+      }
     }
+    // Can/mana ve harcanan pot ekranda hemen yansır; kalıcı sonuç sunucudaki savaş sonucunda işlenir.
+    setPlayer((p) => ({ ...p, hp: f.hp, mp: f.mp, ...(potionUsed ? { inventory: usePotion(p, potionUsed.potion, potionUsed.tier).player.inventory } : {}) }));
 
-    if (monsterHp <= 0) {
-      setWz((prev) => ({ ...prev, hunt: null, log: [...prev.log, t("warzone.log.huntDefeated", { monster: lang === "tr" ? accusativeName(monster.name) : monster.name })].slice(-24) }));
-      const result = await act("warzone/huntKill", { monsterId: monster.id });
-      if (!result.ok) { lockRef.current = false; pushToast(t("battle.actionFailed"), "warn"); return; }
-      setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
-      pushToast(result.drops.map(formatHuntDrop).join("  ·  "), result.tone);
-      if (result.levelUp) { setLevelUpInfo(result.levelUp); playLevelUp(); }
-      setTimeout(() => { lockRef.current = false; }, 320);
+    if (f.ended === "win") {
+      setWz((prev) => ({ ...prev, hunt: null, log: [...prev.log, t("warzone.log.huntDefeated", { monster: huntName })].slice(-24) }));
+      (async () => {
+        const result = await settleHunt(monster.id);
+        if (!result.ok || result.outcome !== "win") { lockRef.current = false; pushToast(t("battle.actionFailed"), "warn"); return; }
+        setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
+        pushToast(result.drops.map(formatHuntDrop).join("  ·  "), result.tone);
+        if (result.levelUp) { setLevelUpInfo(result.levelUp); playLevelUp(); }
+        setTimeout(() => { lockRef.current = false; }, 320);
+      })();
       return;
     }
 
-    const setReduction = armorSetDamageReduction(player, "monster");
-    const monsterHits = rollHit(monster.atk, player.stats.dex, player.level);
-    const mdmg = monsterHits
-      ? Math.max(1, Math.round(mitigate(monster.atk, def*action.defMult, PLAYER_DEF_K) * (1 - setReduction) + rand(-2, 3)))
-      : 0;
-    setHuntVisual((v) => ({ ...v, incoming: { hit: monsterHits, damage: mdmg } }));
-    if(monsterHits)playHurt();else playMiss();
-    const wouldDie = currentHp - mdmg <= 0;
-    log.push(monsterHits ? t("warzone.log.huntHitYou", { monster: monster.name, dmg: mdmg }) : t("warzone.log.huntMissedYou", { monster: monster.name }));
-
-    setPlayer((p) => ({ ...p, hp: Math.max(0, currentHp - mdmg) }));
-    setWz((prev) => ({ ...prev, hunt: { ...prev.hunt, monster: { ...monster, hp: monsterHp }, effects:action.state, potionCooldowns, log: log.slice(-24) } }));
-
-    if (wouldDie) {
+    setWz((prev) => ({ ...prev, hunt: { ...prev.hunt, fight: f, monster: { ...monster, hp: f.monsterHp }, effects: { skillCooldowns: f.skillCooldowns, buffs: f.buffs, dot: f.dot }, potionCooldowns: f.potionCooldowns, log: log.slice(-24) } }));
+    if (f.ended === "lose") {
+      const settling = settleHunt(monster.id);
       setTimeout(async () => {
-        const died = await act("battle/death", { wear: {} });
+        const died = await settling;
         setPlayer((p) => ({ ...p, hp: playerMaxHp(p), mp: playerMaxMp(p) }));
         setWz((prev) => ({ ...prev, hunt: null }));
         setDeathInfo({ xpLost: died.xpLost || 0 });

@@ -8,7 +8,10 @@ import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { premiumGoldMultiplier, premiumDropMultiplier } from "../utils/premium";
 import { playerMaxHp, playerMaxMp, clampGold } from "../utils/player";
 import { rand, uid } from "../utils/random";
-import { MIN_FIGHT_MS } from "./battle";
+import { applyFightAftermath, clearFight } from "./battle";
+import { replayFight, MIN_TURN_MS } from "./fight";
+import { buildHuntMonster } from "../utils/warzoneCombat";
+import { applyDeathPenalty } from "../utils/player";
 
 // Savaş Alanı gelirleri (Faz 3a): giriş ücreti, Dünya Canavarı ödülü, Canavar Ara avı.
 // Dünya Canavarı'nın hasar/can paylaşımı ve kazananın çekilişi zaten sunucudadır
@@ -93,19 +96,33 @@ export const warzoneReducers = {
     if (!player.warzone) return fail(state, "notEntered");
     if (!huntTemplate(monsterId)) return fail(state, "unknownMonster");
     if (!player.huntSearch || Date.now() - player.huntSearch.startedAt < MIN_HUNT_SEARCH_MS) return fail(state, "searchTooShort");
-    return done({ ...state, player: { ...player, huntSearch: null, fight: { monsterId: HUNT_PREFIX + monsterId, startedAt: Date.now() }, hp: playerMaxHp(player), mp: playerMaxMp(player) } });
+    const seed = (Math.floor(Math.random() * 4294967296) >>> 0) || 1;
+    return done({ ...state, player: { ...player, huntSearch: null, fight: { monsterId: HUNT_PREFIX + monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(player), mp: playerMaxMp(player) } }, { seed });
   },
 
-  "warzone/huntKill"(state, { monsterId }) {
+  // Avı sunucuda baştan oynatır (bkz. game/fight.js, `battle/settle` ile aynı düzen): kazanma/ölme/geri çekilme,
+  // ödül, aşınma ve harcanan potlar sunucunun hesabıdır.
+  "warzone/huntSettle"(state, { monsterId, actions }) {
     const { player } = state;
     const template = huntTemplate(monsterId);
     if (!template) return fail(state, "unknownMonster");
     const fight = player.fight;
     if (!player.warzone) return fail(state, "notEntered");
-    if (!fight || fight.monsterId !== HUNT_PREFIX + monsterId) return fail(state, "noFight");
-    if (Date.now() - fight.startedAt < MIN_FIGHT_MS) return fail(state, "tooFast");
+    if (!fight || fight.monsterId !== HUNT_PREFIX + monsterId || !Number.isInteger(fight.seed)) return fail(state, "noFight");
     const cfg = getWarzoneHuntConfig();
-    const reward = grantMonsterReward({ ...player, fight: null }, template, CRIMSON_MAP, { goldMult: cfg.goldMult, dropMult: cfg.dropMult });
-    return done({ ...state, player: reward.player }, { drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp });
+    const monster = buildHuntMonster(template, cfg.powerMult);
+    const replay = replayFight(player, monster, CRIMSON_MAP.levelMax, fight.seed, actions);
+    if (replay.error) return fail(state, "invalidLog", { detail: replay.error });
+    if (Date.now() - fight.startedAt < replay.fight.turn * MIN_TURN_MS - 1500) return fail(state, "tooFast");
+
+    const after = applyFightAftermath({ ...player, fight: null }, replay.fight);
+    const outcome = replay.fight.ended || "retreat";
+    if (outcome === "lose") {
+      const penalty = applyDeathPenalty(clearFight(after));
+      return done({ ...state, player: penalty.player }, { outcome, xpLost: penalty.xpLost });
+    }
+    if (outcome === "retreat") return done({ ...state, player: after }, { outcome });
+    const reward = grantMonsterReward(after, template, CRIMSON_MAP, { goldMult: cfg.goldMult, dropMult: cfg.dropMult });
+    return done({ ...state, player: reward.player }, { outcome, drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp });
   },
 };

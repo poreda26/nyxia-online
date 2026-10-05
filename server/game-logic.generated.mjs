@@ -24472,6 +24472,21 @@ function replayFight(player, monster, levelCap, seed, actions) {
   }
   return { fight };
 }
+function maxActionDamage(player, monsterDef) {
+  const cls = CLASSES[player.class];
+  if (!cls) return 0;
+  const base = cls.atk + totalStats(player).atk * 0.9;
+  const known = classSkills(player.class).filter((s) => (player.skills?.known || []).includes(s.id));
+  const buff = known.filter((s) => s.effect.type === "buffAtk").reduce((m, s) => Math.max(m, s.effect.mult || 1), 1);
+  let best = mitigate(base * 1.8 * buff, monsterDef, MONSTER_DEF_K);
+  let dot = 0;
+  for (const skill of known) {
+    const e = skill.effect;
+    if (e.type === "damage" || e.type === "execute") best = Math.max(best, mitigate(base * (e.mult || 1) * buff, monsterDef, MONSTER_DEF_K));
+    else if (e.type === "dot") dot = Math.max(dot, mitigate(base * (e.mult || 1) * buff, monsterDef, MONSTER_DEF_K));
+  }
+  return Math.ceil((best + dot) * (1 + 1 / 13) * 1.1) + 5;
+}
 
 // src/game/battle.js
 init_define_import_meta_env();
@@ -24940,7 +24955,6 @@ function usePotion(player, potionType, tier) {
 }
 
 // src/game/battle.js
-var MIN_FIGHT_MS = 700;
 var MAX_WEAR_PER_REPORT = 1500;
 var fail = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
 var done = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
@@ -24996,6 +25010,15 @@ function applyWear(player, wear) {
   if (armor) next = damageEquippedDurability(next, ARMOR_SLOTS, armor);
   return next;
 }
+function applyFightAftermath(player, fight) {
+  let next = applyWear(player, fight.wear);
+  for (const kind of ["hp", "mp"]) {
+    for (const [tier, count] of Object.entries(fight.used[kind])) {
+      for (let n = 0; n < count; n++) next = usePotion(next, kind, Number(tier)).player;
+    }
+  }
+  return next;
+}
 var clearFight = (player) => player.fight || player.dungeonRun ? { ...player, fight: null, dungeonRun: null } : player;
 var battleReducers = {
   "battle/start"(state, { monsterId }) {
@@ -25020,12 +25043,7 @@ var battleReducers = {
     if (elapsed < replay.fight.turn * MIN_TURN_MS - 1500) return fail(state, "tooFast");
     const denied = checkAccess(state.player, target);
     if (denied) return fail(state, denied);
-    let player = applyWear({ ...state.player, fight: null }, replay.fight.wear);
-    for (const kind of ["hp", "mp"]) {
-      for (const [tier, count] of Object.entries(replay.fight.used[kind])) {
-        for (let n = 0; n < count; n++) player = usePotion(player, kind, Number(tier)).player;
-      }
-    }
+    let player = applyFightAftermath({ ...state.player, fight: null }, replay.fight);
     const outcome = replay.fight.ended || "retreat";
     if (outcome === "lose") {
       const penalty = applyDeathPenalty(clearFight(player));
@@ -25092,6 +25110,13 @@ var battleReducers = {
     return done({ ...state, player });
   }
 };
+
+// src/utils/warzoneCombat.js
+init_define_import_meta_env();
+function buildHuntMonster(template, powerMult) {
+  const hp = Math.max(1, Math.round(template.hp * powerMult * 0.7));
+  return { ...template, hp, maxHp: hp, atk: Math.max(1, Math.round(template.atk * powerMult * 0.55)), def: Math.max(0, Math.round(template.def * powerMult * 0.7)) };
+}
 
 // src/game/actions.js
 init_define_import_meta_env();
@@ -25166,19 +25191,32 @@ var warzoneReducers = {
     if (!player.warzone) return fail2(state, "notEntered");
     if (!huntTemplate(monsterId)) return fail2(state, "unknownMonster");
     if (!player.huntSearch || Date.now() - player.huntSearch.startedAt < MIN_HUNT_SEARCH_MS) return fail2(state, "searchTooShort");
-    return done2({ ...state, player: { ...player, huntSearch: null, fight: { monsterId: HUNT_PREFIX + monsterId, startedAt: Date.now() }, hp: playerMaxHp(player), mp: playerMaxMp(player) } });
+    const seed = Math.floor(Math.random() * 4294967296) >>> 0 || 1;
+    return done2({ ...state, player: { ...player, huntSearch: null, fight: { monsterId: HUNT_PREFIX + monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(player), mp: playerMaxMp(player) } }, { seed });
   },
-  "warzone/huntKill"(state, { monsterId }) {
+  // Avı sunucuda baştan oynatır (bkz. game/fight.js, `battle/settle` ile aynı düzen): kazanma/ölme/geri çekilme,
+  // ödül, aşınma ve harcanan potlar sunucunun hesabıdır.
+  "warzone/huntSettle"(state, { monsterId, actions }) {
     const { player } = state;
     const template = huntTemplate(monsterId);
     if (!template) return fail2(state, "unknownMonster");
     const fight = player.fight;
     if (!player.warzone) return fail2(state, "notEntered");
-    if (!fight || fight.monsterId !== HUNT_PREFIX + monsterId) return fail2(state, "noFight");
-    if (Date.now() - fight.startedAt < MIN_FIGHT_MS) return fail2(state, "tooFast");
+    if (!fight || fight.monsterId !== HUNT_PREFIX + monsterId || !Number.isInteger(fight.seed)) return fail2(state, "noFight");
     const cfg = getWarzoneHuntConfig();
-    const reward = grantMonsterReward({ ...player, fight: null }, template, CRIMSON_MAP, { goldMult: cfg.goldMult, dropMult: cfg.dropMult });
-    return done2({ ...state, player: reward.player }, { drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp });
+    const monster = buildHuntMonster(template, cfg.powerMult);
+    const replay = replayFight(player, monster, CRIMSON_MAP.levelMax, fight.seed, actions);
+    if (replay.error) return fail2(state, "invalidLog", { detail: replay.error });
+    if (Date.now() - fight.startedAt < replay.fight.turn * MIN_TURN_MS - 1500) return fail2(state, "tooFast");
+    const after = applyFightAftermath({ ...player, fight: null }, replay.fight);
+    const outcome = replay.fight.ended || "retreat";
+    if (outcome === "lose") {
+      const penalty = applyDeathPenalty(clearFight(after));
+      return done2({ ...state, player: penalty.player }, { outcome, xpLost: penalty.xpLost });
+    }
+    if (outcome === "retreat") return done2({ ...state, player: after }, { outcome });
+    const reward = grantMonsterReward(after, template, CRIMSON_MAP, { goldMult: cfg.goldMult, dropMult: cfg.dropMult });
+    return done2({ ...state, player: reward.player }, { outcome, drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp });
   }
 };
 
@@ -26599,15 +26637,19 @@ function newCharacterEconomy(cls, race, nickname) {
 }
 export {
   ACTION_TYPES,
+  MAPS,
   MIN_TURN_MS,
   POTION_COOLDOWN_TURNS,
   SERVER_OWNED_FIELDS,
   applyAction,
   applyLiveDropConfig,
   bestPotionTier,
+  buildHuntMonster,
   checkAction,
   createCharacter,
   createFight,
+  getWarzoneHuntConfig,
+  maxActionDamage,
   newCharacterEconomy,
   reducers,
   replayFight,
