@@ -18,7 +18,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, createHash, scrypt as derive, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
-import { resolve, extname, join } from 'node:path';
+import { resolve, extname, join, sep } from 'node:path';
 // Faz 4 — bu iki dosya kasıtlı olarak saf JS (tarayıcıya/React'e bağımlı
 // değil, bkz. kendi dosyalarındaki importlar): boss listesini ve zamanlama
 // mantığını istemciyle AYNI kaynaktan okumak için doğrudan buradan import
@@ -93,9 +93,21 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css
 // çerez SameSite=Strict cross-site sorunlarına hiç takılmaz. Bilinmeyen
 // yollar index.html'e düşer (SPA); gerçek dosya isteği path traversal'a
 // karşı staticDir dışına çıkamaz (resolve+startsWith kontrolü).
+// Web push abonelik adresi yalnızca tarayıcı üreticilerinin bilinen push servislerine işaret edebilir. Aksi halde
+// bir kullanıcı sunucuyu keyfi (örn. iç ağdaki) bir adrese istek atmaya yönlendirebilirdi (SSRF).
+const PUSH_HOST_SUFFIXES = ['fcm.googleapis.com', 'android.googleapis.com', 'push.services.mozilla.com', 'push.apple.com', 'notify.windows.com', 'push.microsoft.com'];
+export function isPushEndpointAllowed(endpoint) {
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return false;
+    return PUSH_HOST_SUFFIXES.some((suffix) => url.hostname === suffix || url.hostname.endsWith('.' + suffix));
+  } catch { return false; }
+}
+
 async function serveStatic(res, staticDir, reqPath) {
   const safePath = resolve(join(staticDir, decodeURIComponent(reqPath)));
-  const target = safePath.startsWith(resolve(staticDir)) ? safePath : staticDir;
+  const root = resolve(staticDir);
+  const target = safePath === root || safePath.startsWith(root + sep) ? safePath : staticDir;
   for (const candidate of [target, join(staticDir, 'index.html')]) {
     try {
       const body = await readFile(candidate);
@@ -135,6 +147,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS boss_fights(boss_id TEXT NOT NULL, spawn_at INTEGER NOT NULL, hp INTEGER NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(boss_id,spawn_at));
     CREATE TABLE IF NOT EXISTS boss_contributions(boss_id TEXT NOT NULL, spawn_at INTEGER NOT NULL, account INTEGER NOT NULL REFERENCES accounts(id), damage INTEGER NOT NULL, PRIMARY KEY(boss_id,spawn_at,account));
     CREATE TABLE IF NOT EXISTS duel_pending(account INTEGER PRIMARY KEY REFERENCES accounts(id), opponent_account INTEGER NOT NULL, opponent TEXT NOT NULL, seed INTEGER NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS account_flags(account INTEGER NOT NULL REFERENCES accounts(id), flag TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY(account,flag));
     CREATE TABLE IF NOT EXISTS pending_grants(id INTEGER PRIMARY KEY AUTOINCREMENT, account INTEGER NOT NULL REFERENCES accounts(id), character_key TEXT NOT NULL, kind TEXT NOT NULL, grant_key TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS boss_loot_claims(id INTEGER PRIMARY KEY AUTOINCREMENT, account INTEGER NOT NULL REFERENCES accounts(id), boss_id TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS duel_history(id INTEGER PRIMARY KEY AUTOINCREMENT, challenger INTEGER NOT NULL REFERENCES accounts(id), opponent INTEGER NOT NULL REFERENCES accounts(id), winner TEXT NOT NULL, created_at INTEGER NOT NULL);
@@ -194,6 +207,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     };
   };
   const rateLimit = makeRateLimiter(12);
+  // Hesap adı başına giriş denemesi (dağıtık şifre tahminine karşı) ve IP başına kayıt (toplu hesap açmaya karşı).
+  const loginNameLimit = makeRateLimiter(10);
+  const registerLimit = makeRateLimiter(6);
   // Hesap başına, IP'den bağımsız (Caddy arkasında birçok oyuncu aynı IP'yi
   // paylaşabilir) — spam önleme, gerçek yetkilendirme değil.
   // Additive migrations preserve existing messages and memberships.
@@ -455,6 +471,18 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           },
         };
       },
+      // Irk/meslek parşömeni: klan üyeliği sunucudaki üyelik kaydından gelir (yedekteki `clan` alanı istemci yansımasıdır).
+      'scroll/race': ({ account, characterKey, payload }) => ({ payload: { ...payload, inClan: !!db.prepare('SELECT 1 FROM clan_members WHERE account_id=? AND character_key=?').get(account, characterKey) } }),
+      'scroll/job': ({ account, characterKey, payload }) => ({ payload: { ...payload, inClan: !!db.prepare('SELECT 1 FROM clan_members WHERE account_id=? AND character_key=?').get(account, characterKey) } }),
+      // Rehber hediyesi ve altın takviyesi hesap başına bir kez (karakter silip yeniden oluşturarak tekrar alınamaz).
+      'tutorial/gift': ({ account }) => {
+        const done = db.prepare("SELECT 1 FROM account_flags WHERE account=? AND flag='tutorialGift'").get(account);
+        return { payload: { allowed: !done }, after: () => db.prepare("INSERT OR IGNORE INTO account_flags(account,flag,created_at) VALUES(?,'tutorialGift',?)").run(account, Date.now()) };
+      },
+      'tutorial/topUp': ({ account }) => {
+        const done = db.prepare("SELECT 1 FROM account_flags WHERE account=? AND flag='tutorialTopUp'").get(account);
+        return { payload: { allowed: !done }, after: (result) => { if (!done && result.ok) db.prepare("INSERT OR IGNORE INTO account_flags(account,flag,created_at) VALUES(?,'tutorialTopUp',?)").run(account, Date.now()); } };
+      },
       // Çark: ödül, sunucunun çevirme sırasında seçtiği bekleyen kayıttır (premium ödüller ayrı yoldan).
       'wheel/claimItem': ({ account }) => {
         const pending = wheel.pendingPrize(account);
@@ -596,6 +624,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         ['DELETE FROM boss_contributions WHERE account=?', [id]],
         ['DELETE FROM boss_loot_claims WHERE account=?', [id]],
         ['DELETE FROM pending_grants WHERE account=?', [id]],
+        ['DELETE FROM account_flags WHERE account=?', [id]],
         ['DELETE FROM duel_pending WHERE account=?', [id]],
         ['DELETE FROM duel_history WHERE challenger=? OR opponent=?', [id, id]],
         ['DELETE FROM push_subscriptions WHERE account_id=?', [id]],
@@ -656,6 +685,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (!/^[a-z0-9_]{3,24}$/.test(name) || typeof body?.password !== 'string' || body.password.length < 12 || body.password.length > 128) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
         let account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         if (path === '/api/register') {
+          registerLimit(clientAddress(req));
           if (containsProfanityLoose(name)) throw fail(400, 'NAME_NOT_ALLOWED');
           const salt = randomBytes(16).toString('hex');
           const password = (await scrypt(body.password, salt, 64)).toString('hex');
@@ -663,6 +693,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           catch (error) { if (error.code?.startsWith('ERR_SQLITE') && db.prepare('SELECT id FROM accounts WHERE name=?').get(name)) throw fail(409, 'ACCOUNT_UNAVAILABLE'); throw error; }
           account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         } else {
+          loginNameLimit(`login:${name}`);
           const candidate = await scrypt(body.password, account?.salt || 'invalid-account-salt', 64);
           if (!account || !timingSafeEqual(candidate, Buffer.from(account.password, 'hex'))) throw fail(401, 'INVALID_CREDENTIALS');
         }
@@ -1734,6 +1765,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const p256dh = typeof body?.keys?.p256dh === 'string' ? body.keys.p256dh : '';
         const auth = typeof body?.keys?.auth === 'string' ? body.keys.auth : '';
         if (!endpoint || !p256dh || !auth) throw fail(400, 'INVALID_SUBSCRIPTION');
+        if (!isPushEndpointAllowed(endpoint)) throw fail(400, 'INVALID_SUBSCRIPTION');
         db.prepare(`INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at) VALUES(?,?,?,?,?)
           ON CONFLICT(account_id,endpoint) DO UPDATE SET p256dh=excluded.p256dh, auth=excluded.auth`)
           .run(account.id, endpoint, p256dh, auth, Date.now());

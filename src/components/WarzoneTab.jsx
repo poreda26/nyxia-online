@@ -267,6 +267,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
         if (actRef.current.isServer()) actRef.current("duel/concede");
         else setPlayer((p) => penalizeNationalPoint(p));
       }
+      const hunting = wzRef.current?.hunt;
+      if (hunting?.fight && !hunting.fight.ended) actRef.current("warzone/huntSettle", { monsterId: hunting.baseMonster.id, actions: huntActionsRef.current.slice() });
       actRef.current("warzone/leave");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -671,7 +673,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
   const abandonHunt = () => {
     const hunt = wz.hunt;
-    if (hunt && huntActionsRef.current.length > 0) act("warzone/huntSettle", { monsterId: hunt.baseMonster.id, actions: huntActionsRef.current.slice() });
+    if (hunt?.fight && !hunt.fight.ended) act("warzone/huntSettle", { monsterId: hunt.baseMonster.id, actions: huntActionsRef.current.slice() });
     huntActionsRef.current = [];
     setWz((prev) => ({ ...prev, hunt: null }));
   };

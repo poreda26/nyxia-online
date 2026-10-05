@@ -53,24 +53,25 @@ export const characterReducers = {
   },
 
   // Meslek parşömeni: üstte eşya olmamalı, klanda olunmamalı; beceriler yeni sınıfa göre sıfırlanır.
-  "scroll/job"(state, { itemId, newClass }) {
+  "scroll/job"(state, { itemId, newClass, inClan }) {
     const { player } = state;
     const item = player.inventory.find((i) => i.id === itemId && i.kind === "jobScroll");
     if (!item) return fail(state, "itemNotFound");
     if (typeof newClass !== "string" || !Object.hasOwn(CLASSES, newClass)) return fail(state, "invalidClass");
-    const check = canChangeJob(player);
+    // Klan üyeliği sunucudan gelir (oyuncunun yedeğindeki `clan` alanı istemci yansımasıdır, güvenilmez).
+    const check = canChangeJob({ ...player, clan: inClan === undefined ? player.clan : inClan ? { member: true } : null });
     if (!check.ok) return fail(state, check.reason);
     const inventory = (item.count || 1) <= 1 ? player.inventory.filter((i) => i.id !== itemId) : player.inventory.map((i) => (i.id === itemId ? { ...i, count: i.count - 1 } : i));
     return done({ ...state, player: learnFreeSkills(changeJob({ ...player, inventory }, newClass)) });
   },
 
   // Irk hesap genelindedir: sunucu, hesaptaki bütün karakterlerin ırkını aynı işlemde günceller (`setRace`).
-  "scroll/race"(state, { itemId, race }) {
+  "scroll/race"(state, { itemId, race, inClan }) {
     const { player } = state;
     const item = player.inventory.find((i) => i.id === itemId && i.kind === "raceScroll");
     if (!item) return fail(state, "itemNotFound");
     if (typeof race !== "string" || !Object.hasOwn(RACES, race)) return fail(state, "invalidRace");
-    if (player.clan) return fail(state, "clanBlocksRaceChange");
+    if (inClan === undefined ? player.clan : inClan) return fail(state, "clanBlocksRaceChange");
     const inventory = (item.count || 1) <= 1 ? player.inventory.filter((i) => i.id !== itemId) : player.inventory.map((i) => (i.id === itemId ? { ...i, count: i.count - 1 } : i));
     return done({ ...state, player: { ...player, inventory, race } }, { setRace: race });
   },

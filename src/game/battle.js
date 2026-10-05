@@ -90,17 +90,42 @@ export function applyFightAftermath(player, fight) {
   return next;
 }
 
+// Terk edilen savaş: bir savaş başlamış (sunucu tohumu vermiş) ama sonucu bildirilmemişken yenisi başlarsa, öncekinin
+// kazanılacağını önceden hesaplayıp yalnızca kazanacağı savaşları bitirmek mümkün olmasın diye ölüm cezası uygulanır.
+// Dürüst istemci her zaman sonucu (geri çekilme dahil) bildirir; yalnızca uygulama savaş ortasında kapanırsa ceza yer.
+export const ABANDON_GRACE_MS = 1500;
+const RETREAT_WINDOW_MS = 60000;
+const RETREAT_MAX = 6; // pencere içinde 2 turdan kısa bu kadar geri çekilme: tohum seçme denemesi sayılır
+
+export function startGate(player, now = Date.now()) {
+  const g = player.fightGuard;
+  if (g && g.n >= RETREAT_MAX && now - g.at < RETREAT_WINDOW_MS) return { blocked: "tooManyRetreats" };
+  if (player.fight && now - player.fight.startedAt > ABANDON_GRACE_MS) {
+    const penalty = applyDeathPenalty(clearFight(player));
+    return { player: penalty.player, abandoned: true, xpLost: penalty.xpLost };
+  }
+  return { player, abandoned: false, xpLost: 0 };
+}
+
+export function noteRetreat(player, turns, now = Date.now()) {
+  if (turns > 2) return player;
+  const g = player.fightGuard && now - player.fightGuard.at < RETREAT_WINDOW_MS ? player.fightGuard : { at: now, n: 0 };
+  return { ...player, fightGuard: { at: g.at, n: g.n + 1 } };
+}
+
 export const clearFight = (player) => (player.fight || player.dungeonRun ? { ...player, fight: null, dungeonRun: null } : player);
 
 export const battleReducers = {
   "battle/start"(state, { monsterId }) {
     const target = resolveMonster(monsterId);
     if (!target) return fail(state, "unknownMonster");
-    const denied = checkAccess(state.player, target);
+    const gate = startGate(state.player);
+    if (gate.blocked) return fail(state, gate.blocked);
+    const denied = checkAccess(gate.player, target);
     if (denied) return fail(state, denied);
     const seed = (Math.floor(Math.random() * 4294967296) >>> 0) || 1;
-    const player = { ...state.player, fight: { monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(state.player), mp: playerMaxMp(state.player) };
-    return done({ ...state, player }, { seed });
+    const player = { ...gate.player, fight: { monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(gate.player), mp: playerMaxMp(gate.player) };
+    return done({ ...state, player }, { seed, abandoned: gate.abandoned, xpLost: gate.xpLost });
   },
 
   // Savaşı sunucuda baştan oynatır ve sonucu uygular. Sonuç: "win" (ödül), "lose" (ölüm cezası) ya da
@@ -126,7 +151,7 @@ export const battleReducers = {
       const penalty = applyDeathPenalty(clearFight(player));
       return done({ ...state, player: penalty.player }, { outcome, xpLost: penalty.xpLost });
     }
-    if (outcome === "retreat") return done({ ...state, player: clearFight(player) }, { outcome });
+    if (outcome === "retreat") return done({ ...state, player: noteRetreat(clearFight(player), replay.fight.turn) }, { outcome });
 
     const reward = grantMonsterReward(player, target.monster, target.map);
     if (reward.blockedReasonKey) return done({ ...state, player }, { outcome, blockedReasonKey: reward.blockedReasonKey, tone: reward.tone, drops: [], levelUp: null });

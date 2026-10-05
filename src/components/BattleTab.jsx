@@ -106,7 +106,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
   // Sekmeden çıkarken yarım kalan savaş geri çekilme olarak bildirilir (aşınma ve harcanan potlar sunucuda işlenir).
   useEffect(() => () => {
     const fight = fightRef.current;
-    if (fight && !fight.ended && fightMonsterRef.current && actionsRef.current.length > 0) {
+    if (fight && !fight.ended && fightMonsterRef.current) {
       actRef.current("battle/settle", { monsterId: fightMonsterRef.current, actions: actionsRef.current.slice() });
     }
     fightRef.current = null;
@@ -232,9 +232,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
         setMonster(null);
         setBattle(null);
         setDungeonRun(null);
-        pushToast(t("battle.actionFailed"), "warn");
+        pushToast(t(r.reason === "tooManyRetreats" ? "battle.tooManyRetreats" : "battle.actionFailed"), "warn");
         return;
       }
+      if (r.abandoned) pushToast(t("battle.abandonedPenalty", { xp: r.xpLost || 0 }), "warn");
       fightRef.current = createFight(latestPlayer.current, resolveMonster(m.id)?.monster || m, r.seed);
       attackLockRef.current = false;
     });
@@ -782,7 +783,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
             <button
               style={{ ...styles.ghostBtn, flex: 1 }}
               onClick={() => {
-                if (monster && actionsRef.current.length > 0) requestSettle(monster);
+                if (monster && fightRef.current && !fightRef.current.ended) requestSettle(monster);
                 endBattle();
                 // Zindan koşusu sürerken elle geri çekilmek koşuyu yarıda
                 // bırakır — kalan aşamalar/boss ödülü kaybedilir, giriş hakkı

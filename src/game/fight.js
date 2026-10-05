@@ -12,7 +12,7 @@ import { classSkills, computeSkillDamage, computeSkillHeal, refreshSkillBuff } f
 // Eylem: { type: "attack" } | { type: "skill", id } | { type: "potion", kind: "hp" | "mp" }.
 export const POTION_COOLDOWN_TURNS = 2;
 export const MIN_TURN_MS = 300; // gerçek oyunda bir eylemin en kısa süresi (kilit 320 ms); sunucu süre tabanı bunun ucuz bir alt sınırıdır
-export const MAX_FIGHT_ACTIONS = 4000;
+export const MAX_FIGHT_ACTIONS = 2000;
 
 const nextSeed = (seed) => (Math.imul(seed, 1664525) + 1013904223) >>> 0;
 

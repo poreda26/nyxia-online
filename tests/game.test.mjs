@@ -846,3 +846,106 @@ test('shared targets are fought on the server: the action decides the hit, no cl
     db.close();
   } finally { Date.now = realNow; await api.close(); }
 });
+
+test('abuse guards: abandoned fights cost a defeat, seed-shopping retreats are throttled, starter rewards are once per account, character creation is rate-limited, clan membership comes from the server', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const cookie = (await call('register', { name: 'abe', password })).cookie;
+    const first = { ...hero(), id: 'c1' };
+    first.level = 5;
+    first.xp = 40;
+    const put = async (chars) => {
+      const cur = (await call('backup', null, cookie)).data;
+      return call('backup', { revision: cur.revision || 0, data: { race: 'karus', characters: chars, bank: [[], []], bankGold: 0, diamonds: 0 } }, cookie, 'PUT');
+    };
+    assert.equal((await put([first, null, null])).status, 200);
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    const act = (type, payload = {}, key = 'c1') => call('game/act', { characterKey: key, type, payload }, cookie);
+    const state = async (i = 0) => (await call('backup', null, cookie)).data.data.characters[i];
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // Abandoning: a second start while the first fight was never settled counts as a defeat (xp lost).
+    assert.equal((await act('battle/start', { monsterId: 'sis_kurdu' })).data.result.ok, true);
+    await wait(1700);
+    const xp0 = (await state()).xp;
+    const again = await act('battle/start', { monsterId: 'sis_kurdu' });
+    assert.equal(again.data.result.abandoned, true);
+    assert.ok(again.data.result.xpLost > 0);
+    assert.ok((await state()).xp < xp0);
+    // A start right after a start (within a second and a half) is just a retry, no penalty.
+    const quick = await act('battle/start', { monsterId: 'sis_kurdu' });
+    assert.equal(quick.data.result.abandoned, false);
+
+    // Seed shopping: many instant retreats are throttled.
+    for (let i = 0; i < 6; i++) {
+      assert.equal((await act('battle/start', { monsterId: 'sis_kurdu' })).data.result.ok, true);
+      assert.equal((await act('battle/settle', { monsterId: 'sis_kurdu', actions: [] })).data.result.outcome, 'retreat');
+    }
+    assert.equal((await act('battle/start', { monsterId: 'sis_kurdu' })).data.result.reason, 'tooManyRetreats');
+
+    // Starter rewards are once per account: a recreated character gets no second gift or top-up.
+    const g1 = (await state()).gold;
+    assert.equal((await act('tutorial/gift')).data.result.ok, true);
+    assert.ok((await state()).gold > g1, 'the first character gets the gift');
+    const second = { ...hero(), id: 'c2' };
+    assert.equal((await put([null, second, null])).status, 200);
+    assert.equal((await state(1)).id, 'c2');
+    const g2 = (await state(1)).gold;
+    assert.equal((await act('tutorial/gift', {}, 'c2')).data.result.ok, true);
+    assert.equal((await state(1)).gold, g2, 'no second gift for the same account');
+    assert.equal((await state(1)).tutorialGift, true);
+
+    // Character creation: at most two new characters per day; the third is dropped from the save.
+    const third = { ...hero(), id: 'c3' };
+    assert.equal((await put([null, second, third])).status, 200);
+    assert.equal((await state(2)).id, 'c3');
+    const fourth = { ...hero(), id: 'c4' };
+    assert.equal((await put([fourth, second, third])).status, 200);
+    const afterLimit = (await call('backup', null, cookie)).data.data.characters;
+    assert.equal(afterLimit[0], null, 'the rate limit removed the extra character');
+
+    // Clan membership is read from the server, not from the (client-mirrored) clan field.
+    db.prepare('UPDATE wallets SET diamonds=5000').run();
+    const asChar = async (path, body, key) => {
+      const r = await fetch(`http://127.0.0.1:${api.server.address().port}/api/${path}`, { method: body ? 'POST' : 'GET', headers: { Origin: 'http://test.local', 'Content-Type': 'application/json', Cookie: cookie, 'X-Character-Key': key }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      return { status: r.status, data: await r.json().catch(() => ({})) };
+    };
+    assert.equal((await asChar('clan', { name: 'GuardClan' }, 'c2')).status, 200);
+    db.prepare("UPDATE backups SET data=json_set(data,'$.characters[1].inventory',json_insert(json_extract(data,'$.characters[1].inventory'),'$[#]',json('{\"id\":\"race-1\",\"kind\":\"raceScroll\",\"name\":\"Race\",\"count\":1,\"weight\":0.1}')))").run();
+    const raced = await act('scroll/race', { itemId: 'race-1', race: 'elmorad', inClan: false }, 'c2');
+    assert.equal(raced.data.result.reason, 'clanBlocksRaceChange', 'a forged inClan flag or an empty clan field cannot bypass the server membership');
+    db.close();
+  } finally { await api.close(); }
+});
+
+test('hardening: push endpoints must be real push services, logins and registrations are throttled', async () => {
+  const { isPushEndpointAllowed } = await import('../server/app.mjs');
+  assert.equal(isPushEndpointAllowed('https://fcm.googleapis.com/fcm/send/abc'), true);
+  assert.equal(isPushEndpointAllowed('https://updates.push.services.mozilla.com/wpush/v2/x'), true);
+  assert.equal(isPushEndpointAllowed('https://web.push.apple.com/abc'), true);
+  assert.equal(isPushEndpointAllowed('http://fcm.googleapis.com/x'), false);
+  assert.equal(isPushEndpointAllowed('https://127.0.0.1/hook'), false);
+  assert.equal(isPushEndpointAllowed('https://localhost:3000/api/x'), false);
+  assert.equal(isPushEndpointAllowed('https://fcm.googleapis.com.evil.example/x'), false);
+  assert.equal(isPushEndpointAllowed('https://user:pw@fcm.googleapis.com/x'), false);
+  assert.equal(isPushEndpointAllowed('not a url'), false);
+
+  const { api, call } = await boot();
+  try {
+    let lastRegister;
+    for (let i = 0; i < 7; i++) lastRegister = await call('register', { name: `bot${i}`, password });
+    assert.equal(lastRegister.status, 429, 'bulk registration from one address is throttled');
+  } finally { await api.close(); }
+
+  const second = await boot();
+  try {
+    await second.call('register', { name: 'victim', password });
+    let blocked = null;
+    for (let i = 0; i < 12; i++) {
+      const r = await second.call('login', { name: 'victim', password: 'wrong-password-123456' });
+      if (r.status === 429) { blocked = i; break; }
+    }
+    assert.ok(blocked !== null && blocked <= 11, 'repeated wrong passwords for one account are throttled');
+  } finally { await second.api.close(); }
+});

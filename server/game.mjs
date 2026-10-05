@@ -15,6 +15,7 @@ Math.random = () => randomInt(0, SERVER_RANDOM_RANGE) / (SERVER_RANDOM_RANGE + 1
 export function createGame(db, { fail, logic, keyOf, all = false, drops = () => null, hooks = {} }) {
   db.exec('CREATE TABLE IF NOT EXISTS economy_accounts(account INTEGER PRIMARY KEY REFERENCES accounts(id), enabled_at INTEGER NOT NULL)');
   const available = !!logic;
+  db.exec('CREATE TABLE IF NOT EXISTS character_creations(account INTEGER NOT NULL REFERENCES accounts(id), character_key TEXT NOT NULL, created_at INTEGER NOT NULL)');
   db.exec('CREATE TABLE IF NOT EXISTS shared_fighters(account INTEGER NOT NULL REFERENCES accounts(id), kind TEXT NOT NULL, ref TEXT NOT NULL, state TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY(account, kind))');
 
   const enabled = (account) => available && (all || !!db.prepare('SELECT 1 FROM economy_accounts WHERE account=?').get(account));
@@ -128,8 +129,18 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
     const storedChars = new Map();
     (stored?.characters || []).forEach((c, i) => { if (c) storedChars.set(keyOf(c, i), c); });
     const storedRace = stored?.race ?? (stored?.characters || []).find(Boolean)?.race ?? null;
+    // Yeni karakter oluşturma sınırı: karakter silip yeniden oluşturarak başlangıç ödüllerini tekrar toplamak (altın, rehber
+    // hediyesi, günlük giriş) engellensin diye 24 saatte en fazla 2 yeni karakter kabul edilir; fazlası yedekten çıkarılır.
+    const now = Date.now();
+    let recent = db.prepare('SELECT COUNT(*) AS n FROM character_creations WHERE account=? AND created_at>?').get(account, now - 24 * 3600 * 1000).n;
     (Array.isArray(data.characters) ? data.characters : []).forEach((c, i) => {
       if (!c || typeof c !== 'object') return;
+      if (!storedChars.has(keyOf(c, i))) {
+        // Sunucuda kaydı olmayan (yeni) karakter: ilk kez görülüyorsa kayda geçer; sınır aşıldıysa reddedilir.
+        if (recent >= 2) { data.characters[i] = null; return; }
+        db.prepare('INSERT INTO character_creations(account,character_key,created_at) VALUES(?,?,?)').run(account, keyOf(c, i), now);
+        recent += 1;
+      }
       const known = storedChars.get(keyOf(c, i)) || logic.createCharacter(c.class, storedRace || c.race, c.nickname);
       for (const field of logic.SERVER_OWNED_FIELDS) if (known[field] !== undefined) c[field] = known[field]; else delete c[field];
       if (storedRace) c.race = storedRace;

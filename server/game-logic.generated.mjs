@@ -6064,7 +6064,10 @@ var SERVER_OWNED_FIELDS = [
   "nationalPoint",
   "weeklyPoint",
   "weekId",
-  "pendingWeeklyClaim"
+  "pendingWeeklyClaim",
+  // savaş kötüye kullanım korumaları
+  "fightGuard",
+  "tutorialTopUp"
 ];
 
 // src/game/fight.js
@@ -6337,7 +6340,7 @@ function refreshSkillBuff(buffs, effect) {
 // src/game/fight.js
 var POTION_COOLDOWN_TURNS = 2;
 var MIN_TURN_MS = 300;
-var MAX_FIGHT_ACTIONS = 4e3;
+var MAX_FIGHT_ACTIONS = 2e3;
 var nextSeed = (seed) => Math.imul(seed, 1664525) + 1013904223 >>> 0;
 function stockOf(player) {
   const stock = { hp: {}, mp: {} };
@@ -7051,16 +7054,35 @@ function applyFightAftermath(player, fight) {
   }
   return next;
 }
+var ABANDON_GRACE_MS = 1500;
+var RETREAT_WINDOW_MS = 6e4;
+var RETREAT_MAX = 6;
+function startGate(player, now = Date.now()) {
+  const g = player.fightGuard;
+  if (g && g.n >= RETREAT_MAX && now - g.at < RETREAT_WINDOW_MS) return { blocked: "tooManyRetreats" };
+  if (player.fight && now - player.fight.startedAt > ABANDON_GRACE_MS) {
+    const penalty = applyDeathPenalty(clearFight(player));
+    return { player: penalty.player, abandoned: true, xpLost: penalty.xpLost };
+  }
+  return { player, abandoned: false, xpLost: 0 };
+}
+function noteRetreat(player, turns, now = Date.now()) {
+  if (turns > 2) return player;
+  const g = player.fightGuard && now - player.fightGuard.at < RETREAT_WINDOW_MS ? player.fightGuard : { at: now, n: 0 };
+  return { ...player, fightGuard: { at: g.at, n: g.n + 1 } };
+}
 var clearFight = (player) => player.fight || player.dungeonRun ? { ...player, fight: null, dungeonRun: null } : player;
 var battleReducers = {
   "battle/start"(state, { monsterId }) {
     const target = resolveMonster(monsterId);
     if (!target) return fail(state, "unknownMonster");
-    const denied = checkAccess(state.player, target);
+    const gate = startGate(state.player);
+    if (gate.blocked) return fail(state, gate.blocked);
+    const denied = checkAccess(gate.player, target);
     if (denied) return fail(state, denied);
     const seed = Math.floor(Math.random() * 4294967296) >>> 0 || 1;
-    const player = { ...state.player, fight: { monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(state.player), mp: playerMaxMp(state.player) };
-    return done({ ...state, player }, { seed });
+    const player = { ...gate.player, fight: { monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(gate.player), mp: playerMaxMp(gate.player) };
+    return done({ ...state, player }, { seed, abandoned: gate.abandoned, xpLost: gate.xpLost });
   },
   // Savaşı sunucuda baştan oynatır ve sonucu uygular. Sonuç: "win" (ödül), "lose" (ölüm cezası) ya da
   // "retreat" (bitmemiş savaş: yalnızca aşınma ve harcanan potlar). Savaş bir kez ödeme yapar.
@@ -7081,7 +7103,7 @@ var battleReducers = {
       const penalty = applyDeathPenalty(clearFight(player));
       return done({ ...state, player: penalty.player }, { outcome, xpLost: penalty.xpLost });
     }
-    if (outcome === "retreat") return done({ ...state, player: clearFight(player) }, { outcome });
+    if (outcome === "retreat") return done({ ...state, player: noteRetreat(clearFight(player), replay.fight.turn) }, { outcome });
     const reward = grantMonsterReward(player, target.monster, target.map);
     if (reward.blockedReasonKey) return done({ ...state, player }, { outcome, blockedReasonKey: reward.blockedReasonKey, tone: reward.tone, drops: [], levelUp: null });
     player = reward.player;
@@ -7223,8 +7245,11 @@ var warzoneReducers = {
     if (!player.warzone) return fail2(state, "notEntered");
     if (!huntTemplate(monsterId)) return fail2(state, "unknownMonster");
     if (!player.huntSearch || Date.now() - player.huntSearch.startedAt < MIN_HUNT_SEARCH_MS) return fail2(state, "searchTooShort");
+    const gate = startGate(player);
+    if (gate.blocked) return fail2(state, gate.blocked);
     const seed = Math.floor(Math.random() * 4294967296) >>> 0 || 1;
-    return done2({ ...state, player: { ...player, huntSearch: null, fight: { monsterId: HUNT_PREFIX + monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(player), mp: playerMaxMp(player) } }, { seed });
+    const base = gate.player;
+    return done2({ ...state, player: { ...base, huntSearch: null, fight: { monsterId: HUNT_PREFIX + monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(base), mp: playerMaxMp(base) } }, { seed, abandoned: gate.abandoned, xpLost: gate.xpLost });
   },
   // Avı sunucuda baştan oynatır (bkz. game/fight.js, `battle/settle` ile aynı düzen): kazanma/ölme/geri çekilme,
   // ödül, aşınma ve harcanan potlar sunucunun hesabıdır.
@@ -7246,7 +7271,7 @@ var warzoneReducers = {
       const penalty = applyDeathPenalty(clearFight(after));
       return done2({ ...state, player: penalty.player }, { outcome, xpLost: penalty.xpLost });
     }
-    if (outcome === "retreat") return done2({ ...state, player: after }, { outcome });
+    if (outcome === "retreat") return done2({ ...state, player: noteRetreat(after, replay.fight.turn) }, { outcome });
     const reward = grantMonsterReward(after, template, CRIMSON_MAP, { goldMult: cfg.goldMult, dropMult: cfg.dropMult });
     return done2({ ...state, player: reward.player }, { outcome, drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp });
   }
@@ -7600,14 +7625,18 @@ var progressReducers = {
     if (!r) return done3(state, { credited: false });
     return done3({ ...state, player: r.player }, { credited: true, xpGain: r.xpGain, newTicks: r.newTicks, levelsGained: r.levelsGained });
   },
-  "tutorial/gift"(state) {
+  // Rehber hediyesi hesap başına bir kez verilir (sunucu kancası `allowed` der): karakter silip yeniden oluşturarak
+  // tekrar tekrar alınamaz. Kanca yoksa (yerel yol) karakter başına bir kez.
+  "tutorial/gift"(state, { allowed = true }) {
+    if (!allowed) return done3({ ...state, player: { ...state.player, tutorialGift: true } });
     return done3({ ...state, player: grantTutorialGift(state.player).player });
   },
   // Rehber, "parşömen al" adımında altın yetmezse takılmasın diye yalnızca rehber sürerken tamamlar.
-  "tutorial/topUp"(state) {
+  // Hesap başına ve karakter başına yalnızca bir kez.
+  "tutorial/topUp"(state, { allowed = true }) {
     const { player } = state;
-    if (player.tutorialSeen || player.gold >= TUTORIAL_SCROLL_PRICE) return done3(state);
-    return done3({ ...state, player: { ...player, gold: TUTORIAL_SCROLL_PRICE } });
+    if (!allowed || player.tutorialTopUp || player.gold >= TUTORIAL_SCROLL_PRICE) return done3(state);
+    return done3({ ...state, player: { ...player, gold: TUTORIAL_SCROLL_PRICE, tutorialTopUp: true } });
   }
 };
 
@@ -8112,23 +8141,23 @@ var characterReducers = {
     return done8({ ...state, player: setLoadoutSlot(player, slot, skillId) });
   },
   // Meslek parşömeni: üstte eşya olmamalı, klanda olunmamalı; beceriler yeni sınıfa göre sıfırlanır.
-  "scroll/job"(state, { itemId, newClass }) {
+  "scroll/job"(state, { itemId, newClass, inClan }) {
     const { player } = state;
     const item = player.inventory.find((i) => i.id === itemId && i.kind === "jobScroll");
     if (!item) return fail8(state, "itemNotFound");
     if (typeof newClass !== "string" || !Object.hasOwn(CLASSES, newClass)) return fail8(state, "invalidClass");
-    const check = canChangeJob(player);
+    const check = canChangeJob({ ...player, clan: inClan === void 0 ? player.clan : inClan ? { member: true } : null });
     if (!check.ok) return fail8(state, check.reason);
     const inventory = (item.count || 1) <= 1 ? player.inventory.filter((i) => i.id !== itemId) : player.inventory.map((i) => i.id === itemId ? { ...i, count: i.count - 1 } : i);
     return done8({ ...state, player: learnFreeSkills(changeJob({ ...player, inventory }, newClass)) });
   },
   // Irk hesap genelindedir: sunucu, hesaptaki bütün karakterlerin ırkını aynı işlemde günceller (`setRace`).
-  "scroll/race"(state, { itemId, race }) {
+  "scroll/race"(state, { itemId, race, inClan }) {
     const { player } = state;
     const item = player.inventory.find((i) => i.id === itemId && i.kind === "raceScroll");
     if (!item) return fail8(state, "itemNotFound");
     if (typeof race !== "string" || !Object.hasOwn(RACES, race)) return fail8(state, "invalidRace");
-    if (player.clan) return fail8(state, "clanBlocksRaceChange");
+    if (inClan === void 0 ? player.clan : inClan) return fail8(state, "clanBlocksRaceChange");
     const inventory = (item.count || 1) <= 1 ? player.inventory.filter((i) => i.id !== itemId) : player.inventory.map((i) => i.id === itemId ? { ...i, count: i.count - 1 } : i);
     return done8({ ...state, player: { ...player, inventory, race } }, { setRace: race });
   },

@@ -76,13 +76,17 @@ export const progressReducers = {
     return done({ ...state, player: r.player }, { credited: true, xpGain: r.xpGain, newTicks: r.newTicks, levelsGained: r.levelsGained });
   },
 
-  "tutorial/gift"(state) {
+  // Rehber hediyesi hesap başına bir kez verilir (sunucu kancası `allowed` der): karakter silip yeniden oluşturarak
+  // tekrar tekrar alınamaz. Kanca yoksa (yerel yol) karakter başına bir kez.
+  "tutorial/gift"(state, { allowed = true }) {
+    if (!allowed) return done({ ...state, player: { ...state.player, tutorialGift: true } });
     return done({ ...state, player: grantTutorialGift(state.player).player });
   },
   // Rehber, "parşömen al" adımında altın yetmezse takılmasın diye yalnızca rehber sürerken tamamlar.
-  "tutorial/topUp"(state) {
+  // Hesap başına ve karakter başına yalnızca bir kez.
+  "tutorial/topUp"(state, { allowed = true }) {
     const { player } = state;
-    if (player.tutorialSeen || player.gold >= TUTORIAL_SCROLL_PRICE) return done(state);
-    return done({ ...state, player: { ...player, gold: TUTORIAL_SCROLL_PRICE } });
+    if (!allowed || player.tutorialTopUp || player.gold >= TUTORIAL_SCROLL_PRICE) return done(state);
+    return done({ ...state, player: { ...player, gold: TUTORIAL_SCROLL_PRICE, tutorialTopUp: true } });
   },
 };

@@ -11,4 +11,6 @@ export const SERVER_OWNED_FIELDS = [
   "currentMapId", "mapBoss", "soloDungeon", "dungeonRun", "fight", "warzone", "huntSearch", "forge", "accForge", "activeBoosts", "eventExpBonus",
   // Savaş Alanı
   "nationalPoint", "weeklyPoint", "weekId", "pendingWeeklyClaim",
+  // savaş kötüye kullanım korumaları
+  "fightGuard", "tutorialTopUp",
 ];

@@ -8,7 +8,7 @@ import { addItemToInventory, makeScrollStack } from "../utils/inventory";
 import { premiumGoldMultiplier, premiumDropMultiplier } from "../utils/premium";
 import { playerMaxHp, playerMaxMp, clampGold } from "../utils/player";
 import { rand, uid } from "../utils/random";
-import { applyFightAftermath, clearFight } from "./battle";
+import { applyFightAftermath, clearFight, startGate, noteRetreat } from "./battle";
 import { replayFight, MIN_TURN_MS } from "./fight";
 import { buildHuntMonster } from "../utils/warzoneCombat";
 import { applyDeathPenalty } from "../utils/player";
@@ -96,8 +96,11 @@ export const warzoneReducers = {
     if (!player.warzone) return fail(state, "notEntered");
     if (!huntTemplate(monsterId)) return fail(state, "unknownMonster");
     if (!player.huntSearch || Date.now() - player.huntSearch.startedAt < MIN_HUNT_SEARCH_MS) return fail(state, "searchTooShort");
+    const gate = startGate(player);
+    if (gate.blocked) return fail(state, gate.blocked);
     const seed = (Math.floor(Math.random() * 4294967296) >>> 0) || 1;
-    return done({ ...state, player: { ...player, huntSearch: null, fight: { monsterId: HUNT_PREFIX + monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(player), mp: playerMaxMp(player) } }, { seed });
+    const base = gate.player;
+    return done({ ...state, player: { ...base, huntSearch: null, fight: { monsterId: HUNT_PREFIX + monsterId, startedAt: Date.now(), seed }, hp: playerMaxHp(base), mp: playerMaxMp(base) } }, { seed, abandoned: gate.abandoned, xpLost: gate.xpLost });
   },
 
   // Avı sunucuda baştan oynatır (bkz. game/fight.js, `battle/settle` ile aynı düzen): kazanma/ölme/geri çekilme,
@@ -121,7 +124,7 @@ export const warzoneReducers = {
       const penalty = applyDeathPenalty(clearFight(after));
       return done({ ...state, player: penalty.player }, { outcome, xpLost: penalty.xpLost });
     }
-    if (outcome === "retreat") return done({ ...state, player: after }, { outcome });
+    if (outcome === "retreat") return done({ ...state, player: noteRetreat(after, replay.fight.turn) }, { outcome });
     const reward = grantMonsterReward(after, template, CRIMSON_MAP, { goldMult: cfg.goldMult, dropMult: cfg.dropMult });
     return done({ ...state, player: reward.player }, { outcome, drops: reward.drops, tone: reward.tone, levelUp: reward.levelUp });
   },
