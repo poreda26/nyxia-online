@@ -97,6 +97,9 @@ export function weaponGeometry(appearance){
  }else if(atlasKey.startsWith('mage')){
   const index=Number(atlasKey.split('-')[1]),box=mageHeads[index]?.[col];
   if(box){const [x0,y0,x1,y1]=box;head=polygon([[x0,y0],[x1,y0],[x1,y1],[x0,y1]]);}
+  // The sun disk's left rays extend beyond the old rectangular selection.
+  // Follow their outline while keeping the nearby face/shoulder out of the glow.
+  if(index===7&&col===1)head=polygon([[244,0],[447,0],[447,213],[284,213],[264,155],[244,138]]);
   const dy=row?([0,-17,-18,0,-6,0,0,0][index]||0):0;
   const measured=mageStems[index]?.[col]||mageShafts[index]||mageShafts[0];
   const [start,end]=measured.map(([x,y])=>[x,y+dy]);
