@@ -3,6 +3,7 @@ import webpush from 'web-push';
 import { createAdmin } from './admin.mjs';
 import {validAvatarFrame} from '../src/data/avatarFrames.js';
 import {FIRST_PURCHASE_WEAPONS} from '../src/data/firstPurchaseWeapons.js';
+import {MARKET_DURATIONS_HOURS as MARKET_DURATIONS, MARKET_STALL_MAX_ITEMS as MARKET_MAX_ITEMS, MARKET_MAX_PRICE} from '../src/data/market.js';
 import {maskProfanity, containsProfanity, containsProfanityLoose} from '../src/data/profanity.js';
 import {createWheel} from './wheel.mjs';
 import {duelSnapshot} from './duel-snapshot.mjs';
@@ -82,9 +83,8 @@ function scheduledEventPreopenAt(event, now) {
 function istanbulDateKeyAt(now) {
   return new Date(now + ISTANBUL_UTC_OFFSET_MS).toISOString().slice(0, 10);
 }
-const MARKET_DURATIONS_HOURS = new Set([1, 3, 6, 12, 24]);
-const MARKET_STALL_MAX_ITEMS = 10;
-const MARKET_MAX_PRICE = 999999999;
+const MARKET_DURATIONS_HOURS = new Set(MARKET_DURATIONS);
+const MARKET_STALL_MAX_ITEMS = MARKET_MAX_ITEMS;
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
 
 // Derlenmiş oyunu (staticDir, ör. dist-server/) API ile AYNI origin'den
@@ -133,6 +133,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS market_stalls(account INTEGER PRIMARY KEY REFERENCES accounts(id), seller_name TEXT NOT NULL, items TEXT NOT NULL, listed_at INTEGER NOT NULL, duration_hours INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS boss_fights(boss_id TEXT NOT NULL, spawn_at INTEGER NOT NULL, hp INTEGER NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(boss_id,spawn_at));
     CREATE TABLE IF NOT EXISTS boss_contributions(boss_id TEXT NOT NULL, spawn_at INTEGER NOT NULL, account INTEGER NOT NULL REFERENCES accounts(id), damage INTEGER NOT NULL, PRIMARY KEY(boss_id,spawn_at,account));
+    CREATE TABLE IF NOT EXISTS pending_grants(id INTEGER PRIMARY KEY AUTOINCREMENT, account INTEGER NOT NULL REFERENCES accounts(id), character_key TEXT NOT NULL, kind TEXT NOT NULL, grant_key TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS boss_loot_claims(id INTEGER PRIMARY KEY AUTOINCREMENT, account INTEGER NOT NULL REFERENCES accounts(id), boss_id TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS duel_history(id INTEGER PRIMARY KEY AUTOINCREMENT, challenger INTEGER NOT NULL REFERENCES accounts(id), opponent INTEGER NOT NULL REFERENCES accounts(id), winner TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS friend_requests(id INTEGER PRIMARY KEY AUTOINCREMENT, from_account INTEGER NOT NULL REFERENCES accounts(id), to_account INTEGER NOT NULL REFERENCES accounts(id), created_at INTEGER NOT NULL, UNIQUE(from_account,to_account));
@@ -227,6 +228,33 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   };
   const wallet = createWallet(db, { fail });
   const entitlements = createEntitlements(db, { fail });
+  // Satıcıya ödeme: satıcının yedeğindeki depo altınına eklenir (satıcı çevrimdışı olabilir).
+  // Sunucu ekonomisinde depo altını zaten yalnızca sunucudaki değerden okunur.
+  function creditSellerBankGold(sellerId, amount) {
+    const sellerBackup = db.prepare('SELECT * FROM backups WHERE account=?').get(sellerId);
+    if (!sellerBackup) return;
+    const data = JSON.parse(sellerBackup.data);
+    data.bankGold = Math.min(2000000000, (data.bankGold || 0) + amount);
+    const revision = sellerBackup.revision + 1, now = Date.now(), json = JSON.stringify(data);
+    db.prepare('INSERT INTO backup_history VALUES(?,?,?,?)').run(sellerId, revision, json, now);
+    db.prepare('INSERT OR REPLACE INTO backups VALUES(?,?,?,?)').run(sellerId, revision, json, now);
+    db.prepare('DELETE FROM backup_history WHERE account=? AND revision<=?').run(sellerId, revision - 20);
+  }
+  // Klandan çıkarma satırları (isteğin ve sunucu eyleminin ortak parçası; çağıran işlem açar/kapatır).
+  function removeFromClan(membership, accountId, characterKey) {
+    db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE clan_id=? AND locked_by=? AND locked_character=?').run(membership.clan_id, accountId, characterKey);
+    db.prepare('DELETE FROM clan_members WHERE account_id=? AND character_key=?').run(accountId, characterKey);
+    if (membership.role === 'leader') {
+      const next = db.prepare("SELECT account_id,character_key FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'officer' THEN 0 ELSE 1 END, joined_at ASC LIMIT 1").get(membership.clan_id);
+      if (next) db.prepare("UPDATE clan_members SET role='leader' WHERE account_id=? AND character_key=?").run(next.account_id, next.character_key);
+      else {
+        db.prepare('DELETE FROM clan_invites WHERE clan_id=?').run(membership.clan_id);
+        db.prepare('DELETE FROM clan_dungeon_log WHERE clan_id=?').run(membership.clan_id);
+        db.prepare('DELETE FROM clan_dungeon_state WHERE clan_id=?').run(membership.clan_id);
+        db.prepare('DELETE FROM clans WHERE id=?').run(membership.clan_id);
+      }
+    }
+  }
   const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll, drops: () => admin.drops.get().data,
     hooks: {
       // Dünya Canavarı: hak, sunucudaki bekleyen kayıttır.
@@ -240,6 +268,96 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       'dailyLogin/claim': ({ account, characterKey, now }) => {
         const claim = wallet.dailyLoginInTransaction(account, characterKey, now);
         return { payload: { server: { streak: claim.streak, diamonds: claim.diamonds } } };
+      },
+      // Oyuncu pazarı: tezgah satırı (market_stalls) eşya/altın değişimiyle AYNI işlemde yazılır.
+      'market/openStall': ({ account, payload, now }) => {
+        const sellerName = typeof payload?.sellerName === 'string' ? payload.sellerName.trim().slice(0, 24) : '';
+        const durationHours = Number(payload?.durationHours);
+        if (!sellerName || !MARKET_DURATIONS_HOURS.has(durationHours)) return { fail: 'stallOpenFailed' };
+        const existing = db.prepare('SELECT * FROM market_stalls WHERE account=?').get(account);
+        if (existing) return { fail: stallActive(existing, now) ? 'stallAlreadyOpen' : 'stallExpiredMustClose' };
+        return {
+          payload: { durationHours },
+          after: () => db.prepare('INSERT INTO market_stalls(account,seller_name,items,listed_at,duration_hours) VALUES(?,?,?,?,?)').run(account, sellerName, '[]', now, durationHours),
+        };
+      },
+      'market/addItem': ({ account, payload, now }) => {
+        const row = db.prepare('SELECT * FROM market_stalls WHERE account=?').get(account);
+        if (!row || !stallActive(row, now)) return { fail: 'noOpenStall' };
+        if (JSON.parse(row.items).length >= MARKET_STALL_MAX_ITEMS) return { fail: 'stallFull' };
+        return {
+          payload: { itemId: payload?.itemId, price: Number(payload?.price), asChest: !!payload?.asChest },
+          after: (result) => {
+            const items = JSON.parse(row.items);
+            items.push({ id: randomBytes(8).toString('hex'), item: result.item, price: Number(payload.price) });
+            db.prepare('UPDATE market_stalls SET items=? WHERE account=?').run(JSON.stringify(items), account);
+          },
+        };
+      },
+      'market/buy': ({ account, payload, now }) => {
+        const sellerId = Number(payload?.sellerId);
+        const listingId = typeof payload?.listingId === 'string' ? payload.listingId : '';
+        if (!Number.isSafeInteger(sellerId) || !listingId) return { fail: 'marketItemGone' };
+        if (sellerId === account) return { fail: 'cannotBuyOwn' };
+        const stallRow = db.prepare('SELECT * FROM market_stalls WHERE account=?').get(sellerId);
+        if (!stallRow || !stallActive(stallRow, now)) return { fail: 'marketItemGone' };
+        const items = JSON.parse(stallRow.items);
+        const listing = items.find((entry) => entry.id === listingId);
+        if (!listing) return { fail: 'marketItemGone' };
+        return {
+          payload: { listing },
+          after: () => {
+            const remaining = items.filter((entry) => entry.id !== listingId);
+            if (remaining.length === 0) db.prepare('DELETE FROM market_stalls WHERE account=?').run(sellerId);
+            else db.prepare('UPDATE market_stalls SET items=? WHERE account=?').run(JSON.stringify(remaining), sellerId);
+            creditSellerBankGold(sellerId, listing.price);
+          },
+        };
+      },
+      'market/takeBack': ({ account, payload }) => {
+        const row = db.prepare('SELECT * FROM market_stalls WHERE account=?').get(account);
+        if (!row) return { payload: { entries: [] } };
+        const wanted = new Set(Array.isArray(payload?.itemIds) ? payload.itemIds : []);
+        const entries = JSON.parse(row.items).filter((entry) => wanted.has(entry.id));
+        return {
+          payload: { entries },
+          after: (result) => {
+            const placed = new Set(result.placedIds);
+            const remaining = JSON.parse(row.items).filter((entry) => !placed.has(entry.id));
+            if (remaining.length === 0) db.prepare('DELETE FROM market_stalls WHERE account=?').run(account);
+            else db.prepare('UPDATE market_stalls SET items=? WHERE account=?').run(JSON.stringify(remaining), account);
+          },
+        };
+      },
+      // Klan: bağış, hazineye ekleme ile oyuncudan düşme aynı işlemde; ayrılırken NP iadesi gerçek bağış toplamından.
+      'clan/donate': ({ account, characterKey, payload }) => {
+        const membership = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=?').get(account, characterKey);
+        if (!membership) return { fail: 'notInClan' };
+        const currency = ['gold', 'np', ...Object.keys(CLAN_MATERIAL_COLUMN)].includes(payload?.currency) ? payload.currency : null;
+        const amount = Number(payload?.amount);
+        if (!currency || !Number.isSafeInteger(amount) || amount <= 0) return { fail: 'invalidDonation' };
+        const column = CLAN_MATERIAL_COLUMN[currency] || (currency === 'gold' ? 'treasury_gold' : 'treasury_np');
+        return {
+          payload: { currency, amount },
+          after: () => {
+            db.prepare(`UPDATE clans SET ${column} = ${column} + ? WHERE id=?`).run(amount, membership.clan_id);
+            if (currency === 'np') db.prepare('UPDATE clan_members SET donated_np = donated_np + ? WHERE account_id=? AND character_key=?').run(amount, account, characterKey);
+          },
+        };
+      },
+      'clan/leave': ({ account, characterKey }) => {
+        const membership = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=?').get(account, characterKey);
+        if (!membership) return { fail: 'notInClan' };
+        return { payload: { donatedNp: membership.donated_np }, after: () => removeFromClan(membership, account, characterKey) };
+      },
+      // Klan zindanında düşen malzemeler önce `pending_grants`a yazılır; oyuncuya bu eylemle verilir.
+      'clan/claimMaterials': ({ account, characterKey }) => {
+        const rows = db.prepare("SELECT id,grant_key FROM pending_grants WHERE account=? AND character_key=? AND kind='clanMaterial' ORDER BY id").all(account, characterKey);
+        if (rows.length === 0) return { fail: 'nothingToClaim' };
+        return {
+          payload: { materials: rows.map((r) => r.grant_key) },
+          after: (result) => { for (const row of rows.slice(0, result.placed)) db.prepare('DELETE FROM pending_grants WHERE id=?').run(row.id); },
+        };
       },
       // Çark: ödül, sunucunun çevirme sırasında seçtiği bekleyen kayıttır (premium ödüller ayrı yoldan).
       'wheel/claimItem': ({ account }) => {
@@ -381,6 +499,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         ['DELETE FROM market_stalls WHERE account=?', [id]],
         ['DELETE FROM boss_contributions WHERE account=?', [id]],
         ['DELETE FROM boss_loot_claims WHERE account=?', [id]],
+        ['DELETE FROM pending_grants WHERE account=?', [id]],
         ['DELETE FROM duel_history WHERE challenger=? OR opponent=?', [id, id]],
         ['DELETE FROM push_subscriptions WHERE account_id=?', [id]],
         ['DELETE FROM push_prefs WHERE account_id=?', [id]],
@@ -638,6 +757,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         return send(200, { stalls: rows.filter(r => stallActive(r, now)).map(r => ({ sellerId: r.account, sellerName: r.seller_name, items: JSON.parse(r.items) })) });
       }
       if (path === '/api/market/stall' && req.method === 'POST') {
+        if (game.enabled(account.id)) throw fail(409, 'USE_GAME_ACT');
         const body = await read(req);
         const sellerName = typeof body?.sellerName === 'string' ? body.sellerName.trim().slice(0, 24) : '';
         const durationHours = Number(body?.durationHours);
@@ -649,6 +769,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         return send(200, { stall: { sellerName, items: [], listedAt, durationHours, active: true } });
       }
       if (path === '/api/market/stall/items' && req.method === 'POST') {
+        if (game.enabled(account.id)) throw fail(409, 'USE_GAME_ACT');
         const body = await read(req);
         if (body?.item?.noTrade || Object.values(FIRST_PURCHASE_WEAPONS).some(w=>w.name===body?.item?.name)) return send(400, {error:'ITEM_BOUND'});
         const price = Number(body?.price);
@@ -670,6 +791,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       // gerçekten yerleştirildiğine kendi karar verip gönderiyor, sığmayanlar
       // tezgahta kalmaya devam eder (bkz. MarketTab.jsx#distributeReclaimedItems).
       if (path === '/api/market/stall/items' && req.method === 'DELETE') {
+        if (game.enabled(account.id)) throw fail(409, 'USE_GAME_ACT');
         const body = await read(req);
         const ids = new Set(Array.isArray(body?.itemIds) ? body.itemIds : []);
         db.exec('BEGIN IMMEDIATE');
@@ -695,6 +817,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       // olmayan bir istemci teorik olarak ödemeden alabilir) — tam
       // sunucu-taraflı ekonomi Faz 4/5'in işi.
       if (path === '/api/market/buy' && req.method === 'POST') {
+        if (game.enabled(account.id)) throw fail(409, 'USE_GAME_ACT');
         const body = await read(req);
         const sellerId = Number(body?.sellerId);
         const itemId = typeof body?.itemId === 'string' ? body.itemId : '';
@@ -1236,23 +1359,13 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       // döndürüyor. Lider ayrılırsa: kalan üyelerden biri (önce subay, sonra
       // en kıdemli) otomatik lider olur; kimse kalmadıysa klan tamamen silinir.
       if (path === '/api/clan/leave' && req.method === 'POST') {
+        if (game.enabled(account.id)) throw fail(409, 'USE_GAME_ACT');
         db.exec('BEGIN IMMEDIATE');
         try {
           const membership = myMembership();
           if (!membership) throw fail(409, 'NOT_IN_CLAN');
           const donatedNp = membership.donated_np;
-          db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE clan_id=? AND locked_by=? AND locked_character=?').run(membership.clan_id,account.id,myCharacterKey);
-          db.prepare('DELETE FROM clan_members WHERE account_id=? AND character_key=?').run(account.id,myCharacterKey);
-          if (membership.role === 'leader') {
-            const next = db.prepare("SELECT account_id,character_key FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'officer' THEN 0 ELSE 1 END, joined_at ASC LIMIT 1").get(membership.clan_id);
-            if (next) db.prepare("UPDATE clan_members SET role='leader' WHERE account_id=? AND character_key=?").run(next.account_id,next.character_key);
-            else {
-              db.prepare('DELETE FROM clan_invites WHERE clan_id=?').run(membership.clan_id);
-              db.prepare('DELETE FROM clan_dungeon_log WHERE clan_id=?').run(membership.clan_id);
-              db.prepare('DELETE FROM clan_dungeon_state WHERE clan_id=?').run(membership.clan_id);
-              db.prepare('DELETE FROM clans WHERE id=?').run(membership.clan_id);
-            }
-          }
+          removeFromClan(membership, account.id, myCharacterKey);
           db.exec('COMMIT');
           return send(200, { donatedNp });
         } catch (error) { db.exec('ROLLBACK'); throw error; }
@@ -1302,6 +1415,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const amount = Number(body?.amount);
         const currency = ['gold', 'diamonds', 'np', ...Object.keys(CLAN_MATERIAL_COLUMN)].includes(body?.currency) ? body.currency : null;
         if (!currency || !Number.isSafeInteger(amount) || amount <= 0) throw fail(400, 'INVALID_DONATION');
+        if (currency !== 'diamonds' && game.enabled(account.id)) throw fail(409, 'USE_GAME_ACT');
         const column = CLAN_MATERIAL_COLUMN[currency] || (currency === 'gold' ? 'treasury_gold' : currency === 'diamonds' ? 'treasury_diamonds' : 'treasury_np');
         db.exec('BEGIN IMMEDIATE');
         try {
@@ -1452,6 +1566,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           // Kullanıcı isteği: "Klan paneline basit bir log ekranı koy: 'Ahmet,
           // 3. Canavara 45.000 hasar vurdu.'" — klan içi rekabet/heyecan için.
           const logName = myCharacter?.nickname || account.name;
+          if (droppedMaterial && game.enabled(account.id)) db.prepare("INSERT INTO pending_grants(account,character_key,kind,grant_key,created_at) VALUES(?,?,'clanMaterial',?,?)").run(account.id, myCharacterKey, droppedMaterial, Date.now());
           db.prepare('INSERT INTO clan_dungeon_log(clan_id,day_key,account_name,stage_index,damage,killed,created_at) VALUES(?,?,?,?,?,?,?)')
             .run(membership.clan_id, row.day_key, logName, row.stage_index, damage, killed ? 1 : 0, Date.now());
           db.exec('COMMIT');

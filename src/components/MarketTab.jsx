@@ -35,7 +35,7 @@ function PotionQtyStepper({ qty, onChange }) {
   );
 }
 
-export default function MarketTab({ player, setPlayer, bank, setBank, pushToast, onOpenDiamondShop }) {
+export default function MarketTab({ player, setPlayer, bank, setBank, act, pushToast, onOpenDiamondShop }) {
   const { t, lang } = useTranslation();
   const DURATION_LABEL = t("market.durationLabels");
   const [subtab, setSubtab] = useState("market");
@@ -87,13 +87,26 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast,
   // Diğer oyuncuların yeni tezgah/eşyalarını görmek için periyodik yenileme.
   useEffect(() => startPolling(refreshMarket, 8000, { runNow: false }), [refreshMarket]);
 
-  const buyPotion = (potionType, tier, qty) => {
+  // Sunucudan gelen red nedeni için ortak metin: bilinen neden çevrilir, bilinmeyen genel mesaja düşer.
+  const reasonText = (result, fallbackKey) => {
+    if (result.reason === "network") return t("battle.actionFailed");
+    if (result.reason === "notEnoughForStallFee") return t("market.notEnoughForStallFee", result.reasonVars);
+    if (result.reason === "notEnoughGold") return t("market.notEnoughGold");
+    const key = `common.reason.${result.reason}`;
+    const text = t(key, result.reasonVars);
+    return text === key ? t(fallbackKey) : text;
+  };
+
+  const buyPotion = async (potionType, tier, qty) => {
     const amount = Math.max(1, qty || 1);
     const price = potionPrice(potionType, tier) * amount;
-    if (player.gold < price) { pushToast(t("shop.notEnoughGold"), "warn"); return; }
-    const result = addItemToInventory({ ...player, gold: player.gold - price }, makePotionStack(potionType, tier, amount));
-    if (!result.added) { pushToast(t("shop.purchaseFailed", { reason: formatReason(t, result) }), "warn"); return; }
-    setPlayer(result.player);
+    const result = await act("shop/buyPotion", { potionType, tier, qty: amount });
+    if (!result.ok) {
+      pushToast(result.reason === "notEnoughGold" ? t("shop.notEnoughGold")
+        : result.reason === "network" ? t("battle.actionFailed")
+          : t("shop.purchaseFailed", { reason: formatReason(t, { reason: result.detail || result.reason, reasonVars: result.reasonVars }) }), "warn");
+      return;
+    }
     pushToast(t("shop.potionPurchased", { name: potionName(potionType, tier, lang), qty: amount, gold: formatGold(price) }), "loot");
   };
 
@@ -102,6 +115,13 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast,
   const openStall = async (durationHours) => {
     const fee = marketService.MARKET_DURATION_FEE[durationHours];
     if (player.gold < fee) { pushToast(t("market.notEnoughForStallFee", { fee }), "warn"); return; }
+    if (act.isServer()) {
+      const opened = await act("market/openStall", { durationHours, sellerName: player.nickname });
+      if (!opened.ok) { pushToast(reasonText(opened, "market.stallOpenFailed"), "warn"); refreshMarket(); return; }
+      await refreshMarket();
+      pushToast(t("market.stallOpened", { duration: DURATION_LABEL[durationHours], fee: formatGold(fee) }), "loot");
+      return;
+    }
     const result = await marketService.openStall(player.nickname, durationHours);
     if (!result.ok) { pushToast(formatReason(t, result, "market.stallOpenFailed"), "warn"); refreshMarket(); return; }
     setPlayer((p) => ({ ...p, gold: p.gold - fee }));
@@ -129,14 +149,20 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast,
     const price = parseInt(priceInput, 10);
     if (!pickedItem) return;
     if (!Number.isFinite(price) || price <= 0) { pushToast(t("market.enterValidPrice"), "warn"); return; }
-    const result = await marketService.addItemToStall(pickedItem, price);
-    if (!result.ok) { pushToast(formatReason(t, result, "market.addFailed"), "warn"); refreshMarket(); return; }
-    if (pickerMode === "chest") {
-      setPlayer((p) => ({ ...p, chests: p.chests.filter((c) => c.id !== pickedItem.id) }));
+    if (act.isServer()) {
+      const added = await act("market/addItem", { itemId: pickedItem.id, price, asChest: pickerMode === "chest" });
+      if (!added.ok) { pushToast(reasonText({ ...added, reasonVars: { max: marketService.MARKET_STALL_MAX_ITEMS } }, "market.addFailed"), "warn"); refreshMarket(); return; }
+      await refreshMarket();
     } else {
-      setPlayer((p) => ({ ...p, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
+      const result = await marketService.addItemToStall(pickedItem, price);
+      if (!result.ok) { pushToast(formatReason(t, result, "market.addFailed"), "warn"); refreshMarket(); return; }
+      if (pickerMode === "chest") {
+        setPlayer((p) => ({ ...p, chests: p.chests.filter((c) => c.id !== pickedItem.id) }));
+      } else {
+        setPlayer((p) => ({ ...p, inventory: p.inventory.filter((i) => i.id !== pickedItem.id) }));
+      }
+      setMyStall(result.stall);
     }
-    setMyStall(result.stall);
     pushToast(t("market.itemAddedToStall", { item: displayItemName(pickedItem, lang), gold: formatGold(price) }), "loot");
     setPickerOpen(false);
     setPickedItem(null);
@@ -178,6 +204,14 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast,
   const confirmCloseStall = async () => {
     setCloseConfirm(false);
     if (!myStall || myStall.items.length === 0) { setMyStall(null); return; }
+    if (act.isServer()) {
+      const back = await act("market/takeBack", { itemIds: myStall.items.map((entry) => entry.id) });
+      if (!back.ok) { pushToast(t("battle.actionFailed"), "warn"); return; }
+      await refreshMarket();
+      if (back.left > 0) pushToast(t("market.reclaimedSomeLost", { count: back.placedItems + back.placedChests, lost: back.left }), "warn");
+      else pushToast(t("market.stallClosedReturned", { count: back.placedItems + back.placedChests }), "default");
+      return;
+    }
     const removed = await marketService.removeStallItems(myStall.items.map((entry) => entry.id));
     const { placedChests, placedItems, lost } = distributeReclaimedItems(removed);
     setMyStall(null);
@@ -192,6 +226,14 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast,
   // yerleştirilen id'ler sunucudan siliniyor), hiçbiri kaybolmaz.
   const reclaimStall = async () => {
     if (!myStall || myStall.items.length === 0) { pushToast(t("market.nothingToReclaim"), "warn"); refreshMarket(); return; }
+    if (act.isServer()) {
+      const back = await act("market/takeBack", { itemIds: myStall.items.map((entry) => entry.id) });
+      if (!back.ok) { pushToast(t("battle.actionFailed"), "warn"); return; }
+      await refreshMarket();
+      if (back.left > 0) pushToast(t("market.reclaimedSomeLost", { count: back.placedItems + back.placedChests, lost: back.left }), "warn");
+      else pushToast(t("market.reclaimedAll", { count: back.placedItems + back.placedChests }), "default");
+      return;
+    }
     const { placedIds, placedChests, placedItems, lost } = distributeReclaimedItems(myStall.items);
     await marketService.removeStallItems(placedIds);
     const fresh = await marketService.fetchMarket();
@@ -211,6 +253,17 @@ export default function MarketTab({ player, setPlayer, bank, setBank, pushToast,
     const listing = buyConfirm;
     setBuyConfirm(null);
     if (!listing) return;
+    if (act.isServer()) {
+      const bought = await act("market/buy", { sellerId: listing.sellerId, listingId: listing.id });
+      if (!bought.ok) {
+        pushToast(bought.reason === "bagFull" ? t("market.bagFullNotBought", { reason: bought.detail || "" }) : reasonText(bought, "market.purchaseFailed"), "warn");
+        refreshMarket();
+        return;
+      }
+      pushToast(t("market.itemPurchased", { item: displayItemName(bought.item, lang) }), "loot");
+      refreshMarket();
+      return;
+    }
     const result = await marketService.buyListing(listing.sellerId, listing.id);
     if (!result.ok) { pushToast(formatReason(t, result, "market.purchaseFailed"), "warn"); refreshMarket(); return; }
     if (result.item.kind === "chest") {

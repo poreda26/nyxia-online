@@ -63,7 +63,7 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
       const before = stored.data.characters[index];
       const patch = {};
       for (const key of Object.keys(next.player)) if (JSON.stringify(before[key]) !== JSON.stringify(next.player[key])) patch[key] = next.player[key];
-      after?.();
+      after?.(result, next);
       const bankChanged = JSON.stringify(state.bank) !== JSON.stringify(next.bank);
       stored.data.characters[index] = next.player;
       stored.data.bank = next.bank;

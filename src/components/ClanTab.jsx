@@ -52,7 +52,7 @@ const fmtClock = (ms) => {
 // ve Klan Boss (utils/clanBoss.js) kasıtlı olarak bu kapsamın DIŞINDA
 // bırakıldı — ikisi de kendi paylaşımlı simülasyonunu (Dünya Canavarı'nınki
 // gibi) gerektirir, ayrı bir kapsam kararı; şimdilik eskisi gibi yerel kalıyor.
-export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast }) {
+export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToast }) {
   const { t,lang } = useTranslation();
   const roleLabel = (role) => t(`clan.role.${role}`);
   const stageName = (stage) => (stage ? t(`clan.bossStage.${stage.id}.name`) : "");
@@ -152,9 +152,16 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
 
   const handleLeave = async () => {
     try {
-      const { donatedNp } = await leaveClanApi();
-      const refund = Math.round((donatedNp || 0) * 0.35);
-      setPlayer((p) => ({ ...p, clan: null, nationalPoint: p.nationalPoint + refund }));
+      let refund;
+      if (act.isServer()) {
+        const left = await act("clan/leave");
+        if (!left.ok) { pushToast(left.reason === "network" ? t("battle.actionFailed") : t("clan.toastUpgradeFailed"), "warn"); setConfirmingLeave(false); return; }
+        refund = left.refund;
+      } else {
+        const { donatedNp } = await leaveClanApi();
+        refund = Math.round((donatedNp || 0) * 0.35);
+        setPlayer((p) => ({ ...p, clan: null, nationalPoint: p.nationalPoint + refund }));
+      }
       pushToast(refund > 0 ? t("clan.toastLeftRefund", { refund: fmt(refund) }) : t("clan.toastLeft"), "default");
     } catch (error) { pushToast(formatServerError(t, error), "warn"); }
     setConfirmingLeave(false);
@@ -181,6 +188,14 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
     if (!Number.isFinite(amount) || amount <= 0) { pushToast(formatReason(t, { reason: "enterValidAmount" }, "clan.toastDonateFailed"), "warn"); return; }
     const balance = currency === "np" ? player.nationalPoint : currency === "gold" ? player.gold : player.diamonds;
     if (balance < amount) { pushToast(formatReason(t, { reason: currency === "np" ? "notEnoughNP" : currency === "gold" ? "notEnoughGold" : "notEnoughDiamonds" }, "clan.toastDonateFailed"), "warn"); return; }
+    if (currency !== "diamonds" && act.isServer()) {
+      const result = await act("clan/donate", { currency, amount });
+      if (!result.ok) { pushToast(result.reason === "network" ? t("battle.actionFailed") : formatReason(t, result, "clan.toastDonateFailed"), "warn"); return; }
+      pushToast(t(currency === "np" ? "clan.toastDonatedNp" : "clan.toastDonatedGold", { amount: fmt(amount) }), "loot");
+      clearInput();
+      refresh();
+      return;
+    }
     let donated;
     try {
       donated = await donateToClan(currency, amount);
@@ -207,6 +222,13 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
     const owned = stack?.count || 0;
     if (!Number.isFinite(amount) || amount <= 0) { pushToast(formatReason(t, { reason: "enterValidAmount" }, "clan.toastDonateFailed"), "warn"); return; }
     if (owned < amount) { pushToast(t("clan.toastDonateFailed"), "warn"); return; }
+    if (act.isServer()) {
+      const result = await act("clan/donate", { currency: materialKey, amount });
+      if (!result.ok) { pushToast(t(result.reason === "network" ? "battle.actionFailed" : "clan.toastDonateFailed"), "warn"); return; }
+      pushToast(t("clan.toastDonatedMaterial", { amount: fmt(amount), material: CLAN_DUNGEON_MATERIALS[materialKey].name }), "loot");
+      refresh();
+      return;
+    }
     try {
       await donateToClan(materialKey, amount);
     } catch (error) { pushToast(formatServerError(t, error, "clan.toastDonateFailed"), "warn"); return; }
@@ -547,7 +569,7 @@ export default function ClanTab({ player, setPlayer, cls, atk, def, pushToast })
         )}
       </div>
 
-      <ClanDungeonPanel player={player} setPlayer={setPlayer} cls={cls} atk={atk} def={def} pushToast={pushToast} />
+      <ClanDungeonPanel player={player} setPlayer={setPlayer} act={act} cls={cls} atk={atk} def={def} pushToast={pushToast} />
 
       <SectionLabel>{t("clan.membersTitle")}</SectionLabel>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

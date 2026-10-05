@@ -125,3 +125,11 @@ scheduledEvents, tutorialGift, wheelAppliedAt, nationalPoint, weeklyPoint`.
 `player.forge` / `player.accForge` alanında durur (sekme kapanınca `clear` ile geri döner); zar sunucuda atılır.
 Pin listesine eklenecek: `forge, accForge`.
 Kontrol aracı: tanımsız isim yakalamak için `eslint` + `no-undef` kuralı (bkz. oturum scratchpad'i) src'de temiz çalışır.
+
+### Pazar, iksir dükkânı, klan (yapıldı)
+`src/game/market.js`: `shop/buyPotion`, `market/openStall|addItem|buy|takeBack` (tezgah satırı `market_stalls` sunucu kancalarıyla aynı
+işlemde yazılır; satıcıya ödeme satıcının depo altınına; çanta doluysa satın alma reddedilir, eşya kaybolmaz).
+`src/game/clan.js`: `clan/donate` (altın/NP/malzeme; elmas hâlâ cüzdan yolundan), `clan/leave` (iade gerçek bağış toplamından),
+`clan/claimMaterials` (klan zindanı düşenleri `pending_grants` tablosuna yazılır, eylemle verilir). Bayrak açıkken eski
+pazar-yazma uçları, altın/malzeme bağışı ve klan ayrılma ucu 409 `USE_GAME_ACT` döner.
+Klan zindanı potu/ölümü `battle/potion` ve `battle/death` ile gider. Yerel mod (bayrak kapalı) pazar/klan için eski uçları kullanır.

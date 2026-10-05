@@ -313,7 +313,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
           <InventoryTab act={act} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} pushToast={pushToast} onChangeRace={onChangeRace} />
         )}
         {tab === "market" && (
-          <MarketTab onOpenDiamondShop={() => setDiamondShopOpen(true)} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} username={username} pushToast={pushToast} />
+          <MarketTab act={act} onOpenDiamondShop={() => setDiamondShopOpen(true)} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} bankGold={bankGold} setBankGold={setBankGold} username={username} pushToast={pushToast} />
         )}
         {tab === "upgrade" && (
           <UpgradeTab player={player} setPlayer={setPlayer} act={act} pushToast={pushToast} />
@@ -325,7 +325,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
           <WarzoneTab player={player} setPlayer={setPlayer} pushToast={pushToast} onEnteredChange={setWarzoneEntered} act={act} />
         )}
         {tab === "clan" && (
-          <ClanTab player={player} setPlayer={setPlayer} cls={cls} atk={atk} def={def} pushToast={pushToast} />
+          <ClanTab player={player} setPlayer={setPlayer} act={act} cls={cls} atk={atk} def={def} pushToast={pushToast} />
         )}
         {tab === "chat" && (
           <ChatTab

@@ -412,3 +412,130 @@ test('shop and forge run on the server: items leave the bag into the forge, the 
     db.close();
   } finally { await api.close(); }
 });
+
+test('market on the server: only real bag items can be listed, a purchase moves the item and pays the seller in one step, legacy routes are closed', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const seller = (await call('register', { name: 'sally', password })).cookie;
+    const buyer = (await call('register', { name: 'bert', password })).cookie;
+    const mk = (extra = {}) => { const c = hero(); c.gold = 5000; c.inventory = [...c.inventory, sword({ id: 'for-sale' }), sword({ id: 'bound', noTrade: true })]; c.chests = [{ id: 'chest-1', tier: 1 }]; return Object.assign(c, extra); };
+    for (const [cookie, c] of [[seller, mk()], [buyer, mk({ inventory: hero().inventory })]]) {
+      assert.equal((await call('backup', { revision: 0, data: { characters: [c, null, null], bank: [[], []], bankGold: 0, diamonds: 0 } }, cookie, 'PUT')).status, 200);
+    }
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    db.prepare('INSERT INTO economy_accounts VALUES(2,?)').run(Date.now());
+    const as = (cookie) => (type, payload = {}) => call('game/act', { characterKey: 'hero', type, payload }, cookie);
+    const sAct = as(seller), bAct = as(buyer);
+    const state = async (cookie) => (await call('backup', null, cookie)).data.data;
+
+    // Legacy routes cannot be used to list a forged item once the server economy is on.
+    assert.equal((await call('market/stall/items', { item: sword({ id: 'forged', atk: 9999 }), price: 1 }, seller)).status, 409);
+    assert.equal((await call('market/buy', { sellerId: 1, itemId: 'x' }, buyer)).status, 409);
+
+    // Open a stall: the fee comes out of gold; a second stall is refused.
+    assert.equal((await sAct('market/addItem', { itemId: 'for-sale', price: 100 })).data.result.reason, 'noOpenStall');
+    const gold0 = (await state(seller)).characters[0].gold;
+    assert.equal((await sAct('market/openStall', { durationHours: 1, sellerName: 'Sally' })).data.result.ok, true);
+    assert.equal((await state(seller)).characters[0].gold, gold0 - 25);
+    assert.equal((await sAct('market/openStall', { durationHours: 1, sellerName: 'Sally' })).data.result.reason, 'stallAlreadyOpen');
+
+    // Listing: bound and unknown items are refused, a listed item leaves the bag, price limits hold.
+    assert.equal((await sAct('market/addItem', { itemId: 'bound', price: 100 })).data.result.reason, 'noTrade');
+    assert.equal((await sAct('market/addItem', { itemId: 'ghost', price: 100 })).data.result.reason, 'itemNotFound');
+    assert.equal((await sAct('market/addItem', { itemId: 'for-sale', price: 0 })).data.result.reason, 'addFailed');
+    assert.equal((await sAct('market/addItem', { itemId: 'for-sale', price: 1500 })).data.result.ok, true);
+    assert.equal((await state(seller)).characters[0].inventory.some((i) => i.id === 'for-sale'), false);
+    assert.equal((await sAct('market/addItem', { itemId: 'chest-1', price: 300, asChest: true })).data.result.ok, true);
+    const stalls = (await call('market/stalls', null, buyer)).data.stalls;
+    assert.equal(stalls[0].items.length, 2);
+    const listing = stalls[0].items.find((e) => e.item.id === 'for-sale');
+
+    // Buying: needs gold, the item arrives, the seller is paid in the bank, nobody else can buy it again.
+    assert.equal((await bAct('market/buy', { sellerId: 1, listingId: 'nope' })).data.result.reason, 'marketItemGone');
+    assert.equal((await sAct('market/buy', { sellerId: 1, listingId: listing.id })).data.result.reason, 'cannotBuyOwn');
+    db.prepare("UPDATE backups SET data=json_set(data,'$.characters[0].gold',100) WHERE account=2").run();
+    assert.equal((await bAct('market/buy', { sellerId: 1, listingId: listing.id })).data.result.reason, 'notEnoughGold');
+    db.prepare("UPDATE backups SET data=json_set(data,'$.characters[0].gold',5000) WHERE account=2").run();
+    const bought = await bAct('market/buy', { sellerId: 1, listingId: listing.id });
+    assert.equal(bought.data.result.ok, true);
+    assert.equal((await state(buyer)).characters[0].gold, 3500);
+    assert.equal((await state(buyer)).characters[0].inventory.some((i) => i.id === 'for-sale'), true);
+    assert.equal((await state(seller)).bankGold, 1500);
+    assert.equal((await bAct('market/buy', { sellerId: 1, listingId: listing.id })).data.result.reason, 'marketItemGone');
+
+    // Taking the rest back: the chest returns to the seller.
+    const back = await sAct('market/takeBack', { itemIds: (await call('market/stall', null, seller)).data.stall.items.map((e) => e.id) });
+    assert.equal(back.data.result.ok, true);
+    assert.equal(back.data.result.placedChests, 1);
+    assert.equal((await state(seller)).characters[0].chests.length, 1);
+    assert.equal((await call('market/stall', null, seller)).data.stall, null, 'an empty stall is removed');
+
+    // Potions are priced by the server.
+    assert.equal((await bAct('shop/buyPotion', { potionType: 'hp', tier: 1, qty: 0 })).data.result.reason, 'invalidAmount');
+    assert.equal((await bAct('shop/buyPotion', { potionType: 'hp', tier: 9, qty: 1 })).data.result.reason, 'invalidPotion');
+    assert.equal((await bAct('shop/buyPotion', { potionType: 'hp', tier: 1, qty: 2 })).data.result.ok, true);
+    assert.ok((await state(buyer)).characters[0].gold < 3500);
+    db.close();
+  } finally { await api.close(); }
+});
+
+test('clan donations and leaving run on the server: the player pays and the treasury grows together, the refund comes from the real donated total, dungeon drops are granted from pending records', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const cookie = (await call('register', { name: 'hank', password })).cookie;
+    const character = hero();
+    character.nationalPoint = 100;
+    character.gold = 1000;
+    character.inventory = [...character.inventory, { id: 'mat-1', kind: 'clanMaterial', materialKey: 'wood', name: 'Wood', count: 5, stackable: true, stackKey: 'clanMaterial:wood', weight: 0.1 }];
+    assert.equal((await call('backup', { revision: 0, data: { characters: [character, null, null], bank: [[], []], bankGold: 0, diamonds: 0 } }, cookie, 'PUT')).status, 200);
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    db.prepare('UPDATE wallets SET diamonds=5000').run();
+    const act = (type, payload = {}) => call('game/act', { characterKey: 'hero', type, payload }, cookie);
+    const state = async () => (await call('backup', null, cookie)).data.data.characters[0];
+    const asHero = async (path, body, method) => {
+      const r = await fetch(`http://127.0.0.1:${api.server.address().port}/api/${path}`, { method: method || (body ? 'POST' : 'GET'), headers: { Origin: 'http://test.local', 'Content-Type': 'application/json', Cookie: cookie, 'X-Character-Key': 'hero' }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      return { status: r.status, data: await r.json().catch(() => ({})) };
+    };
+
+    assert.equal((await act('clan/donate', { currency: 'gold', amount: 10 })).data.result.reason, 'notInClan');
+    assert.equal((await asHero('clan', { name: 'Test Clan' })).status, 200);
+
+    // Donations: bad inputs refused, the player pays what the treasury receives, and the old route is closed.
+    assert.equal((await act('clan/donate', { currency: 'gold', amount: -5 })).data.result.reason, 'invalidDonation');
+    assert.equal((await act('clan/donate', { currency: 'junk', amount: 5 })).data.result.reason, 'invalidDonation');
+    assert.equal((await act('clan/donate', { currency: 'gold', amount: 5000 })).data.result.reason, 'notEnoughGold');
+    assert.equal((await act('clan/donate', { currency: 'gold', amount: 400 })).data.result.ok, true);
+    assert.equal((await act('clan/donate', { currency: 'np', amount: 60 })).data.result.ok, true);
+    assert.equal((await act('clan/donate', { currency: 'wood', amount: 3 })).data.result.ok, true);
+    const after = await state();
+    assert.equal(after.gold, 600);
+    assert.equal(after.nationalPoint, 40);
+    assert.equal(after.inventory.find((i) => i.id === 'mat-1').count, 2);
+    const treasury = (await asHero('clan/mine')).data.clan.treasury;
+    assert.equal(treasury.gold, 400);
+    assert.equal(treasury.np, 60);
+    assert.equal((await asHero('clan/donate', { currency: 'gold', amount: 1 })).status, 409, 'legacy donate route is closed for gold');
+    assert.equal((await asHero('clan/donate', { currency: 'diamonds', amount: 1 })).status, 200, 'diamond donations still go through the wallet');
+
+    // Dungeon drops: a server-recorded pending drop is granted once; nothing pending, nothing granted.
+    assert.equal((await act('clan/claimMaterials')).data.result.reason, 'nothingToClaim');
+    db.prepare("INSERT INTO pending_grants(account,character_key,kind,grant_key,created_at) VALUES(1,'hero','clanMaterial','iron',?)").run(Date.now());
+    const claim = await act('clan/claimMaterials', { materials: ['goldBar', 'goldBar'] });
+    assert.equal(claim.data.result.placed, 1);
+    const granted = (await state()).inventory.filter((i) => i.kind === 'clanMaterial');
+    assert.ok(granted.some((i) => i.materialKey === 'iron'), 'the recorded drop is granted');
+    assert.equal(granted.some((i) => i.materialKey === 'goldBar'), false, 'a forged material list is ignored');
+    assert.equal((await act('clan/claimMaterials')).data.result.reason, 'nothingToClaim');
+
+    // Leaving: the refund is 35% of the real donated NP and the legacy leave route is closed.
+    assert.equal((await asHero('clan/leave', {})).status, 409);
+    const left = await act('clan/leave', { donatedNp: 99999 });
+    assert.equal(left.data.result.ok, true);
+    assert.equal(left.data.result.refund, Math.round(60 * 0.35));
+    assert.equal((await state()).nationalPoint, 40 + Math.round(60 * 0.35));
+    assert.equal((await asHero('clan/mine')).data.clan, null);
+    db.close();
+  } finally { await api.close(); }
+});

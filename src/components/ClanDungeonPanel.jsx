@@ -31,7 +31,7 @@ const fmtNum = (n) => Math.round(n).toLocaleString("tr-TR");
 // kaydını otoriter tutuyor. Bir "giriş" tek canavarla sınırlı değil — oyuncu
 // ayrılana/ölene/zaman aşımına uğrayana kadar aynı kilitle ardışık aşamalara
 // devam eder (bkz. server/app.mjs'teki aynı not).
-export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pushToast }) {
+export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def, pushToast }) {
   const { t, lang } = useTranslation();
   const [state, setState] = useState(null);
   const [log, setLog] = useState([]);
@@ -108,7 +108,12 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
       if((effects.potionCooldowns?.[potionKind]||0)>0)return;
       const tier=bestAvailablePotionTier(player,potionKind);
       if(!tier||player[potionKind]>=(potionKind==='hp'?playerMaxHp(player):playerMaxMp(player)))return;
-      potion=usePotion(player,potionKind,tier);if(potion.reason)return;
+      // Tüketilen pot sunucuda düşer; can/mana burada uygulanır (bkz. BattleTab#handlePotion).
+      attackingRef.current=true;
+      const used=await act('battle/potion',{kind:potionKind,hp:player.hp,mp:player.mp});
+      attackingRef.current=false;
+      if(!used.ok){pushToast(t(used.reason==='network'?'battle.actionFailed':'battle.noPotionsLeft'),'warn');return;}
+      potion={healed:used.healed,player:{...used.nextPlayer,[potionKind]:Math.min(potionKind==='hp'?playerMaxHp(player):playerMaxMp(player),player[potionKind]+used.healed)}};
     }
     const action=prepareWarzoneAction(potion?.player||player,{...stageMon,hp:state.monsterHp,maxHp:stageMon.hp},effects,skillId);
     if(action.error){pushToast(action.error,'warn');return;}
@@ -122,15 +127,19 @@ export default function ClanDungeonPanel({ player, setPlayer, cls, atk, def, pus
       const enemyHit=!res.stageCleared&&rollHit(stageMon.atk,playerDex,player.level);
       const incoming=enemyHit?Math.max(1,Math.round(mitigate(stageMon.atk,def*action.defMult,PLAYER_DEF_K)*(1-armorSetDamageReduction(player,"monster")))):0;
       let next={...action.player,hp:Math.max(0,action.player.hp-incoming)};
-      if(res.droppedMaterial){next=addItemToInventory(next,makeClanMaterialStack(res.droppedMaterial,1)).player;pushToast(t('clan.toastMaterialDropped',{material:CLAN_DUNGEON_MATERIALS[res.droppedMaterial].name}),'loot');}
+      if(res.droppedMaterial){
+        // Sunucu ekonomisinde düşen malzeme sunucuda beklemeye alınır, eylemle verilir; eski yolda burada eklenir.
+        if(act.isServer()){await act('clan/claimMaterials');}else{setPlayer(p=>addItemToInventory(p,makeClanMaterialStack(res.droppedMaterial,1)).player);}
+        pushToast(t('clan.toastMaterialDropped',{material:CLAN_DUNGEON_MATERIALS[res.droppedMaterial].name}),'loot');}
       if(res.stageCleared)pushToast(res.completed?t('clan.toastDungeonCompleted'):t('clan.toastStageCleared',{index:state.stageIndex}),'loot');
       const potionCooldowns=Object.fromEntries(Object.entries(effects.potionCooldowns||{}).map(([k,v])=>[k,Math.max(0,v-1)]));
       if(potionKind)potionCooldowns[potionKind]=2;
       setEffects({...action.state,potionCooldowns});
       setVisual({id:Date.now(),skillId,label:action.skill?.name||(potionKind?(potionKind==='hp'?'Can İksiri':'Mana İksiri'):t('clan.dungeonAttackBtn')),type:potionKind?'potion':action.skill?.effect.type||'attack',outgoing:{hit,crit:isCrit&&!skillId&&!potionKind,damage:potion?.healed||action.heal||Math.min(damage,state.monsterHp),heal:!!potionKind||action.heal>0},incoming:res.stageCleared?null:{hit:enemyHit,damage:incoming}});
       const died=next.hp<=0;
-      if(died){next=applyDeathPenalty(next).player;setDefeated(true);pushToast(t('clan.toastDefeated'),'warn');}
-      setPlayer(next);
+      if(died){await act('battle/death',{wear:{}});next={...next,hp:playerMaxHp(next),mp:playerMaxMp(next)};setDefeated(true);pushToast(t('clan.toastDefeated'),'warn');}
+      // Yalnızca canlı can/mana yazılır; envanter/XP değişimleri eylemlerin yamasıyla zaten uygulandı.
+      setPlayer(p=>({...p,hp:next.hp,mp:next.mp}));
       if(died)await leaveClanDungeon();
       await refresh();
     }catch(error){pushToast(formatServerError(t,error),'warn');await refresh();}
