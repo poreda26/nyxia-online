@@ -1,4 +1,4 @@
-import { Skull, Compass, Mountain, Crown, Sparkles, Hammer, Shield, Swords, Gift } from "lucide-react";
+import { Skull, Compass, Mountain, Crown, Sparkles, Hammer, Shield, Swords, Gift } from "../components/icons/CatalogIcons.js";
 
 // Başarım + unvan sistemi — kullanıcı isteği: "insanlar nasıl daha çok
 // eğlenebilir" sorusuna verdiğimiz ikinci öneri (ilki günlük giriş/görev,

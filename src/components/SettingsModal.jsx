@@ -3,7 +3,7 @@ import {createPortal} from 'react-dom';
 import {Capacitor} from '@capacitor/core';
 import TutorialModal from './TutorialModal';
 import './SettingsPanel.css';
-import { Settings, X, Volume2, VolumeX, Languages, SunMedium, Bell, BellOff } from "lucide-react";
+import { Settings, X, Volume2, VolumeX, Languages, SunMedium, Bell, BellOff } from "./icons/GameIcons";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 import { LEGAL_LINKS } from "../data/legalLinks";

@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {Award,Lock,CheckCircle2} from 'lucide-react';
+import {Award,Lock,CheckCircle2} from './icons/GameIcons';
 import {ACHIEVEMENTS} from '../data/achievements';
 import {isAchievementUnlocked} from '../utils/achievements';
 import {useTranslation} from '../i18n/LanguageContext';

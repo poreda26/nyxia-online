@@ -1,7 +1,7 @@
 import { startPolling } from "../utils/polling";
 import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useCallback } from "react";
-import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, AlertTriangle, ChevronDown, ChevronUp, ShoppingBag, Package2 } from "lucide-react";
+import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, AlertTriangle, ChevronDown, ChevronUp, ShoppingBag, Package2 } from "./icons/GameIcons";
 import { itemTierColor, tierName } from "../data/itemRarity";
 import { displayItemName, formatGold } from "../utils/player";
 import { itemStatLabel } from "../utils/itemDisplay";

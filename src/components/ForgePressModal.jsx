@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Hammer, Skull, CheckCircle2, ChevronsRight } from "lucide-react";
+import { Hammer, Skull, CheckCircle2, ChevronsRight } from "./icons/GameIcons";
 import { itemTierColor } from "../data/itemRarity";
 import { pick } from "../utils/random";
 import { displayItemName } from "../utils/player";

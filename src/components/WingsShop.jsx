@@ -1,7 +1,7 @@
 import { chargeDiamonds, settle, reportChargeFailure } from '../utils/diamondCharge';
 import { buyWithDiamonds, purchaseFailureText } from '../utils/diamondBuy';
 import {useState} from 'react';
-import {Gem,Check} from 'lucide-react';
+import {Gem,Check} from './icons/GameIcons';
 import {WINGS} from '../data/wings';
 import {buyWings} from '../utils/wings';
 import {useTranslation,formatReason} from '../i18n/LanguageContext';

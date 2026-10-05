@@ -6,7 +6,7 @@ import MenuEmblem from './icons/MenuEmblem';
 import Avatar,{AvatarPicker} from './Avatar';
 import {updateClanAvatar} from '../services/clanService';
 import { useState, useEffect, useCallback } from "react";
-import { Shield, LogOut, Plus, ChevronUp, ChevronDown, UserX, Coins, Gem, Flag, Landmark, Skull, Lock, Clock, Mail } from "lucide-react";
+import { Shield, LogOut, Plus, ChevronUp, ChevronDown, UserX, Coins, Gem, Flag, Landmark, Skull, Lock, Clock, Mail } from "./icons/GameIcons";
 import { CLASSES } from "../data/classes";
 import { RACES } from "../data/races";
 import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS, CLAN_COLORS } from "../data/clan";

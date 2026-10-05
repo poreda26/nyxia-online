@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Compass, Sword, Package, Store, ShieldCheck, ArrowUpCircle, Shield, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Compass, Sword, Package, Store, ShieldCheck, ArrowUpCircle, Shield, X, ChevronLeft, ChevronRight } from "./icons/GameIcons";
 import { styles } from "../styles";
 import CaptainPortrait from "./CaptainPortrait";
 import TutorialSkipConfirm from "./TutorialSkipConfirm";

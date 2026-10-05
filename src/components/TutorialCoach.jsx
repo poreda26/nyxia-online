@@ -3,7 +3,7 @@ import "./TutorialCoach.css";
 import CaptainPortrait from "./CaptainPortrait";
 import TutorialModal from "./TutorialModal";
 import TutorialSkipConfirm from "./TutorialSkipConfirm";
-import { X } from "lucide-react";
+import { X } from "./icons/GameIcons";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 import { TUTORIAL_SECTIONS, TUTORIAL_GIFT_GOLD, TUTORIAL_SCROLL_PRICE, totalKills, findTutorialWeapon, upgradeHint } from "../utils/tutorial";

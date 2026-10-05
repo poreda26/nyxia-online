@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { X, Crown, Feather, ScrollText, Coins, Swords, Shield, Heart, Sparkles, Gem, Flag } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { X, Crown, Feather, ScrollText, Coins, Swords, Shield, Heart, Sparkles, Gem, Flag } from "./icons/GameIcons";
 import "./RewardPanels.css";
 import "./WheelModal.css";
 import { WHEEL_SLICES, WHEEL_PREMIUM_IDS, wheelAlreadyApplied } from "../utils/wheel";
@@ -45,6 +45,7 @@ function formatCountdown(ms) {
 // sunucuda "alınmamış" kalır ve yer açılınca tekrar alınabilir.
 export default function WheelModal({ player, setPlayer, act, onClose, onStatus, pushToast }) {
   const { t } = useTranslation();
+  const artId = useId();
   const [state, setState] = useState(null);
   const [error, setError] = useState(null);
   const [rotation, setRotation] = useState(0);
@@ -154,37 +155,42 @@ export default function WheelModal({ player, setPlayer, act, onClose, onStatus, 
   const disabled = busy || (!state?.canSpin && !pendingOnly);
 
   return (
-    <div style={styles.modalOverlay} onClick={busy ? undefined : onClose}>
-      <div className="reward-panel wheel-panel" role="dialog" aria-modal="true" aria-label={t("wheel.title")} onClick={(e) => e.stopPropagation()}>
+    <div className="wheel-overlay" style={styles.modalOverlay} onClick={busy ? undefined : onClose}>
+      <div className={`reward-panel wheel-panel ${busy ? "is-spinning" : ""}`} role="dialog" aria-modal="true" aria-label={t("wheel.title")} onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} disabled={busy} aria-label={t("wheel.close")}
           style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", padding: 4 }}>
           <X size={16} />
         </button>
-        <div style={{ fontFamily: "var(--font-display)", fontSize: 17 }}>{t("wheel.title")}</div>
+        <div className="wheel-heading">{t("wheel.title")}</div>
         <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>{t("wheel.subtitle")}</div>
 
         <div className="wheel-stage">
+          <div className="wheel-orbit" aria-hidden="true"/>
           <svg className="wheel-pointer" viewBox="0 0 22 26" aria-hidden="true"><path d="M11 25 1 4a12 12 0 0 1 20 0Z" fill="#e8b94f" stroke="#5c3a10" strokeWidth="1.5" /></svg>
           <div className="wheel-rotor"><svg ref={discRef} className="wheel-disc" viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: `rotate(${rotation}deg)` }} aria-hidden="true">
+            <defs><radialGradient id={`${artId}-disc`}><stop stopColor="#685177"/><stop offset="1" stopColor="#161a30"/></radialGradient><linearGradient id={`${artId}-gold`} x2="1" y2="1"><stop stopColor="#fff0ba"/><stop offset=".45" stopColor="#c99a52"/><stop offset="1" stopColor="#795125"/></linearGradient></defs>
             <circle cx={CENTER} cy={CENTER} r={RADIUS + 3} fill="#3b2a14" stroke="#caa566" strokeWidth="3" />
             {WHEEL_SLICES.map((id, i) => {
               const Icon = ICONS[id];
               const [ix, iy] = polar(i * SLICE_DEG, RADIUS * 0.68);
-              const fill = SPECIAL[id] || (i % 2 ? "#232a38" : "#2d3546");
+              const fill = SPECIAL[id] || (i % 2 ? "#17273b" : "#332b49");
               return (
                 <g key={id}>
                   <path d={slicePath(i)} fill={fill} fillOpacity={SPECIAL[id] ? 0.55 : 1} stroke="#caa566" strokeOpacity=".55" strokeWidth="1.2" />
                   <g transform={`rotate(${i * SLICE_DEG} ${ix} ${iy})`}>
-                    <Icon x={ix - 13} y={iy - 13} size={26} color={SPECIAL[id] ? "#fff3d8" : "#e8d6a8"} strokeWidth={1.8} />
+                    <Icon x={ix - 16.5} y={iy - 16.5} size={33} color={SPECIAL[id] ? "#fff3d8" : "#e8d6a8"} strokeWidth={1.8} />
                   </g>
                 </g>
               );
             })}
-            <circle cx={CENTER} cy={CENTER} r="20" fill="#caa566" stroke="#5c3a10" strokeWidth="2" />
+            <circle cx={CENTER} cy={CENTER} r="143" fill="none" stroke={`url(#${artId}-gold)`} strokeWidth="6"/>
+            <circle cx={CENTER} cy={CENTER} r="133" fill="none" stroke="#f7d897" strokeOpacity=".4" strokeWidth="1"/>
           </svg></div>
+          <div className="wheel-hub" aria-hidden="true"><Gem size={34}/></div>
         </div>
 
-        <div className="wheel-result" aria-live="polite">
+        <div className={`wheel-result ${result && !result.bagFull ? "has-prize" : ""}`} aria-live="polite">
+          {result && (()=>{const PrizeIcon=ICONS[result.prizeId];return PrizeIcon ? <PrizeIcon size={46}/> : null;})()}
           {result && !result.bagFull && (<><strong>{t("wheel.won")} {prizeName(result.prizeId)}</strong>{result.toBank ? t("wheel.toBank") : ""}</>)}
           {result?.bagFull && t("wheel.bagFull")}
           {!result && error && t(`wheel.${error}`)}
@@ -202,6 +208,7 @@ export default function WheelModal({ player, setPlayer, act, onClose, onStatus, 
         >
           {busy ? t("wheel.spinning") : pendingOnly ? t("wheel.claim") : t("wheel.spin")}
         </button>
+        <details className="wheel-prizes"><summary>{t("wheel.rewards")}</summary><div className="wheel-prize-grid">{WHEEL_SLICES.map(id=>{const Icon=ICONS[id];return <div className="wheel-prize-card" key={id}><Icon size={30}/><span>{prizeName(id)}</span></div>;})}</div></details>
       </div>
     </div>
   );

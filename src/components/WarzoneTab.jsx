@@ -11,7 +11,7 @@ import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useRef } from "react";
 import { getActiveCharacterKey } from "../utils/api";
 import MonsterPortrait from './MonsterPortrait';
-import { Skull, Swords, Heart, Zap, Lock, Gift, LogOut, DoorOpen, Loader2, X, Users } from "lucide-react";
+import { Skull, Swords, Heart, Zap, Lock, Gift, LogOut, DoorOpen, Loader2, X, Users } from "./icons/GameIcons";
 import {
   WARZONE_UNLOCK_LEVEL, WARZONE_TELEPORT_COST, WARZONE_BOSSES, WARZONE_TICK_MS,
 } from "../data/warzone";

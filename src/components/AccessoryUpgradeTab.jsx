@@ -1,6 +1,6 @@
 import ScrollArt from './icons/ScrollArt';
 import { useState, useRef, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus } from "./icons/GameIcons";
 import { itemTierColor } from "../data/itemRarity";
 import { ACCESSORY_UPGRADE_MAX_LEVEL, accessoryUpgradeBlocked, buildUpgradedAccessory } from "../utils/accessoryUpgrade";
 import { displayItemName } from "../utils/player";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sword, Crosshair, Pause, Play, Package, Shield, ArrowLeft, Maximize2, X, RotateCcw, MapPin } from 'lucide-react';
+import { Sword, Crosshair, Pause, Play, Package, Shield, ArrowLeft, Maximize2, X, RotateCcw, MapPin } from './icons/GameIcons';
 import { WORLD, CAMP, NPCS, createWorld, stepWorld, command, respawn, inCamp, inCombat, distance, attackRange } from '../world/engine';
 import { drawWorld, cameraFor } from '../world/renderer';
 import { warriorAssets, measureWarriorAtlas, warriorWeaponUrl, warriorArmorUrl, armorVariant, measureArmorAtlas } from '../world/warriorVisuals';

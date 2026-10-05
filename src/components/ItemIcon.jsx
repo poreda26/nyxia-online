@@ -3,7 +3,7 @@ import JewelArt from './icons/JewelArt';
 import ScrollArt from './icons/ScrollArt';
 import RewardChest from './icons/RewardChest';
 import WingArt from './WingArt';
-import { FlaskConical } from "lucide-react";
+import { FlaskConical } from "./icons/GameIcons";
 import MaterialArt from './icons/MaterialArt';
 import WeaponIcon from "./icons/WeaponIcon";
 import ArmorIcon from "./icons/ArmorIcon";

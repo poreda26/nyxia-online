@@ -1,7 +1,7 @@
 import {useEffect} from 'react';
 import {playChest} from '../audio/sfx';
 import RewardChest from './icons/RewardChest';
-import { Gift, CheckCircle2 } from "lucide-react";
+import { Gift, CheckCircle2 } from "./icons/GameIcons";
 import { CLASSES } from "../data/classes";
 import { itemTierColor, ITEM_TIER_LABEL } from "../data/itemRarity";
 import { pick } from "../utils/random";

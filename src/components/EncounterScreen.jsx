@@ -1,6 +1,6 @@
 import {createPortal} from 'react-dom';
 import {useEffect,useRef} from 'react';
-import {ArrowLeft} from 'lucide-react';
+import {ArrowLeft} from './icons/GameIcons';
 import './EncounterScreen.css';
 export default function EncounterScreen({title,onLeave,busy=false,children}){
  const root=useRef(null);

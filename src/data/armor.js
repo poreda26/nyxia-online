@@ -1,4 +1,4 @@
-import { Shield, ShieldHalf } from "lucide-react";
+import { Shield, ShieldHalf } from "../components/icons/CatalogIcons.js";
 
 export const SLOTS = [
   { key: "head", label: "Kask", icon: Shield },

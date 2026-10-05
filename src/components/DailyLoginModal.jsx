@@ -1,7 +1,7 @@
 import { getActiveCharacterKey } from "../utils/api";
 import { claimDailyLoginServer } from "../services/walletService";
 import { useState } from "react";
-import { Coins, Gem, ScrollText, Gift, X, CheckCircle2 } from "lucide-react";
+import { Coins, Gem, ScrollText, Gift, X, CheckCircle2 } from "./icons/GameIcons";
 import RewardChest from './icons/RewardChest';
 import './RewardPanels.css';
 import { DAILY_LOGIN_REWARDS } from "../data/dailySystems";

@@ -1,4 +1,4 @@
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, X } from "./icons/GameIcons";
 import { eventPhase, eventTotalTicks, scheduledEventProgress, canJoinScheduledEvent } from "../utils/scheduledEvents";
 import { SCHEDULED_EVENT_ICONS } from "../data/scheduledEventIcons";
 import { styles } from "../styles";

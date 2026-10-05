@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Skull, Users, ChevronDown, X } from "lucide-react";
+import { Skull, Users, ChevronDown, X } from "./icons/GameIcons";
 import { SCHEDULED_EVENTS } from "../data/scheduledEvents";
 import { SCHEDULED_EVENT_ICONS } from "../data/scheduledEventIcons";
 import { WARZONE_UNLOCK_LEVEL } from "../data/warzone";

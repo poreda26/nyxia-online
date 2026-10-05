@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Plus, LogOut, Lock, Gem } from "lucide-react";
+import { Trash2, Plus, LogOut, Lock, Gem } from "./icons/GameIcons";
 import { CLASSES } from "../data/classes";
 import { RACES } from "../data/races";
 import { CHARACTER_SLOTS, THIRD_SLOT_COST_DIAMONDS, CHARACTER_DELETE_COST_DIAMONDS } from "../utils/storage";

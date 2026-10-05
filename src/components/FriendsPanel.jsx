@@ -1,7 +1,7 @@
 import FriendDuel from "./FriendDuel";
 import { startPolling } from "../utils/polling";
 import { useState, useEffect, useCallback } from "react";
-import { UserPlus, Check, X, MessageCircle, Users, Sparkles, Swords } from "lucide-react";
+import { UserPlus, Check, X, MessageCircle, Users, Sparkles, Swords } from "./icons/GameIcons";
 import * as socialService from "../services/socialService";
 import { useTranslation, formatServerError } from "../i18n/LanguageContext";
 import { styles } from "../styles";

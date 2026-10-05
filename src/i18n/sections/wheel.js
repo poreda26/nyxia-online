@@ -3,6 +3,7 @@ export const wheelSection = {
   tr: {
     wheel: {
       title: "Günlük Çark",
+      rewards: "Ödülleri keşfet",
       topBar: "Günlük Çark",
       subtitle: "Günde bir kez çevir, ödülünü kap!",
       spin: "Çevir",
@@ -37,6 +38,7 @@ export const wheelSection = {
   en: {
     wheel: {
       title: "Daily Wheel",
+      rewards: "Explore rewards",
       topBar: "Daily Wheel",
       subtitle: "Spin once a day and grab your prize!",
       spin: "Spin",

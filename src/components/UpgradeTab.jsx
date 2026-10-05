@@ -1,6 +1,6 @@
 import ScrollArt from './icons/ScrollArt';
 import { useState, useRef, useEffect } from "react";
-import { Plus, ScrollText, Star, X } from "lucide-react";
+import { Plus, ScrollText, Star, X } from "./icons/GameIcons";
 import { itemTierColor, tierName } from "../data/itemRarity";
 import { MAX_UPGRADE_LEVEL, bumpedStats, applyLevelData } from "../utils/upgrade";
 import { useTranslation } from "../i18n/LanguageContext";

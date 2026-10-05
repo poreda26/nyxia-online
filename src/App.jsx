@@ -7,7 +7,7 @@ import {setActiveCharacterKey} from './utils/api';
 import {applyLiveDropConfig} from './utils/dropConfig';
 import {call as callGameApi} from './utils/api';
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { Settings } from "lucide-react";
+import { Settings } from "./components/icons/GameIcons";
 import { initialPlayer, migratePlayer, BANK_PAGES, MAX_GOLD, formatGold } from "./utils/player";
 import { applyWeeklyRollover } from "./utils/nationalPoint";
 import { uid } from "./utils/random";

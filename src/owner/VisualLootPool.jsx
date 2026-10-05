@@ -1,5 +1,5 @@
 import React,{useMemo,useState,useEffect,useRef} from 'react';
-import {Search,Plus,Trash2,Copy,ClipboardPaste,RotateCcw,Package,CheckSquare} from 'lucide-react';
+import {Search,Plus,Trash2,Copy,ClipboardPaste,RotateCcw,Package,CheckSquare} from '../components/icons/GameIcons';
 import ItemIcon from '../components/ItemIcon';
 import {rollConfiguredLoot} from '../utils/loot';
 import './VisualLootPool.css';

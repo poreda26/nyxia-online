@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, User, Lock } from "lucide-react";
+import { ChevronRight, User, Lock } from "./icons/GameIcons";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 import { isReservedUsername } from "../utils/storage";

@@ -1,4 +1,4 @@
-import {Ban} from 'lucide-react';
+import {Ban} from './icons/GameIcons';
 import { itemTierColor } from "../data/itemRarity";
 import { BANK_PAGE_SLOTS } from "../utils/inventory";
 import { styles } from "../styles";

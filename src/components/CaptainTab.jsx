@@ -2,7 +2,7 @@ import './ProgressionPanels.css';
 import MenuEmblem from './icons/MenuEmblem';
 import MonsterPortrait from './MonsterPortrait';
 import { useState } from "react";
-import { Gift, Crown, Skull, Flag, CalendarCheck, BookOpen, Trophy } from "lucide-react";
+import { Gift, Crown, Skull, Flag, CalendarCheck, BookOpen, Trophy } from "./icons/GameIcons";
 import { MONSTER_QUESTS, AWAKENING_QUEST } from "../data/quests";
 import { questProgress, isQuestClaimed, awakeningProgress } from "../utils/quests";
 import { dailyQuestProgress } from "../utils/dailyQuests";

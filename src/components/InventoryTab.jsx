@@ -3,7 +3,7 @@ import { buyWithDiamonds, purchaseFailureText } from "../utils/diamondBuy";
 import {openChestSafely,openChestsSafely} from '../utils/chests';
 import RewardChest from './icons/RewardChest';
 import { useState, useRef, useEffect } from "react";
-import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, ArrowDownToLine, X, ListChecks, Coins, Gem, Plus } from "lucide-react";
+import { Package, Gift, Sparkles, Ban, Wrench, Archive, ArrowUpFromLine, ArrowDownToLine, X, ListChecks, Coins, Gem, Plus } from "./icons/GameIcons";
 import { itemTierColor, tierName } from "../data/itemRarity";
 import { RACES } from "../data/races";
 import { CLASSES } from "../data/classes";

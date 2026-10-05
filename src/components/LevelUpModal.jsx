@@ -1,4 +1,4 @@
-import { Sparkles, Zap, MapPinned, CheckCircle2 } from "lucide-react";
+import { Sparkles, Zap, MapPinned, CheckCircle2 } from "./icons/GameIcons";
 import { pick } from "../utils/random";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";

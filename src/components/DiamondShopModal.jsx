@@ -5,7 +5,7 @@ import {useState} from 'react';
 import WingsShop from './WingsShop';
 import PremiumShop from './PremiumShop';
 import './DiamondStore.css';
-import { Gem, X, Star, Sparkles, Castle, Archive, Users, ScrollText, Gift, Check } from "lucide-react";
+import { Gem, X, Star, Sparkles, Castle, Archive, Users, ScrollText, Gift, Check } from "./icons/GameIcons";
 import { DIAMOND_PACKS } from "../data/diamondPacks";
 import { FIRST_PURCHASE_BONUS_PRICE_LABEL, hasClaimedFirstPurchaseBonus } from "../utils/firstPurchaseBonus";
 import FirstPurchaseBonusPreview from "./FirstPurchaseBonusPreview";

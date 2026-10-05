@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Wand2, Gift } from "lucide-react";
+import { Wand2, Gift } from "./icons/GameIcons";
 import { CLASSES } from "../data/classes";
 import { SLOTS } from "../data/armor";
 import { ACCESSORY_SLOT_LABEL } from "../utils/itemDisplay";

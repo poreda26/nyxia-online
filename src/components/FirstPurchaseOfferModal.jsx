@@ -1,4 +1,4 @@
-import { Flame } from "lucide-react";
+import { Flame } from "./icons/GameIcons";
 import RewardChest from './icons/RewardChest';
 import './RewardPanels.css';
 import { FIRST_PURCHASE_BONUS_PRICE_LABEL } from "../utils/firstPurchaseBonus";

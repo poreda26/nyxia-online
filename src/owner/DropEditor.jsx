@@ -2,7 +2,7 @@ import React,{useState} from 'react';
 import VisualLootPool from './VisualLootPool';
 import {defaultLootPool} from './lootPoolPreview';
 import MonsterPortrait from '../components/MonsterPortrait';
-import {Package} from 'lucide-react';
+import {Package} from '../components/icons/GameIcons';
 const labels={guaranteedChests:'Garantili sandık adedi (0–10)',guaranteedChestTier:'Garantili sandık tier (1–6)',goldMin:'En az altın',goldMax:'En çok altın',xp:'EXP',dropChance:'Eşya düşme %',chestChance:'Sandık düşme %',bonusGoldMin:'En az bonus altın',bonusGoldMax:'En çok bonus altın',equipDropChance:'Eşya %',chestDropChance:'Sandık %',scrollDropChance:'Parşömen %',powerMult:'Güç çarpanı',goldMult:'Altın çarpanı',dropMult:'Drop çarpanı',weaponPct:'Silah %',armorPct:'Zırh %',specialUniqueChance:'Özel sandık eşsiz silah %',specialAccessoryChance:'Özel sandık T6 takı %'};
 function Fields({value,change}){return <div className="fields">{Object.entries(value).filter(([k,v])=>typeof v==='number').map(([k,v])=>{const pct=/Chance$|Pct$/.test(k);return <label key={k}>{labels[k]||k}<input type="number" min="0" max={pct?100:undefined} step={pct||/Mult$/.test(k)?'0.01':'1'} value={pct?Math.round(v*10000)/100:v} onChange={e=>change({...value,[k]:Number(e.target.value)/(pct?100:1)})}/></label>;})}</div>}
 

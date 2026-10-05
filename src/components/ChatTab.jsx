@@ -3,7 +3,7 @@ import { getActiveCharacterKey } from "../utils/api";
 import { applyEntitlement } from "../utils/diamondCharge";
 import { startPolling } from "../utils/polling";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, ShieldCheck, HelpCircle, Wand2, X, Globe2, MessageCircle } from "lucide-react";
+import { Send, ShieldCheck, HelpCircle, Wand2, X, Globe2, MessageCircle } from "./icons/GameIcons";
 import { styles } from "../styles";
 import * as chatService from "../services/chatService";
 import * as socialService from "../services/socialService";

@@ -2,7 +2,7 @@ import Avatar from './Avatar';
 import AvatarWardrobe from './AvatarWardrobe';
 import './TopBar.css';
 import { useState, useEffect } from "react";
-import { Aperture, Coins, Crown, Gem, Gift, Plus, ScrollText, Settings, Swords, Shield, Heart } from "lucide-react";
+import { Aperture, Coins, Crown, Gem, Gift, Plus, ScrollText, Settings, Swords, Shield, Heart } from "./icons/GameIcons";
 import { xpToNext, MAX_LEVEL, formatGold } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { activeTitleInfo } from "../utils/achievements";

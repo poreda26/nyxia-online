@@ -1,7 +1,16 @@
-.wheel-panel{max-width:360px;overflow-x:hidden}
+.wheel-overlay{padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))!important}
+.wheel-panel{width:min(100%,410px);max-width:410px;overflow-x:hidden;padding:26px 22px 20px;background:radial-gradient(ellipse at 50% 32%,#533b654d,transparent 63%),linear-gradient(155deg,#212333,#111824 70%);border:1px solid #bd965a;box-shadow:0 24px 80px #000b,inset 0 0 0 4px #d5b6740d}
+.wheel-heading{font-family:var(--font-display,Georgia,serif);font-size:23px;color:#f3d79f;text-shadow:0 2px 16px #cba05130}
+.wheel-stage{position:relative;width:min(100%,310px);aspect-ratio:1;margin:25px auto 16px;flex-shrink:0;isolation:isolate}
+.wheel-orbit{position:absolute;inset:-7px;border:1px solid #e4c18388;border-radius:50%;box-shadow:0 0 0 4px #1a1529,0 0 32px #aa78df22,inset 0 0 22px #b18f4933}
 .wheel-rotor{position:absolute;inset:0;overflow:hidden;border-radius:50%;filter:drop-shadow(0 8px 18px #0008)}
-.wheel-stage{position:relative;width:min(100%,300px);aspect-ratio:1;margin:14px auto 4px}
-.wheel-pointer{position:absolute;top:-6px;left:50%;width:22px;height:26px;margin-left:-11px;z-index:2;filter:drop-shadow(0 2px 4px #000a)}
+.wheel-pointer{position:absolute;top:-14px;left:50%;width:24px;height:32px;margin-left:-12px;z-index:3;filter:drop-shadow(0 2px 3px #000) drop-shadow(0 0 5px #edc77780)}
 .wheel-disc{width:100%;height:100%;transform-origin:50% 50%}
-.wheel-result{box-sizing:border-box;width:100%;margin-top:10px;padding:12px;border-block:1px solid #b797502b;text-align:center;font-size:11px;line-height:1.7;color:var(--text-muted,#bbb)}
-.wheel-result strong{display:block;font-size:14px;color:var(--gold-text,#d4af6a)}
+.wheel-hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62px;height:62px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(#4c395e,#121c2d);border:4px solid #cba35f;box-shadow:inset 0 0 0 2px #765731,0 3px 13px #0009;pointer-events:none}
+.wheel-result{box-sizing:border-box;width:100%;min-height:53px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:12px;border:1px solid #b797502b;border-radius:12px;background:#080f193d;text-align:center;font-size:12px;line-height:1.6;color:#bcb9c8}
+.wheel-result strong{display:block;font-size:15px;color:#f4d798}.wheel-result.has-prize{background:radial-gradient(#aa793425,#171a2a);border-color:#b7975088}
+.wheel-panel .reward-cta{margin-top:12px!important;font-size:15px;letter-spacing:.5px;min-height:48px;border-radius:12px}
+.wheel-prizes{width:100%;margin-top:14px}.wheel-prizes summary{color:#d9c096;font-size:12px;cursor:pointer;padding:10px;min-height:40px;text-align:center}.wheel-prize-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.wheel-prize-card{display:flex;align-items:center;gap:7px;flex-direction:column;text-align:center;padding:9px 5px;background:#ffffff04;border:1px solid #b9a17126;border-radius:9px}.wheel-prize-card span{font-size:10px;line-height:1.4;color:#d6d1ca;overflow-wrap:anywhere}.wheel-panel button:focus-visible,.wheel-prizes summary:focus-visible{outline:2px solid #f0cc86;outline-offset:3px}
+.is-spinning .wheel-orbit{box-shadow:0 0 0 4px #1a1529,0 0 28px #c3955944}.wheel-panel>button[aria-label]{min-width:36px;min-height:36px}
+@media(max-width:360px){.wheel-panel{padding:22px 17px 16px}.wheel-heading{font-size:21px}.wheel-prize-grid{gap:5px}}
+@media(max-height:600px){.wheel-panel{max-height:calc(100dvh - 24px)}.wheel-stage{width:min(100%,230px);margin-block:18px 12px}}

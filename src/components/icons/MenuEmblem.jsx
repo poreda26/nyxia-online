@@ -2,10 +2,25 @@ import {useId} from 'react';
 
 // Small, individually drawn game emblems; filled silhouettes stay legible
 // on mobile instead of relying on thin generic outline icons.
-export default function MenuEmblem({name,size=40}){
+export default function MenuEmblem({name,size=40,...props}){
  const id=useId();
  const gold=`url(#${id}-gold)`,steel=`url(#${id}-steel)`;
  const art={
+  crown:<><path d="M8 18L19 29L31 9L43 29L56 18L49 49H15Z" fill={gold} stroke="#ffe5aa" strokeWidth="2"/><path d="M17 42H47" stroke="#81552b" strokeWidth="3"/><path d="M31 23L37 32L31 40L25 32Z" fill="#b684ed"/></>,
+  gem:<><path d="M18 9H46L58 26L32 57L6 26Z" fill="#799ce1" stroke="#d5e8ff" strokeWidth="2"/><path d="M18 9L24 26L32 57L41 26L46 9M6 26H58M24 26L32 9L41 26" stroke="#d4edff" strokeWidth="2"/></>,
+  coins:<><ellipse cx="25" cy="43" rx="19" ry="10" fill={gold}/><path d="M6 35V44M44 35V44" stroke={gold} strokeWidth="3"/><ellipse cx="25" cy="34" rx="19" ry="10" fill={gold} stroke="#ffe3a0" strokeWidth="2"/><circle cx="40" cy="22" r="17" fill={gold} stroke="#ffe3a0" strokeWidth="2"/><path d="M40 11L45 22L40 33L35 22Z" fill="#865930"/></>,
+  heart:<><path d="M32 54C22 45 5 33 7 20C9 6 25 7 32 19C40 7 56 7 57 21C58 34 42 45 32 54Z" fill="#c85b6d" stroke="#ffc2aa" strokeWidth="2"/><path d="M15 20Q19 14 24 20" stroke="#ffe2c5" strokeWidth="3"/></>,
+  mana:<><path d="M35 5L10 36H28L23 58L54 25H36L42 5Z" fill="#72cddd" stroke="#dafbff" strokeWidth="2"/></>,
+  scroll:<><path d="M18 8H48L45 48Q45 57 35 55H12L17 20Z" fill="#dfc58a" stroke={gold} strokeWidth="2"/><path d="M18 8Q7 7 9 18H20M13 46H35Q30 56 38 55" fill="#ac7746" stroke={gold} strokeWidth="2"/><path d="M24 23H38M23 30H36M22 37H33" stroke="#76533b" strokeWidth="2"/></>,
+  book:<><path d="M6 12Q18 6 32 15Q46 6 58 12V52Q43 46 32 55Q19 46 6 52Z" fill="#b78858" stroke={gold} strokeWidth="2"/><path d="M32 15V55M12 20L25 23M12 29L25 32M39 23L52 20M39 32L52 29" stroke="#f6dfab" strokeWidth="2"/></>,
+  potion:<><path d="M24 7H40V24Q57 36 48 53Q32 63 16 53Q7 36 24 24Z" fill="#547c9b" stroke={steel} strokeWidth="2"/><path d="M18 38H46L46 50Q32 58 18 50Z" fill="#cb536e"/><path d="M23 6H41V15H23Z" fill={gold}/><path d="M21 30L18 35" stroke="#fff" strokeWidth="3"/></>,
+  flame:<><path d="M32 4Q42 18 33 29L46 20Q63 47 39 57Q10 65 9 39Q10 26 23 19Q20 36 27 35Q37 21 32 4Z" fill="#e7883e" stroke="#ffe09b" strokeWidth="2"/><path d="M30 34Q44 46 34 55Q21 55 25 43Z" fill="#ffe4a1"/></>,
+  wing:<><path d="M9 50L6 13L24 23L23 8L40 27L51 19L56 35L36 51L24 57Z" fill={steel} stroke={gold} strokeWidth="2"/><path d="M12 19L29 40M27 18L38 36M17 53L47 30" stroke="#ddecff" strokeWidth="2"/></>,
+  skull:<><path d="M13 34Q4 8 31 7Q61 8 51 35L44 40V53H20V40Z" fill="#dac7a6" stroke={gold} strokeWidth="2"/><path d="M19 25L28 29L23 35L17 31M45 25L36 29L41 35L47 31M32 32L28 40H36Z" fill="#292032"/><path d="M26 45V53M37 45V53" stroke="#665743" strokeWidth="3"/></>,
+  star:<path d="M32 5L39 23L58 25L43 38L47 58L32 47L17 58L21 38L6 25L25 23Z" fill={gold} stroke="#fff0bd" strokeWidth="2"/>,
+  wheel:<><circle cx="32" cy="32" r="25" fill="#43315f" stroke={gold} strokeWidth="4"/>{[0,60,120,180,240,300].map(n=><path key={n} d="M32 10V25" transform={`rotate(${n} 32 32)`} stroke={gold} strokeWidth="3"/>)}<circle cx="32" cy="32" r="8" fill={gold}/><path d="M26 3H38L32 14Z" fill="#f4ce77"/></>,
+  settings:<><path d="M26 5H38L40 14L49 12L56 23L49 30L56 39L49 51L40 49L37 58H25L23 49L14 51L7 39L14 31L7 23L14 12L23 14Z" fill={steel} stroke={gold} strokeWidth="2"/><circle cx="32" cy="32" r="11" fill="#283144" stroke={gold} strokeWidth="3"/></>,
+  chest:<><path d="M7 29Q7 12 20 12H44Q57 12 57 29V53H7Z" fill="#845632" stroke={gold} strokeWidth="2"/><path d="M8 29H56M18 14V52M46 14V52" stroke={gold} strokeWidth="4"/><path d="M27 26H37V40H27Z" fill={gold}/><circle cx="32" cy="32" r="2" fill="#3d2533"/></>,
   dungeon:<><path d="M7 54V16L15 10L23 16V24H40V16L48 10L56 16V54Z" fill={steel} stroke={gold} strokeWidth="2"/><path d="M22 54V37Q31 23 41 37V54" fill="#211c3a" stroke={gold} strokeWidth="2"/><path d="M31 34L37 43L31 51L26 43Z" fill="#b898ff"/><path d="M12 23H19M45 23H52M12 32H18M46 32H52" stroke="#293143" strokeWidth="3"/></>,
   ranking:<><path d="M20 10H44V27Q44 39 32 42Q20 39 20 27Z" fill={gold}/><path d="M20 14H9V22Q9 32 23 33M44 14H55V22Q55 32 41 33" stroke={gold} strokeWidth="4"/><path d="M32 39V51M22 54H42" stroke={gold} strokeWidth="6"/><path d="M32 16L35 23L42 24L37 29L38 36L32 32L26 36L27 29L22 24L29 23Z" fill="#fff2be"/></>,
   battle:<><path d="M13 7L20 9L45 43L40 47L14 15Z" fill={steel}/><path d="M49 7L42 9L17 43L22 47L48 15Z" fill={steel}/><path d="M12 36L27 48M35 48L50 36" stroke={gold} strokeWidth="5"/><path d="M17 43L9 53M45 43L53 53" stroke="#ae7148" strokeWidth="6"/><path d="M16 12L40 42M46 12L23 42" stroke="#f2f9fa" strokeWidth="1.5"/></>,
@@ -19,5 +34,5 @@ export default function MenuEmblem({name,size=40}){
   character:<><path d="M8 54Q10 39 24 37H39Q52 39 55 54Z" fill="#668095" stroke={gold} strokeWidth="2"/><path d="M21 21Q19 9 31 8Q46 9 43 25L38 36H26Z" fill="#d5ac7b"/><path d="M21 22L18 19L22 8L33 5L43 11L46 24L38 16L27 18Z" fill="#604737"/><path d="M23 39L31 49L40 39" stroke={gold} strokeWidth="4"/><path d="M31 49V55" stroke={gold} strokeWidth="3"/></>,
   friends:<><circle cx="21" cy="19" r="10" fill={steel} stroke={gold} strokeWidth="2"/><path d="M5 55Q7 38 21 36Q35 38 37 55Z" fill={steel} stroke={gold} strokeWidth="2"/><circle cx="42" cy="23" r="9" fill={gold}/><path d="M28 56Q30 41 42 39Q54 41 56 56Z" fill={gold}/><path d="M17 17L20 20L25 13" stroke="#20252c" strokeWidth="2"/></>,
  };
- return <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden="true" fill="none" strokeLinejoin="round" strokeLinecap="round"><defs><linearGradient id={`${id}-gold`} x2=".7" y2="1"><stop stopColor="#fff0bb"/><stop offset=".5" stopColor="#d4aa60"/><stop offset="1" stopColor="#80502d"/></linearGradient><linearGradient id={`${id}-steel`} x2="1" y2="1"><stop stopColor="#e4f2f4"/><stop offset=".5" stopColor="#8da5b4"/><stop offset="1" stopColor="#45576e"/></linearGradient></defs>{art[name]}</svg>;
+ return <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden="true" fill="none" strokeLinejoin="round" strokeLinecap="round" {...props}><defs><linearGradient id={`${id}-gold`} x2=".7" y2="1"><stop stopColor="#fff0bb"/><stop offset=".5" stopColor="#d4aa60"/><stop offset="1" stopColor="#80502d"/></linearGradient><linearGradient id={`${id}-steel`} x2="1" y2="1"><stop stopColor="#e4f2f4"/><stop offset=".5" stopColor="#8da5b4"/><stop offset="1" stopColor="#45576e"/></linearGradient></defs>{art[name]}</svg>;
 }

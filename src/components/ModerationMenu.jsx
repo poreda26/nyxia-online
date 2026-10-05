@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Flag } from "lucide-react";
+import { Flag } from "./icons/GameIcons";
 import * as socialService from "../services/socialService";
 import { useTranslation, formatServerError } from "../i18n/LanguageContext";
 

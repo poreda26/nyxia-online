@@ -2,7 +2,7 @@ import { DIAMOND_PRICES } from "../data/diamondPrices";
 import { chargeDiamonds, settle, reportChargeFailure, applyEntitlement } from "../utils/diamondCharge";
 import ScrollArt from './icons/ScrollArt';
 import {useState} from 'react';
-import {Crown,Check,Gem,Star} from 'lucide-react';
+import {Crown,Check,Gem,Star} from './icons/GameIcons';
 import {PREMIUM_TIERS} from '../data/premium';
 import {activePremiumTier,premiumDaysLeft,buyPremium} from '../utils/premium';
 import {addItemToInventory,makeRaceScroll,makeJobScroll,makeBonusScrollStack} from '../utils/inventory';

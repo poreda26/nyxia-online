@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, Swords } from "lucide-react";
+import { X, Swords } from "./icons/GameIcons";
 import { createDuel, stepDuel } from "../utils/duelEngine";
 import { fetchFriendDuel } from "../services/socialService";
 import DuelScene from "./DuelScene";

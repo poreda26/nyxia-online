@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { Sparkles } from "../components/icons/CatalogIcons.js";
 
 // data/scheduledEvents.js kasıtlı olarak saf JS (bkz. kendi dosyasındaki
 // not) — sunucudan da (bkz. server/app.mjs'teki etkinlik hatırlatma push

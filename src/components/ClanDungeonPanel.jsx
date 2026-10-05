@@ -8,7 +8,7 @@ import BattleScene from './BattleScene';
 import {prepareWarzoneAction} from '../utils/warzoneCombat';
 import './WarzoneTab.css';
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Swords, Lock, Users, ScrollText, Heart, Zap, Sword, Plus, ArrowLeft, Castle } from "lucide-react";
+import { Swords, Lock, Users, ScrollText, Heart, Zap, Sword, Plus, ArrowLeft, Castle } from "./icons/GameIcons";
 import { styles } from "../styles";
 import DungeonEncounter from './DungeonEncounter';
 import { useTranslation, formatServerError } from "../i18n/LanguageContext";

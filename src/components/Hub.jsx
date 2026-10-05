@@ -5,7 +5,7 @@ import { startPolling } from "../utils/polling";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { hasCaptainNotice } from "../utils/captainNotices";
 import { loadChatSeenId, saveChatSeenId, loadDmSeen, saveDmSeen, hasUnreadChat, latestChatId, unreadFriendIds } from "../utils/readState";
-import { LogOut } from "lucide-react";
+import { LogOut } from "./icons/GameIcons";
 import { hasClaimedFirstPurchaseBonus } from "../utils/firstPurchaseBonus";
 import { useTranslation } from "../i18n/LanguageContext";
 import ScreenPanel from './ScreenPanel';

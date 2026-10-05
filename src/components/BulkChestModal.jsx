@@ -1,4 +1,4 @@
-import { Gift, X } from "lucide-react";
+import { Gift, X } from "./icons/GameIcons";
 import { itemTierColor, tierName } from "../data/itemRarity";
 import { displayItemName } from "../utils/player";
 import { useTranslation } from "../i18n/LanguageContext";

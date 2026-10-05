@@ -3,7 +3,7 @@ import InventoryViewer from './InventoryViewer';
 import {LanguageProvider} from '../i18n/LanguageContext';
 import React,{useEffect,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {Shield,Users,LayoutDashboard,MessagesSquare,Flag,Store,Swords,History,LogOut,Search,RefreshCw,Download,ChevronRight,Lock,CheckCircle2} from 'lucide-react';
+import {Shield,Users,LayoutDashboard,MessagesSquare,Flag,Store,Swords,History,LogOut,Search,RefreshCw,Download,ChevronRight,Lock,CheckCircle2} from '../components/icons/GameIcons';
 import './style.css';
 const sections=[['overview','Genel bakış',LayoutDashboard],['accounts','Oyuncular',Users],['drops','Drop ve sandıklar',Store],['sanctions','Ban ve mute',Lock],['chat','Sohbet denetimi',MessagesSquare],['reports','Şikayetler',Flag],['clans','Klanlar',Flag],['market','Pazar',Store],['duels','Düellolar',Swords],['audit','İşlem geçmişi',History]];
 const errors={INVALID_DROP_SETTINGS:'Drop ayarları geçersiz: yüzdeleri, altın aralığını ve eşya seviyelerini kontrol et.',DROP_CONFLICT:'Kurallar başka oturumda değişti. Yenileyip tekrar düzenle.',INVALID_NICKNAME:'Karakter adı 2–24 karakter olmalı.',INVALID_RACE:'Irk Human veya Karus olmalı; tüm karakterler hesabın ırkını kullanır.',OWNER_ONLY:'Bu hesap panel sahibi değil.',LOGIN_REQUIRED:'Önce sahip hesabınla giriş yap.',INVALID_CREDENTIALS:'Kullanıcı adı veya şifre hatalı.',BACKUP_CONFLICT:'Kayıt değişmiş. Oyuncuyu yeniden açıp güncel kayıtla dene.',REASON_REQUIRED:'En az 3 karakterlik işlem açıklaması yaz.',OWNER_PROTECTED:'Kendi yönetici hesabını engelleyemezsin.',ACCOUNT_BLOCKED:'Bu hesap engellenmiş.',CHARACTER_IDENTITY_REQUIRED:'Mevcut karakter silinemez veya kimliği değiştirilemez.'};

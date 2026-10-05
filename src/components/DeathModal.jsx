@@ -1,4 +1,4 @@
-import { Skull } from "lucide-react";
+import { Skull } from "./icons/GameIcons";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 

@@ -1,6 +1,6 @@
 import {isFirstPurchaseWeapon} from '../data/firstPurchaseWeapons';
 import { useState, useRef, useEffect } from "react";
-import { Ban, Check } from "lucide-react";
+import { Ban, Check } from "./icons/GameIcons";
 import { itemTierColor } from "../data/itemRarity";
 import { BAG_SLOTS, bagWeightCapacity, bagWeightUsed, reconcileBagLayout } from "../utils/inventory";
 import { useTranslation } from "../i18n/LanguageContext";

@@ -1,4 +1,4 @@
-import { Flame, Moon } from "lucide-react";
+import { Flame, Moon } from "../components/icons/CatalogIcons.js";
 
 // Real Knight Online's two warring nations — purely an identity/flavor
 // choice for now (shown at character creation and on the Karakter tab).

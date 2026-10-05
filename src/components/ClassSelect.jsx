@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "./icons/GameIcons";
 import { CLASSES } from "../data/classes";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";

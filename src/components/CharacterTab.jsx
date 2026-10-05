@@ -4,7 +4,7 @@ import {equippedStatBonus} from '../utils/player';
 import Avatar from './Avatar';
 import './ProgressionPanels.css';
 import { useState, useRef, useEffect } from "react";
-import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award, Gem } from "lucide-react";
+import { Plus, Repeat, Crown, Lock, Check, X, BookOpen, RotateCcw, Award, Gem } from "./icons/GameIcons";
 import { STAT_KEYS, STAT_COLORS, STAT_CAP } from "../data/stats";
 import { RACES } from "../data/races";
 import { ARMOR_DYES } from "../data/armorDyes";

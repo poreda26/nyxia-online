@@ -2,7 +2,7 @@ import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCha
 import MenuEmblem from './icons/MenuEmblem';
 import BattleScene, {hasBattleScene} from './BattleScene';
 import { useState, useEffect, useRef } from "react";
-import { Lock, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle, Gem } from "lucide-react";
+import { Lock, Flame, Sword, Heart, Zap, ArrowLeft, Plus, DoorOpen, Bot, Trophy, Castle, Gem } from "./icons/GameIcons";
 import MonsterPortrait from './MonsterPortrait';
 import { MAPS, findMap, highestUnlockedMap, GATE_TELEPORT_COST } from "../data/maps";
 import { isMonsterUnlocked, isMapProgressUnlocked, monsterKillCount, KILLS_TO_UNLOCK_NEXT } from "../utils/mapProgress";
