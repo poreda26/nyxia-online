@@ -5,7 +5,17 @@ import { randomInt } from 'node:crypto';
 // bkz. scripts/build-game-logic.mjs). Hesap başına bir "sunucu ekonomisi" bayrağı vardır;
 // bayrak açıkken altın, envanter, kuşanılanlar, sandıklar ve depo yalnızca bu eylemlerle
 // değişir — istemci yedeğiyle yazdığı değerler yok sayılır.
-const ECONOMY_FIELDS = ['gold', 'inventory', 'equipped', 'chests'];
+const ECONOMY_FIELDS = [
+  // ekonomi
+  'gold', 'inventory', 'equipped', 'chests',
+  // gelişim ve ilerleme
+  'xp', 'level', 'statPoints', 'stats', 'skills', 'class', 'monsterKills', 'claimedQuests', 'claimedCollections', 'awakened', 'activeTitle',
+  'dailyQuests', 'weeklyQuests', 'dailyLogin', 'scheduledEvents', 'tutorialGift', 'wheelAppliedAt',
+  // savaş, harita, forge
+  'currentMapId', 'mapBoss', 'soloDungeon', 'dungeonRun', 'fight', 'warzone', 'huntSearch', 'forge', 'accForge', 'activeBoosts', 'eventExpBonus',
+  // Savaş Alanı
+  'nationalPoint', 'weeklyPoint', 'weekId', 'pendingWeeklyClaim',
+];
 
 // Sunucuda rastgelelik (yükseltme şansı, sandık, düşenler) kriptografik kaynaktan gelir;
 // oyun kodu Math.random kullandığı için süreç genelinde değiştirilir.
@@ -66,6 +76,11 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
       after?.(result, next);
       const bankChanged = JSON.stringify(state.bank) !== JSON.stringify(next.bank);
       stored.data.characters[index] = next.player;
+      // Irk değiştirme parşömeni: ırk hesap geneli olduğundan bütün karakterlere yazılır.
+      if (result.setRace) {
+        stored.data.race = result.setRace;
+        stored.data.characters.forEach((c) => { if (c) c.race = result.setRace; });
+      }
       stored.data.bank = next.bank;
       stored.data.bankGold = next.bankGold;
       const revision = stored.revision + 1;
@@ -81,19 +96,22 @@ export function createGame(db, { fail, logic, keyOf, all = false, drops = () => 
     } catch (error) { try { db.exec('ROLLBACK'); } catch { /* işlem zaten bitti */ } throw error; }
   };
 
-  // İstemcinin yedekle yazdığı ekonomi alanlarını sunucudaki gerçeğe geri çevirir.
-  // Yeni (sunucuda henüz kaydı olmayan) bir karakterin ekonomisi, kuralların
-  // başlangıç karakterinden alınır; istemcinin söylediği altın/eşya dikkate alınmaz.
+  // İstemcinin yedekle yazdığı ekonomi/ilerleme alanlarını sunucudaki gerçeğe geri çevirir. Sunucuda henüz
+  // kaydı olmayan (yeni) bir karakterin bu alanları kuralların başlangıç karakterinden alınır: istemcinin
+  // söylediği seviye, altın, eşya vb. dikkate alınmaz. Irk hesap geneli olduğundan sunucudaki değer esastır.
   const pin = (account, data) => {
     if (!enabled(account) || !data || typeof data !== 'object') return data;
     const stored = readBackup(account)?.data;
     const storedChars = new Map();
     (stored?.characters || []).forEach((c, i) => { if (c) storedChars.set(keyOf(c, i), c); });
+    const storedRace = stored?.race ?? (stored?.characters || []).find(Boolean)?.race ?? null;
     (Array.isArray(data.characters) ? data.characters : []).forEach((c, i) => {
       if (!c || typeof c !== 'object') return;
-      const known = storedChars.get(keyOf(c, i)) || logic.newCharacterEconomy(c.class, c.race, c.nickname);
+      const known = storedChars.get(keyOf(c, i)) || logic.createCharacter(c.class, storedRace || c.race, c.nickname);
       for (const field of ECONOMY_FIELDS) if (known[field] !== undefined) c[field] = known[field]; else delete c[field];
+      if (storedRace) c.race = storedRace;
     });
+    if (storedRace) data.race = storedRace;
     data.bank = stored?.bank ?? data.bank?.map?.(() => []) ?? [];
     data.bankGold = stored?.bankGold ?? 0;
     return data;

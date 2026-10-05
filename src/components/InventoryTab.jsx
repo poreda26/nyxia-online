@@ -1,4 +1,5 @@
 import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
+import { buyWithDiamonds, purchaseFailureText } from "../utils/diamondBuy";
 import {openChestSafely,openChestsSafely} from '../utils/chests';
 import RewardChest from './icons/RewardChest';
 import { useState, useRef, useEffect } from "react";
@@ -70,6 +71,12 @@ export default function InventoryTab({ act, player, setPlayer, bank, setBank, ba
   };
 
   const handleBuyBankPage = async () => {
+    if (act.isServer()) {
+      const bought = await buyWithDiamonds(act, "bankPage");
+      if (!bought.ok) { pushToast(purchaseFailureText(t, bought), "warn"); return; }
+      pushToast(t("inventory.bankPageBought"), "loot");
+      return;
+    }
     const dry = buyExtraBankPage(player, bank);
     if (!dry.bought) {
       pushToast(dry.reason === "maxBankPages" ? t("inventory.maxBankPagesReached") : t("shop.notEnoughDiamonds"), "warn");
@@ -190,25 +197,21 @@ export default function InventoryTab({ act, player, setPlayer, bank, setBank, ba
     setSelectedId(null);
   };
 
-  const useRaceScroll = (item, newRace) => {
+  const useRaceScroll = async (item, newRace) => {
     if (!onChangeRace) return;
     if (player.clan) { pushToast(t("inventory.clanBlocksRaceChange"), "warn"); return; }
-    const inventory = (item.count || 1) <= 1
-      ? player.inventory.filter((i) => i.id !== item.id)
-      : player.inventory.map((i) => (i.id === item.id ? { ...i, count: i.count - 1 } : i));
-    setPlayer((p) => ({ ...p, inventory }));
+    const result = await act("scroll/race", { itemId: item.id, race: newRace });
+    if (!result.ok) { pushToast(result.reason === "network" ? t("battle.actionFailed") : formatReason(t, result, "inventory.clanBlocksRaceChange"), "warn"); return; }
     onChangeRace(newRace);
     pushToast(t("inventory.raceChanged", { race: t(`races.${newRace}.name`) }), "default");
     setSelectedId(null);
   };
 
-  const useJobScroll = (item, newClass) => {
+  const useJobScroll = async (item, newClass) => {
     const check = canChangeJob(player);
     if (!check.ok) { pushToast(formatReason(t, check), "warn"); return; }
-    const inventory = (item.count || 1) <= 1
-      ? player.inventory.filter((i) => i.id !== item.id)
-      : player.inventory.map((i) => (i.id === item.id ? { ...i, count: i.count - 1 } : i));
-    setPlayer((p) => learnFreeSkills(changeJob({ ...p, inventory }, newClass)));
+    const result = await act("scroll/job", { itemId: item.id, newClass });
+    if (!result.ok) { pushToast(result.reason === "network" ? t("battle.actionFailed") : formatReason(t, result), "warn"); return; }
     pushToast(t("inventory.classChanged", { cls: CLASSES[newClass].name }), "default");
     setSelectedId(null);
   };
@@ -256,10 +259,9 @@ export default function InventoryTab({ act, player, setPlayer, bank, setBank, ba
   const repairAmount = selectedItem ? discountedRepairCost(selectedItem, premiumRepairDiscount(player)) : 0;
   const totalRepairAll = totalEquippedRepairCost(player, premiumRepairDiscount(player));
 
-  const repairAll = () => {
-    const result = repairAllEquipped(player, premiumRepairDiscount(player));
-    if (!result.repaired) { pushToast(formatReason(t, result, "inventory.repairAllNothing"), "warn"); return; }
-    setPlayer(result.player);
+  const repairAll = async () => {
+    const result = await act("inventory/repairAll");
+    if (!result.ok) { pushToast(formatReason(t, result, "inventory.repairAllNothing"), "warn"); return; }
     pushToast(t("inventory.repairAllDone", { gold: formatGold(result.cost) }), "default");
   };
 

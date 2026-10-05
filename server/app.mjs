@@ -1,4 +1,5 @@
 import {migrateCharacterClans,savedCharacters,characterKey,primaryCharacter} from './clan-characters.mjs';
+const characterKeyOf = characterKey;
 import webpush from 'web-push';
 import { createAdmin } from './admin.mjs';
 import {validAvatarFrame} from '../src/data/avatarFrames.js';
@@ -133,6 +134,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS market_stalls(account INTEGER PRIMARY KEY REFERENCES accounts(id), seller_name TEXT NOT NULL, items TEXT NOT NULL, listed_at INTEGER NOT NULL, duration_hours INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS boss_fights(boss_id TEXT NOT NULL, spawn_at INTEGER NOT NULL, hp INTEGER NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(boss_id,spawn_at));
     CREATE TABLE IF NOT EXISTS boss_contributions(boss_id TEXT NOT NULL, spawn_at INTEGER NOT NULL, account INTEGER NOT NULL REFERENCES accounts(id), damage INTEGER NOT NULL, PRIMARY KEY(boss_id,spawn_at,account));
+    CREATE TABLE IF NOT EXISTS duel_pending(account INTEGER PRIMARY KEY REFERENCES accounts(id), opponent_account INTEGER NOT NULL, opponent TEXT NOT NULL, seed INTEGER NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS pending_grants(id INTEGER PRIMARY KEY AUTOINCREMENT, account INTEGER NOT NULL REFERENCES accounts(id), character_key TEXT NOT NULL, kind TEXT NOT NULL, grant_key TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS boss_loot_claims(id INTEGER PRIMARY KEY AUTOINCREMENT, account INTEGER NOT NULL REFERENCES accounts(id), boss_id TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS duel_history(id INTEGER PRIMARY KEY AUTOINCREMENT, challenger INTEGER NOT NULL REFERENCES accounts(id), opponent INTEGER NOT NULL REFERENCES accounts(id), winner TEXT NOT NULL, created_at INTEGER NOT NULL);
@@ -255,6 +257,27 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
     }
   }
+  // Düello rakibi: seviyeye yakın, engellenmemiş gerçek bir hesabın en yüksek seviyeli karakterinin
+  // düello için gereken alanları (özel veriler çıkarılmış). Hem eski uç hem sunucu eylemi kullanır.
+  function pickDuelOpponent(accountId, level) {
+    const rows = db.prepare('SELECT backups.account AS account, backups.data AS data, accounts.name AS accountName FROM backups JOIN accounts ON accounts.id = backups.account WHERE backups.account != ? AND backups.account NOT IN (SELECT blocked FROM user_blocks WHERE blocker=? UNION SELECT blocker FROM user_blocks WHERE blocked=?)').all(accountId, accountId, accountId);
+    const candidates = [];
+    for (const row of rows) {
+      let data;
+      try { data = JSON.parse(row.data); } catch { continue; }
+      const chars = Array.isArray(data?.characters) ? data.characters.filter(Boolean) : [];
+      if (chars.length === 0) continue;
+      const main = chars.reduce((best, c) => (!best || (c.level || 0) > (best.level || 0) ? c : best), null);
+      if (!main) continue;
+      candidates.push({ accountId: row.account, accountName: row.accountName, character: main });
+    }
+    const inRange = candidates.filter(c => Math.abs((c.character.level || 1) - level) <= 15);
+    const pool = inRange.length > 0 ? inRange : candidates;
+    if (pool.length === 0) return null;
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+    const seed = randomBytes(4).readUInt32BE(0) || 1;
+    return { opponentAccountId: picked.accountId, opponentName: picked.character.nickname || picked.accountName, opponent: duelSnapshot(picked.character), seed };
+  }
   const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll, drops: () => admin.drops.get().data,
     hooks: {
       // Dünya Canavarı: hak, sunucudaki bekleyen kayıttır.
@@ -368,6 +391,45 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const paid = wallet.spendInTransaction(account, kind, key, ck, now);
         if (kind === 'premium') entitlements.grantPremium(account, ck, key, 'purchase', now);
         return { payload: { kind, key, diamonds: paid.diamonds, price: paid.price } };
+      },
+      // GM araçları: yetki hesaba bağlı GM listesinden sunucuda denetlenir.
+      ...Object.fromEntries(['gm/exec', 'gm/give', 'gm/clearInventory', 'gm/giveAllChests'].map((type) => [type, ({ account, payload }) => (admin.isGm(account) ? { payload } : { fail: 'notGm' })])),
+      // Savaş Alanı düellosu: rakip ve tohum sunucudan, sonuç sunucuda aynı motorla hesaplanır.
+      'duel/start': ({ account, payload, now }) => {
+        const pending = db.prepare('SELECT * FROM duel_pending WHERE account=?').get(account);
+        if (pending && now - pending.created_at < 3000) return { fail: 'tooSoon' };
+        const picked = pickDuelOpponent(account, Number(payload?.level) || 1);
+        if (!picked) return { fail: 'noOpponent' };
+        return {
+          payload: { ...picked, forfeit: !!pending },
+          after: () => {
+            if (pending) db.prepare('INSERT INTO duel_history(challenger,opponent,winner,created_at) VALUES(?,?,?,?)').run(account, pending.opponent_account, 'opponent', now);
+            db.prepare('INSERT OR REPLACE INTO duel_pending(account,opponent_account,opponent,seed,created_at) VALUES(?,?,?,?,?)').run(account, picked.opponentAccountId, JSON.stringify(picked.opponent), picked.seed, now);
+          },
+        };
+      },
+      'duel/resolve': ({ account, now }) => {
+        const pending = db.prepare('SELECT * FROM duel_pending WHERE account=?').get(account);
+        if (!pending) return { fail: 'noDuel' };
+        if (now - pending.created_at < 4000) return { fail: 'tooFast' };
+        return {
+          payload: { opponent: JSON.parse(pending.opponent), seed: pending.seed },
+          after: (result) => {
+            db.prepare('DELETE FROM duel_pending WHERE account=?').run(account);
+            db.prepare('INSERT INTO duel_history(challenger,opponent,winner,created_at) VALUES(?,?,?,?)').run(account, pending.opponent_account, result.winner, now);
+          },
+        };
+      },
+      'duel/concede': ({ account, now }) => {
+        const pending = db.prepare('SELECT * FROM duel_pending WHERE account=?').get(account);
+        if (!pending) return { fail: 'noDuel' };
+        return {
+          payload: { opponent: JSON.parse(pending.opponent) },
+          after: () => {
+            db.prepare('DELETE FROM duel_pending WHERE account=?').run(account);
+            db.prepare('INSERT INTO duel_history(challenger,opponent,winner,created_at) VALUES(?,?,?,?)').run(account, pending.opponent_account, 'opponent', now);
+          },
+        };
       },
       // Çark: ödül, sunucunun çevirme sırasında seçtiği bekleyen kayıttır (premium ödüller ayrı yoldan).
       'wheel/claimItem': ({ account }) => {
@@ -510,6 +572,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         ['DELETE FROM boss_contributions WHERE account=?', [id]],
         ['DELETE FROM boss_loot_claims WHERE account=?', [id]],
         ['DELETE FROM pending_grants WHERE account=?', [id]],
+        ['DELETE FROM duel_pending WHERE account=?', [id]],
         ['DELETE FROM duel_history WHERE challenger=? OR opponent=?', [id, id]],
         ['DELETE FROM push_subscriptions WHERE account_id=?', [id]],
         ['DELETE FROM push_prefs WHERE account_id=?', [id]],
@@ -686,6 +749,18 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const body = await read(req);
         const characterKey = validCharacterKey(body?.characterKey);
         if (!characterKey) throw fail(400, 'INVALID_CHARACTER');
+        if (game.enabled(account.id)) {
+          // Sıra ve hafta istemciden değil, sunucunun hafta geçişinde (week/rollover) yazdığı bekleyen talepten gelir.
+          const stored = db.prepare('SELECT revision,data FROM backups WHERE account=?').get(account.id);
+          const data = stored ? JSON.parse(stored.data) : null;
+          const index = (data?.characters || []).findIndex((c, i) => c && characterKeyOf(c, i) === characterKey);
+          const pending = index >= 0 ? data.characters[index].pendingWeeklyClaim : null;
+          if (!pending) return send(200, { diamondsAwarded: 0, diamonds: wallet.balance(account.id), noPending: true });
+          const paid = wallet.weeklyRank(account.id, characterKey, pending.weekId, pending.rank);
+          delete data.characters[index].pendingWeeklyClaim;
+          db.prepare('UPDATE backups SET revision=?,data=?,updated=? WHERE account=?').run(stored.revision + 1, JSON.stringify(data), Date.now(), account.id);
+          return send(200, paid);
+        }
         return send(200, wallet.weeklyRank(account.id, characterKey, body?.weekId, body?.rank === null ? null : Number(body?.rank)));
       }
       if (path === '/api/wallet/gm-grant' && req.method === 'POST') {
@@ -948,27 +1023,15 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       // uygulanır — oyundaki her ekonomi hareketiyle aynı güven seviyesi.
       if (path === '/api/warzone/duel/opponent' && req.method === 'GET') {
         duelRateLimit(account.id);
+        if (game.enabled(account.id)) throw fail(409, 'USE_GAME_ACT');
         const level = Number(new URL(req.url, 'http://localhost').searchParams.get('level')) || 1;
-        const rows = db.prepare('SELECT backups.account AS account, backups.data AS data, accounts.name AS accountName FROM backups JOIN accounts ON accounts.id = backups.account WHERE backups.account != ? AND backups.account NOT IN (SELECT blocked FROM user_blocks WHERE blocker=? UNION SELECT blocker FROM user_blocks WHERE blocked=?)').all(account.id, account.id, account.id);
-        const candidates = [];
-        for (const row of rows) {
-          let data;
-          try { data = JSON.parse(row.data); } catch { continue; }
-          const chars = Array.isArray(data?.characters) ? data.characters.filter(Boolean) : [];
-          if (chars.length === 0) continue;
-          const main = chars.reduce((best, c) => (!best || (c.level || 0) > (best.level || 0) ? c : best), null);
-          if (!main) continue;
-          candidates.push({ accountId: row.account, accountName: row.accountName, character: main });
-        }
-        const inRange = candidates.filter(c => Math.abs((c.character.level || 1) - level) <= 15);
-        const pool = inRange.length > 0 ? inRange : candidates;
-        if (pool.length === 0) return send(200, { opponent: null });
-        const picked = pool[Math.floor(Math.random() * pool.length)];
-        const seed = randomBytes(4).readUInt32BE(0) || 1;
-        return send(200, { opponentAccountId: picked.accountId, opponentName: picked.character.nickname || picked.accountName, opponent: picked.character, seed });
+        const picked = pickDuelOpponent(account.id, level);
+        if (!picked) return send(200, { opponent: null });
+        return send(200, picked);
       }
       if (path === '/api/warzone/duel/result' && req.method === 'POST') {
         duelRateLimit(account.id);
+        if (game.enabled(account.id)) throw fail(409, 'USE_GAME_ACT');
         const body = await read(req);
         const opponentAccountId = Number(body?.opponentAccountId);
         const winner = ['me', 'opponent', 'draw'].includes(body?.winner) ? body.winner : null;

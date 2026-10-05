@@ -22,7 +22,7 @@ const ACCESSORY_SLOTS = ["necklace", "belt", "ring", "earring"];
 // panel — /silah, /zırh, /aksesuar komutlarının aksine RASTGELE değil, tam
 // seçim yapılıyor (bkz. utils/loot.js#gmBuildWeaponById vb.). Sadece
 // ChatTab'ta player.isGM iken render edilir.
-export default function GmItemPanel({ player, setPlayer, pushToast }) {
+export default function GmItemPanel({ player, setPlayer, act, pushToast }) {
   const { t } = useTranslation();
   const [kind, setKind] = useState("weapon");
   const [cls, setCls] = useState(player.class);
@@ -58,37 +58,33 @@ export default function GmItemPanel({ player, setPlayer, pushToast }) {
   const upgradeLevels = useMemo(() => Array.from({ length: selectedMaxLevel + 1 }, (_, i) => i), [selectedMaxLevel]);
   const effectiveLevel = Math.min(level, selectedMaxLevel);
 
-  const give = () => {
-    let item = null;
+  const give = async () => {
+    let spec;
     if (kind === "weapon") {
       if (!effectiveWeaponId) return;
-      item = gmBuildWeaponById(cls, effectiveWeaponId, effectiveLevel);
+      spec = { kind, cls, weaponId: effectiveWeaponId, level: effectiveLevel };
     } else if (kind === "armor") {
-      item = gmBuildArmor(cls, slot, effectiveArmorTier, effectiveLevel);
+      spec = { kind, cls, slot, tier: effectiveArmorTier, level: effectiveLevel };
     } else {
-      item = gmBuildAccessory(accSlot, selectedAccessory?.tier, effectiveLevel, selectedAccessory?.name);
+      spec = { kind, accSlot, tier: selectedAccessory?.tier, level: effectiveLevel, name: selectedAccessory?.name };
     }
-    if (!item) { pushToast(t("gm.noCombo"), "warn"); return; }
-    const result = addItemToInventory(player, item);
-    setPlayer(result.player);
-    pushToast(result.added ? t("gm.given", { item: item.name, level: effectiveLevel }) : t("gm.notGiven", { item: item.name, reason: result.reason }), result.added ? "loot" : "warn");
+    const result = await act("gm/give", { spec });
+    if (!result.ok) { pushToast(result.reason === "noCombo" ? t("gm.noCombo") : t("battle.actionFailed"), "warn"); return; }
+    pushToast(result.added ? t("gm.given", { item: result.item.name, level: effectiveLevel }) : t("gm.notGiven", { item: result.item.name, reason: result.detail }), result.added ? "loot" : "warn");
   };
 
   // Test sırasında ağırlık kapasitesini hızlıca boşaltmak için — sadece
   // çantayı (player.inventory) temizler, kuşanılmış eşyalara ve depoya
   // dokunmaz.
-  const clearInventory = () => {
-    setPlayer({ ...player, inventory: [] });
+  const clearInventory = async () => {
+    const result = await act("gm/clearInventory");
+    if (!result.ok) { pushToast(t("battle.actionFailed"), "warn"); return; }
     pushToast(t("gm.inventoryCleared"), "loot");
   };
 
-  const giveAllChests = () => {
-    const newChests = [];
-    for (let tier = 1; tier <= 6; tier++) {
-      for (let i = 0; i < CHESTS_PER_TIER; i++) newChests.push({ id: uid(), tier });
-    }
-    newChests.push({ id: uid(), tier: 5, special: true });
-    setPlayer({ ...player, chests: [...player.chests, ...newChests] });
+  const giveAllChests = async () => {
+    const result = await act("gm/giveAllChests", { perTier: CHESTS_PER_TIER });
+    if (!result.ok) { pushToast(t("battle.actionFailed"), "warn"); return; }
     pushToast(t("gm.allChestsGiven", { n: CHESTS_PER_TIER }), "loot");
   };
 

@@ -599,3 +599,90 @@ test('diamond purchases deliver in the same step as the charge; stats and skills
     db.close();
   } finally { await api.close(); }
 });
+
+test('duels are decided by the server with the same engine, scrolls and GM tools are checked, and forged progress is pinned back', async () => {
+  const { api, call, database } = await boot();
+  try {
+    const cookie = (await call('register', { name: 'jack', password })).cookie;
+    const rival = (await call('register', { name: 'rita', password })).cookie;
+    const mine = hero();
+    mine.level = 50;
+    mine.nationalPoint = 500;
+    mine.inventory = [...mine.inventory,
+      { id: 'job-1', kind: 'jobScroll', name: 'Job', count: 1, weight: 0.1 },
+      { id: 'race-1', kind: 'raceScroll', name: 'Race', count: 1, weight: 0.1 }];
+    assert.equal((await call('backup', { revision: 0, data: { race: 'karus', characters: [mine, null, null], bank: [[], []], bankGold: 0, diamonds: 0 } }, cookie, 'PUT')).status, 200);
+    const theirs = { ...createCharacter('mage', 'elmorad', 'Rival'), id: 'rhero', level: 50 };
+    assert.equal((await call('backup', { revision: 0, data: { race: 'elmorad', characters: [theirs, null, null], bank: [[], []], bankGold: 0, diamonds: 0 } }, rival, 'PUT')).status, 200);
+    const db = new DatabaseSync(database);
+    db.prepare('INSERT INTO economy_accounts VALUES(1,?)').run(Date.now());
+    const act = (type, payload = {}) => call('game/act', { characterKey: 'hero', type, payload }, cookie);
+    const state = async () => (await call('backup', null, cookie)).data.data.characters[0];
+
+    // Duel: no result without a started duel; the opponent comes from the server and carries no private data.
+    assert.equal((await act('duel/resolve')).data.result.reason, 'noDuel');
+    const started = await act('duel/start', { level: 50 });
+    assert.equal(started.data.result.ok, true);
+    assert.equal(started.data.result.opponentName, 'Rival');
+    assert.equal('inventory' in started.data.result.opponent, false);
+    assert.equal('gold' in started.data.result.opponent, false);
+    assert.equal((await act('duel/start', { level: 50 })).data.result.reason, 'tooSoon');
+    assert.equal((await act('duel/resolve')).data.result.reason, 'tooFast');
+    db.prepare('UPDATE duel_pending SET created_at=created_at-10000').run();
+    const np0 = (await state()).nationalPoint;
+    const resolved = await act('duel/resolve');
+    assert.equal(resolved.data.result.ok, true);
+    const np1 = (await state()).nationalPoint;
+    if (resolved.data.result.winner === 'me') assert.ok(np1 > np0);
+    else if (resolved.data.result.winner === 'opponent') assert.ok(np1 < np0);
+    else assert.equal(np1, np0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM duel_history WHERE challenger=1').get().n, 1);
+    assert.equal((await act('duel/resolve')).data.result.reason, 'noDuel', 'a duel is settled once');
+    // Abandoning a duel counts as a loss: concede, or starting another one.
+    assert.equal((await act('duel/start', { level: 50 })).data.result.ok, true);
+    const before = (await state()).nationalPoint;
+    assert.equal((await act('duel/concede')).data.result.ok, true);
+    assert.ok((await state()).nationalPoint < before);
+    // Legacy duel routes are closed for server-economy accounts.
+    assert.equal((await call('warzone/duel/opponent?level=50', null, cookie)).status, 409);
+
+    // Scrolls: need the scroll, valid targets; the race change reaches the account.
+    assert.equal((await act('scroll/job', { itemId: 'job-1', newClass: 'priest' })).data.result.reason, 'invalidClass');
+    assert.equal((await act('scroll/job', { itemId: 'nope', newClass: 'mage' })).data.result.reason, 'itemNotFound');
+    assert.equal((await act('scroll/job', { itemId: 'job-1', newClass: 'mage' })).data.result.reason, 'mustUnequipFirst', 'gear must come off first');
+    for (const [slot, item] of Object.entries((await state()).equipped)) if (item) await act('inventory/unequip', { slot });
+    assert.equal((await act('scroll/job', { itemId: 'job-1', newClass: 'mage' })).data.result.ok, true);
+    assert.equal((await state()).class, 'mage');
+    assert.equal((await act('scroll/race', { itemId: 'race-1', race: 'orc-lord' })).data.result.reason, 'invalidRace');
+    assert.equal((await act('scroll/race', { itemId: 'race-1', race: 'elmorad' })).data.result.ok, true);
+    const saved = (await call('backup', null, cookie)).data.data;
+    assert.equal(saved.race, 'elmorad');
+    assert.equal(saved.characters[0].race, 'elmorad');
+
+    // GM tools: refused without the server-bound GM right, available with it.
+    assert.equal((await act('gm/exec', { cmd: 'altin', args: ['999999'] })).data.result.reason, 'notGm');
+    assert.equal((await act('gm/clearInventory')).data.result.reason, 'notGm');
+    db.prepare('INSERT INTO gm_accounts(account,granted_at) VALUES(1,?)').run(Date.now());
+    const gold0 = (await state()).gold;
+    const gm = await act('gm/exec', { cmd: 'altin', args: ['1234'] });
+    assert.equal(gm.data.result.ok, true);
+    assert.equal((await state()).gold, gold0 + 1234);
+
+    // Pin: forged progress does not survive a save; a "new" character starts from the rules' starting values.
+    const stored = (await call('backup', null, cookie)).data;
+    const forged = structuredClone(stored.data);
+    Object.assign(forged.characters[0], { level: 65, xp: 999999, statPoints: 500, nationalPoint: 999999, monsterKills: { sis_kurdu: 9999 }, claimedQuests: [], race: 'karus' });
+    forged.race = 'karus';
+    forged.characters[1] = { ...createCharacter('warrior', 'karus', 'Cheat'), id: 'cheat', level: 65, nationalPoint: 123456, statPoints: 900 };
+    assert.equal((await call('backup', { revision: stored.revision, data: forged }, cookie, 'PUT')).status, 200);
+    const after = (await call('backup', null, cookie)).data.data;
+    assert.equal(after.characters[0].level, 50);
+    assert.equal(after.characters[0].nationalPoint, (await state()).nationalPoint);
+    assert.equal(after.characters[0].monsterKills.sis_kurdu, undefined);
+    assert.equal(after.race, 'elmorad');
+    assert.equal(after.characters[1].level, 1);
+    assert.ok(after.characters[1].nationalPoint < 1000);
+    assert.ok(after.characters[1].statPoints < 100);
+    db.close();
+  } finally { await api.close(); }
+});

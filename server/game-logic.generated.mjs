@@ -6602,7 +6602,7 @@ var require_lucide_react = __commonJS({
       ["path", { d: "m5 22 14-4", key: "1brv4h" }],
       ["path", { d: "m5 18 14 4", key: "lgyyje" }]
     ]);
-    var Flame = createLucideIcon("Flame", [
+    var Flame2 = createLucideIcon("Flame", [
       [
         "path",
         {
@@ -9281,7 +9281,7 @@ var require_lucide_react = __commonJS({
       ["path", { d: "M20 3v4", key: "1olli1" }],
       ["path", { d: "M22 5h-4", key: "1gvqau" }]
     ]);
-    var Moon = createLucideIcon("Moon", [
+    var Moon2 = createLucideIcon("Moon", [
       ["path", { d: "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z", key: "a7tn18" }]
     ]);
     var MountainSnow = createLucideIcon("MountainSnow", [
@@ -14393,7 +14393,7 @@ var require_lucide_react = __commonJS({
       FlagOff,
       FlagTriangleLeft,
       FlagTriangleRight,
-      Flame,
+      Flame: Flame2,
       FlameKindling,
       Flashlight,
       FlashlightOff,
@@ -14707,7 +14707,7 @@ var require_lucide_react = __commonJS({
       MonitorStop,
       MonitorUp,
       MonitorX,
-      Moon,
+      Moon: Moon2,
       MoonStar,
       Mountain: Mountain2,
       MountainSnow,
@@ -16573,8 +16573,8 @@ var require_lucide_react = __commonJS({
     exports.FlagTriangleLeftIcon = FlagTriangleLeft;
     exports.FlagTriangleRight = FlagTriangleRight;
     exports.FlagTriangleRightIcon = FlagTriangleRight;
-    exports.Flame = Flame;
-    exports.FlameIcon = Flame;
+    exports.Flame = Flame2;
+    exports.FlameIcon = Flame2;
     exports.FlameKindling = FlameKindling;
     exports.FlameKindlingIcon = FlameKindling;
     exports.Flashlight = Flashlight;
@@ -17742,7 +17742,7 @@ var require_lucide_react = __commonJS({
     exports.LucideFlagOff = FlagOff;
     exports.LucideFlagTriangleLeft = FlagTriangleLeft;
     exports.LucideFlagTriangleRight = FlagTriangleRight;
-    exports.LucideFlame = Flame;
+    exports.LucideFlame = Flame2;
     exports.LucideFlameKindling = FlameKindling;
     exports.LucideFlashlight = Flashlight;
     exports.LucideFlashlightOff = FlashlightOff;
@@ -18084,7 +18084,7 @@ var require_lucide_react = __commonJS({
     exports.LucideMonitorStop = MonitorStop;
     exports.LucideMonitorUp = MonitorUp;
     exports.LucideMonitorX = MonitorX;
-    exports.LucideMoon = Moon;
+    exports.LucideMoon = Moon2;
     exports.LucideMoonStar = MoonStar;
     exports.LucideMoreHorizontal = Ellipsis;
     exports.LucideMoreVertical = EllipsisVertical;
@@ -18894,8 +18894,8 @@ var require_lucide_react = __commonJS({
     exports.MonitorUpIcon = MonitorUp;
     exports.MonitorX = MonitorX;
     exports.MonitorXIcon = MonitorX;
-    exports.Moon = Moon;
-    exports.MoonIcon = Moon;
+    exports.Moon = Moon2;
+    exports.MoonIcon = Moon2;
     exports.MoonStar = MoonStar;
     exports.MoonStarIcon = MoonStar;
     exports.MoreHorizontal = Ellipsis;
@@ -21397,6 +21397,7 @@ function currentWeekId(date = /* @__PURE__ */ new Date()) {
 // src/utils/nationalPointConstants.js
 init_define_import_meta_env();
 var STARTING_NATIONAL_POINT = 500;
+var NP_LOSS_PENALTY = 50;
 var NP_RECOVERY_GOLD_COST = 1500;
 var NP_RECOVERY_NP_AMOUNT = 250;
 
@@ -23542,6 +23543,9 @@ var MAX_GOLD = 2e9;
 function clampGold(amount) {
   return Math.max(0, Math.min(MAX_GOLD, Math.round(amount)));
 }
+function formatGold(amount) {
+  return Math.round(amount).toLocaleString("tr-TR");
+}
 function xpLevelPenaltyMultiplier(playerLevel, mapLevelMax) {
   const diff = playerLevel - mapLevelMax;
   if (diff <= 1) return 1;
@@ -23724,6 +23728,25 @@ var ALL_EQUIP_KEYS = [
   "earring1",
   "earring2"
 ];
+function canChangeJob(player) {
+  if (Object.values(player.equipped).some((it) => it != null)) {
+    return { ok: false, reason: "mustUnequipFirst" };
+  }
+  if (player.clan) {
+    return { ok: false, reason: "cannotChangeJobInClan" };
+  }
+  return { ok: true };
+}
+function changeJob(player, newClass) {
+  const next = {
+    ...player,
+    class: newClass,
+    skills: { known: [], loadout: [null, null, null, null, null] }
+  };
+  next.hp = Math.min(next.hp, playerMaxHp(next));
+  next.mp = Math.min(next.mp, playerMaxMp(next));
+  return next;
+}
 function isBroken(item) {
   return item && item.durability > 0 && item.currentDurability <= 0;
 }
@@ -23828,6 +23851,13 @@ function activeArmorSetBonus(player) {
   const tier = pieces[0].tier;
   const complete = pieces.every((it) => it.class === player.class && it.tier === tier);
   return complete ? ARMOR_SET_BONUS[tier] || null : null;
+}
+function armorSetDamageReduction(player, source) {
+  const bonus = activeArmorSetBonus(player);
+  if (!bonus || bonus.dmgReduction <= 0) return 0;
+  if (bonus.scope === "all") return bonus.dmgReduction;
+  if (bonus.scope === "monster" && source === "monster") return bonus.dmgReduction;
+  return 0;
 }
 var MP_COEFF = { warrior: 0.35, rogue: 0.45, mage: 1.15 };
 var MP_SCALE = 22e-4;
@@ -24029,6 +24059,12 @@ function premiumSellMultiplier(player) {
 }
 function premiumRepairDiscount(player) {
   return activePremiumTier(player)?.repairDiscount ?? 0;
+}
+function premiumNpBonus(player) {
+  return activePremiumTier(player)?.nationalPointBonus ?? 0;
+}
+function premiumNpLossReduction(player) {
+  return activePremiumTier(player)?.nationalPointLossReduction ?? 0;
 }
 function buyPremium(player, tierId, bank) {
   const tier = PREMIUM_TIERS[tierId];
@@ -24271,8 +24307,8 @@ function claimQuest(player, questId) {
   const quest = MONSTER_QUESTS.find((q) => q.id === questId);
   if (!quest) return { player, claimed: false, reason: "invalidQuest" };
   if (isQuestClaimed(player, questId)) return { player, claimed: false, reason: "rewardAlreadyClaimed" };
-  const { done: done10 } = questProgress(player, quest);
-  if (!done10) return { player, claimed: false, reason: "questNotDone" };
+  const { done: done12 } = questProgress(player, quest);
+  if (!done12) return { player, claimed: false, reason: "questNotDone" };
   const chest = { id: uid(), tier: quest.tier };
   return {
     player: {
@@ -24295,8 +24331,8 @@ function awakeningProgress(player) {
     current: Math.min(player.monsterKills?.[monsterId] || 0, target),
     target
   }));
-  const done10 = entries.every((e) => e.current >= e.target);
-  return { entries, done: done10 };
+  const done12 = entries.every((e) => e.current >= e.target);
+  return { entries, done: done12 };
 }
 function claimAwakening(player) {
   if (player.awakened) return { player, claimed: false, reason: "alreadyAwakened" };
@@ -24307,6 +24343,14 @@ function claimAwakening(player) {
 
 // src/utils/combat.js
 init_define_import_meta_env();
+function mitigate(rawPower, def, K) {
+  return Math.max(0, rawPower) * K / (Math.max(0, def) + K);
+}
+function hitChance(attackerDex, defenderDex, attackerLevel) {
+  const diff = attackerDex - defenderDex;
+  const chance = 0.9 + Math.max(-0.04, Math.min(0.04, diff * 4e-4));
+  return Math.min(0.95, Math.max(0.85, chance));
+}
 
 // src/utils/skills.js
 function classSkills(cls) {
@@ -24487,8 +24531,8 @@ function mapBossState(player) {
 }
 function mapCompletion(player, mapId, map = findMap(mapId)) {
   const total = map.monsters.length;
-  const done10 = map.monsters.filter((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT).length;
-  return { done: done10, total, complete: done10 >= total };
+  const done12 = map.monsters.filter((m) => monsterKillCount(player, m.id) >= KILLS_TO_UNLOCK_NEXT).length;
+  return { done: done12, total, complete: done12 >= total };
 }
 function canFightMapBoss(player, mapId, map) {
   if (mapBossState(player).defeatedMapIds.includes(mapId)) return { ok: false, reason: "defeatedToday" };
@@ -24907,8 +24951,40 @@ init_define_import_meta_env();
 
 // src/utils/leaderboard.js
 init_define_import_meta_env();
+var WEEKLY_REWARDS = [7e3, 4e3, 2e3];
+function leaderboardFor(race, cls, weekId, player, sortBy = "weeklyPoint") {
+  if (player && player.race === race && player.class === cls) {
+    return [{
+      name: player.nickname || CLASSES[cls]?.name || "Sen",
+      nationalPoint: player.nationalPoint || 0,
+      weeklyPoint: player.weeklyPoint || 0,
+      isPlayer: true,
+      rank: 1
+    }];
+  }
+  return [];
+}
 
 // src/utils/nationalPoint.js
+var BASE_NATIONAL_POINT = 50;
+function nationalPointGain(player) {
+  return Math.round((BASE_NATIONAL_POINT + premiumNpBonus(player)) * boostMultiplier(player, "np"));
+}
+function awardNationalPoint(player) {
+  const gain = nationalPointGain(player);
+  return {
+    player: { ...player, nationalPoint: player.nationalPoint + gain, weeklyPoint: player.weeklyPoint + gain },
+    gain
+  };
+}
+function penalizeNationalPoint(player) {
+  const loss = Math.round(NP_LOSS_PENALTY * (1 - premiumNpLossReduction(player)));
+  return {
+    ...player,
+    nationalPoint: Math.max(0, player.nationalPoint - loss),
+    weeklyPoint: Math.max(0, player.weeklyPoint - loss)
+  };
+}
 function buyNationalPoint(player) {
   if (player.nationalPoint > 0) return { player, bought: false, reason: "npStillAvailable" };
   if (player.gold < NP_RECOVERY_GOLD_COST) return { player, bought: false, reason: "notEnoughGold" };
@@ -24920,6 +24996,24 @@ function buyNationalPoint(player) {
       weeklyPoint: player.weeklyPoint + NP_RECOVERY_NP_AMOUNT
     },
     bought: true
+  };
+}
+function applyWeeklyRollover(player) {
+  const nowWeek = currentWeekId();
+  if (player.weekId === nowWeek) return { player, diamondsAwarded: 0, rank: null };
+  const standings = leaderboardFor(player.race, player.class, player.weekId, player, "weeklyPoint");
+  const own = standings.find((e) => e.isPlayer);
+  const rank = own ? own.rank : null;
+  const diamondsAwarded = rank && rank <= WEEKLY_REWARDS.length ? WEEKLY_REWARDS[rank - 1] : 0;
+  return {
+    player: {
+      ...player,
+      weeklyPoint: 0,
+      weekId: nowWeek,
+      ...diamondsAwarded > 0 ? { pendingWeeklyClaim: { weekId: player.weekId, rank } } : {}
+    },
+    diamondsAwarded,
+    rank
   };
 }
 
@@ -25629,6 +25723,26 @@ var diamondReducers = {
 
 // src/game/character.js
 init_define_import_meta_env();
+
+// src/data/races.js
+init_define_import_meta_env();
+var import_lucide_react3 = __toESM(require_lucide_react(), 1);
+var RACES = {
+  karus: {
+    name: "Ork",
+    icon: import_lucide_react3.Flame,
+    color: "#C9425A",
+    desc: "Sava\u015F\xE7\u0131 ruhlu, disiplinli bir ordu milleti. K\u0131z\u0131l bayrak alt\u0131nda birle\u015Fir."
+  },
+  elmorad: {
+    name: "\u0130nsan",
+    icon: import_lucide_react3.Moon,
+    color: "#4FC3D9",
+    desc: "Zarif, stratejik d\xFC\u015F\xFCnen bir bilgelik milleti. G\xFCm\xFC\u015F ay alt\u0131nda y\xFCr\xFCr."
+  }
+};
+
+// src/game/character.js
 var fail8 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
 var done8 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
 var MAX_ALLOCATE_PER_CALL = 200;
@@ -25666,8 +25780,403 @@ var characterReducers = {
     if (skillId !== null && !known.includes(skillId)) return fail8(state, "skillNotKnown");
     return done8({ ...state, player: setLoadoutSlot(player, slot, skillId) });
   },
+  // Meslek parşömeni: üstte eşya olmamalı, klanda olunmamalı; beceriler yeni sınıfa göre sıfırlanır.
+  "scroll/job"(state, { itemId, newClass }) {
+    const { player } = state;
+    const item = player.inventory.find((i) => i.id === itemId && i.kind === "jobScroll");
+    if (!item) return fail8(state, "itemNotFound");
+    if (typeof newClass !== "string" || !Object.hasOwn(CLASSES, newClass)) return fail8(state, "invalidClass");
+    const check = canChangeJob(player);
+    if (!check.ok) return fail8(state, check.reason);
+    const inventory = (item.count || 1) <= 1 ? player.inventory.filter((i) => i.id !== itemId) : player.inventory.map((i) => i.id === itemId ? { ...i, count: i.count - 1 } : i);
+    return done8({ ...state, player: learnFreeSkills(changeJob({ ...player, inventory }, newClass)) });
+  },
+  // Irk hesap genelindedir: sunucu, hesaptaki bütün karakterlerin ırkını aynı işlemde günceller (`setRace`).
+  "scroll/race"(state, { itemId, race }) {
+    const { player } = state;
+    const item = player.inventory.find((i) => i.id === itemId && i.kind === "raceScroll");
+    if (!item) return fail8(state, "itemNotFound");
+    if (typeof race !== "string" || !Object.hasOwn(RACES, race)) return fail8(state, "invalidRace");
+    if (player.clan) return fail8(state, "clanBlocksRaceChange");
+    const inventory = (item.count || 1) <= 1 ? player.inventory.filter((i) => i.id !== itemId) : player.inventory.map((i) => i.id === itemId ? { ...i, count: i.count - 1 } : i);
+    return done8({ ...state, player: { ...player, inventory, race } }, { setRace: race });
+  },
   "title/set"(state, { achievementId }) {
     return done8({ ...state, player: setActiveTitle(state.player, achievementId ?? null) });
+  }
+};
+
+// src/game/gm.js
+init_define_import_meta_env();
+
+// src/utils/gmCommands.js
+init_define_import_meta_env();
+function clampTier(value, max = 5) {
+  const t = parseInt(value, 10);
+  if (!Number.isFinite(t)) return 1;
+  return Math.min(max, Math.max(1, t));
+}
+function grant(player, item, bank) {
+  if (!item) return { player, bank, resultText: "Bu kombinasyon i\xE7in hen\xFCz e\u015Fya yok." };
+  const result = addItemToInventory(player, item);
+  return {
+    player: result.player,
+    bank,
+    resultText: result.added ? `${item.name} verildi.` : `${item.name} verilemedi \u2014 ${result.reason}`
+  };
+}
+var HELP_TEXT = "Komutlar: /alt\u0131n [miktar], /elmas [miktar], /z\u0131rh [tier] [s\u0131n\u0131f], /silah [tier], /aksesuar [tier], /par\u015F\xF6men [tier], /bonus [adet], /premium [mythic|apex], /iksir [hp|mp] [adet] [tier], /sand\u0131k [tier(1-6)|\xF6zel], /sand\u0131klar [tier ba\u015F\u0131na adet] (her tier'dan + \xF6zel, toplu test i\xE7in), /skill [id], /uyan, /seviye [1-65], /np [miktar], /expevent [saat] [y\xFCzde], /yard\u0131m";
+function executeGmCommand(player, cmd, args, bank) {
+  switch (cmd) {
+    case "altin":
+    case "alt\u0131n": {
+      const amount = Math.max(1, parseInt(args[0], 10) || 100);
+      if (player.gold >= MAX_GOLD) return { player, bank, resultText: `Zaten tavanda (${formatGold(MAX_GOLD)} alt\u0131n) \u2014 daha fazlas\u0131 eklenemez.` };
+      const nextGold = clampGold(player.gold + amount);
+      const actual = nextGold - player.gold;
+      return {
+        player: { ...player, gold: nextGold },
+        bank,
+        resultText: actual < amount ? `+${formatGold(actual)} alt\u0131n verildi (tavana ula\u015F\u0131ld\u0131, ${formatGold(MAX_GOLD)} alt\u0131n s\u0131n\u0131r\u0131 a\u015F\u0131lamaz).` : `+${formatGold(actual)} alt\u0131n verildi.`
+      };
+    }
+    case "elmas": {
+      const amount = Math.max(1, parseInt(args[0], 10) || 100);
+      return { player, bank, resultText: `+${amount} elmas verildi.` };
+    }
+    case "zirh":
+    case "z\u0131rh": {
+      const tier = clampTier(args[0]);
+      const forceClass = args[1] && CLASSES[args[1].toLowerCase()] ? args[1].toLowerCase() : void 0;
+      return grant(player, rollArmor(tier, forceClass), bank);
+    }
+    case "silah": {
+      const tier = clampTier(args[0], maxWeaponTier(player.class));
+      return grant(player, rollWeapon(tier, player.class), bank);
+    }
+    case "aksesuar": {
+      const tier = clampTier(args[0]);
+      return grant(player, rollAccessory(tier), bank);
+    }
+    case "parsomen":
+    case "par\u015F\xF6men": {
+      const tier = clampTier(args[0]);
+      return grant(player, makeScrollStack(tier, 1), bank);
+    }
+    case "bonus": {
+      const count = Math.max(1, parseInt(args[0], 10) || 1);
+      let cur = player;
+      let lastText = "";
+      for (let i = 0; i < count; i++) {
+        const result = grant(cur, makeBonusScrollStack(), bank);
+        cur = result.player;
+        lastText = result.resultText;
+      }
+      return { player: cur, bank, resultText: count > 1 ? `Bonus Par\u015F\xF6men x${count} verildi.` : lastText };
+    }
+    case "premium": {
+      const tierId = (args[0] || "").toLowerCase();
+      if (!PREMIUM_TIERS[tierId]) return { player, bank, resultText: `Ge\xE7ersiz paket. /premium mythic ya da /premium apex.` };
+      const result = buyPremium({ ...player, diamonds: 999999 }, tierId, bank);
+      if (!result.bought) return { player, bank, resultText: result.reason };
+      return { player: { ...result.player, diamonds: player.diamonds }, bank: result.bank, resultText: `${PREMIUM_TIERS[tierId].name} GM taraf\u0131ndan verildi.` };
+    }
+    case "iksir": {
+      const type = (args[0] || "hp").toLowerCase() === "mp" ? "mp" : "hp";
+      const count = Math.max(1, parseInt(args[1], 10) || 1);
+      const tier = clampTier(args[2], potionTiersFor(type).length);
+      return grant(player, makePotionStack(type, tier, count), bank);
+    }
+    case "sandik":
+    case "sand\u0131k": {
+      const arg = (args[0] || "").toLowerCase();
+      if (arg === "ozel" || arg === "\xF6zel") {
+        return {
+          player: { ...player, chests: [...player.chests, { id: uid(), tier: 5, special: true }] },
+          bank,
+          resultText: "\xD6zel Etkinlik Sand\u0131\u011F\u0131 verildi."
+        };
+      }
+      const tier = clampTier(args[0], 6);
+      return { player: { ...player, chests: [...player.chests, { id: uid(), tier }] }, bank, resultText: `T${tier} Sand\u0131k verildi.` };
+    }
+    case "sandiklar":
+    case "sand\u0131klar": {
+      const perTier = Math.max(1, Math.min(50, parseInt(args[0], 10) || 5));
+      const newChests = [];
+      for (let tier = 1; tier <= 6; tier++) {
+        for (let i = 0; i < perTier; i++) newChests.push({ id: uid(), tier });
+      }
+      newChests.push({ id: uid(), tier: 5, special: true });
+      return {
+        player: { ...player, chests: [...player.chests, ...newChests] },
+        bank,
+        resultText: `Her tier'dan (T1-T6) ${perTier} sand\u0131k + 1 \xF6zel sand\u0131k verildi (toplam ${newChests.length}).`
+      };
+    }
+    case "skill": {
+      const skillId = (args[0] || "").toLowerCase();
+      const skill = classSkills(player.class).find((s) => s.id === skillId);
+      if (!skill) return { player, bank, resultText: `Ge\xE7ersiz beceri id. Bu s\u0131n\u0131f\u0131n id'leri: ${classSkills(player.class).map((s) => s.id).join(", ")}` };
+      if (isKnown(player, skillId)) return { player, bank, resultText: "Zaten \xF6\u011Frenilmi\u015F." };
+      return {
+        player: { ...player, skills: { ...player.skills, known: [...player.skills.known, skillId] } },
+        bank,
+        resultText: `${skill.name} GM taraf\u0131ndan \xF6\u011Fretildi.`
+      };
+    }
+    case "uyan": {
+      const maxedKills = Object.fromEntries(Object.keys(AWAKENING_QUEST.targets).map((id) => [id, 999]));
+      const result = claimAwakening({ ...player, level: Math.max(player.level, AWAKENING_QUEST.requiredLevel), monsterKills: { ...player.monsterKills, ...maxedKills } });
+      if (!result.claimed) return { player, bank, resultText: result.reason };
+      return { player: { ...player, awakened: result.player.awakened }, bank, resultText: "2. Uyan\u0131\u015F GM taraf\u0131ndan verildi." };
+    }
+    case "seviye": {
+      const target = Math.min(MAX_LEVEL, Math.max(1, parseInt(args[0], 10) || 1));
+      const levelsGained = Math.max(0, target - player.level);
+      let next = learnFreeSkills({ ...player, level: target, xp: 0, statPoints: player.statPoints + levelsGained * 3 });
+      next.hp = playerMaxHp(next);
+      next.mp = playerMaxMp(next);
+      return { player: next, bank, resultText: `Seviye ${target} olarak ayarland\u0131. (+${levelsGained * 3} stat\xFC puan\u0131, sonraki seviyeye ${xpToNext(target)} XP gerekiyor.)` };
+    }
+    case "expevent": {
+      const hours = Math.max(0.1, parseFloat(args[0]) || 1);
+      const pct = Math.max(1, parseFloat(args[1]) || 100);
+      const mult = 1 + pct / 100;
+      const expiresAt = Date.now() + hours * 60 * 60 * 1e3;
+      return {
+        player: { ...player, eventExpBonus: { mult, expiresAt } },
+        bank,
+        resultText: `%${pct} EXP bonusu ${hours} saatli\u011Fine a\xE7\u0131ld\u0131.`
+      };
+    }
+    case "np": {
+      const amount = Math.max(1, parseInt(args[0], 10) || 50);
+      return {
+        player: { ...player, nationalPoint: player.nationalPoint + amount, weeklyPoint: player.weeklyPoint + amount },
+        bank,
+        resultText: `+${amount} National Point (ve Weekly Point) verildi.`
+      };
+    }
+    case "yardim":
+    case "yard\u0131m":
+      return { player, bank, resultText: HELP_TEXT };
+    default:
+      return { player, bank, resultText: `Bilinmeyen komut: /${cmd}. /yard\u0131m yaz.` };
+  }
+}
+
+// src/game/gm.js
+var fail9 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done9 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var gmReducers = {
+  "gm/exec"(state, { cmd, args }) {
+    if (typeof cmd !== "string" || !Array.isArray(args) || args.some((a) => typeof a !== "string")) return fail9(state, "invalidPayload");
+    if (cmd === "elmas" || cmd === "premium") return fail9(state, "dedicatedRoute");
+    const out = executeGmCommand(state.player, cmd, args.slice(0, 6), state.bank);
+    return done9({ ...state, player: out.player, bank: out.bank ?? state.bank }, { resultText: out.resultText });
+  },
+  "gm/give"(state, { spec }) {
+    if (!spec || typeof spec !== "object") return fail9(state, "invalidPayload");
+    const level = Number.isInteger(spec.level) ? spec.level : 0;
+    let item = null;
+    if (spec.kind === "weapon") item = gmBuildWeaponById(spec.cls, spec.weaponId, level);
+    else if (spec.kind === "armor") item = gmBuildArmor(spec.cls, spec.slot, spec.tier, level);
+    else if (spec.kind === "accessory") item = gmBuildAccessory(spec.accSlot, spec.tier, level, spec.name ?? null);
+    if (!item) return fail9(state, "noCombo");
+    const added = addItemToInventory(state.player, item);
+    return done9({ ...state, player: added.player }, { added: added.added, item, level, detail: added.reason });
+  },
+  "gm/clearInventory"(state) {
+    return done9({ ...state, player: { ...state.player, inventory: [] } });
+  },
+  "gm/giveAllChests"(state, { perTier = 5 }) {
+    const per = Math.max(1, Math.min(50, Number.isInteger(perTier) ? perTier : 5));
+    const chests = [];
+    for (let tier = 1; tier <= 6; tier++) for (let i = 0; i < per; i++) chests.push({ id: uid(), tier });
+    chests.push({ id: uid(), tier: 5, special: true });
+    return done9({ ...state, player: { ...state.player, chests: [...state.player.chests, ...chests] } }, { perTier: per });
+  }
+};
+
+// src/game/duel.js
+init_define_import_meta_env();
+
+// src/utils/duelEngine.js
+init_define_import_meta_env();
+
+// src/utils/pvpBalance.js
+init_define_import_meta_env();
+var PVP_POWER_CURVE = { "warrior": [[1, 1], [15, 1], [25, 1], [40, 1], [50, 1], [60, 1], [65, 1]], "rogue": [[1, 1.024], [15, 1.024], [25, 1.022], [40, 1.121], [50, 1.027], [60, 1.137], [65, 1.307]], "mage": [[1, 0.698], [15, 0.698], [25, 0.677], [40, 0.842], [50, 0.79], [60, 0.894], [65, 0.993]] };
+var PVP_UPGRADE_CURVE = { "warrior": {}, "rogue": { "15": [0.9794749999999999, 1, 1], "25": [1, 0.985, 1.019475], "40": [0.9439499999999998, 0.996216, 1.096108], "50": [1.131962, 1.04, 1.0555999999999999], "60": [1.033068, 1, 1.0244], "65": [0.8794079999999999, 0.92, 0.92] }, "mage": { "15": [0.9, 0.985, 1.2125], "25": [0.8865, 1, 1.2], "40": [0.9079200000000001, 1.0176399999999999, 1.32975], "50": [1.10968, 1.08, 1.1880000000000002], "60": [1.0120000000000002, 0.97, 1.1340000000000001], "65": [0.8627499999999999, 0.9888, 1.06575] } };
+function pvpSkillPower(cls, level, plus = 5) {
+  const points = PVP_POWER_CURVE[cls];
+  const i = points.findIndex((p) => p[0] >= level);
+  if (i <= 0) return points[i < 0 ? points.length - 1 : 0][1];
+  const a = points[i - 1], b = points[i];
+  const base = a[1] + (b[1] - a[1]) * (level - a[0]) / (b[0] - a[0]);
+  const factor = (row) => {
+    if (!row) return 1;
+    return plus <= 5 ? row[0] + (row[1] - row[0]) * (plus - 1) / 4 : row[1] + (row[2] - row[1]) * (plus - 5) / 3;
+  };
+  return base * (factor(PVP_UPGRADE_CURVE[cls][a[0]]) + (factor(PVP_UPGRADE_CURVE[cls][b[0]]) - factor(PVP_UPGRADE_CURVE[cls][a[0]])) * (level - a[0]) / (b[0] - a[0]));
+}
+function pvpSnapshot(p) {
+  const base = CLASSES[p.class];
+  const items = Object.values(p.equipped).filter((i) => i && !isBroken(i));
+  const weapon = items.filter((i) => i.kind === "weapon").reduce((n, i) => n + (i.atk || 0), 0) / { warrior: 1, rogue: 1.1, mage: 1.04 }[p.class];
+  const armor = items.filter((i) => i.kind === "armor");
+  const accessories = items.filter((i) => i.kind === "accessory");
+  const bonusStats = items.reduce((all, i) => Object.entries(i.statBonus || {}).reduce((next, [key, value]) => ({ ...next, [key]: (next[key] || 0) + value }), all), {});
+  const investment = p.stats[base.mainStat] - base.baseStats[base.mainStat] + (bonusStats[base.mainStat] || 0) + (p.class === "mage" ? Math.max(0, p.stats.int + (bonusStats.int || 0) - 70) : 0);
+  const gearBonus = p.class === "mage" ? 0 : armor.reduce((n, i) => n + armorLevelBonus(i.upgradeLevel), 0);
+  const power2 = (18 + weapon * (0.8 + 6e-3 * (investment + gearBonus) + 5e-3 * p.level)) / (1 + 0.8 * base.crit);
+  const defense = (armor.reduce((n, i) => n + (i.def || 0), 0) + accessories.reduce((n, i) => n + (i.def || 0), 0)) * { warrior: 1, rogue: 1.44, mage: 1.67 }[p.class];
+  const duelHp = 200 + boostFlatBonus(p, "hp") + p.level * 12 + (bonusStats.sta || 0) * 4 + Math.max(0, p.stats.sta - base.baseStats.sta) * 4 + items.reduce((n, i) => n + (i.hp || 0), 0);
+  const antiDef = {};
+  for (const item of items) {
+    const d = item.defenseAbility;
+    if (d?.vs) antiDef[d.vs] = (antiDef[d.vs] || 0) + Math.max(0, d.value || 0);
+  }
+  const accessoryPower = 1 + Math.min(0.15, accessories.reduce((n, i) => n + (i.attackPowerPct || 0), 0));
+  return {
+    weaponType: p.equipped.mainHand?.weaponType || "sword",
+    antiDef,
+    cls: p.class,
+    level: p.level,
+    dex: p.stats.dex + (bonusStats.dex || 0),
+    hp: playerMaxHp(p),
+    maxHp: playerMaxHp(p),
+    duelHp,
+    atk: power2 * wingMultiplier(p, "atk") * boostMultiplier(p, "atk") * accessoryPower,
+    def: (defense * 0.65 + p.level) * boostMultiplier(p, "def"),
+    crit: base.crit,
+    reduction: armorSetDamageReduction(p, "pvp")
+  };
+}
+function pvpDamage(a, b, critical = false, random = Math.random) {
+  const weapon = a.weaponType === "crossbow" ? "bow" : a.weaponType;
+  const points = b.antiDef?.[weapon] || 0;
+  const anti = Math.min(0.25, points / (100 + points));
+  const raw = (1 - anti) * mitigate(a.atk * (critical ? 1.8 : 1), b.def, 170) * (1 - (b.reduction || 0)) * (b.maxHp / b.duelHp);
+  return Math.max(1, Math.floor(raw) + (random() < raw % 1 ? 1 : 0));
+}
+
+// src/utils/duelEngine.js
+var DUEL_RULE_VERSION = "2026-09-24.1";
+function createDuel(a, b, { seed = 1, fullHealth = false } = {}) {
+  const fighters = [a, b].map((p) => {
+    const s = pvpSnapshot(p);
+    s.atk *= pvpSkillPower(p.class, p.level, p.equipped.mainHand?.upgradeLevel || 1);
+    return { ...s, name: p.nickname || p.class, mp: fullHealth ? playerMaxMp(p) : Math.min(p.mp, playerMaxMp(p)), maxMp: playerMaxMp(p), hp: fullHealth ? s.maxHp : Math.max(0, Math.min(p.hp, s.maxHp)), skills: [...new Set(p.skills?.loadout || [])].filter((id) => p.skills?.known?.includes(id)).slice(0, 5).map((id) => getSkill(p.class, id)).filter((s2) => s2 && s2.unlockLevel <= p.level), cooldowns: {}, buff: null, dot: null };
+  });
+  return { rulesVersion: DUEL_RULE_VERSION, fighters, seed: seed >>> 0 || 1, round: 0, first: seed % 2, finished: false, winner: null, events: [] };
+}
+function selectDuelSkill(a, b) {
+  const ready = a.skills.filter((s) => !a.cooldowns[s.id] && a.mp >= s.mpCost);
+  const heal = ready.filter((s) => s.effect.type === "heal").sort((x, y) => y.effect.pct - x.effect.pct)[0];
+  if (heal && a.hp / a.maxHp < 0.5) return heal;
+  const execute = ready.find((s) => s.effect.type === "execute" && b.hp / b.maxHp <= s.effect.hpPctThreshold);
+  if (execute) return execute;
+  if (!a.buff && b.hp / b.maxHp > 0.5) {
+    const buff = ready.filter((s) => s.effect.type === "buffAtk").sort((x, y) => y.effect.mult - x.effect.mult)[0];
+    if (buff) return buff;
+  }
+  if (!b.dot && b.hp / b.maxHp > 0.45) {
+    const dot = ready.find((s) => s.effect.type === "dot");
+    if (dot) return dot;
+  }
+  return ready.filter((s) => s.effect.type === "damage").sort((x, y) => y.effect.mult - x.effect.mult)[0] || null;
+}
+function stepDuel(state) {
+  if (state.finished) return state;
+  const next = { ...state, round: state.round + 1, events: [], fighters: state.fighters.map((f) => ({ ...f, cooldowns: { ...f.cooldowns }, buff: f.buff ? { ...f.buff } : null, dot: f.dot ? { ...f.dot } : null })) };
+  const random = () => {
+    next.seed = Math.imul(next.seed, 1664525) + 1013904223 >>> 0;
+    return next.seed / 4294967296;
+  };
+  const damage = (a2, b2, crit) => Math.max(1, Math.round(pvpDamage(a2, b2, crit, random) * (0.88 + random() * 0.24)));
+  const order = (state.first + state.round) % 2 ? [1, 0] : [0, 1];
+  for (const side of order) {
+    const a2 = next.fighters[side], b2 = next.fighters[1 - side];
+    if (a2.hp <= 0 || b2.hp <= 0) break;
+    if (a2.dot) {
+      const damage2 = Math.min(a2.hp, a2.dot.damage);
+      a2.hp -= damage2;
+      next.events.push({ side: 1 - side, type: "dotTick", damage: damage2, hit: true });
+      if (--a2.dot.left <= 0) a2.dot = null;
+      if (a2.hp <= 0) break;
+    }
+    const skill = selectDuelSkill(a2, b2), e = skill?.effect;
+    for (const id of Object.keys(a2.cooldowns)) a2.cooldowns[id] = Math.max(0, a2.cooldowns[id] - 1);
+    const power2 = a2.buff?.mult || 1;
+    if (a2.buff && --a2.buff.left <= 0) a2.buff = null;
+    if (skill) {
+      a2.mp -= skill.mpCost;
+      a2.cooldowns[skill.id] = skill.cooldown;
+    }
+    const event = { side, skillId: skill?.id, label: skill?.name, type: e?.type || "attack", hit: true, damage: 0 };
+    if (e?.type === "heal") {
+      event.heal = Math.min(a2.maxHp - a2.hp, Math.round(a2.maxHp * Math.min(0.2, e.pct)));
+      a2.hp += event.heal;
+    } else if (e?.type === "buffAtk") {
+      a2.buff = { mult: e.mult, left: e.turns };
+    } else if (e?.type === "dot") {
+      b2.dot = { damage: Math.max(1, Math.round(damage({ ...a2, atk: a2.atk * power2 }, b2, false) * e.mult)), left: e.turns };
+    } else {
+      event.hit = !!skill || random() < hitChance(a2.dex, b2.dex, a2.level);
+      event.crit = event.hit && random() < a2.crit;
+      const mult = e?.type === "execute" ? b2.hp / b2.maxHp <= e.hpPctThreshold ? e.mult : 1 : e?.mult || 1;
+      if (event.hit) {
+        event.damage = Math.min(b2.hp, damage({ ...a2, atk: a2.atk * power2 * mult }, b2, event.crit));
+        b2.hp -= event.damage;
+      }
+    }
+    next.events.push(event);
+  }
+  const [a, b] = next.fighters;
+  if (a.hp <= 0 || b.hp <= 0 || next.round >= 100) {
+    next.finished = true;
+    next.winner = a.hp <= 0 && b.hp <= 0 ? null : a.hp <= 0 ? 1 : b.hp <= 0 ? 0 : null;
+  }
+  return next;
+}
+
+// src/game/duel.js
+var fail10 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done10 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var MAX_STEPS = 120;
+function simulateDuel(player, opponent, seed) {
+  let engine = createDuel(player, opponent, { seed, fullHealth: true });
+  for (let i = 0; i < MAX_STEPS && !engine.finished; i++) engine = stepDuel(engine);
+  return engine.finished ? engine.winner : null;
+}
+var duelReducers = {
+  // Yeni düello: önceki bekleyen düello bırakıldıysa (`forfeit`) yenilgi sayılır.
+  "duel/start"(state, { opponentAccountId, opponentName, opponent, seed, forfeit }) {
+    if (!opponent || !Number.isSafeInteger(seed)) return fail10(state, "noOpponent");
+    const player = forfeit ? penalizeNationalPoint(state.player) : state.player;
+    return done10({ ...state, player }, { opponentAccountId, opponentName, opponent, seed, forfeited: !!forfeit });
+  },
+  "duel/resolve"(state, { opponent, seed }) {
+    if (!opponent || !Number.isSafeInteger(seed)) return fail10(state, "noDuel");
+    const winner = simulateDuel(state.player, opponent, seed);
+    if (winner === 0) {
+      const awarded = awardNationalPoint(state.player);
+      const player = { ...awarded.player, milestones: { ...awarded.player.milestones, duelsWon: (awarded.player.milestones?.duelsWon || 0) + 1 } };
+      return done10({ ...state, player }, { winner: "me", gain: awarded.gain });
+    }
+    if (winner === 1) return done10({ ...state, player: penalizeNationalPoint(state.player) }, { winner: "opponent" });
+    return done10(state, { winner: "draw" });
+  },
+  "duel/concede"(state, { opponent }) {
+    if (!opponent) return fail10(state, "noDuel");
+    return done10({ ...state, player: penalizeNationalPoint(state.player) }, { winner: "opponent" });
+  },
+  // Hafta değişince haftalık puan sıfırlanır; ilk 3'e girdiyse bekleyen elmas talebi (sunucu doğrular) oluşur.
+  "week/rollover"(state) {
+    const r = applyWeeklyRollover(state.player);
+    return done10({ ...state, player: r.player }, { rank: r.rank, rolled: r.player !== state.player });
   }
 };
 
@@ -25699,70 +26208,70 @@ function openChestsSafely(player, roll) {
 }
 
 // src/game/actions.js
-var fail9 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
-var done9 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
+var fail11 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
+var done11 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
 var strip = ({ player, bank, ...rest }) => rest;
 var findOwned = (player, itemId) => player.inventory.find((i) => i.id === itemId) || Object.values(player.equipped || {}).find((i) => i && i.id === itemId) || null;
 var inventoryReducers = {
   "inventory/equip"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail9(state, "itemNotFound");
+    if (!item) return fail11(state, "itemNotFound");
     const result = equipItem(state.player, item);
-    if (result.blocked) return fail9(state, "blocked", { blocked: result.blocked });
-    return done9({ ...state, player: result.player });
+    if (result.blocked) return fail11(state, "blocked", { blocked: result.blocked });
+    return done11({ ...state, player: result.player });
   },
   "inventory/unequip"(state, { slot }) {
     const result = unequipItem(state.player, slot);
-    if (!result.removed) return fail9(state, result.reason || "nothingToRemove", strip(result));
-    return done9({ ...state, player: result.player });
+    if (!result.removed) return fail11(state, result.reason || "nothingToRemove", strip(result));
+    return done11({ ...state, player: result.player });
   },
   "inventory/sell"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail9(state, "itemNotFound");
-    if (item.noTrade) return fail9(state, "noTrade");
+    if (!item) return fail11(state, "itemNotFound");
+    if (item.noTrade) return fail11(state, "noTrade");
     const price = Math.round(sellPrice(item) * premiumSellMultiplier(state.player));
     const gold = Math.min(MAX_GOLD, state.player.gold + price);
-    return done9({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
+    return done11({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { gold: price });
   },
   "inventory/sellBulk"(state, { itemIds }) {
     const wanted = new Set(Array.isArray(itemIds) ? itemIds : []);
     const sellable = state.player.inventory.filter((i) => wanted.has(i.id) && !isConsumable(i) && !i.noTrade);
-    if (sellable.length === 0) return fail9(state, "noneSellable");
+    if (sellable.length === 0) return fail11(state, "noneSellable");
     const total = sellable.reduce((sum, i) => sum + Math.round(sellPrice(i) * premiumSellMultiplier(state.player)), 0);
     const sold = new Set(sellable.map((i) => i.id));
     const gold = Math.min(MAX_GOLD, state.player.gold + total);
-    return done9({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
+    return done11({ ...state, player: { ...state.player, gold, inventory: state.player.inventory.filter((i) => !sold.has(i.id)) } }, { count: sellable.length, gold: total });
   },
   "inventory/repair"(state, { itemId }) {
     const item = findOwned(state.player, itemId);
-    if (!item) return fail9(state, "itemNotFound");
+    if (!item) return fail11(state, "itemNotFound");
     const result = repairItem(state.player, item, premiumRepairDiscount(state.player), state.bank);
-    if (!result.repaired) return fail9(state, result.reason || "repairFailed", strip(result));
-    return done9({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
+    if (!result.repaired) return fail11(state, result.reason || "repairFailed", strip(result));
+    return done11({ ...state, player: result.player, bank: result.bank || state.bank }, { cost: result.cost });
   },
   "inventory/repairAll"(state) {
     const result = repairAllEquipped(state.player, premiumRepairDiscount(state.player));
-    if (!result.repaired) return fail9(state, result.reason || "nothingToRepair", strip(result));
-    return done9({ ...state, player: result.player }, { cost: result.cost });
+    if (!result.repaired) return fail11(state, result.reason || "nothingToRepair", strip(result));
+    return done11({ ...state, player: result.player }, { cost: result.cost });
   },
   "inventory/depositItem"(state, { itemId, page }) {
     const item = state.player.inventory.find((i) => i.id === itemId);
-    if (!item) return fail9(state, "itemNotFound");
-    if (!Number.isInteger(page) || !state.bank[page]) return fail9(state, "invalidPage");
+    if (!item) return fail11(state, "itemNotFound");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail11(state, "invalidPage");
     const result = depositToBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail9(state, result.reason || "depositFailed", strip(result));
-    return done9({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail11(state, result.reason || "depositFailed", strip(result));
+    return done11({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/withdrawItem"(state, { itemId, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail9(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail11(state, "invalidPage");
     const item = state.bank[page].find((i) => i.id === itemId);
-    if (!item) return fail9(state, "itemNotFound");
+    if (!item) return fail11(state, "itemNotFound");
     const result = withdrawFromBank(state.player, item, state.bank, page);
-    if (!result.moved) return fail9(state, result.reason || "withdrawFailed", strip(result));
-    return done9({ ...state, player: result.player, bank: result.bank });
+    if (!result.moved) return fail11(state, result.reason || "withdrawFailed", strip(result));
+    return done11({ ...state, player: result.player, bank: result.bank });
   },
   "inventory/depositBulk"(state, { itemIds, page }) {
-    if (!Number.isInteger(page) || !state.bank[page]) return fail9(state, "invalidPage");
+    if (!Number.isInteger(page) || !state.bank[page]) return fail11(state, "invalidPage");
     let player = state.player, bank = state.bank, moved = 0;
     for (const id of Array.isArray(itemIds) ? itemIds : []) {
       const item = player.inventory.find((i) => i.id === id);
@@ -25774,44 +26283,44 @@ var inventoryReducers = {
         moved++;
       }
     }
-    return done9({ ...state, player, bank }, { moved });
+    return done11({ ...state, player, bank }, { moved });
   },
   "inventory/depositGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail9(state, "invalidAmount");
-    if (state.player.gold < amount) return fail9(state, "notEnoughGold");
-    if (state.bankGold + amount > MAX_GOLD) return fail9(state, "bankGoldCap");
-    return done9({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail11(state, "invalidAmount");
+    if (state.player.gold < amount) return fail11(state, "notEnoughGold");
+    if (state.bankGold + amount > MAX_GOLD) return fail11(state, "bankGoldCap");
+    return done11({ ...state, player: { ...state.player, gold: state.player.gold - amount }, bankGold: state.bankGold + amount }, { amount });
   },
   "inventory/withdrawGold"(state, { amount }) {
-    if (!Number.isSafeInteger(amount) || amount <= 0) return fail9(state, "invalidAmount");
-    if (state.bankGold < amount) return fail9(state, "notEnoughBankGold");
-    if (state.player.gold + amount > MAX_GOLD) return fail9(state, "carryGoldCap");
-    return done9({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
+    if (!Number.isSafeInteger(amount) || amount <= 0) return fail11(state, "invalidAmount");
+    if (state.bankGold < amount) return fail11(state, "notEnoughBankGold");
+    if (state.player.gold + amount > MAX_GOLD) return fail11(state, "carryGoldCap");
+    return done11({ ...state, player: { ...state.player, gold: state.player.gold + amount }, bankGold: state.bankGold - amount }, { amount });
   },
   "inventory/openChest"(state, { chestId }) {
     const result = openChestSafely(state.player, chestId);
-    if (!result.opened) return fail9(state, result.reason || "chestFailed");
-    return done9({ ...state, player: result.player }, { item: result.item });
+    if (!result.opened) return fail11(state, result.reason || "chestFailed");
+    return done11({ ...state, player: result.player }, { item: result.item });
   },
   "inventory/openAllChests"(state) {
     const result = openChestsSafely(state.player);
-    if (!result.items.length) return fail9(state, result.reason || "noChests");
-    return done9({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
+    if (!result.items.length) return fail11(state, result.reason || "noChests");
+    return done11({ ...state, player: result.player }, { items: result.items, reason: result.reason || null });
   },
   "inventory/useBoostScroll"(state, { itemId }) {
     const item = state.player.inventory.find((i) => i.id === itemId && i.kind === "boostScroll");
-    if (!item) return fail9(state, "itemNotFound");
+    if (!item) return fail11(state, "itemNotFound");
     const result = useBoostScroll(state.player, item.boostId);
-    if (!result.used) return fail9(state, "noScrollsLeft");
-    return done9({ ...state, player: result.player });
+    if (!result.used) return fail11(state, "noScrollsLeft");
+    return done11({ ...state, player: result.player });
   }
 };
-var reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers, ...progressReducers, ...upgradeReducers, ...marketReducers, ...clanReducers, ...diamondReducers, ...characterReducers };
+var reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers, ...progressReducers, ...upgradeReducers, ...marketReducers, ...clanReducers, ...diamondReducers, ...characterReducers, ...gmReducers, ...duelReducers };
 var ACTION_TYPES = Object.keys(reducers);
 function applyAction(state, type, payload = {}) {
   const reducer = Object.hasOwn(reducers, type) ? reducers[type] : null;
-  if (!reducer) return fail9(state, "unknownAction");
-  if (payload === null || typeof payload !== "object") return fail9(state, "invalidPayload");
+  if (!reducer) return fail11(state, "unknownAction");
+  if (payload === null || typeof payload !== "object") return fail11(state, "invalidPayload");
   return reducer(state, payload);
 }
 

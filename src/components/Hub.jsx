@@ -80,6 +80,8 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
   // ve ağ hatasında bir sonraki turda yeniden denenir.
   const playerRef = useRef(player);
   playerRef.current = player;
+  // Hafta değiştiyse haftalık puan sıfırlanır ve (ilk 3'teyse) bekleyen elmas talebi oluşur: sunucu ekonomisinde bunu sunucu yapar.
+  useEffect(() => { if (act.isServer()) act("week/rollover"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => startPolling(async () => {
     try {
       const pending = playerRef.current.pendingWeeklyClaim;
@@ -329,7 +331,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
         )}
         {tab === "chat" && (
           <ChatTab
-            isGM={isGm} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast}
+            act={act} isGM={isGm} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast}
             openDmTabs={openDmTabs} dmUnreadIds={dmUnreadIds} pendingActiveDm={pendingActiveDm}
             onConsumePendingActiveDm={() => setPendingActiveDm(null)}
             onCloseDm={closeDmTab} onSeenDm={markDmSeen}

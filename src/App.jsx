@@ -326,7 +326,8 @@ export default function App() {
     // Savaş Alanı haftalık ödülü (varsa) doğru (güncel, paylaşılan) taban
     // üzerine eklensin, karakterin üstünde kalmış eski/bayat değere değil.
     const migrated = { ...migratePlayer(account.characters[slotIndex]), diamonds: account.diamonds };
-    const { player: rolled, diamondsAwarded, rank } = applyWeeklyRollover(migrated);
+    // Sunucu ekonomisinde hafta geçişini sunucu yapar (Hub açılınca week/rollover); burada yerelde yapılmaz.
+    const { player: rolled, diamondsAwarded, rank } = economyRef.current ? { player: migrated, diamondsAwarded: 0, rank: null } : applyWeeklyRollover(migrated);
     setActiveCharacterKey(rolled.id||`slot:${slotIndex}`);
     setPlayer({...rolled,clan:null,clanBossArchive:{...rolled.clanBossArchive,...(rolled.clan?.boss?{[rolled.clan.id]:rolled.clan.boss}:{})}});
     setActiveSlot(slotIndex);

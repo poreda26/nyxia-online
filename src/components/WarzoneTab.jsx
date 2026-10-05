@@ -254,7 +254,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   useEffect(() => {
     return () => {
       const duel = wzRef.current?.duel;
-      if (duel && !duel.finished) setPlayer((p) => penalizeNationalPoint(p));
+      if (duel && !duel.finished) {
+        if (actRef.current.isServer()) actRef.current("duel/concede");
+        else setPlayer((p) => penalizeNationalPoint(p));
+      }
       actRef.current("warzone/leave");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -438,11 +441,17 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   // ---- Düello: Faz 5 — sunucudan GERÇEK bir başka hesabın anlık
   // görüntüsünü iste, ona karşı (deterministik motorla, istemcide) otomatik
   // savaş. Rakip o an çevrimdışı olabilir, hiçbir şey kaybetmez/kazanmaz.
+  const startServerDuel = async () => {
+    const started = await act("duel/start", { level: player.level });
+    return started.ok ? started : { opponent: null };
+  };
+
   const findOpponent = async () => {
     if (lockRef.current || wz.duel || player.hp <= 0 || findingOpponent) return;
     setFindingOpponent(true);
     try {
-      const result = await warzoneDuelService.fetchOpponent(player.level);
+      // Sunucu ekonomisinde rakibi, tohumu ve bekleyen düelloyu sunucu tutar (bırakılan önceki düello yenilgi sayılır).
+      const result = act.isServer() ? await startServerDuel() : await warzoneDuelService.fetchOpponent(player.level);
       if (!result.opponent) { pushToast(t("warzone.toast.noOpponentFound"), "warn"); return; }
       opponentAccountRef.current = result.opponentAccountId;
       const engine = createDuel(player, result.opponent, { seed: result.seed, fullHealth: true });
@@ -473,9 +482,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   const finishDuelAsLoss = () => {
     const loss = actualNpLoss();
     const opponentAccountId = opponentAccountRef.current;
-    setPlayer((p) => ({ ...penalizeNationalPoint(p), hp: playerMaxHp(p), mp: playerMaxMp(p) }));
+    // Sunucu ekonomisinde NP cezasını ve sonuç kaydını sunucu zaten işledi (duel/resolve).
+    setPlayer((p) => ({ ...(act.isServer() ? p : penalizeNationalPoint(p)), hp: playerMaxHp(p), mp: playerMaxMp(p) }));
     pushToast(t("warzone.toast.fainted", { loss }), "warn");
-    if (opponentAccountId) warzoneDuelService.reportDuelResult(opponentAccountId, "opponent").catch(() => {});
+    if (opponentAccountId && !act.isServer()) warzoneDuelService.reportDuelResult(opponentAccountId, "opponent").catch(() => {});
     endDuel();
     lockRef.current = false;
   };
@@ -487,9 +497,10 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     const ghostName = wz.duel.ghost.name;
     const loss = actualNpLoss();
     const opponentAccountId = opponentAccountRef.current;
-    setPlayer((p) => penalizeNationalPoint(p));
+    if (act.isServer()) act("duel/concede");
+    else setPlayer((p) => penalizeNationalPoint(p));
     pushToast(t("warzone.toast.conceded", { ghost: ghostName, loss }), "warn");
-    if (opponentAccountId) warzoneDuelService.reportDuelResult(opponentAccountId, "opponent").catch(() => {});
+    if (opponentAccountId && !act.isServer()) warzoneDuelService.reportDuelResult(opponentAccountId, "opponent").catch(() => {});
     endDuel();
     lockRef.current = false;
     setConfirmingRetreat(false);
@@ -516,8 +527,25 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     if (outgoing?.skillId) playSkill(self.skills.find((s) => s.id === outgoing.skillId), player.class); else if (outgoing?.hit) playHit({ crit: outgoing.crit, cls: player.class }); else playMiss();
     if (incoming?.damage && !incoming.heal) playHurt();
     const updated = { ...player, hp: Math.round(self.hp), mp: Math.round(self.mp) };
-    setPlayer(() => updated);
+    setPlayer((p) => ({ ...p, hp: updated.hp, mp: updated.mp }));
     setWz((prev) => ({ ...prev, duel: { ...prev.duel, engine, ghostHp: Math.round(enemy.hp), log: log.slice(-24), finished: engine.finished } }));
+    if (engine.finished && act.isServer()) {
+      // Sonucu sunucu aynı motorla kendisi hesaplar; ödül/ceza ve kayıt orada işlenir, burada yalnızca gösterilir.
+      (async () => {
+        const settled = await act("duel/resolve");
+        if (!settled.ok) { pushToast(t("battle.actionFailed"), "warn"); endDuel(); lockRef.current = false; return; }
+        if (settled.winner === "me") {
+          pushToast(t("warzone.toast.duelWon", { ghost: lang === "tr" ? accusativeName(duel.ghost.name) : duel.ghost.name, gain: settled.gain }), "loot");
+          setTimeout(() => { endDuel(); lockRef.current = false; }, 700);
+        } else if (settled.winner === "opponent") {
+          setTimeout(() => finishDuelAsLoss(), 500);
+        } else {
+          pushToast(lang === "tr" ? "VS berabere bitti." : "Duel ended in a draw.");
+          setTimeout(() => { endDuel(); lockRef.current = false; }, 700);
+        }
+      })();
+      return;
+    }
     if (engine.finished) {
       if (engine.winner === 0) {
         const result = awardNationalPoint(updated);

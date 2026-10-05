@@ -1,4 +1,7 @@
-import { allocateStat, respecStats } from "../utils/player";
+import { allocateStat, respecStats, canChangeJob, changeJob } from "../utils/player";
+import { CLASSES } from "../data/classes";
+import { RACES } from "../data/races";
+import { learnFreeSkills } from "../utils/skills";
 import { STAT_CAP } from "../data/stats";
 import { unlockSkill, setLoadoutSlot } from "../utils/skills";
 import { setActiveTitle } from "../utils/achievements";
@@ -47,6 +50,29 @@ export const characterReducers = {
     if (!Number.isInteger(slot) || slot < 0 || slot >= (player.skills?.loadout?.length ?? 5)) return fail(state, "invalidSlot");
     if (skillId !== null && !known.includes(skillId)) return fail(state, "skillNotKnown");
     return done({ ...state, player: setLoadoutSlot(player, slot, skillId) });
+  },
+
+  // Meslek parşömeni: üstte eşya olmamalı, klanda olunmamalı; beceriler yeni sınıfa göre sıfırlanır.
+  "scroll/job"(state, { itemId, newClass }) {
+    const { player } = state;
+    const item = player.inventory.find((i) => i.id === itemId && i.kind === "jobScroll");
+    if (!item) return fail(state, "itemNotFound");
+    if (typeof newClass !== "string" || !Object.hasOwn(CLASSES, newClass)) return fail(state, "invalidClass");
+    const check = canChangeJob(player);
+    if (!check.ok) return fail(state, check.reason);
+    const inventory = (item.count || 1) <= 1 ? player.inventory.filter((i) => i.id !== itemId) : player.inventory.map((i) => (i.id === itemId ? { ...i, count: i.count - 1 } : i));
+    return done({ ...state, player: learnFreeSkills(changeJob({ ...player, inventory }, newClass)) });
+  },
+
+  // Irk hesap genelindedir: sunucu, hesaptaki bütün karakterlerin ırkını aynı işlemde günceller (`setRace`).
+  "scroll/race"(state, { itemId, race }) {
+    const { player } = state;
+    const item = player.inventory.find((i) => i.id === itemId && i.kind === "raceScroll");
+    if (!item) return fail(state, "itemNotFound");
+    if (typeof race !== "string" || !Object.hasOwn(RACES, race)) return fail(state, "invalidRace");
+    if (player.clan) return fail(state, "clanBlocksRaceChange");
+    const inventory = (item.count || 1) <= 1 ? player.inventory.filter((i) => i.id !== itemId) : player.inventory.map((i) => (i.id === itemId ? { ...i, count: i.count - 1 } : i));
+    return done({ ...state, player: { ...player, inventory, race } }, { setRace: race });
   },
 
   "title/set"(state, { achievementId }) {

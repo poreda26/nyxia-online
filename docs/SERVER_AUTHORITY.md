@@ -141,3 +141,14 @@ bonusScroll, raceScroll, jobScroll, dungeonEntry, bankPage, boostPack. Boya/avat
 `src/game/character.js`: `stat/allocate` (basılı tutma 250 ms'de tek istekte yığınlanır), `stat/respec`, `skill/learn`,
 `skill/loadout`, `title/set`. Pin listesine eklenecek: `stats, statPoints, skills, activeTitle, premium (zaten), unlockedSlots (zaten)`.
 Kalan: ırk/meslek parşömeni KULLANIMI (envanterde kullanım eylemi), yeni karakter oluşturma, pin listesi + bayrak.
+
+### Düello, hafta geçişi, parşömen kullanımı, GM araçları, pin listesi (yapıldı)
+- `src/game/duel.js`: `duel/start` (rakip + tohum sunucudan; bırakılan önceki düello yenilgi), `duel/resolve` (sonucu sunucu AYNI motorla
+  kendisi hesaplar: kazanma NP+, kayıp NP-), `duel/concede`, `week/rollover` (hafta geçişi; bekleyen elmas talebini sunucu yazar ve
+  `/api/wallet/weekly-rank` talebi artık istemciden değil sunucudaki bekleyen talepten okur). Rakip yalnızca düello alanlarıyla gelir.
+- `src/game/character.js`: `scroll/job`, `scroll/race` (ırk hesap geneli; sunucu bütün karakterlere yazar).
+- `src/game/gm.js`: `gm/exec|give|clearInventory|giveAllChests` (yetki sunucuda `admin.isGm`).
+- Pin listesi (`server/game.mjs` ECONOMY_FIELDS) tamamlandı: altın/envanter/kuşanılan/sandık + seviye, XP, statü, beceri, sınıf, öldürme sayaçları,
+  görevler, günlük/haftalık sayaçlar, harita, zindan, forge, güç takviyeleri, NP/haftalık puan. Yeni (sunucuda kaydı olmayan) karakterin bu alanları
+  kuralların başlangıç karakterinden alınır; ırk sunucudaki hesap değerine sabitlenir.
+- Bayrağı açmak: `DATABASE_PATH=... node server/set-economy.mjs <hesap>` (tek hesap) → test → sunucuda `ECONOMY_FOR_ALL=1`.

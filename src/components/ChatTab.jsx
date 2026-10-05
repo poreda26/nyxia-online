@@ -22,7 +22,7 @@ import { useTranslation, formatServerError } from "../i18n/LanguageContext";
 // Hub'da yaşıyor ki bu bileşen (Sohbet'ten çıkılınca ScreenPanel'in
 // key={tab} ile yeniden mount etmesi yüzünden) kaybolmasın.
 export default function ChatTab({
-  isGM = false, player, setPlayer, bank, setBank, pushToast,
+  act, isGM = false, player, setPlayer, bank, setBank, pushToast,
   openDmTabs = [], dmUnreadIds, pendingActiveDm = null, onConsumePendingActiveDm, onCloseDm, onSeenDm,
 }) {
   const { t, lang } = useTranslation();
@@ -74,7 +74,7 @@ export default function ChatTab({
 
     if (parsed && isGM) {
       await chatService.sendMessage(displayName, text, playerAvatarId(player), player.avatarFrameId);
-      const { player: nextPlayer, bank: nextBank, resultText } = executeGmCommand(player, parsed.cmd, parsed.args, bank);
+      let { player: nextPlayer, bank: nextBank, resultText } = executeGmCommand(player, parsed.cmd, parsed.args, bank);
       if (parsed.cmd === "elmas") {
         const amount = Math.max(1, parseInt(parsed.args[0], 10) || 100);
         const granted = await gmGrantDiamonds(amount);
@@ -82,10 +82,15 @@ export default function ChatTab({
       } else if (parsed.cmd === "premium" && ["mythic", "apex"].includes((parsed.args[0] || "").toLowerCase())) {
         const granted = await gmGrantPremium(getActiveCharacterKey(), parsed.args[0].toLowerCase());
         setPlayer((p) => applyEntitlement({ ...nextPlayer, diamonds: p.diamonds }, granted.entitlement));
+        if (nextBank) setBank(nextBank);
+      } else if (act.isServer()) {
+        // Sunucu ekonomisinde komut sunucuda çalışır (yetki orada denetlenir); sonuç metni de oradan gelir.
+        const ran = await act("gm/exec", { cmd: parsed.cmd, args: parsed.args });
+        resultText = ran.ok ? ran.resultText : (ran.reason === "notGm" ? "GM yetkin yok." : "Komut çalıştırılamadı.");
       } else {
         setPlayer(nextPlayer);
+        if (nextBank) setBank(nextBank);
       }
-      if (nextBank) setBank(nextBank);
       await chatService.sendMessage(t("chat.gmSystemAuthor"), resultText, playerAvatarId(player), player.avatarFrameId);
       pushToast(resultText, "loot");
       refresh();
@@ -197,7 +202,7 @@ export default function ChatTab({
       </div>
 
       {showGmPanel && isGM && (
-        <GmItemPanel player={player} setPlayer={setPlayer} pushToast={pushToast} />
+        <GmItemPanel player={player} setPlayer={setPlayer} act={act} pushToast={pushToast} />
       )}
 
       {showHelp && (
