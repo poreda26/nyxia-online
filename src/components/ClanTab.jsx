@@ -1,3 +1,6 @@
+import ItemIcon from './ItemIcon';
+import ClanManagement from './ClanManagement';
+import {clanAllowed} from '../data/clanPermissions';
 import { startPolling } from "../utils/polling";
 import {getActiveCharacterKey} from '../utils/api';
 import {mergeClanResponse} from '../utils/clanResponse';
@@ -354,9 +357,8 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
   const online = onlineCountFor(clan);
   const bonus = clanExpBonus(online);
   const isLeader = clan.role === "leader";
-  const isOfficerOrLeader = clan.role === "leader" || clan.role === "officer";
   const officerCount = clan.members.filter((m) => m.role === "officer").length;
-  const canManageDungeon = isOfficerOrLeader;
+  const canUpgradeBuilding = clanAllowed(clan.role,clan.permissions,'upgrade');
   const nextBuildingCost = CLAN_BUILDING_UPGRADE_COST[clan.buildingLevel + 1];
   const nextMaterialCost = CLAN_BUILDING_MATERIAL_COST[clan.buildingLevel + 1];
   const materialsShort = nextMaterialCost
@@ -392,9 +394,10 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
         </div>
       </div>
 
+      <ClanManagement key={`${player.id}:${clan.id}:${clan.role}`} player={player} act={act} onRefresh={refresh}/>
       {isLeader&&<details className="avatar-customize"><summary>{lang==='en'?'Change clan crest':'Klan armasını değiştir'}</summary><AvatarPicker clan value={clan.avatarId||'wolf'} onChange={changeAvatar} disabled={busy}/></details>}
 
-      {isOfficerOrLeader && (
+      {clanAllowed(clan.role,clan.permissions,'invite') && (
         <div className="rpg-card" style={styles.itemDetailCard}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Mail size={16} color="var(--gold-text)" strokeWidth={1.6} />
@@ -426,12 +429,12 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6, fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
           {Object.entries(CLAN_DUNGEON_MATERIALS).map(([key, def]) => (
             <span key={key} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <span style={{ width: 6, height: 6, borderRadius: 3, background: def.color, flexShrink: 0 }} /> {fmt(clan.treasury[key] || 0)}
+              <span className="donation-icon"><ItemIcon item={{kind:"clanMaterial",materialKey:key}} size={30}/></span> {fmt(clan.treasury[key] || 0)}
             </span>
           ))}
         </div>
 
-        {canManageDungeon && (
+        {canUpgradeBuilding && (
           nextBuildingCost ? (
             <>
               <button
@@ -458,21 +461,21 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
           )
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input type="number" min="1" placeholder={t("clan.donateNpPlaceholder")} value={donateNpInput} onChange={(e) => setDonateNpInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
-            <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleDonate("np", donateNpInput, () => setDonateNpInput(""))}>{t("clan.donateBtn")}</button>
+        <div className="clan-donations" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
+          <div className="donation-row" style={{ display: "flex", gap: 6 }}>
+            <span className="donation-icon"><MenuEmblem name="crown" size={30}/></span><input aria-label="NP" type="number" min="1" placeholder={t("clan.donateNpPlaceholder")} value={donateNpInput} onChange={(e) => setDonateNpInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
+            <button className="rpg-action" disabled={!clanAllowed(clan.role,clan.permissions,"donate")} style={styles.tinyBtn} onClick={() => handleDonate("np", donateNpInput, () => setDonateNpInput(""))}>{t("clan.donateBtn")}</button>
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input type="number" min="1" placeholder={t("clan.donateGoldPlaceholder")} value={donateGoldInput} onChange={(e) => setDonateGoldInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
-            <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleDonate("gold", donateGoldInput, () => setDonateGoldInput(""))}>{t("clan.donateBtn")}</button>
+          <div className="donation-row" style={{ display: "flex", gap: 6 }}>
+            <span className="donation-icon"><MenuEmblem name="coins" size={30}/></span><input aria-label="Altın" type="number" min="1" placeholder={t("clan.donateGoldPlaceholder")} value={donateGoldInput} onChange={(e) => setDonateGoldInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
+            <button className="rpg-action" disabled={!clanAllowed(clan.role,clan.permissions,"donate")} style={styles.tinyBtn} onClick={() => handleDonate("gold", donateGoldInput, () => setDonateGoldInput(""))}>{t("clan.donateBtn")}</button>
           </div>
           {Object.entries(CLAN_DUNGEON_MATERIALS).map(([key, def]) => {
             const owned = player.inventory.find((it) => it.kind === "clanMaterial" && it.materialKey === key)?.count || 0;
             if (owned <= 0) return null;
             return (
               <div key={key} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span style={{ width: 6, height: 6, borderRadius: 3, background: def.color, flexShrink: 0 }} />
+                <span className="donation-icon"><ItemIcon item={{kind:"clanMaterial",materialKey:key}} size={30}/></span>
                 <input
                   type="number" min="1" max={owned} placeholder={`${def.name} (${owned})`}
                   value={donateMaterialInputs[key] || ""}
@@ -480,7 +483,7 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
                   style={{ ...styles.numInput, width: "auto", flex: 1 }}
                 />
                 <button
-                  className="rpg-action" style={styles.tinyBtn}
+                  className="rpg-action" disabled={!clanAllowed(clan.role,clan.permissions,"donate")} style={styles.tinyBtn}
                   onClick={() => { handleDonateMaterial(key, donateMaterialInputs[key]); setDonateMaterialInputs((s) => ({ ...s, [key]: "" })); }}
                 >
                   {t("clan.donateBtn")}
@@ -488,9 +491,9 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
               </div>
             );
           })}
-          <div style={{ display: "flex", gap: 6 }}>
-            <input type="number" min="1" placeholder={t("clan.donateDiamondPlaceholder")} value={donateDiamondInput} onChange={(e) => setDonateDiamondInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
-            <button className="rpg-action" style={styles.tinyBtn} onClick={() => handleDonate("diamonds", donateDiamondInput, () => setDonateDiamondInput(""))}>{t("clan.donateBtn")}</button>
+          <div className="donation-row" style={{ display: "flex", gap: 6 }}>
+            <span className="donation-icon"><MenuEmblem name="gem" size={30}/></span><input aria-label="Elmas" type="number" min="1" placeholder={t("clan.donateDiamondPlaceholder")} value={donateDiamondInput} onChange={(e) => setDonateDiamondInput(e.target.value)} style={{ ...styles.numInput, width: "auto", flex: 1 }} />
+            <button className="rpg-action" disabled={!clanAllowed(clan.role,clan.permissions,"donate")} style={styles.tinyBtn} onClick={() => handleDonate("diamonds", donateDiamondInput, () => setDonateDiamondInput(""))}>{t("clan.donateBtn")}</button>
           </div>
         </div>
         <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.5 }}>
@@ -551,7 +554,7 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
                       {t("clan.bossStageRequirement", { np: fmt(stage.npRequired), level: stage.buildingLevelRequired })}
                     </div>
                   </div>
-                  {canManageDungeon ? (
+                  {(isLeader || clan.role === 'officer') ? (
                     <button
                       className="rpg-action" style={{ ...styles.tinyBtn, background: isUnlocked ? stage.color : "var(--bg-panel-alt)", color: isUnlocked ? "#0B0C10" : "var(--text-faint)" }}
                       disabled={!isUnlocked}
@@ -599,10 +602,13 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
                       <ChevronUp size={11} />
                     </button>
                   )}
+
+                </>
+              )}
+              {clanAllowed(clan.role,clan.permissions,'kick') && m.role !== 'leader' && (isLeader || m.role === 'member') && m.characterKey !== getActiveCharacterKey() && (
                   <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => handleKick(m.accountId,m.characterKey)} title={t("clan.kickTitle")}>
                     <UserX size={11} />
                   </button>
-                </>
               )}
             </div>
           );

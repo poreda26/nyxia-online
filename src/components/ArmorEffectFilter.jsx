@@ -5,7 +5,7 @@ export default function ArmorEffectFilter({effect:e}){
   <feMorphology in="SourceAlpha" operator="erode" radius={e.radius} result="inner"/>
   <feGaussianBlur in="inner" stdDeviation={e.blur*1.5} result="soft"/>
   <feComposite in="soft" in2="SourceAlpha" operator="in" result="surface"/>
-  <feFlood floodColor={e.color} floodOpacity={e.strong?.14+e.tier*.025:.07+e.tier*.015}/>
+  <feFlood floodColor={e.color} floodOpacity={e.strong?.26+e.tier*.035:.12+e.tier*.022}/>
   <feComposite in2="surface" operator="in"/>
  </>;
 }

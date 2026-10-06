@@ -30,6 +30,16 @@ test('characters isolate membership, invitations, rank, donations and dungeon tu
   const clan=(await call('clan/mine','hero')).data.clan;
   assert.deepEqual(clan.members.map(m=>m.name).sort(),['AltHero','MainHero']);
   assert.equal((await call('clan/avatar','alt',{avatarId:'wolf'},'PATCH')).status,403);
+  const vault=(await call('clan/vault','hero')).data;
+  assert.equal(vault.capacity,60);assert.equal(vault.role,'leader');
+  assert.equal((await call('clan/permissions','alt',{permissions:vault.permissions},'PATCH')).status,403);
+  const restricted=structuredClone(vault.permissions);restricted.member.donate=false;restricted.member.dungeon=false;restricted.member.invite=false;
+  assert.equal((await call('clan/permissions','hero',{permissions:restricted},'PATCH')).status,200);
+  assert.equal((await call('clan/donate','alt',{currency:'np',amount:15})).status,403);
+  assert.equal((await call('clan/dungeon/enter','alt',{})).status,403);
+  assert.equal((await call('clan/invite','alt',{name:'Nobody'})).status,403);
+  assert.equal((await call('clan/permissions','hero',{permissions:vault.permissions},'PATCH')).status,200);
+
   assert.equal((await call('clan/donate','alt',{currency:'np',amount:15})).status,200);
   assert.equal((await call('clan/mine','hero')).data.clan.myDonatedNp,0);
   assert.equal((await call('clan/mine','alt')).data.clan.myDonatedNp,15);
@@ -49,6 +59,10 @@ test('characters isolate membership, invitations, rank, donations and dungeon tu
   assert.equal((await call('clan/leave','hero',{})).status,200);
   assert.equal((await call('clan/mine','hero')).data.clan,null);
   assert.equal((await call('clan/mine','alt')).data.clan.myRole,'leader');
+  {const grant=new DatabaseSync(dbFile);grant.prepare('INSERT INTO clan_vault(clan_id,item,created_at) VALUES(?,?,?)').run(clan.id,JSON.stringify({id:'kept',kind:'weapon'}),Date.now());grant.close();}
+  assert.equal((await call('clan/leave','alt',{})).status,409,'last member cannot destroy stored items');
+  assert.equal((await call('clan/mine','alt')).data.clan.myRole,'leader');
+  {const grant=new DatabaseSync(dbFile);grant.prepare('DELETE FROM clan_vault WHERE clan_id=?').run(clan.id);grant.close();}
   assert.equal((await call('clan/leave','alt',{})).status,200);
  }finally{await api.close();}
 });

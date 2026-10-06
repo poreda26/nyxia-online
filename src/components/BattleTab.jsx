@@ -1,3 +1,5 @@
+import {useRetreatGuard} from '../utils/useRetreatGuard';
+import {confirmRetreat} from '../utils/confirmRetreat';
 import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
 import MenuEmblem from './icons/MenuEmblem';
 import BattleScene, {hasBattleScene} from './BattleScene';
@@ -79,7 +81,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
   const latestPlayer = useRef(player);
   latestPlayer.current = player;
   const [monster, setMonster] = useState(null); // active monster template
-  const [battle, setBattle] = useState(null); // {monsterHp, monsterMaxHp, log, playerHp}
+  const [battle, setBattle] = useState(null);
+  useRetreatGuard(!!monster,lang); // {monsterHp, monsterMaxHp, log, playerHp}
   const [visual, setVisual] = useState({id:0,type:'',label:''});
   const showAction = (type,label,skillId) => setVisual(v => ({id:v.id+1,type,label,skillId}));
   const [shake, setShake] = useState(null); // 'player' | 'monster' | null
@@ -783,6 +786,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
             <button
               style={{ ...styles.ghostBtn, flex: 1 }}
               onClick={() => {
+                if (!confirmRetreat(lang)) return;
                 if (monster && fightRef.current && !fightRef.current.ended) requestSettle(monster);
                 endBattle();
                 // Zindan koşusu sürerken elle geri çekilmek koşuyu yarıda

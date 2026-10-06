@@ -37,3 +37,9 @@
 @media(prefers-reduced-motion:reduce){.weapon-effect.weapon-effect-multi{animation:none;opacity:.3}}
 
 .equipment-layout>div:last-child{grid-template-rows:repeat(7,minmax(0,1fr))}.wing-slot{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:7px;min-height:0;padding:0;color:var(--gold-text);font-size:10px;background:linear-gradient(120deg,#74619425,#c6a56315);border:1px solid #b39ad766;border-radius:9px;cursor:pointer}.wing-slot small{font-size:8px;color:var(--text-muted)}.wing-slot .wing-art{width:44px;height:100%;max-width:44px!important}.wing-art{display:block;overflow:visible}
+
+.armor-sparkles{animation:armor-stars 2.4s ease-in-out infinite;opacity:.65}
+@keyframes armor-stars{0%,100%{opacity:.2}50%{opacity:.85}}
+@media(prefers-reduced-motion:reduce){.armor-sparkles{animation:none;opacity:.45}}
+
+.armor-aura{animation:armor-aura 2.4s ease-in-out infinite;pointer-events:none}@keyframes armor-aura{0%,100%{opacity:.65}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.armor-aura{animation:none}}

@@ -1,10 +1,11 @@
+import {confirmRetreat} from '../utils/confirmRetreat';
 import EncounterScreen from './EncounterScreen';
 import {prepareWarzoneAction,buildHuntMonster} from '../utils/warzoneCombat';
 import {createFight,stepFight,checkAction} from '../game/fight';
 import WarzoneSkills from './WarzoneSkills';
 import './WarzoneTab.css';
 import { varyDamage } from '../utils/combat';
-import PracticeDuel from './PracticeDuel';
+import './WarzoneRefresh.css';
 import {createDuel,stepDuel} from '../utils/duelEngine';
 import RankBadge from './shared/RankBadge';
 import MenuEmblem from './icons/MenuEmblem';
@@ -293,7 +294,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     return (
       <div className="warzone-panel" style={styles.panelScroll}>
 
-        <PracticeDuel player={player}/>
+
         {locked ? (
           <EmptyState icon={Lock} title={t("warzone.lockedTitle")} subtitle={t("warzone.lockedSubtitle", { level: WARZONE_UNLOCK_LEVEL })} />
         ) : (
@@ -324,7 +325,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
           <DoorOpen size={14} /> {t("warzone.teleportBtn", { cost: WARZONE_TELEPORT_COST })}
         </button>
 
-        <PracticeDuel player={player}/>
+
         {confirmingEntry && (
           <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setConfirmingEntry(false)}>
             <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
@@ -672,6 +673,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
   };
 
   const abandonHunt = () => {
+    if (!confirmRetreat(lang)) return;
     const hunt = wz.hunt;
     if (hunt?.fight && !hunt.fight.ended) act("warzone/huntSettle", { monsterId: hunt.baseMonster.id, actions: huntActionsRef.current.slice() });
     huntActionsRef.current = [];
@@ -830,7 +832,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
                   {active && (
                     <><button style={{...styles.primaryBtn,width:'100%',marginTop:12}} onClick={()=>setEncounterBoss(boss.id)}>{lang==='en'?'Enter battle':'Savaşa katıl'}</button>
-                    {encounterBoss===boss.id&&<EncounterScreen title={tm(boss)} onLeave={()=>setEncounterBoss(null)}>
+                    {encounterBoss===boss.id&&<EncounterScreen title={tm(boss)} onLeave={()=>{if(confirmRetreat(lang))setEncounterBoss(null)}}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
                         <span>{t("warzone.totalDamage", { dmg: state.totalDamage })}</span>
                         <span>{t("warzone.yourDamage", { dmg: state.myDamage })}</span>

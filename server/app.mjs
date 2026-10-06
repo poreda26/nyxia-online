@@ -1,3 +1,4 @@
+import {createClanVault} from './clan-vault.mjs';
 import {migrateCharacterClans,savedCharacters,characterKey,primaryCharacter} from './clan-characters.mjs';
 const characterKeyOf = characterKey;
 import webpush from 'web-push';
@@ -260,6 +261,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   }
   // Klandan çıkarma satırları (isteğin ve sunucu eyleminin ortak parçası; çağıran işlem açar/kapatır).
   function removeFromClan(membership, accountId, characterKey) {
+    if (db.prepare('SELECT COUNT(*) n FROM clan_members WHERE clan_id=?').get(membership.clan_id).n === 1 && db.prepare('SELECT COUNT(*) n FROM clan_vault WHERE clan_id=?').get(membership.clan_id).n > 0) throw fail(409, 'CLAN_VAULT_NOT_EMPTY');
     db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE clan_id=? AND locked_by=? AND locked_character=?').run(membership.clan_id, accountId, characterKey);
     db.prepare('DELETE FROM clan_members WHERE account_id=? AND character_key=?').run(accountId, characterKey);
     if (membership.role === 'leader') {
@@ -318,6 +320,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     if (now - last < 450) throw fail(429, 'TOO_FAST');
     lastSharedHit.set(accountId, now);
   }
+  const clanVault = createClanVault(db,{fail});
   const game = createGame(db, { fail, logic: gameLogic, keyOf: characterKey, all: economyForAll, drops: () => admin.drops.get().data,
     hooks: {
       // Dünya Canavarı: hak, sunucudaki bekleyen kayıttır.
@@ -393,9 +396,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         };
       },
       // Klan: bağış, hazineye ekleme ile oyuncudan düşme aynı işlemde; ayrılırken NP iadesi gerçek bağış toplamından.
+      ...clanVault.hooks,
       'clan/donate': ({ account, characterKey, payload }) => {
         const membership = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=?').get(account, characterKey);
         if (!membership) return { fail: 'notInClan' };
+        if (!clanVault.allowed(membership,'donate')) return {fail:'clanPermissionDenied'};
         const currency = ['gold', 'np', ...Object.keys(CLAN_MATERIAL_COLUMN)].includes(payload?.currency) ? payload.currency : null;
         const amount = Number(payload?.amount);
         if (!currency || !Number.isSafeInteger(amount) || amount <= 0) return { fail: 'invalidDonation' };
@@ -1135,8 +1140,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         } catch { return null; }
       };
       if (path === '/api/social/friends' && req.method === 'GET') {
-        const friendRows = db.prepare(`SELECT accounts.id AS id, accounts.name AS name FROM friendships
+        const friendRows = db.prepare(`SELECT accounts.id AS id, accounts.name AS name, backups.data AS profile FROM friendships
           JOIN accounts ON accounts.id = CASE WHEN friendships.account_a=? THEN friendships.account_b ELSE friendships.account_a END
+          LEFT JOIN backups ON backups.account=accounts.id
           WHERE friendships.account_a=? OR friendships.account_b=?`).all(account.id, account.id, account.id);
         const incoming = db.prepare('SELECT friend_requests.id AS id, accounts.id AS fromId, accounts.name AS fromName, friend_requests.created_at AS createdAt FROM friend_requests JOIN accounts ON accounts.id=friend_requests.from_account WHERE friend_requests.to_account=?').all(account.id);
         const outgoing = db.prepare('SELECT friend_requests.id AS id, accounts.id AS toId, accounts.name AS toName, friend_requests.created_at AS createdAt FROM friend_requests JOIN accounts ON accounts.id=friend_requests.to_account WHERE friend_requests.from_account=?').all(account.id);
@@ -1151,7 +1157,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
             .map(r => [r.id, r.lastAt])
         );
         return send(200, {
-          friends: friendRows.map(r => ({ accountId: r.id, name: r.name, lastMessageAt: lastFromThem.get(r.id) || null })),
+          friends: friendRows.map(r => { const main=primaryCharacter(db,r.id,JSON.parse(r.profile||"{}").characters||[]).character; return { accountId:r.id, name:r.name, avatarId:playerAvatarId(main), frameId:validAvatarFrame(main?.avatarFrameId)?main?.avatarFrameId||null:null, lastMessageAt:lastFromThem.get(r.id)||null }; }),
           incoming: incoming.map(r => ({ id: r.id, fromAccountId: r.fromId, fromName: r.fromName, createdAt: r.createdAt })),
           outgoing: outgoing.map(r => ({ id: r.id, toAccountId: r.toId, toName: r.toName, createdAt: r.createdAt })),
         });
@@ -1395,6 +1401,10 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       const myCharacter=myCharacters.find((c,i)=>c&&characterKey(c,i)===myCharacterKey);
       if(path.startsWith('/api/clan')&&characterHeader&&!myCharacter)throw fail(409,'CHARACTER_NOT_SYNCED');
       const myMembership = () => db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=?').get(account.id,myCharacterKey);
+      if(path==='/api/clan/vault'&&req.method==='GET')return send(200,clanVault.view(myMembership()));
+      if(path==='/api/clan/permissions'&&req.method==='PATCH'){
+        const body=await read(req);return send(200,{permissions:clanVault.update(myMembership(),body?.permissions)});
+      }
       if(path==='/api/clan/avatar'&&req.method==='PATCH'){
         const member=myMembership();
         if(member?.role!=='leader')throw fail(403,'LEADER_REQUIRED');
@@ -1453,14 +1463,14 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
             wood: clan.treasury_root_fragment, silver: clan.treasury_midboss_trophy,
             iron: clan.treasury_twilight_essence, goldBar: clan.treasury_finalboss_trophy,
           },
-          myRole: membership.role, myDonatedNp: membership.donated_np,
+          permissions:clanVault.permissions(clan.id), myRole: membership.role, myDonatedNp: membership.donated_np,
           members,
         } });
       }
       if (path === '/api/clan/invite' && req.method === 'POST') {
         socialRateLimit(account.id);
         const membership = myMembership();
-        if (!membership || (membership.role !== 'leader' && membership.role !== 'officer')) throw fail(403, 'LEADER_OFFICER_ONLY');
+        if (!clanVault.allowed(membership,'invite')) throw fail(403, 'CLAN_PERMISSION_DENIED');
         const body = await read(req);
         const name = typeof body?.name === 'string' ? body.name.trim() : '';
         let target=null,targetCharacter=null;
@@ -1525,7 +1535,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       if (path === '/api/clan/kick' && req.method === 'POST') {
         const membership = myMembership();
-        if (!membership || (membership.role !== 'leader' && membership.role !== 'officer')) throw fail(403, 'LEADER_OFFICER_ONLY');
+        if (!clanVault.allowed(membership,'kick')) throw fail(403, 'CLAN_PERMISSION_DENIED');
         const body = await read(req);
         const targetId = Number(body?.accountId);
         if(!Number.isSafeInteger(targetId)||targetId<1)throw fail(400,'INVALID_TARGET');
@@ -1534,6 +1544,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const target = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=? AND clan_id=?').get(targetId,targetKey, membership.clan_id);
         if (!target) throw fail(404, 'MEMBER_NOT_FOUND');
         if (target.role === 'leader') throw fail(400, 'CANNOT_KICK_LEADER');
+        if(membership.role !== 'leader' && target.role !== 'member') throw fail(403, 'LEADER_ONLY');
+        if(targetId === account.id && targetKey === myCharacterKey) throw fail(400, 'INVALID_TARGET');
         db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE clan_id=? AND locked_by=? AND locked_character=?').run(membership.clan_id,targetId,targetKey);
         db.prepare('DELETE FROM clan_members WHERE account_id=? AND character_key=?').run(targetId,targetKey);
         return send(200, { ok: true });
@@ -1564,6 +1576,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (path === '/api/clan/donate' && req.method === 'POST') {
         const membership = myMembership();
         if (!membership) throw fail(409, 'NOT_IN_CLAN');
+        if(!clanVault.allowed(membership,'donate'))throw fail(403,'CLAN_PERMISSION_DENIED');
         const body = await read(req);
         const amount = Number(body?.amount);
         const currency = ['gold', 'diamonds', 'np', ...Object.keys(CLAN_MATERIAL_COLUMN)].includes(body?.currency) ? body.currency : null;
@@ -1584,7 +1597,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       // dosyadan (bkz. yukarıdaki import), iki taraf asla sapamaz.
       if (path === '/api/clan/building/upgrade' && req.method === 'POST') {
         const membership = myMembership();
-        if (!membership || (membership.role !== 'leader' && membership.role !== 'officer')) throw fail(403, 'LEADER_OFFICER_ONLY');
+        if (!clanVault.allowed(membership,'upgrade')) throw fail(403, 'CLAN_PERMISSION_DENIED');
         db.exec('BEGIN IMMEDIATE');
         try {
           const clan = db.prepare('SELECT * FROM clans WHERE id=?').get(membership.clan_id);
@@ -1656,6 +1669,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (path === '/api/clan/dungeon/enter' && req.method === 'POST') {
         const membership = myMembership();
         if (!membership) throw fail(409, 'NOT_IN_CLAN');
+        if(!clanVault.allowed(membership,'dungeon'))throw fail(403,'CLAN_PERMISSION_DENIED');
         db.exec('BEGIN IMMEDIATE');
         try {
           const row = clanDungeonRow(membership.clan_id);

@@ -142,6 +142,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
   const [pendingTab, setPendingTab] = useState(null);
   const requestTabChange = (nextTab) => {
     if (nextTab === tab) return;
+    if (!window.dispatchEvent(new Event("nyxia:leave-battle", {cancelable:true}))) return;
     if (tab === "warzone" && warzoneEntered) { setPendingTab(nextTab); return; }
     setTab(nextTab);
   };
@@ -261,7 +262,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
   const openDm = (friend) => {
     setOpenDmTabs((tabs) => (tabs.some((x) => x.accountId === friend.accountId) ? tabs : [...tabs, { accountId: friend.accountId, name: friend.name }]));
     setPendingActiveDm(friend.accountId);
-    setTab("chat");
+    requestTabChange("chat");
   };
   const closeDmTab = (accountId) => {
     setOpenDmTabs((tabs) => tabs.filter((x) => x.accountId !== accountId));
@@ -289,7 +290,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
         onOpenDiamondShop={() => setDiamondShopOpen(true)}
       />
 
-      <EventStrip player={player} act={act} pushToast={pushToast} onOpenWarzone={() => setTab("warzone")} />
+      <EventStrip player={player} act={act} pushToast={pushToast} onOpenWarzone={() => requestTabChange("warzone")} />
 
       {!firstPurchaseClaimed && (
         <button

@@ -29,3 +29,6 @@ export const enterClanDungeon = () => call("clan/dungeon/enter", "POST");
 export const attackClanDungeon = (payload) => call("clan/dungeon/attack", "POST", typeof payload === "number" ? { damage: payload } : payload);
 export const leaveClanDungeon = (characterKey) => call("clan/dungeon/leave", "POST",{},characterKey);
 export const fetchClanDungeonLog = () => call("clan/dungeon/log", "GET");
+
+export const fetchClanVault = () => call("clan/vault", "GET");
+export const updateClanPermissions = permissions => call("clan/permissions", "PATCH", {permissions});

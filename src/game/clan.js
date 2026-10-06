@@ -1,3 +1,4 @@
+import {isFirstPurchaseWeapon} from '../data/firstPurchaseWeapons';
 import { CLAN_DUNGEON_MATERIALS } from "../data/clanDungeon";
 import { addItemToInventory, makeClanMaterialStack } from "../utils/inventory";
 
@@ -10,6 +11,19 @@ const done = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
 export const NP_REFUND_RATE = 0.35;
 
 export const clanReducers = {
+  "clan/vaultDeposit"(state,{itemId}){
+    const item=state.player.inventory.find(i=>i.id===itemId);
+    if(!item)return fail(state,"itemNotFound");
+    if(!["weapon","armor","accessory","clanMaterial"].includes(item.kind)||isFirstPurchaseWeapon(item)||item.bound||item.soulbound||item.accountBound||item.characterBound||item.tradeable===false||item.tradable===false||item.noTrade)return fail(state,"clanItemBound");
+    return done({...state,player:{...state.player,inventory:state.player.inventory.filter(i=>i.id!==itemId)}},{item});
+  },
+  "clan/vaultWithdraw"(state,{item}){
+    if(!item||!item.id)return fail(state,"itemNotFound");
+    if(state.player.inventory.some(i=>i.id===item.id)||Object.values(state.player.equipped||{}).some(i=>i?.id===item.id))return fail(state,"duplicateItem");
+    const added=addItemToInventory(state.player,item);
+    if(!added.added)return fail(state,"clanBagFull");
+    return done({...state,player:added.player});
+  },
   "clan/donate"(state, { currency, amount }) {
     if (!Number.isSafeInteger(amount) || amount <= 0) return fail(state, "enterValidAmount");
     const { player } = state;

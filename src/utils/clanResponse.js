@@ -5,6 +5,7 @@ export function mergeClanResponse(player, serverClan) {
     clan: {
       id: serverClan.id,
       name: serverClan.name,
+      permissions:serverClan.permissions,
       color: serverClan.color,
       avatarId:serverClan.avatarId||'wolf',
       role: serverClan.myRole,

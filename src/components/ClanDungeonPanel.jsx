@@ -1,3 +1,6 @@
+import {clanAllowed} from '../data/clanPermissions';
+import {useRetreatGuard} from '../utils/useRetreatGuard';
+import {confirmRetreat} from '../utils/confirmRetreat';
 import { playHit, playMiss, playHurt, playPotion, playSkill } from "../audio/sfx";
 import {usePotion,bestAvailablePotionTier} from '../utils/potions';
 import {getActiveCharacterKey} from '../utils/api';
@@ -35,6 +38,7 @@ const fmtNum = (n) => Math.round(n).toLocaleString("tr-TR");
 export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def, pushToast }) {
   const { t, lang } = useTranslation();
   const [state, setState] = useState(null);
+  useRetreatGuard(!!state?.lockedByMe,lang);
   const [log, setLog] = useState([]);
   const [busy, setBusy] = useState(false);
   const [effects,setEffects]=useState({});
@@ -92,7 +96,7 @@ export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def
   };
 
   const handleLeave = async () => {
-    if (busy) return;
+    if (busy || !confirmRetreat(lang)) return;
     setBusy(true);
     try { await leaveClanDungeon(); await refresh(); }
     catch (error) { pushToast(formatServerError(t, error), "warn"); }
@@ -304,7 +308,7 @@ export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def
               {attempts.cooldownRemainingMs > 0 ? t("clan.dungeonCooldownLabel", { time: fmtClock(attempts.cooldownRemainingMs) }) : t("clan.dungeonNoEntriesLeft")}
             </div>
           ) : (
-            <button className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(busy ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }} disabled={busy} onClick={handleEnter}>
+            <button className="rpg-action" style={{ ...styles.tinyBtn, width: "100%", marginTop: 10, ...(busy ? { background: "var(--bg-panel-alt)", color: "var(--text-faint)" } : {}) }} disabled={busy||!clanAllowed(player.clan?.role,player.clan?.permissions,'dungeon')} onClick={handleEnter}>
               <Users size={12} /> {t("clan.dungeonEnterBtn")}
             </button>
           )}

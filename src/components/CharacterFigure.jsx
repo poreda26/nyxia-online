@@ -45,12 +45,15 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
   {rig.cls==='warrior'&&<g clipPath={`url(#${id}-shoulder-repair)`} mask={`url(#${id}-${l.name}-region)`}><g mask={`url(#${id}-source-weapon)`}><g transform="translate(50 0)"><image href={url(l.key)} width="1254" height="1254" clipPath={`url(#${id}-${l.name}-clip)`}/></g></g></g>}
   <image href={url(l.key)} width="1254" height="1254" clipPath={`url(#${id}-${l.name}-clip)`} mask={`url(#${id}-${l.name}-mask)`}/>
  </>;
+ const radiantLayers=layers.filter(l=>l.effect?.strong);
+ const aura=radiantLayers.reduce((best,l)=>!best||l.effect.tier>best.tier?l.effect:best,null);
  const armorLight=l=><g key={l.name} className={`armor-effect armor-effect-${l.effect.strong?'8':'7'}`} data-armor-effect={l.name} data-tier={l.effect.tier} data-upgrade={l.effect.plus} style={{'--armor-intensity':l.effect.intensity,'--armor-peak':Math.min(1,l.effect.intensity+.15),'--armor-duration':`${l.effect.duration}s`}}>
   <g filter={`url(#${id}-armor-${l.name})`}>{layerArtwork(l)}</g>
-  {l.effect.strong&&<g clipPath={`url(#${id}-${l.name}-clip)`} mask={`url(#${id}-${l.name}-mask)`}><rect className="armor-sweep" x="0" y="0" width="1254" height="1254" fill={`url(#${id}-armor-shine)`}/></g>}
+  {l.effect.strong&&<g clipPath={`url(#${id}-${l.name}-clip)`} mask={`url(#${id}-${l.name}-mask)`}><rect className="armor-sparkles" width="1254" height="1254" fill={`url(#${id}-armor-stars)`}/><rect className="armor-sweep" x="0" y="0" width="1254" height="1254" fill={`url(#${id}-armor-shine)`}/></g>}
  </g>;
  return <svg className={`character-figure ${className}`} viewBox="-92 0 602 627" preserveAspectRatio={align} role="img" aria-label={`${a.identity} · ${a.weaponName||'Silahsız'}`} data-character={a.identity} data-weapon={a.weaponName||''} data-look={active.length?'armor':'cloth-base'} data-armor-slots={active.join(',')}>
  <defs>
+ {aura&&<filter id={`${id}-armor-aura`} x="-15%" y="-15%" width="130%" height="130%" colorInterpolationFilters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation={3+aura.tier*.65}/><feFlood floodColor={aura.color} floodOpacity=".7"/><feComposite in2="SourceAlpha" operator="in" result="tint"/><feGaussianBlur in="tint" stdDeviation={3+aura.tier*.65}/></filter>}
   <clipPath id={`${id}-target`}>{clipPath(a.atlasKey,a.frameIndex)}</clipPath>
   <clipPath id={`${id}-shoulder-repair`}><path transform={cellTransform(si)} d="M204,200Q248,193 269,219Q280,240 276,260L262,274L235,258L204,238Z"/></clipPath>
   <mask id={`${id}-source-weapon`} maskUnits="userSpaceOnUse" x="0" y="0" width="1254" height="1254"><g transform={cellTransform(si)}><path d={sg.head} fill="white"/><path d={spine(sg)} fill="none" stroke="white" strokeWidth="16"/>{sourceBow&&<path d={stringPath(sourceBow,sourceGrip)} fill="none" stroke="white" strokeWidth="6"/>}{grip(sg,'black')}</g></mask>
@@ -69,13 +72,15 @@ export default function CharacterFigure({player,className='',align='xMidYMax mee
   <clipPath id={`${id}-grip-clip`}>{clipPath(armorAtlas(player.class,tiers.gauntlets),si)}</clipPath>
   <mask id={`${id}-clearance`} maskUnits="userSpaceOnUse" x="-100" y="-100" width="1454" height="1454"><rect x="-100" y="-100" width="1454" height="1454" fill="white"/>{clipPath(a.atlasKey,a.frameIndex)}<g transform={cellTransform(a.frameIndex)}><path d={tg.head} fill="white"/>{holes(tg,'black')}</g></mask>
   {effects.map(e=><filter key={e.key} id={`${id}-effect-${e.key}`} x="-35%" y="-35%" width="170%" height="170%" colorInterpolationFilters="sRGB"><WeaponEffectFilter effect={e} spread={tg.spread}/></filter>)}
-  <linearGradient id={`${id}-armor-shine`}><stop offset="0" stopColor="white" stopOpacity="0"/><stop offset=".46" stopColor="white" stopOpacity="0"/><stop offset=".5" stopColor="#fffbe5" stopOpacity=".32"/><stop offset=".54" stopColor="white" stopOpacity="0"/><stop offset="1" stopColor="white" stopOpacity="0"/></linearGradient>
+  <pattern id={`${id}-armor-stars`} width="67" height="83" patternUnits="userSpaceOnUse"><path d="M22 20L24 27L31 29L24 31L22 38L20 31L13 29L20 27Z" fill="#fff9dc"/><circle cx="53" cy="65" r="1.4" fill="white"/></pattern>
+  <linearGradient id={`${id}-armor-shine`}><stop offset="0" stopColor="white" stopOpacity="0"/><stop offset=".46" stopColor="white" stopOpacity="0"/><stop offset=".5" stopColor="#fffbe5" stopOpacity=".8"/><stop offset=".54" stopColor="white" stopOpacity="0"/><stop offset="1" stopColor="white" stopOpacity="0"/></linearGradient>
   {layers.filter(l=>l.effect).map(l=><filter key={l.name} id={`${id}-armor-${l.name}`} x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB"><ArmorEffectFilter effect={l.effect}/></filter>)}
   {dye&&<filter id={`${id}-dye`} colorInterpolationFilters="sRGB"><feColorMatrix type="hueRotate" values={dye.hue}/><feColorMatrix type="saturate" values={dye.sat}/></filter>}
  </defs>
  {equippedWing(player)&&<g data-equipped-wings={player.equipped.wings.wingId} transform={rig.transform}><svg x="-65" y="55" width="520" height="400" overflow="visible"><WingArt wingId={player.equipped.wings.wingId}/></svg></g>}
  <g transform={rig.transform}>
   <svg width="418" height="627" viewBox={`${si%3*418} ${Math.floor(si/3)*627} 418 627`} overflow="visible">
+   {aura&&<g className="armor-aura" filter={`url(#${id}-armor-aura)`}>{radiantLayers.map(l=><g key={l.name}>{layerArtwork(l)}</g>)}</g>}
    {layers.map(layer=><g key={layer.name} data-armor-layer={layer.name} data-armor-tier={tiers[layer.name]||0} filter={layer.name!=='cloth'?dyeFilter:undefined}>{layerArtwork(layer)}</g>)}
    {layers.filter(l=>l.effect&&l.name!=='gauntlets').map(armorLight)}
   </svg>

@@ -65,11 +65,14 @@ export function createActor({ getState, setPlayer, setBank, setBankGold, isServe
     } catch { /* ağ yok: bir sonraki başarılı eylem ya da yedek turu düzeltir */ }
   };
 
-  const request = (type, payload) => call("game/act", "POST", { characterKey: getActiveCharacterKey(), type, payload });
+  const request = (type, payload, characterKey = getActiveCharacterKey()) => call("game/act", "POST", { characterKey, type, payload }, characterKey);
 
   const act = async function act(type, payload = {}) {
     const before = currentState();
+    const vaultAction = type === "clan/vaultDeposit" || type === "clan/vaultWithdraw";
+    const vaultCharacter = vaultAction ? getActiveCharacterKey() : null;
     if (!isServer()) {
+      if (type === "clan/vaultDeposit" || type === "clan/vaultWithdraw") return {ok:false,reason:"serverRequired"};
       const { state, result } = applyAction(before, type, payload);
       if (!result.ok) return result;
       const patch = changedKeys(before.player, state.player);
@@ -111,9 +114,12 @@ export function createActor({ getState, setPlayer, setBank, setBankGold, isServe
     shadow = null;
     const run = queue.then(async () => {
       try {
-        const response = await request(type, payload);
+        if (vaultAction && vaultCharacter !== getActiveCharacterKey()) return {ok:false,reason:"characterChanged"};
+        const response = await request(type, payload, vaultAction ? vaultCharacter : getActiveCharacterKey());
         onRevision?.(response.revision);
         if (!response.result.ok) return response.result;
+        // A completed transfer belongs to the original character, even if the player switched while waiting.
+        if (vaultAction && vaultCharacter !== getActiveCharacterKey()) return response.result;
         applyPatch(response.patch, response.bank, response.bankGold);
         return { ...response.result, nextPlayer: { ...getState().player, ...(response.patch || {}) } };
       } catch (error) {

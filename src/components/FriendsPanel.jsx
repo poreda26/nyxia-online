@@ -1,3 +1,4 @@
+import './FriendsPanel.css';
 import FriendDuel from "./FriendDuel";
 import { startPolling } from "../utils/polling";
 import { useState, useEffect, useCallback } from "react";
@@ -143,7 +144,7 @@ export default function FriendsPanel({ player, pushToast, dmUnreadIds, onOpenDm 
             {incoming.map((r) => (
               <div key={r.id} className="rpg-row" style={styles.itemRow}>
                 <div style={{ flex: 1, fontSize: 12 }}>{r.fromName}</div>
-                <ModerationMenu target={{ accountId: r.fromAccountId }} name={r.fromName} pushToast={pushToast} onBlocked={refreshFriends} />
+                <ModerationMenu size={22} target={{ accountId: r.fromAccountId }} name={r.fromName} pushToast={pushToast} onBlocked={refreshFriends} />
                 <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#5FA8A0" }} onClick={() => handleAccept(r.id)}><Check size={12} /></button>
                 <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDecline(r.id)}><X size={12} /></button>
               </div>
@@ -173,15 +174,15 @@ export default function FriendsPanel({ player, pushToast, dmUnreadIds, onOpenDm 
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {friends.map((f) => (
-            <div key={f.accountId} className="rpg-row" style={styles.itemRow}>
+            <div key={f.accountId} className="rpg-row friend-card" style={styles.itemRow}><Avatar id={f.avatarId} frameId={f.frameId} size={46}/>
               <div style={{ flex: 1, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
                 {f.name}
                 {dmUnreadIds?.has(f.accountId) && <span style={{ width: 6, height: 6, borderRadius: 3, background: "#C9425A", flexShrink: 0 }} />}
               </div>
-              <ModerationMenu target={{ accountId: f.accountId }} name={f.name} pushToast={pushToast} onBlocked={refreshFriends} />
-              <button className="rpg-action" style={styles.tinyBtn} aria-label={`${f.name} — ${lang==='en'?'Send message':'Mesaj gönder'}`} onClick={() => onOpenDm(f)}><MessageCircle size={12} /></button>
-              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#C9425A", display: "flex", alignItems: "center", gap: 3 }} aria-label={`${f.name} — ${t("friendDuel.button")}`} onClick={() => setDuelFriend(f)}><Swords size={12} /> VS</button>
-              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} aria-label={`${f.name} — ${lang==='en'?'Remove friend':'Arkadaşlıktan çıkar'}`} onClick={() => handleRemove(f.accountId)}><X size={12} /></button>
+              <ModerationMenu size={22} target={{ accountId: f.accountId }} name={f.name} pushToast={pushToast} onBlocked={refreshFriends} />
+              <div className="friend-actions"><button className="rpg-action" style={styles.tinyBtn} aria-label={`${f.name} — ${lang==='en'?'Send message':'Mesaj gönder'}`} onClick={() => onOpenDm(f)}><MessageCircle size={22} /><span>{lang==='en'?'Message':'Mesaj'}</span></button>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "#C9425A", display: "flex", alignItems: "center", gap: 3 }} aria-label={`${f.name} — ${t("friendDuel.button")}`} onClick={() => setDuelFriend(f)}><Swords size={22} /><span>VS</span></button>
+              <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} aria-label={`${f.name} — ${lang==='en'?'Remove friend':'Arkadaşlıktan çıkar'}`} onClick={() => handleRemove(f.accountId)}><X size={22} /><span>{lang==='en'?'Remove':'Çıkar'}</span></button></div>
             </div>
           ))}
         </div>

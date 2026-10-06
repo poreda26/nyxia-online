@@ -7994,6 +7994,19 @@ var fail6 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason
 var done6 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
 var NP_REFUND_RATE = 0.35;
 var clanReducers = {
+  "clan/vaultDeposit"(state, { itemId }) {
+    const item = state.player.inventory.find((i) => i.id === itemId);
+    if (!item) return fail6(state, "itemNotFound");
+    if (!["weapon", "armor", "accessory", "clanMaterial"].includes(item.kind) || isFirstPurchaseWeapon(item) || item.bound || item.soulbound || item.accountBound || item.characterBound || item.tradeable === false || item.tradable === false || item.noTrade) return fail6(state, "clanItemBound");
+    return done6({ ...state, player: { ...state.player, inventory: state.player.inventory.filter((i) => i.id !== itemId) } }, { item });
+  },
+  "clan/vaultWithdraw"(state, { item }) {
+    if (!item || !item.id) return fail6(state, "itemNotFound");
+    if (state.player.inventory.some((i) => i.id === item.id) || Object.values(state.player.equipped || {}).some((i) => i?.id === item.id)) return fail6(state, "duplicateItem");
+    const added = addItemToInventory(state.player, item);
+    if (!added.added) return fail6(state, "clanBagFull");
+    return done6({ ...state, player: added.player });
+  },
   "clan/donate"(state, { currency, amount }) {
     if (!Number.isSafeInteger(amount) || amount <= 0) return fail6(state, "enterValidAmount");
     const { player } = state;
