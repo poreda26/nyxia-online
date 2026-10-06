@@ -1,0 +1,20 @@
+[Unit]
+Description=Nyxia Online (web+API)
+After=network.target
+
+[Service]
+Type=simple
+User=nyxia
+Group=nyxia
+WorkingDirectory=/home/nyxia/apps/nyxia-online
+EnvironmentFile=/etc/nyxia/env
+ExecStart=/usr/bin/node server/start.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/home/nyxia/data
+
+[Install]
+WantedBy=multi-user.target

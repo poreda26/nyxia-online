@@ -1,0 +1,6 @@
+[Unit]
+Description=Nyxia veritabanı yedeği
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/nyxia-backup.sh
