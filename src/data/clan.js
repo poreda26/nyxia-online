@@ -1,6 +1,11 @@
 // Klan sistemi sabitleri.
 export const CLAN_MAX_MEMBERS = 40;
-export const CLAN_MAX_OFFICERS = 2;
+export const CLAN_MAX_OFFICERS = 5;
+export const CLAN_MAX_DEPUTIES = 2;
+// Rütbeler: Normal Üye < Memur < Lider Yardımcısı < Lider. Veritabanında: member, officer, deputy, leader.
+export const CLAN_ROLES = ["member", "officer", "deputy", "leader"];
+export const CLAN_ROLE_RANK = { member: 0, officer: 1, deputy: 2, leader: 3 };
+export const clanRank = (role) => CLAN_ROLE_RANK[role] ?? 0;
 export const CLAN_FOUND_COST_DIAMONDS = 500;
 
 // En yüksek eşiğe göre TEK bir bonus uygulanır, üst üste binmez — 25 online

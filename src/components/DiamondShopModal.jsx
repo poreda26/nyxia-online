@@ -4,6 +4,7 @@ import ScrollArt from './icons/ScrollArt';
 import {useState} from 'react';
 import WingsShop from './WingsShop';
 import PremiumShop from './PremiumShop';
+import FreeDiamondsCard from './FreeDiamondsCard';
 import './DiamondStore.css';
 import { Gem, X, Star, Sparkles, Castle, Archive, Users, ScrollText, Gift, Check } from "./icons/GameIcons";
 import { DIAMOND_PACKS } from "../data/diamondPacks";
@@ -25,9 +26,9 @@ import { useTranslation } from "../i18n/LanguageContext";
 // elmas harcamaları (mevcut oyun içi elmas havuzundan) — sadece alttaki para
 // paketleri (DIAMOND_PACKS) henüz gerçek ödeme almıyor, RevenueCat bağlanana
 // kadar "yakında" toast'ı gösteriyor.
-export default function DiamondShopModal({ player, setPlayer, bank, setBank, act, unlockedSlots, onUnlockSlot, onClose, pushToast }) {
+export default function DiamondShopModal({ player, setPlayer, bank, setBank, act, unlockedSlots, onUnlockSlot, onClose, pushToast, onAdsStatus, initialCategory = "wings" }) {
   const { t, lang } = useTranslation();
-  const [category,setCategory]=useState("wings");
+  const [category,setCategory]=useState(initialCategory);
 
   const handleBuyPack = () => {
     pushToast(t("diamondShop.comingSoonToast"), "default");
@@ -103,6 +104,7 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, act
         {category==='wings'&&<WingsShop player={player} setPlayer={setPlayer} act={act} pushToast={pushToast}/>}
         {category==='premium'&&<PremiumShop player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} act={act} pushToast={pushToast}/>}
         {category==='diamonds'&&<>
+        <FreeDiamondsCard setPlayer={setPlayer} pushToast={pushToast} onStatus={onAdsStatus}/>
         <p className="store-payment-note">{lang==='tr'?'Gerçek para ile ödeme yakında açılacak. Elmas paketleri şu an satın alınamaz.':'Real-money payments are coming soon. Diamond packs cannot be purchased yet.'}</p>
         <div style={{ ...styles.itemDetailCard, width: "100%", marginTop: 16, borderColor: "var(--gold-text)", display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

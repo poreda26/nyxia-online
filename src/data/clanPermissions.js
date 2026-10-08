@@ -1,5 +1,7 @@
 export const CLAN_PERMISSIONS = ['deposit','withdraw','invite','kick','upgrade','donate','dungeon'];
+export const CLAN_EDITABLE_ROLES = ['deputy','officer','member'];
 export const DEFAULT_CLAN_PERMISSIONS = {
+ deputy: {deposit:true,withdraw:true,invite:true,kick:true,upgrade:true,donate:true,dungeon:true},
  officer: {deposit:true,withdraw:true,invite:true,kick:true,upgrade:true,donate:true,dungeon:true},
  member: {deposit:true,withdraw:false,invite:false,kick:false,upgrade:false,donate:true,dungeon:true},
 };

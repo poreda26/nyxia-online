@@ -34,6 +34,7 @@ import TutorialCoach from "./TutorialCoach";
 import DailyLoginModal from "./DailyLoginModal";
 import WheelModal from "./WheelModal";
 import { fetchWheel } from "../services/wheelService";
+import { fetchAds } from "../services/adsService";
 import DiamondShopModal from "./DiamondShopModal";
 import FirstPurchaseOfferModal from "./FirstPurchaseOfferModal";
 import EventReadyModal from "./EventReadyModal";
@@ -95,6 +96,14 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
       }
     } catch { return false; }
   }, 60000), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reklam izle-kazan: hazırsa elmas çipinde nokta gösterilir (sunucu kapalıysa hiç görünmez).
+  const [adsStatus, setAdsStatus] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    const stop = startPolling(() => fetchAds().then((s) => { if (alive) setAdsStatus(s); }).catch(() => false), 5 * 60 * 1000);
+    return () => { alive = false; stop(); };
+  }, []);
+  const adsReady = !!(adsStatus?.enabled && adsStatus.canWatch);
   const [wheelOpen, setWheelOpen] = useState(false);
   const [wheelReady, setWheelReady] = useState(false);
   useEffect(() => {
@@ -276,6 +285,11 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
     setDmSeenAt(seen => (seen?.[accountId] || 0) >= timestamp ? seen : { ...(seen || {}), [accountId]: timestamp });
   }, []);
 
+  // Sohbet ve Arkadaşlar alt menüden kalktı: üst çubuktaki sohbet düğmesiyle açılır; Arkadaşlar sohbetin içinde bir sekmedir.
+  const lastGameTab = useRef("battle");
+  useEffect(() => { if (tab !== "chat" && tab !== "friends") lastGameTab.current = tab; }, [tab]);
+  const toggleSocial = () => requestTabChange(tab === "chat" || tab === "friends" ? lastGameTab.current : "chat");
+
   const notifications = { captain: captainNotice, character: characterNotice, inventory: inventoryNotice, chat: chatNotice || dmUnreadIds.size > 0, friends: friendsNotice };
 
   return (
@@ -288,6 +302,10 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
         onOpenWheel={() => setWheelOpen(true)}
         onOpenSettings={onOpenSettings}
         onOpenDiamondShop={() => setDiamondShopOpen(true)}
+        onOpenChat={toggleSocial}
+        adsReady={adsReady}
+        chatNotice={notifications.chat || notifications.friends}
+        chatActive={tab === "chat" || tab === "friends"}
       />
 
       <EventStrip player={player} act={act} pushToast={pushToast} onOpenWarzone={() => requestTabChange("warzone")} />
@@ -330,16 +348,27 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
         {tab === "clan" && (
           <ClanTab player={player} setPlayer={setPlayer} act={act} cls={cls} atk={atk} def={def} pushToast={pushToast} />
         )}
-        {tab === "chat" && (
-          <ChatTab
-            act={act} isGM={isGm} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast}
-            openDmTabs={openDmTabs} dmUnreadIds={dmUnreadIds} pendingActiveDm={pendingActiveDm}
-            onConsumePendingActiveDm={() => setPendingActiveDm(null)}
-            onCloseDm={closeDmTab} onSeenDm={markDmSeen}
-          />
-        )}
-        {tab === "friends" && (
-          <FriendsPanel player={player} pushToast={pushToast} dmUnreadIds={dmUnreadIds} onOpenDm={openDm} />
+        {(tab === "chat" || tab === "friends") && (
+          <div className="social-hub">
+            <div className="rpg-tabs" style={{ ...styles.subtabRow, marginTop: 8, padding: "0 12px" }}>
+              <button aria-selected={tab === "chat"} style={{ ...styles.subtabBtn, ...(tab === "chat" ? styles.subtabBtnActive : {}) }} onClick={() => requestTabChange("chat")}>
+                {t("nav.chat")}{(chatNotice || dmUnreadIds.size > 0) && tab !== "chat" && <span style={{ ...styles.navNotifDot, position: "static", display: "inline-block", marginLeft: 6 }} />}
+              </button>
+              <button aria-selected={tab === "friends"} style={{ ...styles.subtabBtn, ...(tab === "friends" ? styles.subtabBtnActive : {}) }} onClick={() => requestTabChange("friends")}>
+                {t("nav.friends")}{friendsNotice && <span style={{ ...styles.navNotifDot, position: "static", display: "inline-block", marginLeft: 6 }} />}
+              </button>
+            </div>
+            {tab === "chat" ? (
+              <ChatTab
+                act={act} isGM={isGm} player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} pushToast={pushToast}
+                openDmTabs={openDmTabs} dmUnreadIds={dmUnreadIds} pendingActiveDm={pendingActiveDm}
+                onConsumePendingActiveDm={() => setPendingActiveDm(null)}
+                onCloseDm={closeDmTab} onSeenDm={markDmSeen}
+              />
+            ) : (
+              <FriendsPanel player={player} pushToast={pushToast} dmUnreadIds={dmUnreadIds} onOpenDm={openDm} />
+            )}
+          </div>
         )}
         {tab === "character" && (
           <CharacterTab player={player} setPlayer={setPlayer} act={act} cls={cls} maxHp={maxHp} def={def} atk={atk} pushToast={pushToast} onChangeCharacter={onChangeCharacter} onReplayTutorial={reopenTutorial} />
@@ -395,6 +424,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
           bank={bank} setBank={setBank}
           unlockedSlots={unlockedSlots} onUnlockSlot={onUnlockSlot}
           pushToast={pushToast} onClose={() => setDiamondShopOpen(false)}
+          onAdsStatus={setAdsStatus} initialCategory={adsReady ? "diamonds" : "wings"}
         />
       )}
     </div>

@@ -1,9 +1,9 @@
-import {CLAN_PERMISSIONS,DEFAULT_CLAN_PERMISSIONS,clanAllowed,CLAN_VAULT_CAPACITY} from '../src/data/clanPermissions.js';
+import {CLAN_PERMISSIONS,DEFAULT_CLAN_PERMISSIONS,CLAN_EDITABLE_ROLES,clanAllowed,CLAN_VAULT_CAPACITY} from '../src/data/clanPermissions.js';
 export function createClanVault(db,{fail}){
  db.exec(`CREATE TABLE IF NOT EXISTS clan_permissions(clan_id INTEGER PRIMARY KEY REFERENCES clans(id) ON DELETE CASCADE,data TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS clan_vault(id INTEGER PRIMARY KEY AUTOINCREMENT,clan_id INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,item TEXT NOT NULL,created_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS clan_vault_log(id INTEGER PRIMARY KEY AUTOINCREMENT,clan_id INTEGER NOT NULL REFERENCES clans(id) ON DELETE CASCADE,account_id INTEGER NOT NULL,character_key TEXT NOT NULL,action TEXT NOT NULL,item_name TEXT NOT NULL,created_at INTEGER NOT NULL);`);
- const permissions=id=>JSON.parse(db.prepare('SELECT data FROM clan_permissions WHERE clan_id=?').get(id)?.data||JSON.stringify(DEFAULT_CLAN_PERMISSIONS));
+ const permissions=id=>({...DEFAULT_CLAN_PERMISSIONS,...JSON.parse(db.prepare('SELECT data FROM clan_permissions WHERE clan_id=?').get(id)?.data||'{}')});
  const allowed=(m,key)=>!!m&&clanAllowed(m.role,permissions(m.clan_id),key);
  const membership=(account,key)=>db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=?').get(account,key);
  const log=(m,account,key,action,name,now)=>{db.prepare('INSERT INTO clan_vault_log(clan_id,account_id,character_key,action,item_name,created_at) VALUES(?,?,?,?,?,?)').run(m.clan_id,account,key,action,name,now);};
@@ -13,8 +13,8 @@ export function createClanVault(db,{fail}){
  };
  const update=(m,roles)=>{
   if(m?.role!=='leader')throw fail(403,'LEADER_REQUIRED');
-  if(!roles||Object.keys(roles).some(k=>!['officer','member'].includes(k)))throw fail(400,'INVALID_PERMISSIONS');
-  const clean={};for(const role of ['officer','member']){if(!roles[role]||Object.keys(roles[role]).some(k=>!CLAN_PERMISSIONS.includes(k)))throw fail(400,'INVALID_PERMISSIONS');clean[role]={};for(const key of CLAN_PERMISSIONS){if(typeof roles[role][key]!=='boolean')throw fail(400,'INVALID_PERMISSIONS');clean[role][key]=roles[role][key];}}
+  if(!roles||Object.keys(roles).some(k=>!CLAN_EDITABLE_ROLES.includes(k)))throw fail(400,'INVALID_PERMISSIONS');
+  const clean={};for(const role of CLAN_EDITABLE_ROLES){if(!roles[role]||Object.keys(roles[role]).some(k=>!CLAN_PERMISSIONS.includes(k)))throw fail(400,'INVALID_PERMISSIONS');clean[role]={};for(const key of CLAN_PERMISSIONS){if(typeof roles[role][key]!=='boolean')throw fail(400,'INVALID_PERMISSIONS');clean[role][key]=roles[role][key];}}
   db.prepare('INSERT INTO clan_permissions VALUES(?,?) ON CONFLICT(clan_id) DO UPDATE SET data=excluded.data').run(m.clan_id,JSON.stringify(clean));return clean;
  };
  const hooks={

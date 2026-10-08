@@ -12,6 +12,7 @@ import {duelSnapshot} from './duel-snapshot.mjs';
 import {createWallet} from './wallet.mjs';
 import {createEntitlements} from './entitlements.mjs';
 import {createIap} from './iap.mjs';
+import {createAds} from './ads.mjs';
 import {createGame} from './game.mjs';
 import {WHEEL_PREMIUM_PRIZES} from '../src/data/diamondPrices.js';
 import { createServer } from 'node:http';
@@ -30,7 +31,7 @@ import { bossSchedule } from '../src/utils/warzoneBoss.js';
 // Faz 6 — arkadaş/özel mesaj/gerçek çok-oyunculu klan. Aynı Faz 4 ilkesi:
 // saf veri dosyaları doğrudan buradan import ediliyor (klan üye/subay
 // tavanı, bina maliyet tablosu) — istemci ile sunucu aynı sabitleri kullanır.
-import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_COLORS } from '../src/data/clan.js';
+import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_MAX_DEPUTIES, CLAN_ROLE_RANK, CLAN_COLORS } from '../src/data/clan.js';
 import { CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from '../src/data/clanBoss.js';
 import {validPlayerAvatar,validClanAvatar,playerAvatarId} from '../src/data/avatars.js';
 import { FRIEND_MAX_COUNT, CHAT_MESSAGE_TTL_MS, DM_MESSAGE_TTL_MS } from '../src/data/social.js';
@@ -135,7 +136,7 @@ export // Oyun mantığı paketi (npm run build:logic ile üretilir). Yoksa sunu
 const gameLogic = await import('./game-logic.generated.mjs').catch(() => null);
 
 const NATIVE_APP_ORIGINS = ['https://localhost', 'capacitor://localhost'];
-export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, iapWebhookSecret = null, iapAllowSandbox = false, economyForAll = false } = {}) {
+export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, iapWebhookSecret = null, iapAllowSandbox = false, economyForAll = false, adsMode = 'off', adsTestAccounts = [], adsFetchKeys } = {}) {
   const allowedOrigins = new Set([origin, ...nativeOrigins]);
   const db = new DatabaseSync(database);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
@@ -265,7 +266,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE clan_id=? AND locked_by=? AND locked_character=?').run(membership.clan_id, accountId, characterKey);
     db.prepare('DELETE FROM clan_members WHERE account_id=? AND character_key=?').run(accountId, characterKey);
     if (membership.role === 'leader') {
-      const next = db.prepare("SELECT account_id,character_key FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'officer' THEN 0 ELSE 1 END, joined_at ASC LIMIT 1").get(membership.clan_id);
+      const next = db.prepare("SELECT account_id,character_key FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'deputy' THEN 0 WHEN 'officer' THEN 1 ELSE 2 END, joined_at ASC LIMIT 1").get(membership.clan_id);
       if (next) db.prepare("UPDATE clan_members SET role='leader' WHERE account_id=? AND character_key=?").run(next.account_id, next.character_key);
       else {
         db.prepare('DELETE FROM clan_invites WHERE clan_id=?').run(membership.clan_id);
@@ -497,6 +498,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     } });
   const actRateLimit = makeRateLimiter(240);
   const iap = createIap(db, { fail, wallet, secret: iapWebhookSecret, allowSandbox: iapAllowSandbox });
+  const ads = createAds(db, { fail, wallet, mode: adsMode, testAccounts: adsTestAccounts, ...(adsFetchKeys ? { fetchKeys: adsFetchKeys } : {}) });
   const admin = createAdmin(db, { read, fail, wallet });
   const wheel = createWheel(db, { fail });
   const wheelRateLimit = makeRateLimiter(20);
@@ -592,7 +594,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE locked_by=?').run(id);
       db.prepare('DELETE FROM clan_members WHERE account_id=?').run(id);
       for (const clanId of clanIds) {
-        const remaining = db.prepare("SELECT account_id,character_key,role FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'leader' THEN 0 WHEN 'officer' THEN 1 ELSE 2 END, joined_at ASC").all(clanId);
+        const remaining = db.prepare("SELECT account_id,character_key,role FROM clan_members WHERE clan_id=? ORDER BY CASE role WHEN 'leader' THEN 0 WHEN 'deputy' THEN 1 WHEN 'officer' THEN 2 ELSE 3 END, joined_at ASC").all(clanId);
         if (!remaining.length) {
           db.prepare('DELETE FROM clan_invites WHERE clan_id=?').run(clanId);
           db.prepare('DELETE FROM clan_dungeon_log WHERE clan_id=?').run(clanId);
@@ -676,10 +678,15 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       // En düşük istemci sürümü: eski kurallarla çalışan istemciler (ör. eski APK) sunucu ekonomisini bozmasın diye
       // reddedilir. Sağlık ucu, sahip paneli ve ödeme servisi (RevenueCat) bu denetimin dışındadır.
-      if (path.startsWith('/api/') && path !== '/api/health' && path !== '/api/version' && !path.startsWith('/api/admin')) {
+      if (path.startsWith('/api/') && path !== '/api/health' && path !== '/api/version' && path !== '/api/ads/ssv' && !path.startsWith('/api/admin')) {
         const config = appConfig();
         const build = Number(req.headers['x-client-build']) || 0;
         if (config.minBuild > 0 && build < config.minBuild) return send(426, { error: 'CLIENT_OUTDATED', minBuild: config.minBuild, updateUrl: config.updateUrl || null });
+      }
+      // Reklam ağından gelen imzalı ödül bildirimi (oturumsuz; imza Google anahtarlarıyla doğrulanır).
+      if (path === '/api/ads/ssv' && req.method === 'GET') {
+        const query = (req.url.split('?')[1] || '');
+        try { return send(200, await ads.ssv(query)); } catch (error) { if (error.status === 400) return send(400, { error: 'INVALID_SSV' }); throw error; }
       }
       if (path === '/api/version' && req.method === 'GET') { const config = appConfig(); return send(200, { minBuild: config.minBuild, updateUrl: config.updateUrl || null }); }
       if (path === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')) return send(200, { ok: true, mode: 'account-backup', authoritative: false });
@@ -740,6 +747,14 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         deleteAccountData(account);
         res.setHeader('Set-Cookie', cookie('', 0));
         return send(200, { ok: true });
+      }
+      if (path === '/api/ads' && req.method === 'GET') return send(200, ads.status(account.id, account.name));
+      if (path === '/api/ads/start' && req.method === 'POST') { walletRateLimit(account.id); return send(200, ads.start(account.id, account.name)); }
+      if (path === '/api/ads/claim' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        const body = await read(req);
+        const result = ads.claim(account.id, account.name, body?.ticket);
+        return send(200, { ...result, diamonds: wallet.balance(account.id), ...ads.status(account.id, account.name) });
       }
       if (path === '/api/wheel' && req.method === 'GET') return send(200, wheel.status(account.id));
       if (path === '/api/wheel/spin' && req.method === 'POST') { wheelRateLimit(account.id); return send(200, wheel.spin(account.id)); }
@@ -1544,7 +1559,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const target = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=? AND clan_id=?').get(targetId,targetKey, membership.clan_id);
         if (!target) throw fail(404, 'MEMBER_NOT_FOUND');
         if (target.role === 'leader') throw fail(400, 'CANNOT_KICK_LEADER');
-        if(membership.role !== 'leader' && target.role !== 'member') throw fail(403, 'LEADER_ONLY');
+        if((CLAN_ROLE_RANK[membership.role] ?? 0) <= (CLAN_ROLE_RANK[target.role] ?? 0)) throw fail(403, 'INSUFFICIENT_RANK');
         if(targetId === account.id && targetKey === myCharacterKey) throw fail(400, 'INVALID_TARGET');
         db.prepare('UPDATE clan_dungeon_state SET locked_by=NULL,locked_character=NULL,locked_by_name=NULL,locked_until=NULL WHERE clan_id=? AND locked_by=? AND locked_character=?').run(membership.clan_id,targetId,targetKey);
         db.prepare('DELETE FROM clan_members WHERE account_id=? AND character_key=?').run(targetId,targetKey);
@@ -1560,13 +1575,18 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const target = db.prepare('SELECT * FROM clan_members WHERE account_id=? AND character_key=? AND clan_id=?').get(targetId,targetKey, membership.clan_id);
         if (!target || target.role === 'leader') throw fail(404, 'MEMBER_NOT_FOUND');
         if (path === '/api/clan/promote') {
-          if (target.role !== 'officer') {
-            const officerCount = db.prepare("SELECT COUNT(*) AS c FROM clan_members WHERE clan_id=? AND role='officer'").get(membership.clan_id).c;
-            if (officerCount >= CLAN_MAX_OFFICERS) throw fail(409, 'TOO_MANY_OFFICERS');
-            db.prepare("UPDATE clan_members SET role='officer' WHERE account_id=? AND character_key=?").run(targetId,targetKey);
+          // Bir kademe yukarı: Normal Üye → Memur → Lider Yardımcısı.
+          const next = target.role === 'member' ? 'officer' : target.role === 'officer' ? 'deputy' : null;
+          if (next) {
+            const limit = next === 'officer' ? CLAN_MAX_OFFICERS : CLAN_MAX_DEPUTIES;
+            const count = db.prepare("SELECT COUNT(*) AS c FROM clan_members WHERE clan_id=? AND role=?").get(membership.clan_id, next).c;
+            if (count >= limit) throw fail(409, next === 'officer' ? 'TOO_MANY_OFFICERS' : 'TOO_MANY_DEPUTIES');
+            db.prepare("UPDATE clan_members SET role=? WHERE account_id=? AND character_key=?").run(next, targetId, targetKey);
           }
         } else {
-          db.prepare("UPDATE clan_members SET role='member' WHERE account_id=? AND character_key=? AND role='officer'").run(targetId,targetKey);
+          // Bir kademe aşağı: Lider Yardımcısı → Memur → Normal Üye.
+          const prev = target.role === 'deputy' ? 'officer' : target.role === 'officer' ? 'member' : null;
+          if (prev) db.prepare("UPDATE clan_members SET role=? WHERE account_id=? AND character_key=?").run(prev, targetId, targetKey);
         }
         return send(200, { ok: true });
       }

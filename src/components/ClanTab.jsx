@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Shield, LogOut, Plus, ChevronUp, ChevronDown, UserX, Coins, Gem, Flag, Landmark, Skull, Lock, Clock, Mail } from "./icons/GameIcons";
 import { CLASSES } from "../data/classes";
 import { RACES } from "../data/races";
-import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_FOUND_COST_DIAMONDS, CLAN_COLORS } from "../data/clan";
+import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_MAX_DEPUTIES, CLAN_FOUND_COST_DIAMONDS, CLAN_COLORS, clanRank } from "../data/clan";
 import { CLAN_BOSS_STAGES, CLAN_BUILDING_MAX_LEVEL, CLAN_BUILDING_UPGRADE_COST } from "../data/clanBoss";
 import { CLAN_BUILDING_MATERIAL_COST, CLAN_DUNGEON_MATERIALS } from "../data/clanDungeon";
 import { onlineCountFor, clanExpBonus, clanLeaderboardFor } from "../utils/clan";
@@ -358,6 +358,7 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
   const bonus = clanExpBonus(online);
   const isLeader = clan.role === "leader";
   const officerCount = clan.members.filter((m) => m.role === "officer").length;
+  const deputyCount = clan.members.filter((m) => m.role === "deputy").length;
   const canUpgradeBuilding = clanAllowed(clan.role,clan.permissions,'upgrade');
   const nextBuildingCost = CLAN_BUILDING_UPGRADE_COST[clan.buildingLevel + 1];
   const nextMaterialCost = CLAN_BUILDING_MATERIAL_COST[clan.buildingLevel + 1];
@@ -554,7 +555,7 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
                       {t("clan.bossStageRequirement", { np: fmt(stage.npRequired), level: stage.buildingLevelRequired })}
                     </div>
                   </div>
-                  {(isLeader || clan.role === 'officer') ? (
+                  {clanRank(clan.role) >= 1 ? (
                     <button
                       className="rpg-action" style={{ ...styles.tinyBtn, background: isUnlocked ? stage.color : "var(--bg-panel-alt)", color: isUnlocked ? "#0B0C10" : "var(--text-faint)" }}
                       disabled={!isUnlocked}
@@ -588,24 +589,27 @@ export default function ClanTab({ player, setPlayer, act, cls, atk, def, pushToa
               </div>
               {isLeader && m.role !== "leader" && (
                 <>
-                  {m.role === "officer" ? (
+                  {m.role !== "member" && (
                     <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => handleDemote(m.accountId,m.characterKey)} title={t("clan.demoteTitle")}>
                       <ChevronDown size={11} />
                     </button>
-                  ) : (
-                    <button
-                      className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: officerCount >= CLAN_MAX_OFFICERS ? 0.4 : 1 }}
-                      disabled={officerCount >= CLAN_MAX_OFFICERS}
-                      onClick={() => handlePromote(m.accountId,m.characterKey)}
-                      title={t("clan.promoteTitle")}
-                    >
-                      <ChevronUp size={11} />
-                    </button>
                   )}
-
+                  {m.role !== "deputy" && (() => {
+                    const full = m.role === "member" ? officerCount >= CLAN_MAX_OFFICERS : deputyCount >= CLAN_MAX_DEPUTIES;
+                    return (
+                      <button
+                        className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)", opacity: full ? 0.4 : 1 }}
+                        disabled={full}
+                        onClick={() => handlePromote(m.accountId,m.characterKey)}
+                        title={t("clan.promoteTitle")}
+                      >
+                        <ChevronUp size={11} />
+                      </button>
+                    );
+                  })()}
                 </>
               )}
-              {clanAllowed(clan.role,clan.permissions,'kick') && m.role !== 'leader' && (isLeader || m.role === 'member') && m.characterKey !== getActiveCharacterKey() && (
+              {clanAllowed(clan.role,clan.permissions,'kick') && clanRank(clan.role) > clanRank(m.role) && m.characterKey !== getActiveCharacterKey() && (
                   <button className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "#E8A5AF" }} onClick={() => handleKick(m.accountId,m.characterKey)} title={t("clan.kickTitle")}>
                     <UserX size={11} />
                   </button>

@@ -14,6 +14,8 @@ const api = createApi({
   iapWebhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || null,
   iapAllowSandbox: process.env.IAP_ALLOW_SANDBOX === '1',
   economyForAll: process.env.ECONOMY_FOR_ALL === '1',
+  adsMode: process.env.ADS_MODE === 'admob' ? 'admob' : 'off',
+  adsTestAccounts: (process.env.ADS_TEST_ACCOUNTS || '').split(',').map((n) => n.trim().toLowerCase()).filter(Boolean),
 });
 // Varsayılan bağlanma adresi bilerek loopback (127.0.0.1) — dışarıya açmak
 // (0.0.0.0) sadece bir ters proxy'nin arkasında, HOST ortam değişkeni

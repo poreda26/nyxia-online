@@ -13,7 +13,7 @@ export function unlockedBossStages(clan) {
 
 export function canOpenClanBoss(player, stageId) {
   if (!player.clan) return { ok: false, reason: "notInClan" };
-  if (player.clan.role !== "leader" && player.clan.role !== "officer") return { ok: false, reason: "leaderOfficerOnlyBoss" };
+  if (!["leader", "deputy", "officer"].includes(player.clan.role)) return { ok: false, reason: "leaderOfficerOnlyBoss" };
   if (player.clan.boss && player.clan.boss.lastOpenedDay === todayKey()) return { ok: false, reason: "bossAlreadyOpenedToday" };
   const stage = findBossStage(stageId);
   if (!stage) return { ok: false, reason: "invalidStage" };
