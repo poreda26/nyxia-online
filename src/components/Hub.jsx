@@ -285,11 +285,6 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
     setDmSeenAt(seen => (seen?.[accountId] || 0) >= timestamp ? seen : { ...(seen || {}), [accountId]: timestamp });
   }, []);
 
-  // Sohbet ve Arkadaşlar alt menüden kalktı: üst çubuktaki sohbet düğmesiyle açılır; Arkadaşlar sohbetin içinde bir sekmedir.
-  const lastGameTab = useRef("battle");
-  useEffect(() => { if (tab !== "chat" && tab !== "friends") lastGameTab.current = tab; }, [tab]);
-  const toggleSocial = () => requestTabChange(tab === "chat" || tab === "friends" ? lastGameTab.current : "chat");
-
   const notifications = { captain: captainNotice, character: characterNotice, inventory: inventoryNotice, chat: chatNotice || dmUnreadIds.size > 0, friends: friendsNotice };
 
   return (
@@ -302,10 +297,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
         onOpenWheel={() => setWheelOpen(true)}
         onOpenSettings={onOpenSettings}
         onOpenDiamondShop={() => setDiamondShopOpen(true)}
-        onOpenChat={toggleSocial}
         adsReady={adsReady}
-        chatNotice={notifications.chat || notifications.friends}
-        chatActive={tab === "chat" || tab === "friends"}
       />
 
       <EventStrip player={player} act={act} pushToast={pushToast} onOpenWarzone={() => requestTabChange("warzone")} />
@@ -424,7 +416,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
           bank={bank} setBank={setBank}
           unlockedSlots={unlockedSlots} onUnlockSlot={onUnlockSlot}
           pushToast={pushToast} onClose={() => setDiamondShopOpen(false)}
-          onAdsStatus={setAdsStatus} initialCategory={adsReady ? "diamonds" : "wings"}
+          onAdsStatus={setAdsStatus}
         />
       )}
     </div>

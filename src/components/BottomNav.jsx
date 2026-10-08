@@ -3,17 +3,19 @@ import {useEffect,useRef} from 'react';
 import {useTranslation} from '../i18n/LanguageContext';
 import MenuEmblem from './icons/MenuEmblem';
 import './GameChrome.css';
-const TABS=['battle','inventory','market','upgrade','captain','clan','warzone','character'];
+const TABS=['battle','inventory','market','upgrade','captain','clan','warzone','chat','character'];
+// Arkadaşlar ayrı bir alt sekme değil: sohbetin içinde üst sekmedir; bu yüzden orada da "Sohbet" seçili görünür.
 export default function BottomNav({tab,setTab,notifications={}}){
+ const current=tab==='friends'?'chat':tab;
  const {t}=useTranslation(),rail=useRef(null);
- useEffect(()=>{const active=rail.current?.querySelector('[aria-current="page"]');if(!active)return;const parent=rail.current;const left=active.offsetLeft-(parent.clientWidth-active.offsetWidth)/2;parent.scrollTo({left,behavior:(document.documentElement.dataset.motion==='reduced'||window.matchMedia('(prefers-reduced-motion: reduce)').matches)?'instant':'smooth'});},[tab]);
+ useEffect(()=>{const active=rail.current?.querySelector('[aria-current="page"]');if(!active)return;const parent=rail.current;const left=active.offsetLeft-(parent.clientWidth-active.offsetWidth)/2;parent.scrollTo({left,behavior:(document.documentElement.dataset.motion==='reduced'||window.matchMedia('(prefers-reduced-motion: reduce)').matches)?'instant':'smooth'});},[current]);
  return <nav className="fantasy-dock">
   <div className="dock-rail" ref={rail}>
-   {TABS.map(key=><button type="button" key={key} className={`dock-button ${tab===key?'is-active':''}`} aria-current={tab===key?'page':undefined} onClick={()=>{if(tab!==key)playUi();setTab(key);}}>
-    <span className="dock-medallion"><MenuEmblem name={key}/>{notifications[key]&&<i className="dock-notification"/>}</span>
+   {TABS.map(key=><button type="button" key={key} className={`dock-button ${current===key?'is-active':''}`} aria-current={current===key?'page':undefined} onClick={()=>{if(current!==key)playUi();setTab(key);}}>
+    <span className="dock-medallion"><MenuEmblem name={key}/>{(key==='chat'?notifications.chat||notifications.friends:notifications[key])&&<i className="dock-notification"/>}</span>
     <span className="dock-label">{t(`nav.${key}`)}</span>
    </button>)}
   </div>
-  <div className="dock-gems" aria-hidden="true">{TABS.map(key=><i key={key} className={tab===key?'is-active':''}/>)}</div>
+  <div className="dock-gems" aria-hidden="true">{TABS.map(key=><i key={key} className={current===key?'is-active':''}/>)}</div>
  </nav>;
 }

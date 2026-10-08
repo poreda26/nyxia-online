@@ -183,3 +183,6 @@ HASAR söylemez; yalnızca eylem (`{action}`: saldır / beceri / pot) gönderir.
 karşılığını, aşınmayı, harcanan potu ve ölüm cezasını hesaplar; oyuncunun savaştaki can/mana/bekleme/güçlendirme durumu `shared_fighters` tablosunda tutulur
 (60 sn vuruş yoksa dinlenmiş sayılır). Paylaşımlı can/kayıt yazımı aynı işlemde. Eski hesaplar için eski yol (hasar + tavan) korunur. Klan zindanı malzeme
 düşenleri `pending_grants` → `clan/claimMaterials`. CLIENT_BUILD = 4.
+
+## Tek oturum
+Bir hesap aynı anda yalnızca tek yerde açık olabilir. `sessions` tablosunda `seen` (son istek, 30 sn'de bir yazılır) ve `kind` (`game` / `panel`) tutulur. Başka bir oturum son 3 dakikada etkinse normal giriş `409 ACCOUNT_IN_USE` döner; istemci onay sorar ve `force: true` ile yeniden dener, diğer oturum silinir (o cihaz bir sonraki istekte 401 alıp giriş ekranına döner). Şifre doğrulanmadan bu bilgi verilmez. Sahip paneli `panel: true` ile (yalnızca sahip hesabı) ayrı bir oturum açar ve oyun oturumunu etkilemez.

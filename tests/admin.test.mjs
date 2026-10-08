@@ -46,7 +46,7 @@ test('owner panel: deny GM/anonymous, preserve revisions, restore, ban, audit, s
   assert.equal((await call('admin/audit',null,a.cookie)).data.length,4);
   const rules=(await call('admin/drops',null,a.cookie)).data;
   assert.equal((await call('admin/drops',null,b.cookie)).status,401);
-  const c=(await call('login',{name:'friend',password:'test-long-password-123'})).cookie;
+  const c=(await call('login',{name:'friend',password:'test-long-password-123',force:true})).cookie;
   assert.equal((await call('admin/drops',null,c)).status,403);
   const changed=structuredClone(rules.data);changed.chestTables={'1':[{key:rules.catalog[0].key,weight:1,level:7}]};
   assert.equal((await call('admin/drops/save',{revision:0,data:changed,reason:'test rules'},c)).status,403);

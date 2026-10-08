@@ -25,7 +25,7 @@ test('native app origins authenticate with Bearer tokens, web keeps cookies', as
 
     for (const nativeOrigin of ['https://localhost', 'capacitor://localhost']) {
       const nativeHeaders = { 'X-Native-Client': '1' };
-      const login = await call('login', { method: 'POST', body: credentials, origin: nativeOrigin, headers: nativeHeaders });
+      const login = await call('login', { method: 'POST', body: { ...credentials, force: true }, origin: nativeOrigin, headers: nativeHeaders });
       assert.equal(login.status, 200);
       assert.match(login.body.token, /^[a-f0-9]{64}$/);
       assert.equal(login.headers.get('set-cookie'), null);
@@ -42,7 +42,7 @@ test('native app origins authenticate with Bearer tokens, web keeps cookies', as
     }
 
     // Native origin without the opt-in header gets the normal cookie flow, no token in the body.
-    const noOptIn = await call('login', { method: 'POST', body: credentials, origin: 'https://localhost' });
+    const noOptIn = await call('login', { method: 'POST', body: { ...credentials, force: true }, origin: 'https://localhost' });
     assert.equal(noOptIn.body.token, undefined);
 
     // Preflight advertises the new headers; unknown origins stay blocked.
@@ -53,6 +53,9 @@ test('native app origins authenticate with Bearer tokens, web keeps cookies', as
     assert.equal((await call('login', { method: 'POST', body: credentials, origin: 'https://evil.example', headers: { 'X-Native-Client': '1' } })).status, 403);
 
     // The web cookie keeps working for the web origin.
-    assert.equal((await call('me', { headers: { Cookie: cookie } })).status, 200);
+    // (The earlier native logins closed that first web session: an account is open in one place at a time.)
+    assert.equal((await call('me', { headers: { Cookie: cookie } })).status, 401);
+    const webAgain = await call('login', { method: 'POST', body: { ...credentials, force: true } });
+    assert.equal((await call('me', { headers: { Cookie: webAgain.headers.get('set-cookie').split(';')[0] } })).status, 200);
   } finally { await api.close(); rmSync(dir, { recursive: true }); }
 });

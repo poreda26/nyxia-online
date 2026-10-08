@@ -40,6 +40,8 @@ export async function call(path, method, body, characterKey=activeCharacterKey) 
     if (res.ok && data.token && (path === "login" || path === "register")) writeToken(data.token);
     else if (path === "logout" || (res.ok && path === "account/delete") || (res.status === 401 && data.error === "LOGIN_REQUIRED")) writeToken(null);
   }
+  // Oturum başka bir yerden açılarak kapatıldı (ya da süresi doldu): uygulama giriş ekranına döner (bkz. App.jsx).
+  if (res.status === 401 && data.error === "LOGIN_REQUIRED" && !["login", "register", "me", "logout"].includes(path) && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nyxia:signedout"));
   // Sunucu bu sürümü artık kabul etmiyor: uygulama güncelleme ekranını açar (bkz. App.jsx).
   if (res.status === 426 && data.error === "CLIENT_OUTDATED" && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nyxia:outdated", { detail: data }));
   if (!res.ok) throw Object.assign(new Error(data.error || "REQUEST_FAILED"), { code: data.error });
@@ -47,7 +49,7 @@ export async function call(path, method, body, characterKey=activeCharacterKey) 
 }
 
 export const registerAccount = (name, password) => call("register", "POST", { name, password });
-export const loginAccount = (name, password) => call("login", "POST", { name, password });
+export const loginAccount = (name, password, force = false) => call("login", "POST", { name, password, ...(force ? { force: true } : {}) });
 export const logoutAccount = () => call("logout", "POST");
 export const fetchMe = () => call("me", "GET");
 export const deleteAccountApi = (password) => call("account/delete", "POST", { password });

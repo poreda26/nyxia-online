@@ -25,27 +25,28 @@ function errorKey(code) {
 // App.jsx#handleLogin bu ismi doğrudan yerel karakter kaydını açmak için
 // kullanıyor (bkz. utils/storage.js#loadAccount) — sunucu ve yerel kayıt
 // aynı anahtar üzerinden eşleşiyor.
-export default function LoginScreen({ initialUsername, onLogin }) {
+export default function LoginScreen({ initialUsername, onLogin, notice }) {
   const { t, lang } = useTranslation();
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState(initialUsername || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [inUse, setInUse] = useState(false);
 
-  const submit = async () => {
+  const submit = async (force = false) => {
     const trimmed = username.trim().toLowerCase();
     if (!trimmed || !password || busy) return;
     if (isReservedUsername(trimmed)) { setError(t("login.reservedNameError")); return; }
     if (!NAME_PATTERN.test(trimmed)) { setError(t("login.invalidFormatError")); return; }
     if (password.length < 12) { setError(t("login.passwordTooShortError")); return; }
-    setError(""); setBusy(true);
+    setError(""); setBusy(true); setInUse(false);
     try {
-      const call = mode === "register" ? registerAccount : loginAccount;
-      const { name } = await call(trimmed, password);
+      const { name } = mode === "register" ? await registerAccount(trimmed, password) : await loginAccount(trimmed, password, force === true);
       onLogin(name);
     } catch (err) {
-      setError(t(errorKey(err.code)));
+      if (err.code === "ACCOUNT_IN_USE") setInUse(true);
+      else setError(t(errorKey(err.code)));
     } finally {
       setBusy(false);
     }
@@ -91,6 +92,18 @@ export default function LoginScreen({ initialUsername, onLogin }) {
         />
       </div>
 
+      {notice && !error && !inUse && (
+        <p style={{ ...styles.loginCaveat, color: "var(--gold-text)", marginTop: -10 }}>{t("login.signedOutElsewhere")}</p>
+      )}
+      {inUse && (
+        <div style={{ ...styles.itemDetailCard, borderColor: "var(--gold-text)", marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 12, lineHeight: 1.5 }}>{t("login.inUsePrompt")}</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={{ ...styles.tinyBtn, flex: 1, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }} onClick={() => setInUse(false)}>{t("login.inUseCancel")}</button>
+            <button style={{ ...styles.tinyBtn, flex: 1, background: "#D4AF6A", color: "#15171E" }} disabled={busy} onClick={() => submit(true)}>{t("login.inUseConfirm")}</button>
+          </div>
+        </div>
+      )}
       {error && (
         <p style={{ ...styles.loginCaveat, color: "#E8425A", marginTop: -10 }}>
           {error}
@@ -100,7 +113,7 @@ export default function LoginScreen({ initialUsername, onLogin }) {
       <button
         style={{ ...styles.primaryBtn, background: "#D4AF6A", alignSelf: "center", opacity: busy ? 0.6 : 1 }}
         disabled={!username.trim() || !password || busy}
-        onClick={submit}
+        onClick={() => submit()}
       >
         {t(busy ? "login.submitting" : mode === "register" ? "login.registerSubmit" : "login.submit")} <ChevronRight size={16} />
       </button>

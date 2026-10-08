@@ -59,14 +59,21 @@ export default function App() {
   const [sessionChecked, setSessionChecked] = useState(false);
   // Sunucu bu istemci sürümünü reddettiyse ({ updateUrl }) oyun yerine güncelleme ekranı gösterilir.
   const [outdated, setOutdated] = useState(null);
+  const [signedOutNotice, setSignedOutNotice] = useState(false);
+  const signedInRef = useRef(false);
   useEffect(() => {
     const onOutdated = (event) => setOutdated(event.detail || {});
+    // Hesap başka bir yerde açıldıysa bu oturum sunucuda kapatılmıştır: giriş ekranına dön.
+    const onSignedOut = () => { if (!signedInRef.current) return; signedInRef.current = false; setSignedOutNotice(true); resetSessionRef.current?.(); };
     window.addEventListener("nyxia:outdated", onOutdated);
-    return () => window.removeEventListener("nyxia:outdated", onOutdated);
+    window.addEventListener("nyxia:signedout", onSignedOut);
+    return () => { window.removeEventListener("nyxia:outdated", onOutdated); window.removeEventListener("nyxia:signedout", onSignedOut); };
   }, []);
   // GM yetkisi sunucudan gelir (hesaba bağlı); yerel kayıttaki hiçbir değer yetki vermez.
   const [isGm, setIsGm] = useState(false);
   const [username, setUsername] = useState("");
+  const resetSessionRef = useRef(null);
+  useEffect(() => { signedInRef.current = !!username; if (username) setSignedOutNotice(false); }, [username]);
   const [account, setAccount] = useState({ race: null, characters: [null, null, null], bank: Array.from({ length: BANK_PAGES }, () => []), unlockedSlots: DEFAULT_UNLOCKED_SLOTS, diamonds: 0, bankGold: 0 });
   const [activeSlot, setActiveSlot] = useState(null);
   const [player, setPlayer] = useState(null);
@@ -446,6 +453,7 @@ export default function App() {
   // boşaltılıyor: bir sonraki giriş tamamlanana kadar eski hesabın verisi
   // başka bir oturumun yedeğine gitmesin.
   const resetSession = () => {
+    signedInRef.current = false;
     setIsGm(false);
     economyRef.current = false;
     setPlayer(null);
@@ -455,6 +463,8 @@ export default function App() {
     skipNextSyncRef.current = false;
     setScreen("login");
   };
+
+  resetSessionRef.current = resetSession;
 
   // Çıkış artık sunucu oturumunu da kapatıyor (önceden sadece ekran
   // değişiyordu, sayfa yenilenince fetchMe kullanıcıyı geri alıyordu; yerel
@@ -513,7 +523,7 @@ export default function App() {
           </button>
         </div>
       )}
-      {screen === "login" && sessionChecked && <LoginScreen initialUsername={initialUsername} onLogin={handleLogin} />}
+      {screen === "login" && sessionChecked && <LoginScreen initialUsername={initialUsername} onLogin={handleLogin} notice={signedOutNotice} />}
       {screen === "raceSelect" && <RaceSelect onChoose={handleChooseAccountRace} />}
       {screen === "characterSelect" && (
         <CharacterSelectScreen

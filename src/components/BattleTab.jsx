@@ -566,7 +566,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
                     : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }),
                 }}
                 disabled={dungeonEntriesLeft(player) <= 0 || locked}
-                onClick={enterSoloDungeon}
+                onClick={() => { if (window.confirm(t("battle.confirmDungeon", { map: map.name, left: dungeonEntriesLeft(player), limit: SOLO_DUNGEON_DAILY_LIMIT }))) enterSoloDungeon(); }}
               >
                 {t("battle.enterDungeon")}
               </button>
@@ -598,7 +598,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
               <button
                 style={{ ...styles.tinyBtn, ...(mapBossCheck.ok && !locked ? { background: "#D4AF6A", color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }) }}
                 disabled={!mapBossCheck.ok || locked}
-                onClick={() => startBattle(mapBoss)}
+                onClick={() => { if (window.confirm(t("battle.confirmMapBoss", { boss: tm(mapBoss) }))) startBattle(mapBoss); }}
               >
                 {mapBossCheck.ok ? t("battle.goToBoss") : t(mapBossCheck.reason === "mapIncomplete" ? "battle.bossNeedsMap" : "battle.defeatedToday")}
               </button>

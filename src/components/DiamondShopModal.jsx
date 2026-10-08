@@ -26,7 +26,7 @@ import { useTranslation } from "../i18n/LanguageContext";
 // elmas harcamaları (mevcut oyun içi elmas havuzundan) — sadece alttaki para
 // paketleri (DIAMOND_PACKS) henüz gerçek ödeme almıyor, RevenueCat bağlanana
 // kadar "yakında" toast'ı gösteriyor.
-export default function DiamondShopModal({ player, setPlayer, bank, setBank, act, unlockedSlots, onUnlockSlot, onClose, pushToast, onAdsStatus, initialCategory = "wings" }) {
+export default function DiamondShopModal({ player, setPlayer, bank, setBank, act, unlockedSlots, onUnlockSlot, onClose, pushToast, onAdsStatus, initialCategory = "diamonds" }) {
   const { t, lang } = useTranslation();
   const [category,setCategory]=useState(initialCategory);
 
@@ -100,7 +100,7 @@ export default function DiamondShopModal({ player, setPlayer, bank, setBank, act
         </button>
 
         <header className="diamond-store-header"><Gem size={30}/><div><small>NYXIA BOUTIQUE</small><h2>{lang==='tr'?'Elmas Mağazası':'Diamond Store'}</h2></div><b>♦ {player.diamonds.toLocaleString()}</b></header>
-        <nav className="diamond-store-tabs">{[['wings','Kanatlar','Wings'],['premium','Premium','Premium'],['services','Destekler','Services'],['diamonds','Elmas Al','Diamonds']].map(([key,tr,en])=><button key={key} aria-pressed={category===key} onClick={e=>{setCategory(key);e.currentTarget.closest(".diamond-store").scrollTop=0;}}>{lang==='tr'?tr:en}</button>)}</nav>
+        <nav className="diamond-store-tabs">{[['diamonds','Elmas Al','Diamonds'],['premium','Premium','Premium'],['services','Destekler','Services'],['wings','Kanatlar','Wings']].map(([key,tr,en])=><button key={key} aria-pressed={category===key} onClick={e=>{setCategory(key);e.currentTarget.closest(".diamond-store").scrollTop=0;}}>{lang==='tr'?tr:en}</button>)}</nav>
         {category==='wings'&&<WingsShop player={player} setPlayer={setPlayer} act={act} pushToast={pushToast}/>}
         {category==='premium'&&<PremiumShop player={player} setPlayer={setPlayer} bank={bank} setBank={setBank} act={act} pushToast={pushToast}/>}
         {category==='diamonds'&&<>

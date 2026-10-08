@@ -2,7 +2,7 @@ import Avatar from './Avatar';
 import AvatarWardrobe from './AvatarWardrobe';
 import './TopBar.css';
 import { useState, useEffect } from "react";
-import { Aperture, Coins, Crown, Gem, Gift, MessageCircle, Plus, ScrollText, Settings, Swords, Shield, Heart } from "./icons/GameIcons";
+import { Aperture, Coins, Crown, Gem, Gift, Plus, ScrollText, Settings, Swords, Shield, Heart } from "./icons/GameIcons";
 import { xpToNext, MAX_LEVEL, formatGold } from "../utils/player";
 import { activePremiumTier } from "../utils/premium";
 import { activeTitleInfo } from "../utils/achievements";
@@ -18,7 +18,7 @@ function formatMmSs(ms) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, wheelAvailable, onOpenWheel, onOpenSettings, onOpenDiamondShop, onOpenChat, chatNotice, chatActive, adsReady }) {
+export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, wheelAvailable, onOpenWheel, onOpenSettings, onOpenDiamondShop, adsReady }) {
   const { t, lang } = useTranslation();
   // Aktif takviyelerin geri sayımı gerçek zamana (Date.now()) bağlı — bkz.
   // utils/boosts.js, premium ile aynı "duvar saati" deseni. Bu, o değeri
@@ -73,16 +73,6 @@ export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyL
           >
             <Gift size={16} strokeWidth={1.8} />
             {dailyLoginAvailable && <span style={{ ...styles.navNotifDot, top: 0, left: "auto", right: -1, marginLeft: 0 }} />}
-          </button>
-        )}
-        {onOpenChat && (
-          <button
-            onClick={onOpenChat}
-            title={t("topBar.chat")} aria-label={t("topBar.chat")} aria-pressed={!!chatActive}
-            style={{ position: "relative", background: "none", border: "none", color: chatActive || chatNotice ? "var(--gold-text)" : "var(--text-faint)", cursor: "pointer", padding: 4, flexShrink: 0 }}
-          >
-            <MessageCircle size={16} strokeWidth={1.8} />
-            {chatNotice && <span style={{ ...styles.navNotifDot, top: 0, left: "auto", right: -1, marginLeft: 0 }} />}
           </button>
         )}
         {onOpenWheel && (

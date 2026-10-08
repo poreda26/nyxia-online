@@ -63,6 +63,7 @@ import { todayKey } from '../src/utils/day.js';
 
 const scrypt = promisify(derive);
 const hash = value => createHash('sha256').update(value).digest('hex');
+const SESSION_ACTIVE_MS = 3 * 60 * 1000;
 const fail = (status, code) => Object.assign(new Error(code), { status });
 const LIMIT = 2 * 1024 * 1024;
 // Push bildirimleri prod'da systemd unit'ine env olarak eklenen VAPID
@@ -166,6 +167,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS push_prefs(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), inactivity INTEGER NOT NULL DEFAULT 1, events INTEGER NOT NULL DEFAULT 1, social INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE IF NOT EXISTS push_inactivity_sent(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), sent_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS push_event_sent(event_id TEXT NOT NULL, day_key TEXT NOT NULL, PRIMARY KEY(event_id,day_key));`);
+  // Tek oturum: bir hesap aynı anda yalnızca tek yerde açık olabilir. `seen` son istek zamanı, `kind` oturum türü
+  // ('game' oyun istemcisi, 'panel' sahip paneli — panel oyun oturumunu etkilemez).
+  for (const column of ["seen INTEGER NOT NULL DEFAULT 0", "kind TEXT NOT NULL DEFAULT 'game'"]) { try { db.exec(`ALTER TABLE sessions ADD COLUMN ${column}`); } catch { /* sütun zaten var */ } }
   migrateCharacterClans(db);
   // Başlangıçta bir kerelik temizlik — hafta öncesinin boss kayıtları hiç
   // kullanılmayacak, DB'nin sınırsız büyümesini önler.
@@ -711,8 +715,16 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         }
         if(admin.blocked(account.id)) throw fail(403, 'ACCOUNT_BLOCKED');
         const token = randomBytes(32).toString('hex');
-        db.prepare('DELETE FROM sessions WHERE expires < ?').run(Date.now());
-        db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), account.id, Date.now() + 7 * 86400000);
+        const loginAt = Date.now();
+        db.prepare('DELETE FROM sessions WHERE expires < ?').run(loginAt);
+        const panel = body?.panel === true && !!db.prepare('SELECT 1 FROM panel_owner WHERE account=?').get(account.id);
+        if (!panel) {
+          // Hesap başka bir yerde açıksa (son 3 dakikada etkin) kullanıcı onay vermeden giriş yapılmaz; onayla diğer oturum kapatılır.
+          const busyElsewhere = path === '/api/login' && db.prepare("SELECT 1 FROM sessions WHERE account=? AND kind='game' AND seen>?").get(account.id, loginAt - SESSION_ACTIVE_MS);
+          if (busyElsewhere && body?.force !== true) throw fail(409, 'ACCOUNT_IN_USE');
+          db.prepare("DELETE FROM sessions WHERE account=? AND kind='game'").run(account.id);
+        }
+        db.prepare('INSERT INTO sessions(token,account,expires,seen,kind) VALUES(?,?,?,?,?)').run(hash(token), account.id, loginAt + 7 * 86400000, loginAt, panel ? 'panel' : 'game');
         // Yerel uygulama (Capacitor) çerez kullanamaz; token yalnızca açıkça
         // native origin + X-Native-Client ile istenirse gövdede döner. Web
         // istemcisi token'ı hiç görmez (HttpOnly çerez korumasını bozmamak için).
@@ -724,8 +736,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       // Native origin'den gelen istekte çerez yok sayılır: yalnızca Bearer geçerli.
       const cookieToken = nativeOrigin ? undefined : /(?:^|;\s*)nyxia_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || '')?.[1];
       const token = bearerToken || cookieToken;
-      const account = token && db.prepare('SELECT accounts.id,accounts.name FROM sessions JOIN accounts ON accounts.id=sessions.account WHERE token=? AND expires>?').get(hash(token), Date.now());
+      const account = token && db.prepare('SELECT accounts.id,accounts.name,sessions.seen FROM sessions JOIN accounts ON accounts.id=sessions.account WHERE token=? AND expires>?').get(hash(token), Date.now());
       if (!account) throw fail(401, 'LOGIN_REQUIRED');
+      if (Date.now() - account.seen > 30000) db.prepare('UPDATE sessions SET seen=? WHERE token=?').run(Date.now(), hash(token));
       if(admin.blocked(account.id)) throw fail(403,'ACCOUNT_BLOCKED');
       admin.touch(account.id);
       if(path.startsWith('/api/admin/')) return await admin.handle(req,path,account,send);
