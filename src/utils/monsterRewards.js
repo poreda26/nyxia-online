@@ -29,7 +29,7 @@ export function grantMonsterReward(p, m, map, opts = {}) {
   if(m.mapBoss&&!canFightMapBoss(p,map.id).ok)return {player:p,drops:null,blockedReasonKey:'battle.bossDefeatedToday',tone:'warn'};
   // Kullanıcı isteği: "Tüm dropları düzenleyebileceğim bir sistem" —
   // altın/xp/eşya-şansı/sandık-şansı artık m/map'in kendi ham alanları
-  // yerine bkz. utils/dropConfig.js'den okunuyor (admin.html'de bir
+  // yerine bkz. utils/dropConfig.js'den okunuyor (panelde bir
   // override yoksa aynen m/map'in ham değerlerine düşüyor, davranış değişmez).
   const rewardCfg = getMonsterRewardConfig(m, map);
   const expMult = premiumExpMultiplier(p) * clanExpMultiplier(p) * eventExpMultiplier(p) * boostMultiplier(p, "exp") * wingMultiplier(p, "exp");

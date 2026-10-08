@@ -2,9 +2,7 @@ import { DEFAULT_DROP_CONFIG } from "../data/dropRules.js";
 export { DEFAULT_DROP_CONFIG, DEFAULT_CHEST_WEAPON_PCT, DEFAULT_CHEST_ARMOR_PCT, DEFAULT_SPECIAL_CHEST_UNIQUE_CHANCE } from "../data/dropRules.js";
 let liveConfig = null;
 export function applyLiveDropConfig(config) { liveConfig = config; }
-// Production rewards use owner-published server rules. The old local editor
-// is retained only for development. Defaults preserve offline play.
-const STORAGE_KEY = "nyxia_drop_config_v1";
+// Drop kuralları yalnızca panelden (owner.html) yayınlanan sunucu kurallarından gelir; yerel bir düzenleme yolu yoktur.
 const UNSAFE_MERGE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 function deepMerge(base, override) {
   if (!override || typeof override !== "object" || Array.isArray(override)) return base;
@@ -22,22 +20,7 @@ function deepMerge(base, override) {
 
 export function getDropConfig() {
   if(liveConfig) return deepMerge(DEFAULT_DROP_CONFIG,liveConfig);
-  if(!import.meta.env?.DEV) return DEFAULT_DROP_CONFIG;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_DROP_CONFIG;
-    return deepMerge(DEFAULT_DROP_CONFIG, JSON.parse(raw));
-  } catch {
-    return DEFAULT_DROP_CONFIG;
-  }
-}
-
-// admin.html'in kullandığı yazma/sıfırlama — oyun tarafı bunları hiç çağırmıyor.
-export function setDropConfig(fullConfig) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(fullConfig));
-}
-export function resetDropConfig() {
-  localStorage.removeItem(STORAGE_KEY);
+  return DEFAULT_DROP_CONFIG;
 }
 
 // ---- Oyunun okuma noktaları ----

@@ -51,7 +51,7 @@ import { accusativeName } from "../utils/turkish";
 const CRIMSON_MAP = MAPS.find((m) => m.id === "crimson_battlefront");
 
 // Kullanıcı isteği: "Tüm dropları düzenleyebileceğim bir sistem" — bir
-// boss'un ham WARZONE_BOSSES girdisine admin.html'de kaydedilmiş bir
+// boss'un ham WARZONE_BOSSES girdisine panelden yayınlanmış bir
 // override varsa (bkz. utils/dropConfig.js#getWarzoneBossConfig) üstüne
 // biniyor, yoksa boss aynen kalıyor. Sadece görsel/loot alanları için
 // (isim, renk, drop şansları) — paylaşımlı can/maxHp artık SUNUCUDAN geliyor
@@ -240,7 +240,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       // Güç çarpanı sadece savaş istatistiklerine (hp/atk/def) uygulanıyor —
       // xp/goldMin/goldMax bilerek taban (Crimson Battlefront'un kendi)
       // değerinde kalıyor, ödül ayrı bir çarpanla (bkz. huntAction#grantMonsterReward
-      // çağrısındaki opts) yönetiliyor. Çarpanın kendisi artık admin.html'de
+      // çağrısındaki opts) yönetiliyor. Çarpanın kendisi artık panelde
       // bir override varsa onu kullanıyor (bkz. utils/dropConfig.js#getWarzoneHuntConfig).
       const huntPowerMult = getWarzoneHuntConfig().powerMult;
       const monster=buildHuntMonster(template,huntPowerMult);

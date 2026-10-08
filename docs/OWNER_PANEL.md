@@ -32,6 +32,7 @@ Bu panel sunucudaki kayıt ve topluluk yönetimini sağlar. Oyunun ekonomi hesap
 
 ## Genişletilmiş yönetim
 
+- **Onay pencereleri:** Panelde tarayıcı kutusu yok; tüm onay ve gerekçe girişleri panel içi pencereyle yapılır (`src/owner/dialog.jsx`). Eski yerel drop sayfası (`admin.html`) kaldırıldı; drop ve sandık ayarları yalnızca bu panelden yönetilir.
 - **Drop ve sandıklar:** Normal canavarlar, harita sonu muhafızları ve Savaş Alanı bossları. Altın/EXP, eşya/sandık/parşömen şansları, Canavar Ara çarpanları. Muhafızların garantili sandık sayısı 0–10, tier'ı 1–6 düzenlenebilir.
 - Her canavara ve T1–T6/özel sandığa ayrı ağırlıklı eşya havuzu. 247 katalog girdisi; isim, sınıf, tier ve +seviye seçilir. `null` havuz varsayılana döner. Ağırlıklar birbirine oranlanır; örneğin 1 ve 3 ağırlıklı iki eşya %25 ve %75 seçilir. Canavarın temel drop şansı ayrıca uygulanır, kanat/premium gibi mevcut çarpanlar korunur. Sandıkta özel havuz seçilirse varsayılan kategori/özel eşsiz zarları atlanır; tam bir eşya üretilir.
 - Kurallar sunucuda revision kontrollü transaction ile yayınlanır; açıklama ve önceki sürüm saklanır. Oyun girişte, sekmeye dönüşte ve 30 saniyede bir alır. Ağ hatasında son alınan kural korunur; hiç alınmamışsa oyun varsayılanlarını kullanır. Bu mekanizma istemci ödül hesaplamasını sunucu otoriteli yapmaz. Üretimde eski localStorage drop paneli kullanılmaz.

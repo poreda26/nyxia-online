@@ -239,7 +239,7 @@ export function buildStartingWeapon(cls) {
 export function rollLoot(tierId) {
   // Kullanıcı isteği: "Tüm dropları düzenleyebileceğim bir sistem" — silah/
   // zırh/aksesuar dağılımı artık bkz. utils/dropConfig.js#getChestConfig
-  // üzerinden (admin.html'de override yoksa varsayılan 46%/46%/8% aynen kalır).
+  // üzerinden (panelde override yoksa varsayılan 46%/46%/8% aynen kalır).
   const { weaponPct, armorPct } = getChestConfig();
   const r = Math.random();
   const item = r < weaponPct ? rollWeapon(tierId, pick(Object.keys(CLASSES)))

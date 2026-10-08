@@ -2,7 +2,7 @@ import { getMonsterRewardConfig } from "../utils/dropConfig";
 
 // Her haritanın son canavarından türetilen günlük bölge boss'u. Yeni sprite
 // istemez; BattleScene mevcut haritanın boss görselini kullanır. Altın/xp,
-// admin.html'de base canavar için bir override varsa onu (bkz.
+// panelde base canavar için bir override varsa onu (bkz.
 // utils/dropConfig.js) 3 katına katlayarak kullanıyor — böylece "Harita Sonu
 // Boss"un ödülü, o haritanın en güçlü canavarına ayarlanan drop'larla
 // otomatik tutarlı kalıyor, ayrıca elle senkronlanmaya gerek kalmıyor.
