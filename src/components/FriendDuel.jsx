@@ -47,7 +47,7 @@ export default function FriendDuel({ player, friend, onClose }) {
   const finished = !!match?.state.finished;
   const winner = match?.state.winner;
 
-  const requestClose = () => { if (!match || finished || confirmRetreat(lang)) onClose(); };
+  const requestClose = async () => { if (!match || finished || (await confirmRetreat(lang))) onClose(); };
   return (
     <div style={styles.modalOverlay} onClick={requestClose}>
       <div role="dialog" aria-modal="true" aria-label={t("friendDuel.title", { name: friend.name })} style={{ ...styles.modalCard, maxWidth: 420, padding: "20px 14px 16px" }} onClick={(e) => e.stopPropagation()}>

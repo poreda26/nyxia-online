@@ -24,6 +24,7 @@ import { fetchMe, fetchBackup, pushBackup, logoutAccount, deleteAccountApi } fro
 import { styles } from "./styles";
 import GlobalStyle from "./components/GlobalStyle";
 import LoginScreen from "./components/LoginScreen";
+import ConfirmHost from "./components/ConfirmHost";
 import CharacterSelectScreen from "./components/CharacterSelectScreen";
 import RaceSelect from "./components/RaceSelect";
 import ClassSelect from "./components/ClassSelect";
@@ -511,6 +512,7 @@ export default function App() {
     <LanguageProvider lang={audioSettings.language} setLang={(l) => updateAudioSetting("language", l)}>
     <div style={styles.appRoot}>
       <GlobalStyle />
+      <ConfirmHost />
       {outdated && (
         <div role="alertdialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-base, #0B0C10)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 28, textAlign: "center", color: "var(--text-primary, #e8e6e0)" }}>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 22 }}>{translateWith(audioSettings.language, "app.outdatedTitle")}</div>

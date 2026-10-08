@@ -1,5 +1,6 @@
 import {useRetreatGuard} from '../utils/useRetreatGuard';
 import {confirmRetreat} from '../utils/confirmRetreat';
+import {askConfirm} from '../utils/gameConfirm';
 import { chargeDiamonds, settle, reportChargeFailure } from "../utils/diamondCharge";
 import MenuEmblem from './icons/MenuEmblem';
 import BattleScene, {hasBattleScene} from './BattleScene';
@@ -566,7 +567,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
                     : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }),
                 }}
                 disabled={dungeonEntriesLeft(player) <= 0 || locked}
-                onClick={() => { if (window.confirm(t("battle.confirmDungeon", { map: map.name, left: dungeonEntriesLeft(player), limit: SOLO_DUNGEON_DAILY_LIMIT }))) enterSoloDungeon(); }}
+                onClick={async () => {
+                  const ok = await askConfirm({ title: t("battle.confirmDungeonTitle", { map: map.name }), text: t("battle.confirmDungeonText", { left: dungeonEntriesLeft(player), limit: SOLO_DUNGEON_DAILY_LIMIT }), confirmLabel: t("battle.confirmDungeonYes") });
+                  if (ok) enterSoloDungeon();
+                }}
               >
                 {t("battle.enterDungeon")}
               </button>
@@ -598,7 +602,10 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
               <button
                 style={{ ...styles.tinyBtn, ...(mapBossCheck.ok && !locked ? { background: "#D4AF6A", color: "#0B0C10" } : { background: "var(--bg-panel-alt)", color: "var(--text-faint)" }) }}
                 disabled={!mapBossCheck.ok || locked}
-                onClick={() => { if (window.confirm(t("battle.confirmMapBoss", { boss: tm(mapBoss) }))) startBattle(mapBoss); }}
+                onClick={async () => {
+                  const ok = await askConfirm({ title: t("battle.confirmMapBossTitle", { boss: tm(mapBoss) }), text: t("battle.confirmMapBossText"), confirmLabel: t("battle.confirmMapBossYes"), tone: "danger" });
+                  if (ok) startBattle(mapBoss);
+                }}
               >
                 {mapBossCheck.ok ? t("battle.goToBoss") : t(mapBossCheck.reason === "mapIncomplete" ? "battle.bossNeedsMap" : "battle.defeatedToday")}
               </button>
@@ -785,8 +792,8 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
           <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
             <button
               style={{ ...styles.ghostBtn, flex: 1 }}
-              onClick={() => {
-                if (!confirmRetreat(lang)) return;
+              onClick={async () => {
+                if (!(await confirmRetreat(lang))) return;
                 if (monster && fightRef.current && !fightRef.current.ended) requestSettle(monster);
                 endBattle();
                 // Zindan koşusu sürerken elle geri çekilmek koşuyu yarıda

@@ -151,9 +151,13 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
   const [pendingTab, setPendingTab] = useState(null);
   const requestTabChange = (nextTab) => {
     if (nextTab === tab) return;
-    if (!window.dispatchEvent(new Event("nyxia:leave-battle", {cancelable:true}))) return;
-    if (tab === "warzone" && warzoneEntered) { setPendingTab(nextTab); return; }
-    setTab(nextTab);
+    const go = () => {
+      if (tab === "warzone" && warzoneEntered) { setPendingTab(nextTab); return; }
+      setTab(nextTab);
+    };
+    // Savaştayken önce oyun içi "çekilmek istiyor musun" penceresi açılır; onaylanırsa `proceed` geçişi yapar.
+    if (!window.dispatchEvent(new CustomEvent("nyxia:leave-battle", { cancelable: true, detail: { proceed: go } }))) return;
+    go();
   };
   const confirmLeaveWarzone = () => { setTab(pendingTab); setPendingTab(null); };
 

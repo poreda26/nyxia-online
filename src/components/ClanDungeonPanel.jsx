@@ -96,7 +96,7 @@ export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def
   };
 
   const handleLeave = async () => {
-    if (busy || !confirmRetreat(lang)) return;
+    if (busy || !(await confirmRetreat(lang))) return;
     setBusy(true);
     try { await leaveClanDungeon(); await refresh(); }
     catch (error) { pushToast(formatServerError(t, error), "warn"); }

@@ -672,8 +672,8 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
     setWz((prev) => ({ ...prev, searching: { durationMs: rand(5, 15) * 1000 } }));
   };
 
-  const abandonHunt = () => {
-    if (!confirmRetreat(lang)) return;
+  const abandonHunt = async () => {
+    if (!(await confirmRetreat(lang))) return;
     const hunt = wz.hunt;
     if (hunt?.fight && !hunt.fight.ended) act("warzone/huntSettle", { monsterId: hunt.baseMonster.id, actions: huntActionsRef.current.slice() });
     huntActionsRef.current = [];
@@ -832,7 +832,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
 
                   {active && (
                     <><button style={{...styles.primaryBtn,width:'100%',marginTop:12}} onClick={()=>setEncounterBoss(boss.id)}>{lang==='en'?'Enter battle':'Savaşa katıl'}</button>
-                    {encounterBoss===boss.id&&<EncounterScreen title={tm(boss)} onLeave={()=>{if(confirmRetreat(lang))setEncounterBoss(null)}}>
+                    {encounterBoss===boss.id&&<EncounterScreen title={tm(boss)} onLeave={async()=>{if(await confirmRetreat(lang))setEncounterBoss(null)}}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
                         <span>{t("warzone.totalDamage", { dmg: state.totalDamage })}</span>
                         <span>{t("warzone.yourDamage", { dmg: state.myDamage })}</span>
