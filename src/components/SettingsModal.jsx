@@ -1,4 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
+import { fetchSecurity, linkIdentity, startEmail, verifyEmail } from '../services/authService';
+import { socialIdToken, socialSignInAvailable } from '../utils/socialSignIn';
 import {createPortal} from 'react-dom';
 import {Capacitor} from '@capacitor/core';
 import TutorialModal from './TutorialModal';
@@ -206,12 +208,58 @@ const DELETE_ERRORS = {
 };
 const accountButton = { padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-panel-alt)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', fontSize: 13 };
 const accountDangerButton = { ...accountButton, color: '#E8A5AF', borderColor: '#71404d', background: 'rgba(232,66,90,0.12)' };
+
+const SECURITY_ERRORS = {
+  INVALID_CODE: ['Kod hatalı ya da süresi dolmuş.', 'The code is wrong or expired.'],
+  EMAIL_TAKEN: ['Bu e-posta başka bir hesapta kullanılıyor.', 'This email is used by another account.'],
+  INVALID_EMAIL: ['Geçerli bir e-posta yaz.', 'Enter a valid email.'],
+  CODE_TOO_SOON: ['Çok sık kod istedin. Biraz bekle.', 'You asked for codes too often. Wait a bit.'],
+  TOO_MANY_CODES: ['Çok sık kod istedin. Biraz bekle.', 'You asked for codes too often. Wait a bit.'],
+  MAIL_UNAVAILABLE: ['E-posta şu an gönderilemiyor.', 'Email cannot be sent right now.'],
+  IDENTITY_TAKEN: ['Bu hesap başka bir oyuncuya bağlı.', 'That account is linked to another player.'],
+  INVALID_ID_TOKEN: ['Giriş doğrulanamadı.', 'The sign-in could not be verified.'],
+};
+function SecuritySection({ tr, info, reload }) {
+  const [email, setEmail] = useState(''), [code, setCode] = useState(''), [sent, setSent] = useState(false), [busy, setBusy] = useState(false), [message, setMessage] = useState('');
+  const fail = (err) => { const known = SECURITY_ERRORS[err.code]; setMessage(known ? known[tr ? 0 : 1] : (tr ? 'İşlem yapılamadı. Tekrar dene.' : 'Could not complete that. Try again.')); };
+  const run = async (fn) => { if (busy) return; setBusy(true); setMessage(''); try { await fn(); } catch (err) { fail(err); } finally { setBusy(false); } };
+  const hasGoogle = info.identities.includes('google');
+  return (
+    <div className="settings-group">
+      <h3>{tr ? 'Hesap güvenliği' : 'Account security'}</h3>
+      {info.providers?.email && (info.email
+        ? <p>{tr ? 'Doğrulanmış e-posta: ' : 'Verified email: '}<b>{info.email}</b>{tr ? '. Şifreni unutursan bu adresle sıfırlayabilir, e-postanla da giriş yapabilirsin.' : '. You can reset your password with it and sign in with it.'}</p>
+        : <>
+          <p>{tr ? 'E-postanı doğrula: şifreni unutursan sıfırlayabilir ve e-postanla giriş yapabilirsin.' : 'Verify your email so you can reset a forgotten password and sign in with it.'}</p>
+          {!sent
+            ? <><input type="email" autoComplete="email" aria-label="Email" value={email} onChange={e => setEmail(e.target.value)} placeholder={tr ? 'E-posta adresin' : 'Your email address'} />
+              <button disabled={busy || !email.includes('@')} style={accountButton} onClick={() => run(async () => { await startEmail(email.trim()); setSent(true); })}>{tr ? 'Kod gönder' : 'Send code'}</button></>
+            : <><input inputMode="numeric" maxLength={6} aria-label="Code" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} placeholder={tr ? '6 haneli kod' : '6-digit code'} />
+              <button disabled={busy || code.length !== 6} style={accountButton} onClick={() => run(async () => { await verifyEmail(email.trim(), code); setSent(false); setCode(''); await reload(); })}>{tr ? 'Doğrula' : 'Verify'}</button></>}
+        </>)}
+      {info.providers?.google && socialSignInAvailable() && (hasGoogle
+        ? <p>{tr ? 'Google hesabın bağlı.' : 'Your Google account is linked.'}</p>
+        : <button disabled={busy} style={accountButton} onClick={() => run(async () => { const picked = await socialIdToken('google', info.providers.google); if (picked.cancelled) return; await linkIdentity('google', picked.idToken); await reload(); })}>{tr ? 'Google hesabını bağla' : 'Link Google account'}</button>)}
+      {message && <p role="alert" style={{ color: '#E8425A' }}>{message}</p>}
+    </div>
+  );
+}
 function AccountSection({ tr, onDeleteAccount }) {
-  const [step, setStep] = useState('idle'), [password, setPassword] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [step, setStep] = useState('idle'), [password, setPassword] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState(''), [info, setInfo] = useState(null);
+  const reload = async () => { try { setInfo(await fetchSecurity()); } catch { /* bağlantı yok: bölüm gösterilmez */ } };
+  useEffect(() => { reload(); }, []);
+  const passwordless = !!info?.passwordless;
   const submit = async () => {
-    if (busy || !password) return;
+    if (busy || (!password && !passwordless)) return;
     setBusy(true); setError('');
-    try { await onDeleteAccount(password); }
+    try {
+      if (passwordless) {
+        const provider = info.identities[0];
+        const picked = await socialIdToken(provider, info.providers[provider]);
+        if (picked.cancelled) { setBusy(false); return; }
+        await onDeleteAccount({ provider, idToken: picked.idToken });
+      } else await onDeleteAccount(password);
+    }
     catch (err) {
       const message = DELETE_ERRORS[err.code];
       setError(message ? message[tr ? 0 : 1] : (tr ? 'Hesap silinemedi. Bağlantını kontrol edip tekrar dene.' : 'Could not delete the account. Check your connection and try again.'));
@@ -219,19 +267,22 @@ function AccountSection({ tr, onDeleteAccount }) {
     }
   };
   return (
+    <>
+    {info && <SecuritySection tr={tr} info={info} reload={reload} />}
     <div className="settings-group">
       <h3>{tr ? 'Hesabı sil' : 'Delete account'}</h3>
       <p>{tr ? 'Hesabın; karakterlerin, envanterin, elmasların, arkadaşlıkların ve mesajların dahil sunucudan kalıcı olarak silinir. Bu işlem geri alınamaz. Klan lideriysen liderlik sıradaki üyeye geçer.' : 'Your account is permanently deleted from the server, including characters, inventory, diamonds, friendships and messages. This cannot be undone. If you lead a clan, leadership passes to the next member.'}</p>
       {step === 'idle' && <button onClick={() => setStep('confirm')} style={accountDangerButton}>{tr ? 'Hesabımı sil' : 'Delete my account'}</button>}
       {step === 'confirm' && <>
-        <input type="password" autoComplete="current-password" aria-label={tr ? 'Şifre' : 'Password'} placeholder={tr ? 'Onay için şifreni gir' : 'Enter your password to confirm'} value={password} onChange={e => { setPassword(e.target.value); setError(''); }} onKeyDown={e => { if (e.key === 'Enter') submit(); }} maxLength={128} style={{ ...styles.loginInput, width: '100%', boxSizing: 'border-box', margin: '8px 0', textAlign: 'left' }} />
+        {!passwordless && <input type="password" autoComplete="current-password" aria-label={tr ? 'Şifre' : 'Password'} placeholder={tr ? 'Onay için şifreni gir' : 'Enter your password to confirm'} value={password} onChange={e => { setPassword(e.target.value); setError(''); }} onKeyDown={e => { if (e.key === 'Enter') submit(); }} maxLength={128} style={{ ...styles.loginInput, width: '100%', boxSizing: 'border-box', margin: '8px 0', textAlign: 'left' }} />}
         {error && <p role="alert" style={{ color: '#E8425A' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button disabled={busy || !password} onClick={submit} style={{ ...accountDangerButton, opacity: busy || !password ? 0.5 : 1 }}>{busy ? (tr ? 'Siliniyor…' : 'Deleting…') : (tr ? 'Kalıcı olarak sil' : 'Delete permanently')}</button>
+          <button disabled={busy || (!password && !passwordless)} onClick={submit} style={{ ...accountDangerButton, opacity: busy || (!password && !passwordless) ? 0.5 : 1 }}>{busy ? (tr ? 'Siliniyor…' : 'Deleting…') : (tr ? 'Kalıcı olarak sil' : 'Delete permanently')}</button>
           <button disabled={busy} onClick={() => { setStep('idle'); setPassword(''); setError(''); }} style={accountButton}>{tr ? 'Vazgeç' : 'Cancel'}</button>
         </div>
       </>}
     </div>
+    </>
   );
 }
 export default function SettingsModal({

@@ -13,6 +13,8 @@ import {createWallet} from './wallet.mjs';
 import {createEntitlements} from './entitlements.mjs';
 import {createIap} from './iap.mjs';
 import {createAds} from './ads.mjs';
+import {createIdentity} from './identity.mjs';
+import {createMailer} from './mailer.mjs';
 import {createGame} from './game.mjs';
 import {WHEEL_PREMIUM_PRIZES} from '../src/data/diamondPrices.js';
 import { createServer } from 'node:http';
@@ -137,7 +139,7 @@ export // Oyun mantığı paketi (npm run build:logic ile üretilir). Yoksa sunu
 const gameLogic = await import('./game-logic.generated.mjs').catch(() => null);
 
 const NATIVE_APP_ORIGINS = ['https://localhost', 'capacitor://localhost'];
-export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, iapWebhookSecret = null, iapAllowSandbox = false, economyForAll = false, adsMode = 'off', adsTestAccounts = [], adsFetchKeys } = {}) {
+export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, iapWebhookSecret = null, iapAllowSandbox = false, economyForAll = false, adsMode = 'off', adsTestAccounts = [], adsFetchKeys, authOptions = {} } = {}) {
   const allowedOrigins = new Set([origin, ...nativeOrigins]);
   const db = new DatabaseSync(database);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
@@ -167,6 +169,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS push_prefs(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), inactivity INTEGER NOT NULL DEFAULT 1, events INTEGER NOT NULL DEFAULT 1, social INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE IF NOT EXISTS push_inactivity_sent(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), sent_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS push_event_sent(event_id TEXT NOT NULL, day_key TEXT NOT NULL, PRIMARY KEY(event_id,day_key));`);
+  try { db.exec('ALTER TABLE accounts ADD COLUMN passwordless INTEGER NOT NULL DEFAULT 0'); } catch { /* sütun zaten var */ }
   // Tek oturum: bir hesap aynı anda yalnızca tek yerde açık olabilir. `seen` son istek zamanı, `kind` oturum türü
   // ('game' oyun istemcisi, 'panel' sahip paneli — panel oyun oturumunu etkilemez).
   for (const column of ["seen INTEGER NOT NULL DEFAULT 0", "kind TEXT NOT NULL DEFAULT 'game'"]) { try { db.exec(`ALTER TABLE sessions ADD COLUMN ${column}`); } catch { /* sütun zaten var */ } }
@@ -216,6 +219,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   // Hesap adı başına giriş denemesi (dağıtık şifre tahminine karşı) ve IP başına kayıt (toplu hesap açmaya karşı).
   const loginNameLimit = makeRateLimiter(10);
   const registerLimit = makeRateLimiter(6);
+  const passwordLimit = makeRateLimiter(10);
   // Hesap başına, IP'den bağımsız (Caddy arkasında birçok oyuncu aynı IP'yi
   // paylaşabilir) — spam önleme, gerçek yetkilendirme değil.
   // Additive migrations preserve existing messages and memberships.
@@ -502,6 +506,16 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     } });
   const actRateLimit = makeRateLimiter(240);
   const iap = createIap(db, { fail, wallet, secret: iapWebhookSecret, allowSandbox: iapAllowSandbox });
+  const mailer = authOptions.mailer || createMailer(authOptions.mail || {});
+  const identity = createIdentity(db, {
+    fail, mailer, clientIds: authOptions.clientIds || {}, ...(authOptions.fetchJwks ? { fetchJwks: authOptions.fetchJwks } : {}),
+    setPassword: async (accountId, password) => {
+      const salt = randomBytes(16).toString('hex');
+      const hashed = (await scrypt(password, salt, 64)).toString('hex');
+      db.prepare('UPDATE accounts SET salt=?, password=?, passwordless=0 WHERE id=?').run(salt, hashed, accountId);
+    },
+    revokeSessions: (accountId) => { db.prepare('DELETE FROM sessions WHERE account=?').run(accountId); },
+  });
   const ads = createAds(db, { fail, wallet, mode: adsMode, testAccounts: adsTestAccounts, ...(adsFetchKeys ? { fetchKeys: adsFetchKeys } : {}) });
   const admin = createAdmin(db, { read, fail, wallet });
   const wheel = createWheel(db, { fail });
@@ -644,6 +658,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         ['DELETE FROM backup_history WHERE account=?', [id]],
         ['DELETE FROM backups WHERE account=?', [id]],
         ['DELETE FROM sessions WHERE account=?', [id]],
+        ['DELETE FROM account_identities WHERE account=?', [id]],
+        ['DELETE FROM email_codes WHERE account=?', [id]],
+        ['DELETE FROM account_emails WHERE account=?', [id]],
         ['DELETE FROM account_mutes WHERE account=?', [id]],
         ['DELETE FROM account_blocks WHERE account=?', [id]],
         ['DELETE FROM account_activity WHERE account=?', [id]],
@@ -654,6 +671,26 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       ]) db.prepare(sql).run(...params);
       db.exec('COMMIT');
     } catch (error) { db.exec('ROLLBACK'); throw error; }
+  };
+  // Oturum açar: engel ve tek-oturum kuralını uygular, çerez ya da (yerel uygulamada) token döner.
+  const issueSession = (req, res, send, nativeOrigin, account, body, checkBusy) => {
+    if (admin.blocked(account.id)) throw fail(403, 'ACCOUNT_BLOCKED');
+    const token = randomBytes(32).toString('hex');
+    const loginAt = Date.now();
+    db.prepare('DELETE FROM sessions WHERE expires < ?').run(loginAt);
+    const panel = body?.panel === true && !!db.prepare('SELECT 1 FROM panel_owner WHERE account=?').get(account.id);
+    if (!panel) {
+      // Hesap başka bir yerde açıksa (son 3 dakikada etkin) kullanıcı onay vermeden giriş yapılmaz; onayla diğer oturum kapatılır.
+      const busyElsewhere = checkBusy && db.prepare("SELECT 1 FROM sessions WHERE account=? AND kind='game' AND seen>?").get(account.id, loginAt - SESSION_ACTIVE_MS);
+      if (busyElsewhere && body?.force !== true) throw fail(409, 'ACCOUNT_IN_USE');
+      db.prepare("DELETE FROM sessions WHERE account=? AND kind='game'").run(account.id);
+    }
+    db.prepare('INSERT INTO sessions(token,account,expires,seen,kind) VALUES(?,?,?,?,?)').run(hash(token), account.id, loginAt + 7 * 86400000, loginAt, panel ? 'panel' : 'game');
+    // Yerel uygulama (Capacitor) çerez kullanamaz; token yalnızca açıkça native origin + X-Native-Client ile istenirse gövdede döner.
+    // Web istemcisi token'ı hiç görmez (HttpOnly çerez korumasını bozmamak için).
+    if (nativeOrigin && req.headers['x-native-client'] === '1') return send(200, { name: account.name, token });
+    res.setHeader('Set-Cookie', cookie(token, 7 * 86400));
+    return send(200, { name: account.name });
   };
   const server = createServer(async (req, res) => {
     const send = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(body)); };
@@ -697,7 +734,12 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (['/api/register', '/api/login'].includes(path) && req.method === 'POST') {
         rateLimit(clientAddress(req));
         const body = await read(req);
-        const name = typeof body?.name === 'string' ? body.name.trim().toLowerCase() : '';
+        let name = typeof body?.name === 'string' ? body.name.trim().toLowerCase() : '';
+        // Doğrulanmış e-postayla giriş: e-posta hesabın adına çevrilir (bilinmeyen e-posta da aynı yoldan geçip "hatalı bilgi" döner).
+        if (path === '/api/login' && name.includes('@')) {
+          const owner = identity.emailOwner(identity.normalizeEmail(name));
+          name = (owner && db.prepare('SELECT name FROM accounts WHERE id=?').get(owner)?.name) || 'no_such_account';
+        }
         if (!/^[a-z0-9_]{3,24}$/.test(name) || typeof body?.password !== 'string' || body.password.length < 12 || body.password.length > 128) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
         let account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         if (path === '/api/register') {
@@ -713,24 +755,40 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           const candidate = await scrypt(body.password, account?.salt || 'invalid-account-salt', 64);
           if (!account || !timingSafeEqual(candidate, Buffer.from(account.password, 'hex'))) throw fail(401, 'INVALID_CREDENTIALS');
         }
-        if(admin.blocked(account.id)) throw fail(403, 'ACCOUNT_BLOCKED');
-        const token = randomBytes(32).toString('hex');
-        const loginAt = Date.now();
-        db.prepare('DELETE FROM sessions WHERE expires < ?').run(loginAt);
-        const panel = body?.panel === true && !!db.prepare('SELECT 1 FROM panel_owner WHERE account=?').get(account.id);
-        if (!panel) {
-          // Hesap başka bir yerde açıksa (son 3 dakikada etkin) kullanıcı onay vermeden giriş yapılmaz; onayla diğer oturum kapatılır.
-          const busyElsewhere = path === '/api/login' && db.prepare("SELECT 1 FROM sessions WHERE account=? AND kind='game' AND seen>?").get(account.id, loginAt - SESSION_ACTIVE_MS);
-          if (busyElsewhere && body?.force !== true) throw fail(409, 'ACCOUNT_IN_USE');
-          db.prepare("DELETE FROM sessions WHERE account=? AND kind='game'").run(account.id);
+        return issueSession(req, res, send, nativeOrigin, account, body, path === '/api/login');
+      }
+      // Giriş seçenekleri (oturumsuz): hangi sağlayıcılar açık.
+      if (path === '/api/auth/providers' && req.method === 'GET') return send(200, identity.providersConfig());
+      // Google / Apple ile giriş: kimlik belgesi sunucuda doğrulanır; hesap yoksa yeni hesap açılır.
+      if (path === '/api/login/social' && req.method === 'POST') {
+        rateLimit(clientAddress(req));
+        const body = await read(req);
+        const provider = String(body?.provider);
+        const verified = await identity.verifyToken(provider, body?.idToken);
+        let accountId = identity.identityOwner(provider, verified.subject);
+        if (!accountId) {
+          registerLimit(clientAddress(req));
+          const name = identity.randomName();
+          const salt = randomBytes(16).toString('hex');
+          const password = (await scrypt(randomBytes(32).toString('hex'), salt, 64)).toString('hex');
+          accountId = Number(db.prepare('INSERT INTO accounts(name,salt,password,passwordless) VALUES(?,?,?,1)').run(name, salt, password).lastInsertRowid);
+          identity.link(accountId, provider, verified);
         }
-        db.prepare('INSERT INTO sessions(token,account,expires,seen,kind) VALUES(?,?,?,?,?)').run(hash(token), account.id, loginAt + 7 * 86400000, loginAt, panel ? 'panel' : 'game');
-        // Yerel uygulama (Capacitor) çerez kullanamaz; token yalnızca açıkça
-        // native origin + X-Native-Client ile istenirse gövdede döner. Web
-        // istemcisi token'ı hiç görmez (HttpOnly çerez korumasını bozmamak için).
-        if (nativeOrigin && req.headers['x-native-client'] === '1') return send(200, { name: account.name, token });
-        res.setHeader('Set-Cookie', cookie(token, 7 * 86400));
-        return send(200, { name: account.name });
+        const account = db.prepare('SELECT * FROM accounts WHERE id=?').get(accountId);
+        return issueSession(req, res, send, nativeOrigin, account, body, true);
+      }
+      // Şifre sıfırlama (e-posta kodu).
+      if (path === '/api/password/forgot' && req.method === 'POST') {
+        passwordLimit(clientAddress(req));
+        await identity.forgot((await read(req))?.email);
+        return send(200, { ok: true });
+      }
+      if (path === '/api/password/reset' && req.method === 'POST') {
+        passwordLimit(clientAddress(req));
+        const body = await read(req);
+        loginNameLimit(`reset:${identity.normalizeEmail(body?.email)}`);
+        await identity.reset(body?.email, body?.code, body?.password);
+        return send(200, { ok: true });
       }
       const bearerToken = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization || '')?.[1];
       // Native origin'den gelen istekte çerez yok sayılır: yalnızca Bearer geçerli.
@@ -752,10 +810,16 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (path === '/api/account/delete' && req.method === 'POST') {
         accountDeleteRateLimit(account.id);
         const body = await read(req);
-        if (typeof body?.password !== 'string') throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
-        const full = db.prepare('SELECT salt,password FROM accounts WHERE id=?').get(account.id);
-        const candidate = await scrypt(body.password, full.salt, 64);
-        if (!timingSafeEqual(candidate, Buffer.from(full.password, 'hex'))) throw fail(403, 'WRONG_PASSWORD');
+        if (typeof body?.provider === 'string') {
+          // Şifresi olmayan (Google/Apple ile açılmış) hesaplar kimlik belgesiyle yeniden doğrulanır.
+          const verified = await identity.verifyToken(body.provider, body.idToken);
+          if (identity.identityOwner(body.provider, verified.subject) !== account.id) throw fail(403, 'WRONG_PASSWORD');
+        } else {
+          if (typeof body?.password !== 'string') throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
+          const full = db.prepare('SELECT salt,password FROM accounts WHERE id=?').get(account.id);
+          const candidate = await scrypt(body.password, full.salt, 64);
+          if (!timingSafeEqual(candidate, Buffer.from(full.password, 'hex'))) throw fail(403, 'WRONG_PASSWORD');
+        }
         if (db.prepare('SELECT 1 FROM panel_owner WHERE account=?').get(account.id)) throw fail(409, 'OWNER_CANNOT_DELETE');
         deleteAccountData(account);
         res.setHeader('Set-Cookie', cookie('', 0));
@@ -768,6 +832,26 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const body = await read(req);
         const result = ads.claim(account.id, account.name, body?.ticket);
         return send(200, { ...result, diamonds: wallet.balance(account.id), ...ads.status(account.id, account.name) });
+      }
+      // Hesap güvenliği: bağlı girişler ve doğrulanmış e-posta.
+      if (path === '/api/account/security' && req.method === 'GET') return send(200, { ...identity.security(account.id), passwordless: !!db.prepare('SELECT passwordless FROM accounts WHERE id=?').get(account.id)?.passwordless, providers: identity.providersConfig() });
+      if (path === '/api/account/identity' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        const body = await read(req);
+        const provider = String(body?.provider);
+        identity.link(account.id, provider, await identity.verifyToken(provider, body?.idToken));
+        return send(200, identity.security(account.id));
+      }
+      if (path === '/api/account/email' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        await identity.startEmail(account.id, (await read(req))?.email);
+        return send(200, { ok: true });
+      }
+      if (path === '/api/account/email/verify' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        const body = await read(req);
+        identity.verifyEmail(account.id, body?.email, body?.code);
+        return send(200, identity.security(account.id));
       }
       if (path === '/api/wheel' && req.method === 'GET') return send(200, wheel.status(account.id));
       if (path === '/api/wheel/spin' && req.method === 'POST') { wheelRateLimit(account.id); return send(200, wheel.spin(account.id)); }

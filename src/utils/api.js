@@ -52,7 +52,7 @@ export const registerAccount = (name, password) => call("register", "POST", { na
 export const loginAccount = (name, password, force = false) => call("login", "POST", { name, password, ...(force ? { force: true } : {}) });
 export const logoutAccount = () => call("logout", "POST");
 export const fetchMe = () => call("me", "GET");
-export const deleteAccountApi = (password) => call("account/delete", "POST", { password });
+export const deleteAccountApi = (proof) => call("account/delete", "POST", typeof proof === "string" ? { password: proof } : proof);
 
 // Faz 2 — hesap yedeği (server/app.mjs#/api/backup). `revision` iyimser
 // eşzamanlılık kontrolü: sunucudaki güncel sürümle uyuşmayan bir PUT 409

@@ -14,6 +14,13 @@ const api = createApi({
   iapWebhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || null,
   iapAllowSandbox: process.env.IAP_ALLOW_SANDBOX === '1',
   economyForAll: process.env.ECONOMY_FOR_ALL === '1',
+  authOptions: {
+    clientIds: {
+      google: (process.env.GOOGLE_CLIENT_IDS || '').split(',').map((v) => v.trim()).filter(Boolean),
+      apple: (process.env.APPLE_CLIENT_IDS || '').split(',').map((v) => v.trim()).filter(Boolean),
+    },
+    mail: { apiKey: process.env.RESEND_API_KEY || null, from: process.env.MAIL_FROM || null },
+  },
   adsMode: process.env.ADS_MODE === 'admob' ? 'admob' : 'off',
   adsTestAccounts: (process.env.ADS_TEST_ACCOUNTS || '').split(',').map((n) => n.trim().toLowerCase()).filter(Boolean),
 });
