@@ -10,6 +10,8 @@ const CODE_TTL_MS = 15 * 60 * 1000;
 const RESEND_GAP_MS = 60 * 1000;
 const MAX_SENDS_PER_HOUR = 5;
 const MAX_ATTEMPTS = 5;
+// Tüm sunucu için günlük e-posta sınırı: kötüye kullanım hesap faturasını ya da gönderen itibarını bozamaz.
+const MAX_SENDS_PER_DAY = Number(process.env.MAIL_DAILY_LIMIT) || 300;
 const decode = (part) => JSON.parse(Buffer.from(part, 'base64url').toString('utf8'));
 const normalizeEmail = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
 const validEmail = (value) => value.length <= 120 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
@@ -86,8 +88,9 @@ export function createIdentity(db, { fail, mailer, clientIds = {}, fetchJwks = d
     if (!mailer?.configured) throw fail(503, 'MAIL_UNAVAILABLE');
     const last = db.prepare('SELECT created_at FROM email_codes WHERE email=? AND purpose=?').get(email, purpose);
     if (last && now - last.created_at < RESEND_GAP_MS) throw fail(429, 'CODE_TOO_SOON');
-    db.prepare('DELETE FROM email_sends WHERE at<?').run(now - 3600000);
-    if (db.prepare('SELECT COUNT(*) AS n FROM email_sends WHERE email=?').get(email).n >= MAX_SENDS_PER_HOUR) throw fail(429, 'TOO_MANY_CODES');
+    db.prepare('DELETE FROM email_sends WHERE at<?').run(now - 86400000);
+    if (db.prepare('SELECT COUNT(*) AS n FROM email_sends WHERE email=? AND at>?').get(email, now - 3600000).n >= MAX_SENDS_PER_HOUR) throw fail(429, 'TOO_MANY_CODES');
+    if (db.prepare('SELECT COUNT(*) AS n FROM email_sends').get().n >= MAX_SENDS_PER_DAY) throw fail(429, 'TOO_MANY_CODES');
     const code = String(randomInt(0, 1000000)).padStart(6, '0');
     db.prepare('INSERT OR REPLACE INTO email_codes(email,purpose,account,code_hash,expires,attempts,created_at) VALUES(?,?,?,?,?,0,?)').run(email, purpose, account, digest(email, code), now + CODE_TTL_MS, now);
     db.prepare('INSERT INTO email_sends(email,at) VALUES(?,?)').run(email, now);
