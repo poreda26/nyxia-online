@@ -1,7 +1,10 @@
 import {useEffect} from 'react';
 import './MobileUI.css';
 import './RewardPanels.css';
+import './Motion.css';
+import {installMotionLayer} from '../utils/motionLayer';
 export default function GlobalStyle() {
+  useEffect(()=>{installMotionLayer();},[]);
   useEffect(()=>{
     const viewport=window.visualViewport;
     const update=()=>{if(viewport&&viewport.scale!==1)return;const height=Math.round(viewport?.height||window.innerHeight);document.documentElement.style.setProperty('--app-height',`${height}px`);document.documentElement.dataset.shortViewport=height<480?'true':'false';};

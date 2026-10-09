@@ -246,6 +246,7 @@ export const styles = {
   modalOverlay: {
     position: "fixed", inset: 0, height: "var(--app-height,100dvh)", boxSizing: "border-box", padding: "max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))", background: "rgba(11,12,16,0.86)",
     display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, backdropFilter: "blur(2px)",
+    animation: "nyxiaOverlayIn .2s ease-out backwards",
   },
   modalCard: {
     background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 18,
@@ -342,6 +343,7 @@ export const styles = {
   itemSheetOverlay: {
     position: "fixed", inset: 0, height: "var(--app-height,100dvh)", boxSizing: "border-box", background: "rgba(11,12,16,0.7)", zIndex: 60,
     display: "flex", alignItems: "flex-end", justifyContent: "center", backdropFilter: "blur(2px)",
+    animation: "nyxiaSheetOverlayIn .2s ease-out backwards",
   },
   itemSheet: {
     width: "100%", maxWidth: 420, maxHeight: "calc(var(--app-height,100dvh) - env(safe-area-inset-top) - 24px)", boxSizing: "border-box", overflowY: "auto", overscrollBehavior: "contain",

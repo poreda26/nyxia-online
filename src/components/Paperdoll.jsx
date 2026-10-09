@@ -5,6 +5,7 @@ import { PAPERDOLL_LAYOUT } from "../data/paperdoll";
 import { displayItemName, ARMOR_SLOTS } from "../utils/player";
 import { styles } from "../styles";
 import ItemIcon from "./ItemIcon";
+import ItemPop from "./ItemPop";
 import { useTranslation } from "../i18n/LanguageContext";
 
 // Knight Online'ın kendi kuşanma ekranı gibi: portre bir yanda, sabit bir
@@ -40,7 +41,7 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
               onClick={() => onSlotClick(slot.key, item)}
               title={item ? `${label}: ${displayItemName(item, lang)}` : label}
             >
-              {item ? (
+              <ItemPop id={item?.id ?? null}>{item ? (
                 <ItemIcon item={item} size={ARMOR_SLOTS.includes(slot.key) ? 48 : 40} color={color} strokeWidth={1.5} />
               ) : (
                 // Koyu metal ikonlar (Silah/Kask/Göğüslük/Donluk/Kolluk/
@@ -62,7 +63,7 @@ export default function Paperdoll({ player, cls, onSlotClick }) {
                     filter: "brightness(2.6) drop-shadow(0 0 2px rgba(255,255,255,0.85)) drop-shadow(0 0 2px rgba(255,255,255,0.85))",
                   }}
                 />
-              )}
+              )}</ItemPop>
             </div>
           );
         })}

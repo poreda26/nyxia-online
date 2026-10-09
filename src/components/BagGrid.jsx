@@ -46,10 +46,16 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
     return () => window.removeEventListener("pointerup", clear);
   }, [dragIndex]);
 
+  // Çantaya yeni gelen (ya da çıkarılıp geri dönen) eşyalar pop ile belirir; ilk açılışta hiçbiri animasyon yapmaz.
+  const seenIds = useRef(null);
+  const freshUntil = useRef(new Map());
+  const currentIds = new Set();
   const weightCap = bagWeightCapacity(player);
   const usedWeight = bagWeightUsed(player);
   const layout = reconcileBagLayout(player);
   const slots = layout.map((id) => (id ? player.inventory.find((it) => it.id === id) : null));
+  slots.forEach((it) => { if (!it) return; currentIds.add(it.id); if (seenIds.current && !seenIds.current.has(it.id)) freshUntil.current.set(it.id, Date.now() + 700); });
+  useEffect(() => { seenIds.current = currentIds; });
 
   return (
     <>
@@ -67,7 +73,7 @@ export default function BagGrid({ player, setPlayer, onItemTap, selectedId, bulk
           const isDragSource = dragIndex === i;
           const isDragTarget = dragOverIndex === i && dragIndex !== null && dragIndex !== i;
           return (
-            <button className="rpg-slot"
+            <button className={`rpg-slot${item && (freshUntil.current.get(item.id) || 0) > Date.now() ? " item-fresh" : ""}`}
               key={item ? item.id : `empty-${i}`}
               data-item-kind={item?.kind} data-item-id={item?.id}
               onPointerDown={() => { if (item) { setDragIndex(i); dragMovedRef.current = false; } }}

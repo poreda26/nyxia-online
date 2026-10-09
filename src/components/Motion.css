@@ -1,0 +1,37 @@
+/* Oyun hareket katmanı: pencerelerin açılış/kapanışı, eşya takma/çıkarma ve yumuşak geçişler.
+   Hareketi azalt ayarı ve sistem tercihi, MobileUI.css içindeki genel kuralla (animation:none!important) bunları kapatır. */
+
+/* --- Pencereler: arka plan yumuşakça belirir, kart hafifçe yükselerek yerine oturur --- */
+@keyframes nyxiaOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nyxiaSheetOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nyxiaCardIn { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes nyxiaSheetUp { from { opacity: .4; transform: translateY(42px); } to { opacity: 1; transform: none; } }
+@keyframes nyxiaOverlayOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes nyxiaCardOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(12px) scale(.97); } }
+@keyframes nyxiaSheetDown { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(46px); } }
+
+[style*="nyxiaOverlayIn"] > * { animation: nyxiaCardIn .26s cubic-bezier(.2, .9, .3, 1) backwards; }
+[style*="nyxiaSheetOverlayIn"] > * { animation: nyxiaSheetUp .3s cubic-bezier(.2, .9, .3, 1) backwards; }
+
+/* Kapanış: kaldırılan pencerenin kopyası (utils/motionLayer.js) kısa süre solarak kaybolur. */
+.nyxia-exit { pointer-events: none !important; animation: nyxiaOverlayOut .18s ease-in both !important; }
+.nyxia-exit * { animation: none !important; }
+.nyxia-exit > * { animation: nyxiaCardOut .18s ease-in both !important; }
+.nyxia-exit.nyxia-exit-sheet > * { animation: nyxiaSheetDown .2s ease-in both !important; }
+
+/* --- Sekme geçişi: içerik yumuşakça belirir --- */
+@keyframes nyxiaScreenIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+[data-screen] > div { animation: nyxiaScreenIn .22s ease-out backwards; }
+
+/* --- Eşya takma / çıkarma / yeni eşya --- */
+@keyframes nyxiaItemPop { 0% { opacity: 0; transform: scale(.55); filter: brightness(2); } 55% { opacity: 1; transform: scale(1.12); filter: brightness(1.45); } 100% { opacity: 1; transform: none; filter: none; } }
+@keyframes nyxiaItemSoft { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: none; } }
+@keyframes nyxiaSlotGlow { 0% { box-shadow: 0 0 0 0 rgba(212, 175, 106, .0); } 35% { box-shadow: 0 0 14px 2px rgba(212, 175, 106, .55); } 100% { box-shadow: 0 0 0 0 rgba(212, 175, 106, 0); } }
+.item-pop { display: inline-flex; align-items: center; justify-content: center; animation: nyxiaItemPop .42s cubic-bezier(.2, .9, .3, 1.2) backwards; }
+.item-soft { display: inline-flex; align-items: center; justify-content: center; animation: nyxiaItemSoft .26s ease-out backwards; }
+.item-fresh { animation: nyxiaItemPop .42s cubic-bezier(.2, .9, .3, 1.2) backwards, nyxiaSlotGlow .8s ease-out; }
+.slot-glow { animation: nyxiaSlotGlow .7s ease-out; }
+
+/* --- Düğmeler: basınca hafifçe çöker, renk geçişleri yumuşak --- */
+button { transition: transform .12s ease, filter .16s ease, background-color .2s ease, border-color .2s ease, color .2s ease, opacity .2s ease, box-shadow .2s ease; }
+button:not(:disabled):active { transform: scale(.965); }
