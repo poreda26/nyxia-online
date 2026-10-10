@@ -131,3 +131,9 @@ footer p{margin:0}
 }
 @media(max-width:560px){.top nav a{padding:8px 10px}.hero{padding-top:40px}.class-head img{height:170px}th,td{padding:9px 10px;font-size:14px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* Instagram */
+.ig,.ig-btn,.ig-icon{display:inline-flex;align-items:center;gap:8px}
+.top nav a.ig-icon{padding:8px 10px;color:var(--text)}.top nav a.ig-icon:hover{color:var(--gold)}
+.cta.follow{margin-bottom:0}
+footer a.ig{color:var(--gold)}

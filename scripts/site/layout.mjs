@@ -1,4 +1,6 @@
 // Site iskeleti: üst menü, wiki kenar menüsü, alt bilgi. Tüm sayfalar bunu kullanır.
+export const INSTAGRAM = 'https://www.instagram.com/nyxiaonline/';
+export const instagramIcon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>';
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const num = (value) => (Number.isFinite(value) ? value.toLocaleString('tr-TR') : '—');
 
@@ -39,7 +41,7 @@ ${extraHead}
 <body>
 <header class="top">
   <a class="brand" href="${root}./"><img src="${root}favicon.png" alt=""><strong>NYXIA ONLINE</strong></a>
-  <nav>${nav}<button id="lang" type="button" aria-label="Language" hidden>EN</button></nav>
+  <nav>${nav}<a class="ig-icon" href="${INSTAGRAM}" target="_blank" rel="noopener" aria-label="Instagram: @nyxiaonline" title="Instagram">${instagramIcon}</a><button id="lang" type="button" aria-label="Language" hidden>EN</button></nav>
 </header>
 ${wikiActive === null ? `<main class="page">${body}</main>` : `<div class="wiki"><button class="wiki-toggle" type="button" aria-expanded="false">☰ Wiki menüsü</button>${side}<main class="page wiki-main">${body}</main></div>`}
 <footer>
@@ -48,6 +50,7 @@ ${wikiActive === null ? `<main class="page">${body}</main>` : `<div class="wiki"
     <a href="${root}terms.html">Kullanım Koşulları</a>
     <a href="${root}delete-account.html">Hesap Silme</a>
     <a href="${root}support.html">Destek</a>
+    <a class="ig" href="${INSTAGRAM}" target="_blank" rel="noopener" aria-label="Instagram">${instagramIcon} @nyxiaonline</a>
   </nav>
   <p>© 2026 Nyxia Online</p>
 </footer>

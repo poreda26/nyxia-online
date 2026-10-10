@@ -1,4 +1,4 @@
-import { esc, page } from './layout.mjs';
+import { esc, page, INSTAGRAM, instagramIcon } from './layout.mjs';
 
 export function buildStatic(data) {
   const classes = data.classes;
@@ -18,6 +18,7 @@ export function buildStatic(data) {
       <div class="buttons">
         <a class="btn primary" href="wiki/">Wiki'yi keşfet</a>
         <a class="btn" href="#trailer">Fragmanı izle</a>
+        <a class="btn ig-btn" href="${INSTAGRAM}" target="_blank" rel="noopener">${instagramIcon} Instagram'da takip et</a>
       </div>
       <div class="stores"><span class="store">Google Play · yakında</span><span class="store">App Store · yakında</span></div>
     </section>
@@ -47,6 +48,12 @@ export function buildStatic(data) {
         <article class="card"><h3>Hep çevrimiçi</h3><p>İlerlemen sunucuda saklanır. Telefon değiştirsen de kaldığın yerden devam edersin.</p></article>
         <article class="card"><h3>Adil oyun</h3><p>Savaşlar ve ödüller sunucuda hesaplanır, hileye karşı korunur.</p></article>
       </div>
+    </section>
+
+    <section class="section cta follow">
+      <h2>Bizi Instagram'da takip et</h2>
+      <p>Duyurular, güncellemeler, etkinlikler ve çekilişler önce <strong>@nyxiaonline</strong> hesabında.</p>
+      <div class="buttons"><a class="btn primary ig-btn" href="${INSTAGRAM}" target="_blank" rel="noopener">${instagramIcon} @nyxiaonline</a></div>
     </section>
 
     <section class="section cta">
