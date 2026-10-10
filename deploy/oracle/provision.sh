@@ -8,6 +8,8 @@ APP_DIR=/home/$APP_USER/apps/nyxia-online
 DATA_DIR=/home/$APP_USER/data
 
 export DEBIAN_FRONTEND=noninteractive
+# Eski denemelerden kalan Caddy apt deposu (kota hatası veriyor) güncellemeyi bozmasın
+rm -f /etc/apt/sources.list.d/caddy-stable.list /usr/share/keyrings/caddy-stable-archive-keyring.gpg
 apt-get update -y
 apt-get install -y curl ca-certificates gnupg apt-transport-https debian-keyring debian-archive-keyring iptables-persistent unattended-upgrades
 
@@ -17,12 +19,11 @@ if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split("."
   apt-get install -y nodejs
 fi
 
-# --- Caddy (otomatik HTTPS)
+# --- Caddy (otomatik HTTPS): resmî GitHub .deb paketi (apt deposu bazen kota yüzünden 402 veriyor)
 if ! command -v caddy >/dev/null; then
-  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
-  apt-get update -y
-  apt-get install -y caddy
+  CADDY_VERSION="${CADDY_VERSION:-2.8.4}"
+  curl -fsSL -o /tmp/caddy.deb "https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_$(dpkg --print-architecture).deb"
+  dpkg -i /tmp/caddy.deb
 fi
 
 # --- Uygulama kullanıcısı ve klasörler
