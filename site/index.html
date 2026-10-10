@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nyxia Online · Mobil Online RPG</title>
+<meta name="description" content="Nyxia Online: karakterini geliştir, klanınla boss'lara karşı savaş, savaş alanında rakiplerini yen. Mobil online RPG.">
+<meta property="og:title" content="Nyxia Online">
+<meta property="og:description" content="Mobil online RPG: klanlar, boss savaşları, savaş alanı ve eşya geliştirme.">
+<meta property="og:image" content="https://nyxiaonline.com/nyxia-logo.png">
+<meta name="theme-color" content="#0B0C10">
+<link rel="icon" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><img src="favicon.png" alt=""><strong>NYXIA ONLINE</strong></a>
+  <nav>
+    <a href="#features" data-tr="Özellikler" data-en="Features">Özellikler</a>
+    <a href="#download" data-tr="İndir" data-en="Download">İndir</a>
+    <button id="lang" type="button" aria-label="Language">EN</button>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <img class="logo" src="nyxia-logo.png" alt="Nyxia Online">
+    <h1 data-tr="Kendi efsaneni yaz." data-en="Write your own legend.">Kendi efsaneni yaz.</h1>
+    <p class="lead" data-tr="Nyxia Online, cebinde taşıdığın bir online RPG. Karakterini geliştir, klanınla boss'lara karşı savaş, savaş alanında rakiplerini yen." data-en="Nyxia Online is an online RPG in your pocket. Grow your character, fight bosses with your clan and beat rivals on the battlefield.">Nyxia Online, cebinde taşıdığın bir online RPG. Karakterini geliştir, klanınla boss'lara karşı savaş, savaş alanında rakiplerini yen.</p>
+    <div class="stores" id="download">
+      <span class="store" data-tr="Google Play · yakında" data-en="Google Play · coming soon">Google Play · yakında</span>
+      <span class="store" data-tr="App Store · yakında" data-en="App Store · coming soon">App Store · yakında</span>
+    </div>
+  </section>
+
+  <section id="features" class="features">
+    <article>
+      <h2 data-tr="Üç sınıf" data-en="Three classes">Üç sınıf</h2>
+      <p data-tr="Warrior, Rogue ya da Mage: her sınıfın kendi silahları, yetenekleri ve oynanışı var." data-en="Warrior, Rogue or Mage: every class has its own weapons, skills and playstyle.">Warrior, Rogue ya da Mage: her sınıfın kendi silahları, yetenekleri ve oynanışı var.</p>
+    </article>
+    <article>
+      <h2 data-tr="Klan ve boss savaşları" data-en="Clans and boss fights">Klan ve boss savaşları</h2>
+      <p data-tr="Klanını kur, ortak depoyu yönet, klan zindanlarında ve dünya canavarında birlikte savaş." data-en="Found a clan, manage the shared vault and fight clan dungeons and the world boss together.">Klanını kur, ortak depoyu yönet, klan zindanlarında ve dünya canavarında birlikte savaş.</p>
+    </article>
+    <article>
+      <h2 data-tr="Savaş alanı" data-en="Battlefield">Savaş alanı</h2>
+      <p data-tr="Haftalık sıralamada yüksel, rakiplerine meydan oku, düellolarda yeteneğini göster." data-en="Climb the weekly ranking, challenge rivals and show your skill in duels.">Haftalık sıralamada yüksel, rakiplerine meydan oku, düellolarda yeteneğini göster.</p>
+    </article>
+    <article>
+      <h2 data-tr="Eşya ve geliştirme" data-en="Gear and upgrades">Eşya ve geliştirme</h2>
+      <p data-tr="Silah ve zırhlarını geliştir, oyuncu pazarında takas yap, setlerini tamamla." data-en="Upgrade weapons and armor, trade on the player market and complete your sets.">Silah ve zırhlarını geliştir, oyuncu pazarında takas yap, setlerini tamamla.</p>
+    </article>
+    <article>
+      <h2 data-tr="Hep çevrimiçi" data-en="Always online">Hep çevrimiçi</h2>
+      <p data-tr="İlerlemen hesabında sunucuda saklanır. Telefonunu değiştirsen de kaldığın yerden devam edersin." data-en="Your progress is stored on the server with your account. Switch phones and continue where you left off.">İlerlemen hesabında sunucuda saklanır. Telefonunu değiştirsen de kaldığın yerden devam edersin.</p>
+    </article>
+    <article>
+      <h2 data-tr="Adil oyun" data-en="Fair play">Adil oyun</h2>
+      <p data-tr="Savaşlar ve ödüller sunucuda hesaplanır; hile yapmak mümkün değildir." data-en="Battles and rewards are calculated on the server, so cheating does not work.">Savaşlar ve ödüller sunucuda hesaplanır; hile yapmak mümkün değildir.</p>
+    </article>
+  </section>
+</main>
+
+<footer>
+  <nav>
+    <a href="privacy.html" data-tr="Gizlilik Politikası" data-en="Privacy Policy">Gizlilik Politikası</a>
+    <a href="terms.html" data-tr="Kullanım Koşulları" data-en="Terms of Use">Kullanım Koşulları</a>
+    <a href="delete-account.html" data-tr="Hesap Silme" data-en="Delete Account">Hesap Silme</a>
+    <a href="mailto:onlinenyxia@gmail.com" data-tr="İletişim" data-en="Contact">İletişim</a>
+  </nav>
+  <p>© 2026 Nyxia Online</p>
+</footer>
+
+<script>
+(function () {
+  var button = document.getElementById('lang');
+  var lang = (localStorage.getItem('lang') || (navigator.language || 'tr').slice(0, 2)) === 'en' ? 'en' : 'tr';
+  function apply() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-tr]').forEach(function (el) { el.textContent = el.getAttribute('data-' + lang); });
+    button.textContent = lang === 'tr' ? 'EN' : 'TR';
+  }
+  button.addEventListener('click', function () { lang = lang === 'tr' ? 'en' : 'tr'; try { localStorage.setItem('lang', lang); } catch (e) {} apply(); });
+  apply();
+})();
+</script>
+</body>
+</html>

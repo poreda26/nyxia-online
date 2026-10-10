@@ -13,6 +13,7 @@ const api = createApi({
   trustedProxy: process.env.TRUSTED_PROXY || null,
   iapWebhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || null,
   iapAllowSandbox: process.env.IAP_ALLOW_SANDBOX === '1',
+  extraOrigins: (process.env.EXTRA_ORIGINS || '').split(',').map((v) => v.trim()).filter(Boolean),
   economyForAll: process.env.ECONOMY_FOR_ALL === '1',
   authOptions: {
     clientIds: {

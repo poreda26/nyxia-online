@@ -1,4 +1,31 @@
+# Eski adres (mevcut APK/web istemcileri): tüm uygulama
 __DOMAIN__ {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:3000
+}
+
+# Sahip paneli: https://panel.nyxiaonline.com
+panel.nyxiaonline.com {
+	encode zstd gzip
+	@root path /
+	redir @root /owner.html
+	reverse_proxy 127.0.0.1:3000
+}
+
+# www -> kök adres
+www.nyxiaonline.com {
+	redir https://nyxiaonline.com{uri} permanent
+}
+
+# Ana adres: tanıtım sitesi + oyun API + yasal sayfalar
+nyxiaonline.com {
+	encode zstd gzip
+	@backend path /api/* /privacy.html /terms.html /delete-account.html /legal.css /favicon.png /favicon-32.png /apple-touch-icon.png
+	handle @backend {
+		reverse_proxy 127.0.0.1:3000
+	}
+	handle {
+		root * /var/www/nyxia-site
+		file_server
+	}
 }

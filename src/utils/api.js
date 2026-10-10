@@ -11,7 +11,7 @@ import { CLIENT_BUILD } from "../version";
 // gider, SameSite=Strict çerez de gönderilmez. Bu yüzden yerel uygulama canlı
 // API adresini kullanır ve oturumu Bearer token ile taşır.
 const NATIVE = Capacitor.isNativePlatform();
-const API_BASE = import.meta.env.VITE_API_BASE || (NATIVE ? "https://nyxia.sametcantas.com" : "");
+const API_BASE = import.meta.env.VITE_API_BASE || (NATIVE ? "https://nyxiaonline.com" : "");
 const TOKEN_KEY = "nyxia_native_session";
 const readToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } };
 const writeToken = (value) => { try { value ? localStorage.setItem(TOKEN_KEY, value) : localStorage.removeItem(TOKEN_KEY); } catch { /* depolama kapalı */ } };

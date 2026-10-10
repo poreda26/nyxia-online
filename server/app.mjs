@@ -139,8 +139,10 @@ export // Oyun mantığı paketi (npm run build:logic ile üretilir). Yoksa sunu
 const gameLogic = await import('./game-logic.generated.mjs').catch(() => null);
 
 const NATIVE_APP_ORIGINS = ['https://localhost', 'capacitor://localhost'];
-export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, iapWebhookSecret = null, iapAllowSandbox = false, economyForAll = false, adsMode = 'off', adsTestAccounts = [], adsFetchKeys, authOptions = {} } = {}) {
-  const allowedOrigins = new Set([origin, ...nativeOrigins]);
+export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, extraOrigins = [], iapWebhookSecret = null, iapAllowSandbox = false, economyForAll = false, adsMode = 'off', adsTestAccounts = [], adsFetchKeys, authOptions = {} } = {}) {
+  // Tarayıcı kaynakları (çerezli): ana adres + ek alan adları (ör. panel). Bunların dışındaki izinli kaynaklar yerel uygulamadır.
+  const webOrigins = new Set([origin, ...extraOrigins]);
+  const allowedOrigins = new Set([...webOrigins, ...nativeOrigins]);
   const db = new DatabaseSync(database);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
     CREATE TABLE IF NOT EXISTS accounts(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, password TEXT NOT NULL);
@@ -697,7 +699,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     try {
       const reqOrigin = req.headers.origin;
       if (reqOrigin && !allowedOrigins.has(reqOrigin)) throw fail(403, 'ORIGIN_DENIED');
-      const nativeOrigin = !!reqOrigin && reqOrigin !== origin;
+      const nativeOrigin = !!reqOrigin && !webOrigins.has(reqOrigin);
       if (reqOrigin) {
         res.setHeader('Access-Control-Allow-Origin', reqOrigin);
         if (!nativeOrigin) res.setHeader('Access-Control-Allow-Credentials', 'true');
