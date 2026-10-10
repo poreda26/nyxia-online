@@ -1,4 +1,4 @@
-import { esc, page, INSTAGRAM, instagramIcon } from './layout.mjs';
+import { esc, page, INSTAGRAM, instagramIcon, DISCORD, discordIcon, playIcon, appleIcon } from './layout.mjs';
 
 export function buildStatic(data) {
   const classes = data.classes;
@@ -18,9 +18,15 @@ export function buildStatic(data) {
       <div class="buttons">
         <a class="btn primary" href="wiki/">Wiki'yi keşfet</a>
         <a class="btn" href="#trailer">Fragmanı izle</a>
+      </div>
+      <div class="stores">
+        <span class="store" role="img" aria-label="Google Play: yakında">${playIcon}<span><small>YAKINDA</small><strong>Google Play</strong></span></span>
+        <span class="store" role="img" aria-label="App Store: yakında">${appleIcon}<span><small>YAKINDA</small><strong>App Store</strong></span></span>
+      </div>
+      <div class="buttons social">
+        <a class="btn discord" href="${DISCORD}" target="_blank" rel="noopener">${discordIcon} Discord'a katıl</a>
         <a class="btn ig-btn" href="${INSTAGRAM}" target="_blank" rel="noopener">${instagramIcon} Instagram'da takip et</a>
       </div>
-      <div class="stores"><span class="store">Google Play · yakında</span><span class="store">App Store · yakında</span></div>
     </section>
 
     <section id="trailer" class="section">
@@ -51,9 +57,9 @@ export function buildStatic(data) {
     </section>
 
     <section class="section cta follow">
-      <h2>Bizi Instagram'da takip et</h2>
-      <p>Duyurular, güncellemeler, etkinlikler ve çekilişler önce <strong>@nyxiaonline</strong> hesabında.</p>
-      <div class="buttons"><a class="btn primary ig-btn" href="${INSTAGRAM}" target="_blank" rel="noopener">${instagramIcon} @nyxiaonline</a></div>
+      <h2>Topluluğumuza katıl</h2>
+      <p>Duyurular, güncellemeler ve etkinlikler için <strong>Discord</strong> sunucumuza gel; haberleri <strong>@nyxiaonline</strong> Instagram hesabında takip et.</p>
+      <div class="buttons"><a class="btn discord" href="${DISCORD}" target="_blank" rel="noopener">${discordIcon} Discord'a katıl</a><a class="btn ig-btn" href="${INSTAGRAM}" target="_blank" rel="noopener">${instagramIcon} @nyxiaonline</a></div>
     </section>
 
     <section class="section cta">

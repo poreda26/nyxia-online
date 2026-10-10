@@ -137,3 +137,14 @@ footer p{margin:0}
 .top nav a.ig-icon{padding:8px 10px;color:var(--text)}.top nav a.ig-icon:hover{color:var(--gold)}
 .cta.follow{margin-bottom:0}
 footer a.ig{color:var(--gold)}
+
+/* Mağaza rozetleri ve Discord */
+.store{display:inline-flex;align-items:center;gap:12px;padding:9px 20px 9px 16px;border:1px solid #a6a6a6;border-radius:12px;background:#000;color:#fff;text-align:left;line-height:1.15}
+.store span{display:flex;flex-direction:column}
+.store small{font-size:10px;letter-spacing:.14em;color:#c8c8c8}
+.store strong{font:600 19px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.btn.discord{background:#5865F2;border-color:#5865F2;color:#fff;display:inline-flex;align-items:center;gap:9px}
+.btn.discord:hover{filter:brightness(1.1);text-decoration:none}
+.buttons.social{margin-top:14px}
+.top nav a.dc-icon{color:#8f9bff}.top nav a.dc-icon:hover{color:#fff}
+footer a.dc{color:#8f9bff}
