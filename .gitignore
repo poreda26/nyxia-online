@@ -45,3 +45,11 @@ apk/
 *.njsproj
 *.sln
 *.sw?
+
+# Site videosu derlemeyle üretilir (scripts/site/trailer.py); depoya konmaz
+site/trailer.mp4
+site/_trailer_silent.mp4
+scripts/site/_trailer.log
+scripts/_probe_*
+scripts/_site_data.mjs
+scripts/site/wiki-data.json

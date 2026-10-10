@@ -8,3 +8,9 @@ select{font:inherit;width:100%;min-width:0;border:1px solid #344055;background:#
 .dialog-card h3{margin:0 0 8px;font-size:18px}.dialog-card p{margin:0 0 14px;color:#a9b4c6;line-height:1.5}.dialog-card label{display:block;font-size:13px;color:#a9b4c6;margin-bottom:14px}
 .dialog-card input{width:100%;margin-top:7px;padding:12px;border-radius:9px;border:1px solid #344055;background:#0b121d;color:#f4f5f8}
 .dialog-actions{display:flex;gap:10px;justify-content:flex-end}.dialog-actions button{min-width:96px}.dialog-actions button:disabled{opacity:.5;cursor:not-allowed}
+.ticket-filters{display:flex;gap:6px;flex-wrap:wrap}.ticket-filters button.active{border-color:#d4af6a;color:#d4af6a}
+.ticket-row{display:grid;gap:4px;text-align:left;justify-content:stretch;margin-top:8px}.ticket-row small{color:#a9b4c6}
+.badge.open{background:#5b2230}.badge.answered{background:#1f4a3a}.badge.closed{background:#2a3242}
+.ticket-messages{display:grid;gap:10px;margin:12px 0}.ticket-msg{border:1px solid #29364a;border-radius:12px;padding:10px 14px;background:#0f1724;white-space:pre-wrap}
+.ticket-msg.staff{background:#14271f;border-color:#2a5a46}.ticket-msg small{color:#a9b4c6}.ticket-msg p{margin:6px 0 0}
+.ticket-thread textarea{width:100%;margin-top:7px;padding:12px;border-radius:9px;border:1px solid #344055;background:#0b121d;color:#f4f5f8;font:inherit}

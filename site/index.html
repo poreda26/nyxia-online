@@ -3,87 +3,76 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nyxia Online · Mobil Online RPG</title>
-<meta name="description" content="Nyxia Online: karakterini geliştir, klanınla boss'lara karşı savaş, savaş alanında rakiplerini yen. Mobil online RPG.">
-<meta property="og:title" content="Nyxia Online">
-<meta property="og:description" content="Mobil online RPG: klanlar, boss savaşları, savaş alanı ve eşya geliştirme.">
-<meta property="og:image" content="https://nyxiaonline.com/nyxia-logo.png">
+<title>Mobil Online RPG · Nyxia Online</title>
+<meta name="description" content="Nyxia Online: karakterini geliştir, klanınla boss&#39;lara karşı savaş, savaş alanında rakiplerini yen. Mobil online RPG.">
+<meta property="og:title" content="Mobil Online RPG · Nyxia Online">
+<meta property="og:description" content="Nyxia Online: karakterini geliştir, klanınla boss&#39;lara karşı savaş, savaş alanında rakiplerini yen. Mobil online RPG.">
+<meta property="og:image" content="https://nyxiaonline.com/img/og.jpg">
 <meta name="theme-color" content="#0B0C10">
 <link rel="icon" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="site.css">
+<link rel="preload" as="image" href="img/hero.jpg">
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="/"><img src="favicon.png" alt=""><strong>NYXIA ONLINE</strong></a>
-  <nav>
-    <a href="#features" data-tr="Özellikler" data-en="Features">Özellikler</a>
-    <a href="#download" data-tr="İndir" data-en="Download">İndir</a>
-    <button id="lang" type="button" aria-label="Language">EN</button>
-  </nav>
+  <a class="brand" href="./"><img src="favicon.png" alt=""><strong>NYXIA ONLINE</strong></a>
+  <nav><a href="" class="on" aria-current="page">Ana sayfa</a><a href="wiki/">Wiki</a><a href="support.html">Destek</a><button id="lang" type="button" aria-label="Language" hidden>EN</button></nav>
 </header>
+<main class="page">
+    <section class="hero" style="background-image:linear-gradient(180deg,rgba(11,12,16,.55),rgba(11,12,16,.96)),url(img/hero.jpg)">
+      <img class="logo" src="nyxia-logo.png" alt="Nyxia Online">
+      <h1>Kendi efsaneni yaz.</h1>
+      <p class="lead">Nyxia Online, cebinde taşıdığın bir online RPG. Karakterini geliştir, klanınla boss'lara karşı savaş, savaş alanında rakiplerini yen.</p>
+      <div class="buttons">
+        <a class="btn primary" href="wiki/">Wiki'yi keşfet</a>
+        <a class="btn" href="#trailer">Fragmanı izle</a>
+      </div>
+      <div class="stores"><span class="store">Google Play · yakında</span><span class="store">App Store · yakında</span></div>
+    </section>
 
-<main>
-  <section class="hero">
-    <img class="logo" src="nyxia-logo.png" alt="Nyxia Online">
-    <h1 data-tr="Kendi efsaneni yaz." data-en="Write your own legend.">Kendi efsaneni yaz.</h1>
-    <p class="lead" data-tr="Nyxia Online, cebinde taşıdığın bir online RPG. Karakterini geliştir, klanınla boss'lara karşı savaş, savaş alanında rakiplerini yen." data-en="Nyxia Online is an online RPG in your pocket. Grow your character, fight bosses with your clan and beat rivals on the battlefield.">Nyxia Online, cebinde taşıdığın bir online RPG. Karakterini geliştir, klanınla boss'lara karşı savaş, savaş alanında rakiplerini yen.</p>
-    <div class="stores" id="download">
-      <span class="store" data-tr="Google Play · yakında" data-en="Google Play · coming soon">Google Play · yakında</span>
-      <span class="store" data-tr="App Store · yakında" data-en="App Store · coming soon">App Store · yakında</span>
-    </div>
-  </section>
+    <section id="trailer" class="section">
+      <h2>Fragman</h2>
+      <div class="video"><video controls preload="metadata" poster="img/trailer-poster.jpg" playsinline><source src="trailer.mp4" type="video/mp4">Tarayıcın videoyu oynatamıyor.</video></div>
+    </section>
 
-  <section id="features" class="features">
-    <article>
-      <h2 data-tr="Üç sınıf" data-en="Three classes">Üç sınıf</h2>
-      <p data-tr="Warrior, Rogue ya da Mage: her sınıfın kendi silahları, yetenekleri ve oynanışı var." data-en="Warrior, Rogue or Mage: every class has its own weapons, skills and playstyle.">Warrior, Rogue ya da Mage: her sınıfın kendi silahları, yetenekleri ve oynanışı var.</p>
-    </article>
-    <article>
-      <h2 data-tr="Klan ve boss savaşları" data-en="Clans and boss fights">Klan ve boss savaşları</h2>
-      <p data-tr="Klanını kur, ortak depoyu yönet, klan zindanlarında ve dünya canavarında birlikte savaş." data-en="Found a clan, manage the shared vault and fight clan dungeons and the world boss together.">Klanını kur, ortak depoyu yönet, klan zindanlarında ve dünya canavarında birlikte savaş.</p>
-    </article>
-    <article>
-      <h2 data-tr="Savaş alanı" data-en="Battlefield">Savaş alanı</h2>
-      <p data-tr="Haftalık sıralamada yüksel, rakiplerine meydan oku, düellolarda yeteneğini göster." data-en="Climb the weekly ranking, challenge rivals and show your skill in duels.">Haftalık sıralamada yüksel, rakiplerine meydan oku, düellolarda yeteneğini göster.</p>
-    </article>
-    <article>
-      <h2 data-tr="Eşya ve geliştirme" data-en="Gear and upgrades">Eşya ve geliştirme</h2>
-      <p data-tr="Silah ve zırhlarını geliştir, oyuncu pazarında takas yap, setlerini tamamla." data-en="Upgrade weapons and armor, trade on the player market and complete your sets.">Silah ve zırhlarını geliştir, oyuncu pazarında takas yap, setlerini tamamla.</p>
-    </article>
-    <article>
-      <h2 data-tr="Hep çevrimiçi" data-en="Always online">Hep çevrimiçi</h2>
-      <p data-tr="İlerlemen hesabında sunucuda saklanır. Telefonunu değiştirsen de kaldığın yerden devam edersin." data-en="Your progress is stored on the server with your account. Switch phones and continue where you left off.">İlerlemen hesabında sunucuda saklanır. Telefonunu değiştirsen de kaldığın yerden devam edersin.</p>
-    </article>
-    <article>
-      <h2 data-tr="Adil oyun" data-en="Fair play">Adil oyun</h2>
-      <p data-tr="Savaşlar ve ödüller sunucuda hesaplanır; hile yapmak mümkün değildir." data-en="Battles and rewards are calculated on the server, so cheating does not work.">Savaşlar ve ödüller sunucuda hesaplanır; hile yapmak mümkün değildir.</p>
-    </article>
-  </section>
-</main>
+    <section class="section">
+      <h2>Bir sınıf seç, kaderini çiz</h2>
+      <div class="cards three"><a class="card class-card" style="--c:#C97A3D" href="wiki/siniflar.html#warrior"><div class="pair"><img src="img/chars/warrior-human.webp" alt="" loading="lazy"><img src="img/chars/warrior-orc.webp" alt="" loading="lazy"></div><h3>Warrior</h3><p>Ön safın sağlam savaşçısı: yüksek can, güçlü savunma.</p></a><a class="card class-card" style="--c:#8B6FC9" href="wiki/siniflar.html#rogue"><div class="pair"><img src="img/chars/rogue-human.webp" alt="" loading="lazy"><img src="img/chars/rogue-orc.webp" alt="" loading="lazy"></div><h3>Rogue (Okçu)</h3><p>Menzilli okçu: hızlı atışlar, yüksek kritik.</p></a><a class="card class-card" style="--c:#4FC3D9" href="wiki/siniflar.html#mage"><div class="pair"><img src="img/chars/mage-human.webp" alt="" loading="lazy"><img src="img/chars/mage-orc.webp" alt="" loading="lazy"></div><h3>Mage</h3><p>Yıkıcı büyücü: en yüksek hasar, düşük can.</p></a></div>
+    </section>
 
+    <section class="section">
+      <h2>6 bölge, sayısız canavar</h2>
+      <div class="strip"><a href="wiki/bolgeler.html#fallow_valley" style="background-image:url(img/regions/fallow_valley.webp);--c:#8FA35E"><span>Fallow Valley<small>Sv. 1–15</small></span></a><a href="wiki/bolgeler.html#ashen_canyon" style="background-image:url(img/regions/ashen_canyon.webp);--c:#C97A3D"><span>Ashen Canyon<small>Sv. 15–25</small></span></a><a href="wiki/bolgeler.html#frostburn_summit" style="background-image:url(img/regions/frostburn_summit.webp);--c:#6FD1E0"><span>Frostburn Summit<small>Sv. 25–40</small></span></a><a href="wiki/bolgeler.html#ruined_sanctuary" style="background-image:url(img/regions/ruined_sanctuary.webp);--c:#8B6FC9"><span>Ruined Sanctuary<small>Sv. 40–50</small></span></a><a href="wiki/bolgeler.html#abyssal_pit" style="background-image:url(img/regions/abyssal_pit.webp);--c:#A34FD9"><span>Abyssal Pit<small>Sv. 50–60</small></span></a><a href="wiki/bolgeler.html#crimson_battlefront" style="background-image:url(img/regions/crimson_battlefront.webp);--c:#C9425A"><span>Crimson Battlefront<small>Sv. 60–65</small></span></a></div>
+    </section>
+
+    <section class="section">
+      <h2>Oyunda seni neler bekliyor?</h2>
+      <div class="cards">
+        <article class="card"><h3>Klan ve boss savaşları</h3><p>Klanını kur, ortak depoyu yönet. 20 aşamalı klan zindanında ve klan boss'unda birlikte savaş.</p></article>
+        <article class="card"><h3>Savaş alanı</h3><p>50. seviyeden sonra dünya boss'ları, güçlendirilmiş av ve haftalık sıralama.</p></article>
+        <article class="card"><h3>Eşya ve geliştirme</h3><p>6 kalitede silah ve zırh, takılar, kanatlar. Eşyalarını geliştir, setlerini tamamla.</p></article>
+        <article class="card"><h3>Oyuncu pazarı</h3><p>Eşyalarını tezgâhına koy, diğer oyuncularla takas et.</p></article>
+        <article class="card"><h3>Hep çevrimiçi</h3><p>İlerlemen sunucuda saklanır. Telefon değiştirsen de kaldığın yerden devam edersin.</p></article>
+        <article class="card"><h3>Adil oyun</h3><p>Savaşlar ve ödüller sunucuda hesaplanır, hileye karşı korunur.</p></article>
+      </div>
+    </section>
+
+    <section class="section cta">
+      <h2>Yardıma mı ihtiyacın var?</h2>
+      <p>Wiki'de oyunun tüm sistemleri anlatılıyor. Bir sorunun varsa destek ekibimize yaz.</p>
+      <div class="buttons"><a class="btn primary" href="wiki/">Wiki</a><a class="btn" href="support.html">Destek talebi aç</a></div>
+    </section></main>
 <footer>
   <nav>
-    <a href="privacy.html" data-tr="Gizlilik Politikası" data-en="Privacy Policy">Gizlilik Politikası</a>
-    <a href="terms.html" data-tr="Kullanım Koşulları" data-en="Terms of Use">Kullanım Koşulları</a>
-    <a href="delete-account.html" data-tr="Hesap Silme" data-en="Delete Account">Hesap Silme</a>
-    <a href="mailto:onlinenyxia@gmail.com" data-tr="İletişim" data-en="Contact">İletişim</a>
+    <a href="privacy.html">Gizlilik Politikası</a>
+    <a href="terms.html">Kullanım Koşulları</a>
+    <a href="delete-account.html">Hesap Silme</a>
+    <a href="support.html">Destek</a>
   </nav>
   <p>© 2026 Nyxia Online</p>
 </footer>
+<script src="site.js"></script>
 
-<script>
-(function () {
-  var button = document.getElementById('lang');
-  var lang = (localStorage.getItem('lang') || (navigator.language || 'tr').slice(0, 2)) === 'en' ? 'en' : 'tr';
-  function apply() {
-    document.documentElement.lang = lang;
-    document.querySelectorAll('[data-tr]').forEach(function (el) { el.textContent = el.getAttribute('data-' + lang); });
-    button.textContent = lang === 'tr' ? 'EN' : 'TR';
-  }
-  button.addEventListener('click', function () { lang = lang === 'tr' ? 'en' : 'tr'; try { localStorage.setItem('lang', lang); } catch (e) {} apply(); });
-  apply();
-})();
-</script>
 </body>
 </html>

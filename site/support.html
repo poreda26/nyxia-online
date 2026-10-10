@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Destek · Nyxia Online</title>
+<meta name="description" content="Nyxia Online destek talebi aç: hesap, hata, ödeme, şikayet ve önerilerin için bize yaz.">
+<meta property="og:title" content="Destek · Nyxia Online">
+<meta property="og:description" content="Nyxia Online destek talebi aç: hesap, hata, ödeme, şikayet ve önerilerin için bize yaz.">
+<meta property="og:image" content="https://nyxiaonline.com/img/og.jpg">
+<meta name="theme-color" content="#0B0C10">
+<link rel="icon" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="site.css">
+
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./"><img src="favicon.png" alt=""><strong>NYXIA ONLINE</strong></a>
+  <nav><a href="">Ana sayfa</a><a href="wiki/">Wiki</a><a href="support.html" class="on" aria-current="page">Destek</a><button id="lang" type="button" aria-label="Language" hidden>EN</button></nav>
+</header>
+<main class="page">
+    <h1>Destek</h1>
+    <p class="lead">Bir sorun mu yaşıyorsun? Talebini yaz, sana bir numara ve takip bağlantısı verelim. Yanıtları o bağlantıdan (ve e-postandan) görürsün. Önce <a href="wiki/sss.html">sık sorulan sorulara</a> bakabilirsin.</p>
+    <form id="ticket-form" class="form" novalidate>
+      <label>E-posta<input type="email" name="email" autocomplete="email" required maxlength="120" placeholder="ornek@mail.com"></label>
+      <label>Oyundaki kullanıcı adın <small>(isteğe bağlı)</small><input type="text" name="username" maxlength="24" placeholder="kullanici_adi"></label>
+      <label>Konu türü
+        <select name="category">
+          <option value="account">Hesap / giriş</option>
+          <option value="bug">Hata bildirimi</option>
+          <option value="payment">Ödeme / elmas</option>
+          <option value="report">Oyuncu şikayeti</option>
+          <option value="suggestion">Öneri</option>
+          <option value="other">Diğer</option>
+        </select>
+      </label>
+      <label>Başlık<input type="text" name="subject" required maxlength="120" placeholder="Kısaca ne oldu?"></label>
+      <label>Mesajın<textarea name="message" rows="7" required minlength="10" maxlength="4000" placeholder="Ne zaman oldu, hangi karakterle, ne gördün? Ne kadar ayrıntı verirsen o kadar hızlı yardım ederiz."></textarea></label>
+      <label class="trap" aria-hidden="true">Web sitesi<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+      <p class="muted">Şifreni ya da kart bilgilerini ASLA yazma; destek ekibi bunları hiçbir zaman istemez.</p>
+      <button class="btn primary" type="submit">Talebi gönder</button>
+      <p id="ticket-error" class="error" role="alert" hidden></p>
+    </form>
+    <div id="ticket-done" class="callout" hidden></div>
+    <section id="mine" hidden><h2>Bu cihazdaki taleplerin</h2><ul id="mine-list" class="plain"></ul></section></main>
+<footer>
+  <nav>
+    <a href="privacy.html">Gizlilik Politikası</a>
+    <a href="terms.html">Kullanım Koşulları</a>
+    <a href="delete-account.html">Hesap Silme</a>
+    <a href="support.html">Destek</a>
+  </nav>
+  <p>© 2026 Nyxia Online</p>
+</footer>
+<script src="site.js"></script>
+<script src="support.js"></script>
+</body>
+</html>

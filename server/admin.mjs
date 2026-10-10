@@ -58,6 +58,7 @@ export function createAdmin(db, { read, fail, wallet }) {
         clans:db.prepare('SELECT COUNT(*) n FROM clans').get().n,
         stalls:db.prepare('SELECT COUNT(*) n FROM market_stalls').get().n,
         openReports:db.prepare("SELECT COUNT(*) n FROM user_reports WHERE status='open'").get().n,
+        openTickets:(()=>{try{return db.prepare("SELECT COUNT(*) n FROM tickets WHERE status='open'").get().n;}catch{return 0;}})(),
         active:db.prepare('SELECT COUNT(*) n FROM account_activity WHERE last_seen>?').get(Date.now()-300000).n,
         authoritative:false
       });
@@ -150,5 +151,5 @@ export function createAdmin(db, { read, fail, wallet }) {
     }
     throw fail(404,'NOT_FOUND');
   }
-  return {handle,owner,isGm,blocked,muted,drops,touch};
+  return {handle,owner,isGm,blocked,muted,drops,touch,audit};
 }

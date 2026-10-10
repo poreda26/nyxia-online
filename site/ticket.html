@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Destek talebi · Nyxia Online</title>
+<meta name="description" content="Destek talebinin durumunu gör ve yanıt yaz.">
+<meta property="og:title" content="Destek talebi · Nyxia Online">
+<meta property="og:description" content="Destek talebinin durumunu gör ve yanıt yaz.">
+<meta property="og:image" content="https://nyxiaonline.com/img/og.jpg">
+<meta name="theme-color" content="#0B0C10">
+<link rel="icon" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="site.css">
+
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./"><img src="favicon.png" alt=""><strong>NYXIA ONLINE</strong></a>
+  <nav><a href="">Ana sayfa</a><a href="wiki/">Wiki</a><a href="support.html" class="on" aria-current="page">Destek</a><button id="lang" type="button" aria-label="Language" hidden>EN</button></nav>
+</header>
+<main class="page">
+    <h1>Destek talebi <span id="t-code" class="pill"></span></h1>
+    <p id="t-status" class="muted">Yükleniyor…</p>
+    <div id="t-error" class="callout warn" role="alert" hidden></div>
+    <div id="t-thread" class="thread"></div>
+    <form id="t-reply" class="form" hidden>
+      <label>Yanıtın<textarea name="message" rows="5" required maxlength="4000" placeholder="Mesajını yaz…"></textarea></label>
+      <button class="btn primary" type="submit">Gönder</button>
+      <p id="t-reply-error" class="error" role="alert" hidden></p>
+    </form>
+    <p class="muted">Bu sayfanın bağlantısı sana özeldir; başkasıyla paylaşma.</p></main>
+<footer>
+  <nav>
+    <a href="privacy.html">Gizlilik Politikası</a>
+    <a href="terms.html">Kullanım Koşulları</a>
+    <a href="delete-account.html">Hesap Silme</a>
+    <a href="support.html">Destek</a>
+  </nav>
+  <p>© 2026 Nyxia Online</p>
+</footer>
+<script src="site.js"></script>
+<script src="ticket.js"></script>
+</body>
+</html>

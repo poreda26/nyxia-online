@@ -1,0 +1,184 @@
+{
+ "items": [
+  {
+   "key": "axe-base",
+   "src": "assets/items/axe-base.png"
+  },
+  {
+   "key": "glave",
+   "src": "assets/items/glave.png"
+  },
+  {
+   "key": "halberd-base",
+   "src": "assets/items/halberd-base.png"
+  },
+  {
+   "key": "raptor",
+   "src": "assets/items/raptor.png"
+  },
+  {
+   "key": "blade-axe-base",
+   "src": "assets/items/blade-axe-base.png"
+  },
+  {
+   "key": "durandal-base",
+   "src": "assets/items/durandal-base.png"
+  },
+  {
+   "key": "sword-base",
+   "src": "assets/items/sword-base.png"
+  },
+  {
+   "key": "club-base",
+   "src": "assets/items/club-base.png"
+  },
+  {
+   "key": "totamic-club",
+   "src": "assets/items/totamic-club.svg"
+  },
+  {
+   "key": "hammer-base",
+   "src": "assets/items/hammer-base.png"
+  },
+  {
+   "key": "bow-base",
+   "src": "assets/items/bow-base.png"
+  },
+  {
+   "key": "bamboo-bow-base",
+   "src": "assets/items/bamboo-bow-base.png"
+  },
+  {
+   "key": "iron-crossbow-base",
+   "src": "assets/items/iron-crossbow-base.png"
+  },
+  {
+   "key": "scorpion-bow-base",
+   "src": "assets/items/scorpion-bow-base.png"
+  },
+  {
+   "key": "iron-bow-base",
+   "src": "assets/items/iron-bow-base.png"
+  },
+  {
+   "key": "chitin-bow-base",
+   "src": "assets/items/chitin-bow-base.png"
+  },
+  {
+   "key": "enion-bow-base",
+   "src": "assets/items/enion-bow-base.png"
+  },
+  {
+   "key": "eagles-eye-base",
+   "src": "assets/items/eagles-eye-base.png"
+  },
+  {
+   "key": "crossbow-base",
+   "src": "assets/items/crossbow-base.png"
+  },
+  {
+   "key": "horn-crossbow-base",
+   "src": "assets/items/horn-crossbow-base.png"
+  },
+  {
+   "key": "helenid-base",
+   "src": "assets/items/helenid-base.png"
+  },
+  {
+   "key": "staff-base",
+   "src": "assets/items/staff-base.png"
+  },
+  {
+   "key": "scythe-base",
+   "src": "assets/items/scythe-base.png"
+  },
+  {
+   "key": "prismatic-triad-staff",
+   "src": "assets/items/prismatic-triad-staff.svg"
+  },
+  {
+   "key": "rons-staff",
+   "src": "assets/items/rons-staff.svg"
+  },
+  {
+   "key": "nyxia_emberfang",
+   "src": "assets/items/nyxia_emberfang.png"
+  },
+  {
+   "key": "nyxia_skyrend",
+   "src": "assets/items/nyxia_skyrend.png"
+  },
+  {
+   "key": "nyxia_gravebreaker",
+   "src": "assets/items/nyxia_gravebreaker.png"
+  },
+  {
+   "key": "nyxia_briarclaw",
+   "src": "assets/items/nyxia_briarclaw.png"
+  },
+  {
+   "key": "nyxia_dawnstring",
+   "src": "assets/items/nyxia_dawnstring.png"
+  },
+  {
+   "key": "nyxia_scorpionsting",
+   "src": "assets/items/nyxia_scorpionsting.png"
+  },
+  {
+   "key": "nyxia_windwing",
+   "src": "assets/items/nyxia_windwing.png"
+  },
+  {
+   "key": "nyxia_nightstring",
+   "src": "assets/items/nyxia_nightstring.png"
+  },
+  {
+   "key": "nyxia_skyharpoon",
+   "src": "assets/items/nyxia_skyharpoon.png"
+  },
+  {
+   "key": "nyxia_crimsoncrescent",
+   "src": "assets/items/nyxia_crimsoncrescent.png"
+  },
+  {
+   "key": "nyxia_stormeye",
+   "src": "assets/items/nyxia_stormeye.png"
+  },
+  {
+   "key": "nyxia_dewbranch",
+   "src": "assets/items/nyxia_dewbranch.png"
+  },
+  {
+   "key": "nyxia_emberlantern",
+   "src": "assets/items/nyxia_emberlantern.png"
+  },
+  {
+   "key": "nyxia_mooncoil",
+   "src": "assets/items/nyxia_mooncoil.png"
+  },
+  {
+   "key": "nyxia_frostbell",
+   "src": "assets/items/nyxia_frostbell.png"
+  },
+  {
+   "key": "nyxia_hourglass",
+   "src": "assets/items/nyxia_hourglass.png"
+  },
+  {
+   "key": "nyxia_soullight",
+   "src": "assets/items/nyxia_soullight.png"
+  },
+  {
+   "key": "nyxia_skyseal",
+   "src": "assets/items/nyxia_skyseal.png"
+  },
+  {
+   "key": "nyxia_voidcrown",
+   "src": "assets/items/nyxia_voidcrown.png"
+  },
+  {
+   "key": "nyxia_suncore",
+   "src": "assets/items/nyxia_suncore.png"
+  }
+ ]
+}

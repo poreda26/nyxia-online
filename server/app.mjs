@@ -15,6 +15,7 @@ import {createIap} from './iap.mjs';
 import {createAds} from './ads.mjs';
 import {createIdentity} from './identity.mjs';
 import {createMailer} from './mailer.mjs';
+import {createTickets} from './tickets.mjs';
 import {createGame} from './game.mjs';
 import {WHEEL_PREMIUM_PRIZES} from '../src/data/diamondPrices.js';
 import { createServer } from 'node:http';
@@ -222,6 +223,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   const loginNameLimit = makeRateLimiter(10);
   const registerLimit = makeRateLimiter(6);
   const passwordLimit = makeRateLimiter(10);
+  const supportLimit = makeRateLimiter(30);
   // Hesap başına, IP'den bağımsız (Caddy arkasında birçok oyuncu aynı IP'yi
   // paylaşabilir) — spam önleme, gerçek yetkilendirme değil.
   // Additive migrations preserve existing messages and memberships.
@@ -518,6 +520,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     },
     revokeSessions: (accountId) => { db.prepare('DELETE FROM sessions WHERE account=?').run(accountId); },
   });
+  const tickets = createTickets(db, { fail, mailer, notifyEmail: authOptions.notifyEmail || process.env.SUPPORT_NOTIFY_EMAIL || null, siteUrl: authOptions.siteUrl || process.env.SITE_URL || 'https://nyxiaonline.com' });
   const ads = createAds(db, { fail, wallet, mode: adsMode, testAccounts: adsTestAccounts, ...(adsFetchKeys ? { fetchKeys: adsFetchKeys } : {}) });
   const admin = createAdmin(db, { read, fail, wallet });
   const wheel = createWheel(db, { fail });
@@ -721,7 +724,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       // En düşük istemci sürümü: eski kurallarla çalışan istemciler (ör. eski APK) sunucu ekonomisini bozmasın diye
       // reddedilir. Sağlık ucu, sahip paneli ve ödeme servisi (RevenueCat) bu denetimin dışındadır.
-      if (path.startsWith('/api/') && path !== '/api/health' && path !== '/api/version' && path !== '/api/ads/ssv' && !path.startsWith('/api/admin')) {
+      if (path.startsWith('/api/') && path !== '/api/health' && path !== '/api/version' && path !== '/api/ads/ssv' && !path.startsWith('/api/support/') && !path.startsWith('/api/admin')) {
         const config = appConfig();
         const build = Number(req.headers['x-client-build']) || 0;
         if (config.minBuild > 0 && build < config.minBuild) return send(426, { error: 'CLIENT_OUTDATED', minBuild: config.minBuild, updateUrl: config.updateUrl || null });
@@ -759,6 +762,10 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         }
         return issueSession(req, res, send, nativeOrigin, account, body, path === '/api/login');
       }
+      // Destek talepleri (oturumsuz; kod + gizli anahtarla takip). Siteden açılır, yanıtlar sahip panelinden verilir.
+      if (path === '/api/support/tickets' && req.method === 'POST') { supportLimit(clientAddress(req)); const result = await tickets.create(await read(req)); return send(200, { code: result.code, key: result.key }); }
+      if (path === '/api/support/tickets/view' && req.method === 'POST') { supportLimit(clientAddress(req)); const body = await read(req); return send(200, tickets.view(body?.code, body?.key)); }
+      if (path === '/api/support/tickets/reply' && req.method === 'POST') { supportLimit(clientAddress(req)); const body = await read(req); return send(200, await tickets.reply(body?.code, body?.key, body?.message)); }
       // Giriş seçenekleri (oturumsuz): hangi sağlayıcılar açık.
       if (path === '/api/auth/providers' && req.method === 'GET') return send(200, identity.providersConfig());
       // Google / Apple ile giriş: kimlik belgesi sunucuda doğrulanır; hesap yoksa yeni hesap açılır.
@@ -801,6 +808,15 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (Date.now() - account.seen > 30000) db.prepare('UPDATE sessions SET seen=? WHERE token=?').run(Date.now(), hash(token));
       if(admin.blocked(account.id)) throw fail(403,'ACCOUNT_BLOCKED');
       admin.touch(account.id);
+      if (path === '/api/admin/tickets' || path === '/api/admin/ticket' || path.startsWith('/api/admin/ticket/')) {
+        if (!admin.owner(account.id)) throw fail(403, 'OWNER_ONLY');
+        const url = new URL(req.url, 'http://localhost');
+        if (req.method === 'GET' && path === '/api/admin/tickets') return send(200, { counts: tickets.counts(), items: tickets.list(url.searchParams.get('status')) });
+        if (req.method === 'GET' && path === '/api/admin/ticket') return send(200, tickets.staffView(url.searchParams.get('id')));
+        if (req.method === 'POST' && path === '/api/admin/ticket/reply') { const b = await read(req); const out = await tickets.staffReply(b?.id, b?.message, b?.close === true); admin.audit(account.id, path, b.id, 'ticket reply'); return send(200, out); }
+        if (req.method === 'POST' && path === '/api/admin/ticket/status') { const b = await read(req); const out = tickets.staffSetStatus(b?.id, b?.status); admin.audit(account.id, path + ':' + b.status, b.id, 'ticket status'); return send(200, out); }
+        throw fail(404, 'NOT_FOUND');
+      }
       if(path.startsWith('/api/admin/')) return await admin.handle(req,path,account,send);
       if(path === '/api/drop-settings' && req.method==='GET')return send(200,admin.drops.get());
       if(req.method==='POST' && (path==='/api/chat/messages'||/^\/api\/social\/messages\/\d+$/.test(path)) && admin.muted(account.id))throw fail(403,'ACCOUNT_MUTED');
