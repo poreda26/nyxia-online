@@ -11,26 +11,53 @@ const V = Date.now().toString(36);
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const num = (value) => (Number.isFinite(value) ? value.toLocaleString('tr-TR') : '—');
 
+// [slug (Türkçe), Türkçe başlık, İngilizce başlık, İngilizce slug]
 export const WIKI_PAGES = [
-  ['index', 'Başlangıç rehberi'],
-  ['siniflar', 'Sınıflar ve yetenekler'],
-  ['bolgeler', 'Bölgeler ve canavarlar'],
-  ['zindanlar', 'Zindanlar ve bosslar'],
-  ['silahlar', 'Silahlar'],
-  ['zirhlar', 'Zırhlar ve takılar'],
-  ['gelistirme', 'Eşya geliştirme'],
-  ['klan', 'Klanlar'],
-  ['savas-alani', 'Savaş alanı'],
-  ['ekonomi', 'Ekonomi ve elmas'],
-  ['sss', 'Sık sorulan sorular'],
+  ['index', 'Başlangıç rehberi', 'Getting started', 'index'],
+  ['siniflar', 'Sınıflar ve yetenekler', 'Classes and skills', 'classes'],
+  ['bolgeler', 'Bölgeler ve canavarlar', 'Regions and monsters', 'regions'],
+  ['zindanlar', 'Zindanlar ve bosslar', 'Dungeons and bosses', 'dungeons'],
+  ['silahlar', 'Silahlar', 'Weapons', 'weapons'],
+  ['zirhlar', 'Zırhlar ve takılar', 'Armor and accessories', 'armor'],
+  ['gelistirme', 'Eşya geliştirme', 'Item upgrading', 'upgrading'],
+  ['klan', 'Klanlar', 'Clans', 'clans'],
+  ['savas-alani', 'Savaş alanı', 'Warzone', 'warzone'],
+  ['ekonomi', 'Ekonomi ve elmas', 'Economy and diamonds', 'economy'],
+  ['sss', 'Sık sorulan sorular', 'FAQ', 'faq'],
 ];
+export const wikiSlug = (lang, slug) => (lang === 'en' ? (WIKI_PAGES.find(([s]) => s === slug) || [])[3] || slug : slug);
+// Türkçe sayfa yolundan İngilizce karşılığına (ve tersine) çeviri.
+export const altPagePath = (path, lang) => {
+  if (lang === 'tr') {
+    const wiki = /^wiki\/(.+)\.html$/.exec(path);
+    if (wiki) return `en/wiki/${wikiSlug('en', wiki[1])}.html`;
+    if (path === 'wiki/') return 'en/wiki/';
+    return `en/${path}`;
+  }
+  const rest = path.replace(/^en\//, '');
+  const wiki = /^wiki\/(.+)\.html$/.exec(rest);
+  if (wiki) return `wiki/${(WIKI_PAGES.find(([, , , en]) => en === wiki[1]) || [wiki[1]])[0]}.html`;
+  return rest;
+};
 
-export function page({ title, description, root = '', body, active = '', wikiActive = null, extraHead = '', script = '' }) {
-  const nav = [['', 'Ana sayfa', 'home'], ['wiki/', 'Wiki', 'wiki'], ['support.html', 'Destek', 'support']]
-    .map(([href, label, id]) => `<a href="${root}${href}"${active === id ? ' class="on" aria-current="page"' : ''}>${label}</a>`).join('');
-  const side = wikiActive === null ? '' : `<aside class="wiki-nav" aria-label="Wiki"><strong>Wiki</strong>${WIKI_PAGES.map(([slug, label]) => `<a href="${root}wiki/${slug === 'index' ? '' : slug + '.html'}"${wikiActive === slug ? ' class="on"' : ''}>${esc(label)}</a>`).join('')}</aside>`;
+const UI = {
+  tr: { nav: [['', 'Ana sayfa', 'home'], ['wiki/', 'Wiki', 'wiki'], ['support.html', 'Destek', 'support']], menu: 'Ana menü', wikiMenu: '☰ Wiki menüsü', privacy: 'Gizlilik Politikası', terms: 'Kullanım Koşulları', del: 'Hesap Silme', support: 'Destek', other: 'EN', otherLabel: 'English' },
+  en: { nav: [['', 'Home', 'home'], ['wiki/', 'Wiki', 'wiki'], ['support.html', 'Support', 'support']], menu: 'Main menu', wikiMenu: '☰ Wiki menu', privacy: 'Privacy Policy', terms: 'Terms of Use', del: 'Delete Account', support: 'Support', other: 'TR', otherLabel: 'Türkçe' },
+};
+
+// path: sitedeki yol (ör. "en/wiki/classes.html"). root: o dilin kök klasörüne göreli yol, assetRoot: sitenin köküne.
+export function page({ title, description, body, active = '', wikiActive = null, extraHead = '', script = '', lang = 'tr', path = 'index.html' }) {
+  const ui = UI[lang];
+  const depth = path.split('/').length - 1;
+  const assetRoot = '../'.repeat(depth);
+  const root = lang === 'en' ? '../'.repeat(Math.max(0, depth - 1)) : assetRoot;
+  const altPath = altPagePath(path, lang);
+  const altLang = lang === 'en' ? 'tr' : 'en';
+  const nav = ui.nav.map(([href, label, id]) => `<a href="${root}${href}"${active === id ? ' class="on" aria-current="page"' : ''}>${label}</a>`).join('');
+  const side = wikiActive === null ? '' : `<aside class="wiki-nav" aria-label="Wiki"><strong>Wiki</strong>${WIKI_PAGES.map(([slug, trLabel, enLabel]) => `<a href="${root}wiki/${slug === 'index' ? '' : wikiSlug(lang, slug) + '.html'}"${wikiActive === slug ? ' class="on"' : ''}>${esc(lang === 'en' ? enLabel : trLabel)}</a>`).join('')}</aside>`;
+  const legal = (file) => `${assetRoot}${file}${lang === 'en' ? '#en' : ''}`;
   return `<!doctype html>
-<html lang="tr">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,31 +67,33 @@ export function page({ title, description, root = '', body, active = '', wikiAct
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:image" content="https://nyxiaonline.com/img/og.jpg">
 <meta name="theme-color" content="#0B0C10">
-<link rel="icon" href="${root}favicon-32.png">
-<link rel="apple-touch-icon" href="${root}apple-touch-icon.png">
-<link rel="stylesheet" href="${root}site.css?v=${V}">
+<link rel="alternate" hreflang="${altLang}" href="https://nyxiaonline.com/${altPath}">
+<link rel="alternate" hreflang="${lang}" href="https://nyxiaonline.com/${path}">
+<link rel="icon" href="${assetRoot}favicon-32.png">
+<link rel="apple-touch-icon" href="${assetRoot}apple-touch-icon.png">
+<link rel="stylesheet" href="${assetRoot}site.css?v=${V}">
 ${extraHead}
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="${root}./"><img src="${root}favicon.png" alt=""><strong>NYXIA ONLINE</strong></a>
-  <nav class="links" aria-label="Ana menü">${nav}</nav>
-  <div class="social"><a class="ig-icon dc-icon" href="${DISCORD}" target="_blank" rel="noopener" aria-label="Discord" title="Discord">${discordIcon}</a><a class="ig-icon" href="${INSTAGRAM}" target="_blank" rel="noopener" aria-label="Instagram: @nyxiaonline" title="Instagram">${instagramIcon}</a><button id="lang" type="button" aria-label="Language" hidden>EN</button></div>
+  <a class="brand" href="${root}./"><img src="${assetRoot}favicon.png" alt=""><strong>NYXIA ONLINE</strong></a>
+  <nav class="links" aria-label="${ui.menu}">${nav}</nav>
+  <div class="social"><a class="ig-icon dc-icon" href="${DISCORD}" target="_blank" rel="noopener" aria-label="Discord" title="Discord">${discordIcon}</a><a class="ig-icon" href="${INSTAGRAM}" target="_blank" rel="noopener" aria-label="Instagram: @nyxiaonline" title="Instagram">${instagramIcon}</a><a id="lang" href="${assetRoot}${altPath}" hreflang="${altLang}" lang="${altLang}" aria-label="${ui.otherLabel}" title="${ui.otherLabel}">${ui.other}</a></div>
 </header>
-${wikiActive === null ? `<main class="page">${body}</main>` : `<div class="wiki"><button class="wiki-toggle" type="button" aria-expanded="false">☰ Wiki menüsü</button>${side}<main class="page wiki-main">${body}</main></div>`}
+${wikiActive === null ? `<main class="page">${body}</main>` : `<div class="wiki"><button class="wiki-toggle" type="button" aria-expanded="false">${ui.wikiMenu}</button>${side}<main class="page wiki-main">${body}</main></div>`}
 <footer>
   <nav>
-    <a href="${root}privacy.html">Gizlilik Politikası</a>
-    <a href="${root}terms.html">Kullanım Koşulları</a>
-    <a href="${root}delete-account.html">Hesap Silme</a>
-    <a href="${root}support.html">Destek</a>
+    <a href="${legal('privacy.html')}">${ui.privacy}</a>
+    <a href="${legal('terms.html')}">${ui.terms}</a>
+    <a href="${legal('delete-account.html')}">${ui.del}</a>
+    <a href="${root}support.html">${ui.support}</a>
     <a class="ig dc" href="${DISCORD}" target="_blank" rel="noopener" aria-label="Discord">${discordIcon} Discord</a>
     <a class="ig" href="${INSTAGRAM}" target="_blank" rel="noopener" aria-label="Instagram">${instagramIcon} @nyxiaonline</a>
   </nav>
   <p>© 2026 Nyxia Online</p>
 </footer>
-<script src="${root}site.js?v=${V}"></script>
-${script}
+<script src="${assetRoot}site.js?v=${V}"></script>
+${script ? script.replace(/src="([^"]+)"/g, (m, f) => `src="${assetRoot}${f}"`) : ''}
 </body>
 </html>
 `;

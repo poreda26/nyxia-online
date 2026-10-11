@@ -29,9 +29,10 @@ const data = collect();
 
 const { buildPages, imgKey } = await import('./site/pages.mjs');
 const { buildStatic } = await import('./site/static.mjs');
-const pages = { ...buildPages(data), ...buildStatic(data) };
+const pages = { ...buildPages(data, 'tr'), ...buildStatic(data, 'tr'), ...buildPages(data, 'en'), ...buildStatic(data, 'en') };
 
 mkdirSync(join(out, 'wiki'), { recursive: true });
+mkdirSync(join(out, 'en', 'wiki'), { recursive: true });
 for (const [file, html] of Object.entries(pages)) writeFileSync(join(out, file), html);
 
 // Hangi eşya görselleri gerekiyor?

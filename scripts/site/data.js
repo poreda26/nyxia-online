@@ -26,15 +26,27 @@ import { MARKET_DURATIONS_HOURS, MARKET_DURATION_FEE, MARKET_STALL_MAX_ITEMS } f
 import { CLAN_MAX_MEMBERS, CLAN_MAX_OFFICERS, CLAN_MAX_DEPUTIES, CLAN_FOUND_COST_DIAMONDS, CLAN_EXP_TIERS } from '../../src/data/clan.js';
 import { CLAN_PERMISSIONS, DEFAULT_CLAN_PERMISSIONS, CLAN_VAULT_CAPACITY } from '../../src/data/clanPermissions.js';
 import { CLAN_BOSS_STAGES, CLAN_BUILDING_UPGRADE_COST, CLAN_BUILDING_MAX_LEVEL } from '../../src/data/clanBoss.js';
-import { TOTAL_STAGES, MID_BOSS_INDEX, FINAL_BOSS_INDEX, CLAN_DUNGEON_DAILY_ENTRIES, CLAN_DUNGEON_MATERIALS, clanDungeonStage } from '../../src/data/clanDungeon.js';
+import { TOTAL_STAGES, MID_BOSS_INDEX, FINAL_BOSS_INDEX, CLAN_DUNGEON_DAILY_ENTRIES, CLAN_DUNGEON_MATERIALS, clanDungeonStage, clanDungeonStageName } from '../../src/data/clanDungeon.js';
 import { SOLO_DUNGEON_DAILY_LIMIT, SOLO_DUNGEON_STAGE_COUNT, EXTRA_DUNGEON_ENTRY_COST_DIAMONDS, buildSoloDungeonStages } from '../../src/data/soloDungeon.js';
 import * as WZ from '../../src/data/warzone.js';
+import { translations } from '../../src/i18n/translations.js';
+import { monstersSection } from '../../src/i18n/sections/monsters.js';
+import { WEAPON_NAME_EN, WEAPON_LORE_EN, ACCESSORY_FAMILY_NAME_EN, STARTER_ACCESSORY_NAME_EN, WARD_NAME_EN, CLAN_MATERIAL_NAME_EN } from '../../src/data/itemNameTranslations.js';
 
 const strip = (value) => JSON.parse(JSON.stringify(value, (key, v) => (typeof v === 'function' ? undefined : v)));
 const weaponView = (cls, list) => list.map((w) => ({
   cls, name: w.name, tier: w.tier, levelMin: w.levelMin, levelMax: w.levelMax, weaponType: w.weaponType, element: w.element || null,
   lore: w.lore || '', atk: w.levels?.[0]?.atk ?? w.atk ?? null, maxAtk: w.levels?.length ? w.levels[Math.min(w.levels.length, 8) - 1].atk : null, image: itemImageFor(w.name, 0),
 }));
+
+const SLOT_EN = { necklace: 'Necklace', belt: 'Belt', ring: 'Ring', earring: 'Earring' };
+// Oyundaki İngilizce takı adı kuralı (src/utils/player.js#translatedItemName ile aynı).
+function accessoryNameEn(a) {
+  if (/^ward_/.test(a.family || '') && WARD_NAME_EN[a.family.slice(5)]) return `${a.tier === 6 ? 'Ancient ' : ''}${WARD_NAME_EN[a.family.slice(5)]} ${SLOT_EN[a.slot]}`;
+  const family = ACCESSORY_FAMILY_NAME_EN[a.family];
+  if (family && a.tier && family[a.tier - 1] && SLOT_EN[a.slot]) return `${family[a.tier - 1]} ${SLOT_EN[a.slot]}`;
+  return STARTER_ACCESSORY_NAME_EN[a.name] || a.name;
+}
 
 export function collect() {
   const weapons = [
@@ -48,14 +60,15 @@ export function collect() {
     races: Object.entries(RACES).map(([id, r]) => ({ id, name: r.name, color: r.color, desc: r.desc })),
     skills: Object.fromEntries(Object.entries(SKILLS_BY_CLASS).map(([cls, list]) => [cls, list.map((s) => ({ id: s.id, name: s.name, tier: s.tier, unlockLevel: s.unlockLevel, mpCost: s.mpCost, cooldown: s.cooldown, goldCost: s.goldCost || 0, effect: s.effect }))])),
     loadoutSlots: MAX_LOADOUT_SLOTS,
-    maps: MAPS.map((m) => ({ id: m.id, name: m.name, levelMin: m.levelMin, levelMax: m.levelMax, color: m.color, monsters: m.monsters.map((x) => ({ id: x.id, name: x.name, hp: x.hp, atk: x.atk, def: x.def, xp: x.xp })), boss: (() => { const b = buildMapBoss(m); return { name: b.name, hp: b.hp, atk: b.atk, def: b.def, xp: b.xp, goldMin: b.goldMin, goldMax: b.goldMax }; })(), dungeon: buildSoloDungeonStages(m).map((s) => ({ name: s.name, hp: s.hp, atk: s.atk, def: s.def, isBoss: !!s.isBoss })) })),
+    maps: MAPS.map((m) => ({ id: m.id, name: m.name, levelMin: m.levelMin, levelMax: m.levelMax, color: m.color, monsters: m.monsters.map((x) => ({ id: x.id, name: x.name, hp: x.hp, atk: x.atk, def: x.def, xp: x.xp })), boss: (() => { const b = buildMapBoss(m); return { id: b.id, name: b.name, hp: b.hp, atk: b.atk, def: b.def, xp: b.xp, goldMin: b.goldMin, goldMax: b.goldMax }; })(), dungeon: buildSoloDungeonStages(m).map((s) => ({ id: s.id, name: s.name, hp: s.hp, atk: s.atk, def: s.def, isBoss: !!s.isBoss })) })),
     tiers: { labels: ITEM_TIER_LABEL.tr, colors: ITEM_TIER_COLORS },
     weaponTypeLabels: WEAPON_TYPE_LABEL.tr,
     weapons, originals,
     armor: ARMOR_SETS.map((a) => ({ cls: a.cls, slot: a.slot, tier: a.tier, levelMin: a.levelMin, levelMax: a.levelMax, name: a.name, def: a.def, req: a.reqStats })),
     armorSlots: SLOTS.map((s) => ({ key: s.key, label: s.label })),
-    accessories: Object.fromEntries(Object.entries(ACCESSORY_SETS).map(([slot, list]) => [slot, list.map((a) => ({ name: a.name, tier: a.tier, family: a.family, def: a.def, hp: a.hp, mp: a.mp, statBonus: a.statBonus }))])),
+    accessories: Object.fromEntries(Object.entries(ACCESSORY_SETS).map(([slot, list]) => [slot, list.map((a) => ({ name: a.name, nameEn: accessoryNameEn(a), tier: a.tier, family: a.family, def: a.def, hp: a.hp, mp: a.mp, statBonus: a.statBonus }))])),
     stats: { pointsPerLevel: POINTS_PER_LEVEL, cap: STAT_CAP, labels: STAT_FULL_LABELS },
+    en: englishNames(),
     potions: { hp: HP_POTION_TIERS, mp: MP_POTION_TIERS, names: POTION_TIER_NAMES.tr, prices: POTION_TIER_PRICES },
     premium: PREMIUM_TIERS, premiumDays: PREMIUM_DURATION_DAYS,
     wings: WINGS.map((w) => ({ id: w.id, name: w.name, nameEn: w.nameEn, color: w.color, price: w.price })),
@@ -66,8 +79,30 @@ export function collect() {
     prices: DIAMOND_PRICES, characterSlots: CHARACTER_SLOTS,
     market: { hours: MARKET_DURATIONS_HOURS, fee: MARKET_DURATION_FEE, maxItems: MARKET_STALL_MAX_ITEMS },
     clan: { maxMembers: CLAN_MAX_MEMBERS, maxOfficers: CLAN_MAX_OFFICERS, maxDeputies: CLAN_MAX_DEPUTIES, foundCost: CLAN_FOUND_COST_DIAMONDS, expTiers: CLAN_EXP_TIERS, permissions: CLAN_PERMISSIONS, defaultPermissions: DEFAULT_CLAN_PERMISSIONS, vault: CLAN_VAULT_CAPACITY, bossStages: CLAN_BOSS_STAGES, buildingCost: CLAN_BUILDING_UPGRADE_COST, buildingMax: CLAN_BUILDING_MAX_LEVEL },
-    clanDungeon: { total: TOTAL_STAGES, mid: MID_BOSS_INDEX, final: FINAL_BOSS_INDEX, dailyEntries: CLAN_DUNGEON_DAILY_ENTRIES, materials: Object.values(CLAN_DUNGEON_MATERIALS).map((m) => ({ name: m.name, tier: m.tier, color: m.color })), first: clanDungeonStage(1), mid_: clanDungeonStage(MID_BOSS_INDEX), last: clanDungeonStage(FINAL_BOSS_INDEX) },
+    clanDungeon: { total: TOTAL_STAGES, mid: MID_BOSS_INDEX, final: FINAL_BOSS_INDEX, dailyEntries: CLAN_DUNGEON_DAILY_ENTRIES, materials: Object.entries(CLAN_DUNGEON_MATERIALS).map(([key, m]) => ({ key, name: m.name, tier: m.tier, color: m.color })), first: clanDungeonStage(1), mid_: clanDungeonStage(MID_BOSS_INDEX), last: clanDungeonStage(FINAL_BOSS_INDEX) },
     solo: { dailyLimit: SOLO_DUNGEON_DAILY_LIMIT, stages: SOLO_DUNGEON_STAGE_COUNT, extraCost: EXTRA_DUNGEON_ENTRY_COST_DIAMONDS },
     warzone: { unlockLevel: WZ.WARZONE_UNLOCK_LEVEL, teleportCost: WZ.WARZONE_TELEPORT_COST, bossSlotHours: WZ.WARZONE_BOSS_SLOT_HOURS, fightWindowMin: WZ.WARZONE_BOSS_FIGHT_WINDOW_MIN, huntPower: WZ.WARZONE_HUNT_POWER_MULT, huntGold: WZ.WARZONE_HUNT_GOLD_MULT, huntDrop: WZ.WARZONE_HUNT_DROP_MULT, bosses: WZ.WARZONE_BOSSES.map((b) => ({ id: b.id, name: b.name, color: b.color, hp: b.hp, atk: b.atk, def: b.def })) },
   });
+}
+
+// İngilizce sürüm için oyunun kendi çeviri sözlüklerinden gelen adlar (oyundaki İngilizce ile aynı).
+function englishNames() {
+  const en = translations.en;
+  return {
+    classDesc: { warrior: en.classes.warrior, rogue: en.classes.rogue, mage: en.classes.mage },
+    races: monstersSection.en.races,
+    skills: Object.fromEntries(Object.values(SKILLS_BY_CLASS).flat().map((sk) => [sk.id, en.character.skills[sk.id]?.name || sk.name])),
+    monsters: monstersSection.en.monsters,
+    tierLabels: ITEM_TIER_LABEL.en,
+    weaponTypeLabels: WEAPON_TYPE_LABEL.en,
+    weaponNames: WEAPON_NAME_EN,
+    weaponLore: WEAPON_LORE_EN,
+    potions: POTION_TIER_NAMES.en,
+    stats: en.character.statFull,
+    weekly: en.captain.weekly.entries,
+    events: en.scheduledEvent.eventName,
+    clanBoss: Object.fromEntries(Object.entries(en.clan.bossStage).map(([id, v]) => [id, v.name])),
+    clanMaterials: CLAN_MATERIAL_NAME_EN,
+    clanDungeon: { first: clanDungeonStageName(clanDungeonStage(1).name, 'en'), mid: clanDungeonStageName(clanDungeonStage(MID_BOSS_INDEX).name, 'en'), last: clanDungeonStageName(clanDungeonStage(FINAL_BOSS_INDEX).name, 'en') },
+  };
 }

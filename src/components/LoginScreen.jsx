@@ -219,7 +219,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
       <p style={{ ...styles.loginCaveat, marginTop: 0, marginBottom: 12, textAlign: "center" }}>
         {t("login.consentLead")}{" "}
         {LEGAL_LINKS.filter((link) => link.id === "terms" || link.id === "privacy").map((link, index) => (
-          <span key={link.id}>{index ? " · " : ""}<a href={link.href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold-text)" }}>{lang === "en" ? link.en : link.tr}</a></span>
+          <span key={link.id}>{index ? " · " : ""}<a href={(lang === "en" && link.hrefEn) || link.href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold-text)" }}>{lang === "en" ? link.en : link.tr}</a></span>
         ))}
       </p>
 
@@ -277,7 +277,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
 
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "4px 14px", marginTop: 14 }}>
         {LEGAL_LINKS.map((link) => (
-          <a key={link.id} href={link.href} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--text-muted)" }}>{lang === "en" ? link.en : link.tr}</a>
+          <a key={link.id} href={(lang === "en" && link.hrefEn) || link.href} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--text-muted)" }}>{lang === "en" ? link.en : link.tr}</a>
         ))}
       </div>
       {forgot && <ForgotPassword onClose={() => setForgot(false)} />}
