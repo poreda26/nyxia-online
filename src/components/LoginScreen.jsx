@@ -40,6 +40,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState(initialUsername || "");
   const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [inUse, setInUse] = useState(false);
@@ -71,6 +72,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
     if (busy) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError(t("login.invalidEmailError")); return; }
     if (password.length < 12) { setError(t("login.passwordTooShortError")); return; }
+    if (password !== password2) { setError(t("login.passwordMismatchError")); return; }
     setError(""); setBusy(true);
     try {
       if (regStep === "email") { await startEmailRegister(email); setRegStep("code"); }
@@ -91,6 +93,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
     const looksLikeEmail = mode === "login" && trimmed.includes("@");
     if (!looksLikeEmail && !NAME_PATTERN.test(trimmed)) { setError(t("login.invalidFormatError")); return; }
     if (password.length < 12) { setError(t("login.passwordTooShortError")); return; }
+    if (mode === "register" && password !== password2) { setError(t("login.passwordMismatchError")); return; }
     setError(""); setBusy(true); setInUse(false);
     try {
       const { name } = mode === "register" ? await registerAccount(trimmed, password) : await loginAccount(trimmed, password, force === true);
@@ -139,11 +142,30 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
           value={password}
           onChange={(e) => { setPassword(e.target.value); setError(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          autoComplete={mode === "register" ? "new-password" : "current-password"}
           placeholder={t("login.passwordPlaceholder")}
           maxLength={128}
           style={{ ...styles.loginInput, flex: 1, textAlign: "left" }}
         />
       </div>
+
+      {mode === "register" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: -6, marginBottom: 16 }}>
+          <div style={{ ...styles.slotAvatar, width: 40, height: 40 }}>
+            <Lock size={18} color="var(--text-muted)" strokeWidth={1.6} />
+          </div>
+          <input
+            type="password"
+            value={password2}
+            onChange={(e) => { setPassword2(e.target.value); setError(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+            autoComplete="new-password"
+            placeholder={t("login.passwordConfirmPlaceholder")}
+            maxLength={128}
+            style={{ ...styles.loginInput, flex: 1, textAlign: "left" }}
+          />
+        </div>
+      )}
 
       {emailRegister && regStep === "code" && (
         <div style={{ marginTop: -6, marginBottom: 14 }}>
@@ -185,7 +207,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
 
       <button
         style={{ ...styles.primaryBtn, background: "#D4AF6A", alignSelf: "center", opacity: busy ? 0.6 : 1 }}
-        disabled={!username.trim() || !password || busy}
+        disabled={!username.trim() || !password || (mode === "register" && !password2) || busy}
         onClick={() => submit()}
       >
         {t(busy ? "login.submitting" : emailRegister ? (regStep === "code" ? "login.registerFinish" : "login.sendCode") : mode === "register" ? "login.registerSubmit" : "login.submit")} <ChevronRight size={16} />
@@ -206,7 +228,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
       )}
 
       <button
-        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); setRegStep("email"); setCode(""); }}
+        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); setRegStep("email"); setCode(""); setPassword2(""); }}
         style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, marginTop: 12, cursor: "pointer", textDecoration: "underline" }}
       >
         {t(mode === "register" ? "login.switchToLogin" : "login.switchToRegister")}
