@@ -616,9 +616,14 @@ test('diamond purchases deliver in the same step as the charge; stats and skills
     assert.equal((await act('diamond/buy', { kind: 'dungeonEntry' })).data.result.reason, 'alreadyBoughtToday');
     assert.equal(await balance(), afterFirst, 'a refused delivery does not cost diamonds');
     db.prepare('UPDATE wallets SET diamonds=20000').run();
+    // Premium is bought as a tradable 15-day voucher; it only starts when it is used.
     assert.equal((await act('diamond/buy', { kind: 'premium', key: 'apex' })).data.result.ok, true);
+    assert.notEqual((await state()).premium?.tier, 'apex', 'buying does not start the premium');
+    const voucher = (await state()).inventory.find((i) => i.kind === 'premiumVoucher');
+    assert.deepEqual([voucher.premiumTier, voucher.track, voucher.durationMs, !!voucher.noTrade], ['apex', 'premium', 15 * 86400000, false]);
+    assert.equal((await act('premium/useVoucher', { itemId: voucher.id })).data.result.ok, true);
     assert.ok((await state()).premium?.tier === 'apex');
-    assert.equal((await act('diamond/buy', { kind: 'premium', key: 'apex' })).status, 409, 'cannot buy the active premium again');
+    assert.equal((await act('diamond/buy', { kind: 'premium', key: 'apex' })).data.result.ok, true, 'another voucher can be bought while premium is active');
 
     // Stats: points are spent one by one up to the cap; hold-to-add batches are one request.
     const before = await state();

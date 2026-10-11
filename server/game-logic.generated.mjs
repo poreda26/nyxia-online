@@ -6629,8 +6629,13 @@ function buyPremium(player, tierId, bank) {
   const tier = PREMIUM_TIERS[tierId];
   if (!tier) return { player, bank, bought: false, reason: "invalidPackage" };
   if (player.diamonds < tier.price) return { player, bank, bought: false, reason: "notEnoughDiamonds" };
-  const applied = applyPremium(player, tierId, bank, tier.durationDays * DAY_MS);
-  return { player: { ...applied.player, diamonds: player.diamonds - tier.price }, bank: applied.bank, bought: true };
+  const voucher = makePremiumVoucher(tierId, tier.durationDays * DAY_MS, { track: "premium" });
+  const paid = { ...player, diamonds: player.diamonds - tier.price };
+  const toBag = addItemToInventory(paid, voucher);
+  if (toBag.added) return { player: toBag.player, bank, bought: true };
+  const toBank = addItemToAnyBankPage(voucher, bank);
+  if (toBank.added) return { player: paid, bank: toBank.bank, bought: true };
+  return { player, bank, bought: false, reason: "bagFull" };
 }
 function applyPremium(player, tierId, bank, durationMs, now = Date.now()) {
   const tier = PREMIUM_TIERS[tierId];
@@ -7476,12 +7481,13 @@ function buildItem(player, prizeId) {
   if (prizeId === "scroll_bonus") return makeBonusScrollStack();
   if (prizeId === "scroll_accessory") return makeAccessoryScrollStack(1);
   if (BOOST_OF[prizeId]) return makeBoostScrollStack(BOOST_OF[prizeId], 1);
+  if (prizeId === "mythic_1d") return makePremiumVoucher("mythic", 24 * 36e5, { track: "boost", noTrade: true });
+  if (prizeId === "apex_3d") return makePremiumVoucher("apex", 3 * 24 * 36e5, { track: "boost", noTrade: true });
   if (prizeId === "wing") return makeWings(WINGS[Math.floor(Math.random() * WINGS.length)].id);
   return null;
 }
 function applyWheelPrize(player, bank, prizeId, spunAt) {
   const mark = (p) => ({ ...p, wheelAppliedAt: spunAt });
-  if (prizeId === "mythic_1d" || prizeId === "apex_3d") return { player, bank, delivered: false };
   const item = buildItem(player, prizeId);
   if (!item) return { player, bank, delivered: false };
   const toBag = addItemToInventory(player, item);
@@ -7939,7 +7945,7 @@ var MARKET_MAX_PRICE = 999999999;
 // src/game/market.js
 var fail5 = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
 var done5 = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
-var LISTABLE_KINDS = ["armor", "weapon", "accessory", "clanMaterial"];
+var LISTABLE_KINDS = ["armor", "weapon", "accessory", "clanMaterial", "premiumVoucher"];
 var marketReducers = {
   "shop/buyPotion"(state, { potionType, tier, qty }) {
     if (potionType !== "hp" && potionType !== "mp") return fail5(state, "invalidPotion");

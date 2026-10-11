@@ -456,9 +456,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const kind = String(payload?.kind);
         const key = payload?.key == null ? null : String(payload.key);
         if (!['premium', 'wings', 'bonusScroll', 'raceScroll', 'jobScroll', 'dungeonEntry', 'bankPage', 'boostPack'].includes(kind)) return { fail: 'invalidPurchase' };
-        if (kind === 'premium') entitlements.checkPremium(account, ck, key, characterKey, now);
         const paid = wallet.spendInTransaction(account, kind, key, ck, now);
-        if (kind === 'premium') entitlements.grantPremium(account, ck, key, 'purchase', now);
         return { payload: { kind, key, diamonds: paid.diamonds, price: paid.price } };
       },
       // GM araçları: yetki hesaba bağlı GM listesinden sunucuda denetlenir.

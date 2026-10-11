@@ -3,6 +3,7 @@ import { highestUnlockedMap } from "../data/maps";
 import { addItemToInventory, addItemToAnyBankPage, makeScrollStack, makeBonusScrollStack, makeAccessoryScrollStack } from "./inventory";
 import { makeBoostScrollStack } from "./boosts";
 import { makeWings } from "./wings";
+import { makePremiumVoucher } from "./premium";
 
 // Çarkın 12 dilimi aynı boyutta ve bu sırada çizilir. Oranlar BURADA YOK:
 // ödülü sunucu seçer (server/wheel.mjs), istemci yalnızca sonucu gösterir.
@@ -22,6 +23,8 @@ function buildItem(player, prizeId) {
   if (prizeId === "scroll_bonus") return makeBonusScrollStack();
   if (prizeId === "scroll_accessory") return makeAccessoryScrollStack(1);
   if (BOOST_OF[prizeId]) return makeBoostScrollStack(BOOST_OF[prizeId], 1);
+  if (prizeId === "mythic_1d") return makePremiumVoucher("mythic", 24 * 3600000, { track: "boost", noTrade: true });
+  if (prizeId === "apex_3d") return makePremiumVoucher("apex", 3 * 24 * 3600000, { track: "boost", noTrade: true });
   if (prizeId === "wing") return makeWings(WINGS[Math.floor(Math.random() * WINGS.length)].id);
   return null;
 }
@@ -30,9 +33,7 @@ function buildItem(player, prizeId) {
 // delivered:false döner ve ödül alınmamış kalır (kaybolmaz).
 export function applyWheelPrize(player, bank, prizeId, spunAt) {
   const mark = (p) => ({ ...p, wheelAppliedAt: spunAt });
-  // Premium ödülleri artık burada verilmez: sunucu çark ödülünü alırken hakkı yazar
-  // (bkz. WheelModal.jsx#deliver, server /api/wheel/claim).
-  if (prizeId === "mythic_1d" || prizeId === "apex_3d") return { player, bank, delivered: false };
+  // Premium ödülleri de artık kupon olarak çantaya/depoya gelir (takas edilemez); oyuncu kullanınca başlar.
   const item = buildItem(player, prizeId);
   if (!item) return { player, bank, delivered: false };
   const toBag = addItemToInventory(player, item);

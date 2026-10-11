@@ -2,9 +2,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { X, Crown, Feather, ScrollText, Coins, Swords, Shield, Heart, Sparkles, Gem, Flag } from "./icons/GameIcons";
 import "./RewardPanels.css";
 import "./WheelModal.css";
-import { WHEEL_SLICES, WHEEL_PREMIUM_IDS, wheelAlreadyApplied } from "../utils/wheel";
+import { WHEEL_SLICES, wheelAlreadyApplied } from "../utils/wheel";
 import { getActiveCharacterKey } from "../utils/api";
-import { applyEntitlement } from "../utils/diamondCharge";
 import { fetchWheel, spinWheel, claimWheel } from "../services/wheelService";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
@@ -76,21 +75,6 @@ export default function WheelModal({ player, setPlayer, act, onClose, onStatus, 
   const prizeName = (id) => t(`wheel.prize.${id}`);
 
   const deliver = async (prizeId, spunAt) => {
-    // Premium ödülü: hakkı sunucu yazar (alma ve verme tek işlem), yerel değer sunucudakine eşitlenir.
-    if (WHEEL_PREMIUM_IDS.includes(prizeId)) {
-      try {
-        const res = await claimWheel(getActiveCharacterKey());
-        setPlayer((p) => ({ ...applyEntitlement(p, res.entitlement), wheelAppliedAt: spunAt }));
-        setResult({ prizeId });
-        pushToast?.(t("wheel.applied", { name: prizeName(prizeId) }), "success");
-        await refresh();
-      } catch {
-        setResult(null);
-        setError("failed");
-        publish({ canSpin: false, pending: prizeId, spunAt, nextSpinAt: state?.nextSpinAt });
-      }
-      return;
-    }
     // Sunucu ekonomisinde ödülü sunucu kendi bekleyen kaydından verir; eski yolda istemcinin bildirdiği kullanılır.
     const out = await act("wheel/claimItem", { prize: prizeId, spunAt });
     if (!out.ok) {

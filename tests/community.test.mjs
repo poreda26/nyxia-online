@@ -5,7 +5,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApi } from '../server/app.mjs';
-import { createCharacter } from '../server/game-logic.generated.mjs';
+import { createCharacter, applyAction } from '../server/game-logic.generated.mjs';
 
 const password = 'long-test-password-123';
 
@@ -77,4 +77,23 @@ test('community reward is given once per platform; premium vouchers activate fro
     const stored = (await call('backup', null, cookie)).data.data.characters[0];
     assert.equal(stored.premiumBoost.tier, 'mythic');
   } finally { api.server.close(); }
+});
+
+test('wheel premium prizes are untradable vouchers; shop premium vouchers are tradable and list on the market', () => {
+  const hero = { ...createCharacter('warrior', 'human', 'Hero'), id: 'hero' };
+  const state = { player: hero, bank: [[], []], bankGold: 0 };
+  const mythic = applyAction(state, 'wheel/claimItem', { prize: 'mythic_1d', spunAt: 1 });
+  assert.equal(mythic.result.ok, true);
+  const prize = mythic.state.player.inventory.find((i) => i.kind === 'premiumVoucher');
+  assert.deepEqual([prize.premiumTier, prize.durationMs, prize.noTrade, prize.track], ['mythic', 86400000, true, 'boost']);
+  const apex = applyAction(state, 'wheel/claimItem', { prize: 'apex_3d', spunAt: 2 }).state.player.inventory.find((i) => i.kind === 'premiumVoucher');
+  assert.deepEqual([apex.premiumTier, apex.durationMs], ['apex', 3 * 86400000]);
+  assert.equal(applyAction(mythic.state, 'market/addItem', { itemId: prize.id, price: 100 }).result.reason, 'noTrade');
+
+  const rich = { ...state, player: { ...hero, diamonds: 5000 } };
+  const bought = applyAction(rich, 'diamond/buy', { kind: 'premium', key: 'apex', diamonds: 3500, price: 1500 });
+  assert.equal(bought.result.ok, true);
+  const shopVoucher = bought.state.player.inventory.find((i) => i.kind === 'premiumVoucher');
+  assert.deepEqual([shopVoucher.track, shopVoucher.durationMs, !!shopVoucher.noTrade], ['premium', 15 * 86400000, false]);
+  assert.equal(applyAction(bought.state, 'market/addItem', { itemId: shopVoucher.id, price: 100 }).result.ok, true);
 });

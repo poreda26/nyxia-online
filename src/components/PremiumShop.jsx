@@ -12,7 +12,6 @@ import {styles} from '../styles';
 const RACE_SCROLL_PRICE=DIAMOND_PRICES.raceScroll,JOB_SCROLL_PRICE=DIAMOND_PRICES.jobScroll,BONUS_SCROLL_PRICE=DIAMOND_PRICES.bonusScroll;
 export default function PremiumShop({player,setPlayer,bank,setBank,act,pushToast}){
  const {t}=useTranslation();
- const [upgradeConfirmStep,setUpgradeConfirmStep]=useState(0);
   // Sunucu ekonomisinde alım tek eylemdir (tahsilat + teslim aynı işlemde); eski yolda önce tahsil edilip sonra uygulanır.
   const serverBuy = async (kind, key, successToast) => {
     const result = await buyWithDiamonds(act, kind, key);
@@ -22,7 +21,7 @@ export default function PremiumShop({player,setPlayer,bank,setBank,act,pushToast
   };
 
   const purchasePremium = async (tierId) => {
-    if (act.isServer()) { await serverBuy("premium", tierId, t("shop.premiumActivated", { tier: PREMIUM_TIERS[tierId].name })); return; }
+    if (act.isServer()) { await serverBuy("premium", tierId, t("shop.premiumVoucherAdded", { tier: PREMIUM_TIERS[tierId].name })); return; }
     const dry = buyPremium(player, tierId, bank);
     if (!dry.bought) { pushToast(formatReason(t, dry, "market.purchaseFailed"), "warn"); return; }
     const charge = await chargeDiamonds("premium", tierId);
@@ -30,29 +29,11 @@ export default function PremiumShop({player,setPlayer,bank,setBank,act,pushToast
     const result = buyPremium(settle(player, charge), tierId, bank);
     setPlayer(applyEntitlement(result.player, charge.entitlement));
     setBank(result.bank);
-    pushToast(t("shop.premiumActivated", { tier: PREMIUM_TIERS[tierId].name }), "loot");
+    pushToast(t("shop.premiumVoucherAdded", { tier: PREMIUM_TIERS[tierId].name }), "loot");
   };
 
-  // No active premium -> straight purchase. Same tier already active, or
-  // Mythic (top tier) trying to buy anything at all -> hard block, no
-  // re-buying/extending. The one exception is Apex -> Mythic, which is an
-  // upgrade rather than a fresh unrelated purchase, so it gets a two-step
-  // confirmation instead of either extreme.
-  const handlePremiumClick = (tierId) => {
-    const active = activePremiumTier(player);
-    if (!active) { purchasePremium(tierId); return; }
-    if (active.id === tierId || active.id === "mythic") {
-      pushToast(t("shop.alreadyHavePremium"), "warn");
-      return;
-    }
-    setUpgradeConfirmStep(1);
-  };
-
-  const resolveUpgradeStep1 = (yes) => setUpgradeConfirmStep(yes ? 2 : 0);
-  const resolveUpgradeStep2 = (yes) => {
-    setUpgradeConfirmStep(0);
-    if (yes) purchasePremium("mythic");
-  };
+  // Satın alınan premium bir kupondur (çantaya gelir); aktif bir premium varken de alınabilir.
+  const handlePremiumClick = (tierId) => { purchasePremium(tierId); };
 
   const buyBonusScroll = async () => {
     if (act.isServer()) { await serverBuy("bonusScroll", null, t("shop.bonusScrollPurchased")); return; }
@@ -164,36 +145,6 @@ return <div className="premium-shop">          <div style={{ fontSize: 10, color
             </div>
             <button className="rpg-action" style={styles.tinyBtn} onClick={buyBonusScroll}>{t("shop.buyShort")}</button>
           </div>
-      {upgradeConfirmStep > 0 && (
-        // position:fixed (not the shared modalOverlay's absolute) so this
-        // stays centered in the viewport regardless of how far the Özel
-        // Market list is scrolled when the confirmation triggers — Apex's
-        // card sits below Mythic's, so this reliably fires mid-scroll.
-        <div style={{ ...styles.modalOverlay, position: "fixed" }} onClick={() => setUpgradeConfirmStep(0)}>
-          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <Crown size={32} color={PREMIUM_TIERS.mythic.color} strokeWidth={1.4} />
-            <div style={{ marginTop: 14, fontFamily: "var(--font-display)", fontSize: 15, textAlign: "center", maxWidth: 220 }}>
-              {upgradeConfirmStep === 1
-                ? t("shop.upgradeConfirmStep1")
-                : t("shop.upgradeConfirmStep2")}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button
-                className="rpg-action" style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-muted)" }}
-                onClick={() => (upgradeConfirmStep === 1 ? resolveUpgradeStep1(false) : resolveUpgradeStep2(false))}
-              >
-                {t("shop.no")}
-              </button>
-              <button
-                className="rpg-action" style={{ ...styles.tinyBtn, background: PREMIUM_TIERS.mythic.color, color: "#0B0C10" }}
-                onClick={() => (upgradeConfirmStep === 1 ? resolveUpgradeStep1(true) : resolveUpgradeStep2(true))}
-              >
-                {t("shop.yes")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
 </div>;
 }

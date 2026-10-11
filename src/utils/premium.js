@@ -1,6 +1,6 @@
 import { PREMIUM_TIERS } from "../data/premium";
 import { BANK_PAGES } from "./player";
-import { addItemToInventory, makeBonusScrollStack } from "./inventory";
+import { addItemToInventory, addItemToAnyBankPage, makeBonusScrollStack } from "./inventory";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -64,8 +64,14 @@ export function buyPremium(player, tierId, bank) {
   const tier = PREMIUM_TIERS[tierId];
   if (!tier) return { player, bank, bought: false, reason: "invalidPackage" };
   if (player.diamonds < tier.price) return { player, bank, bought: false, reason: "notEnoughDiamonds" };
-  const applied = applyPremium(player, tierId, bank, tier.durationDays * DAY_MS);
-  return { player: { ...applied.player, diamonds: player.diamonds - tier.price }, bank: applied.bank, bought: true };
+  // Satın alınan premium artık doğrudan başlamaz: 15 günlük, takas edilebilir bir kupon olarak çantaya (doluysa depoya) gelir.
+  const voucher = makePremiumVoucher(tierId, tier.durationDays * DAY_MS, { track: "premium" });
+  const paid = { ...player, diamonds: player.diamonds - tier.price };
+  const toBag = addItemToInventory(paid, voucher);
+  if (toBag.added) return { player: toBag.player, bank, bought: true };
+  const toBank = addItemToAnyBankPage(voucher, bank);
+  if (toBank.added) return { player: paid, bank: toBank.bank, bought: true };
+  return { player, bank, bought: false, reason: "bagFull" };
 }
 
 // Süreyi (ms) ve katman ödüllerini (depo sayfaları, hediye parşömen) oyuncuya yazar; bedel düşmez.

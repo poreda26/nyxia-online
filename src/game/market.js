@@ -10,7 +10,7 @@ import { HP_POTION_TIERS, MP_POTION_TIERS, potionPrice } from "../data/potions";
 const fail = (state, reason, extra = {}) => ({ state, result: { ok: false, reason, ...extra } });
 const done = (state, extra = {}) => ({ state, result: { ok: true, ...extra } });
 
-const LISTABLE_KINDS = ["armor", "weapon", "accessory", "clanMaterial"];
+const LISTABLE_KINDS = ["armor", "weapon", "accessory", "clanMaterial", "premiumVoucher"];
 
 export const marketReducers = {
   "shop/buyPotion"(state, { potionType, tier, qty }) {

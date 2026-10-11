@@ -211,7 +211,7 @@ export function buildPages(data) {
     <h2>Zamanlı etkinlikler</h2>
     ${data.events.map((e) => `<p><strong>${esc(e.name)}</strong>: her gün ${String(e.hour).padStart(2, '0')}:${String(e.minute).padStart(2, '0')}, ${e.durationMinutes} dakika; etkinlik boyunca deneyim bonusu birikir.</p>`).join('')}
     <h2>Premium üyelik</h2>
-    <p>Premium, ${data.premiumDays} gün sürer ve savaş otomatik oynama dahil avantaj verir.</p>
+    <p>Premium, ${data.premiumDays} gün sürer ve savaş otomatik oynama dahil avantaj verir. Mağazadan aldığın premium bir <strong>kupon</strong> olarak envantere gelir; istediğin zaman envanterinden ya da deponda kullanarak başlatırsın. Mağazadan alınan 15 günlük kuponlar pazarda satılabilir. Çarktan ve topluluk ödüllerinden gelen kısa süreli kuponlar takas edilemez.</p>
     ${table(['', 'Apex Premium', 'Mythic Premium'], [
       ['Elmas fiyatı', num(data.premium.apex.price), num(data.premium.mythic.price)],
       ['Deneyim', `×${data.premium.apex.expMult}`, `×${data.premium.mythic.expMult}`],
