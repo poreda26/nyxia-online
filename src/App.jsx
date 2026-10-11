@@ -594,6 +594,7 @@ export default function App() {
           theme={audioSettings.theme}
           onThemeChange={(v) => updateAudioSetting("theme", v)}
           onDeleteAccount={screen !== "login" ? handleDeleteAccount : undefined}
+          communityReward={{ act, pushToast, enabled: screen === "hub" && !!player, claimed: player?.socialClaims || [] }}
           onClose={() => setSettingsOpen(false)}
         />
       )}

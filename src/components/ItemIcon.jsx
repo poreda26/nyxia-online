@@ -1,6 +1,7 @@
 import {weaponVisualItem} from '../data/firstPurchaseWeapons';
 import JewelArt from './icons/JewelArt';
 import ScrollArt from './icons/ScrollArt';
+import PremiumVoucherArt from './icons/PremiumVoucherArt';
 import RewardChest from './icons/RewardChest';
 import WingArt from './WingArt';
 import { FlaskConical } from "./icons/GameIcons";
@@ -17,6 +18,7 @@ export default function ItemIcon({ item, size = 16, color = "currentColor", stro
   item=weaponVisualItem(item);
   if(item.kind==='accessory')return <JewelArt item={item} size={size}/>;
   if(['scroll','bonusScroll','boostScroll','accessoryScroll','raceScroll','jobScroll'].includes(item.kind))return <ScrollArt item={item} size={size}/>;
+  if(item.kind==='premiumVoucher')return <PremiumVoucherArt item={item} size={size}/>;
   if(item.kind==='chest')return <RewardChest size={size} tier={item.tier} special={item.special}/>;
   if(item.kind==='wings')return <WingArt wingId={item.wingId} size={size}/>;
   if(item.kind==='weapon' && weaponIconArt(item.name))return <StarterWeaponIcon item={item} size={size}/>;

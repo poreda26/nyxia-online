@@ -16,6 +16,7 @@ import { characterReducers } from "./character";
 import { gmReducers } from "./gm";
 import { duelReducers } from "./duel";
 import { sharedReducers } from "./shared";
+import { communityReducers } from "./community";
 import { openChestSafely, openChestsSafely } from "../utils/chests";
 
 // Ekonomi eylemleri (Faz 2): sunucu otoritesinin kuralları. Her eylem, oyunun zaten
@@ -147,7 +148,7 @@ const inventoryReducers = {
   },
 };
 
-export const reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers, ...progressReducers, ...upgradeReducers, ...marketReducers, ...clanReducers, ...diamondReducers, ...characterReducers, ...gmReducers, ...duelReducers, ...sharedReducers };
+export const reducers = { ...inventoryReducers, ...battleReducers, ...warzoneReducers, ...progressReducers, ...upgradeReducers, ...marketReducers, ...clanReducers, ...diamondReducers, ...characterReducers, ...gmReducers, ...duelReducers, ...sharedReducers, ...communityReducers };
 
 export const ACTION_TYPES = Object.keys(reducers);
 

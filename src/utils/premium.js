@@ -33,10 +33,13 @@ export function premiumDaysLeft(player) {
 
 // Çark ödülü: aynı katman aktifse süre uzar, değilse şimdiden başlar.
 export function grantBoostPremium(player, tierId, days) {
+  return grantBoostPremiumMs(player, tierId, days * DAY_MS);
+}
+export function grantBoostPremiumMs(player, tierId, durationMs, now = Date.now()) {
   if (!PREMIUM_TIERS[tierId]) return player;
   const current = activeEntry(player.premiumBoost);
-  const base = current?.tier === tierId ? current.expiresAt : Date.now();
-  return { ...player, premiumBoost: { tier: tierId, expiresAt: base + days * DAY_MS } };
+  const base = current?.tier === tierId ? current.expiresAt : now;
+  return { ...player, premiumBoost: { tier: tierId, expiresAt: base + durationMs } };
 }
 
 export function premiumGoldMultiplier(player) { return activePremiumTier(player)?.goldMult ?? 1; }
@@ -61,11 +64,17 @@ export function buyPremium(player, tierId, bank) {
   const tier = PREMIUM_TIERS[tierId];
   if (!tier) return { player, bank, bought: false, reason: "invalidPackage" };
   if (player.diamonds < tier.price) return { player, bank, bought: false, reason: "notEnoughDiamonds" };
+  const applied = applyPremium(player, tierId, bank, tier.durationDays * DAY_MS);
+  return { player: { ...applied.player, diamonds: player.diamonds - tier.price }, bank: applied.bank, bought: true };
+}
 
-  const now = Date.now();
+// Süreyi (ms) ve katman ödüllerini (depo sayfaları, hediye parşömen) oyuncuya yazar; bedel düşmez.
+// Aynı katman aktifse süre uzar, farklı katman şimdiden başlar. Satın alma ve premium kuponu bunu kullanır.
+export function applyPremium(player, tierId, bank, durationMs, now = Date.now()) {
+  const tier = PREMIUM_TIERS[tierId];
   const sameTierActive = player.premium?.tier === tierId && activePremiumTier(player);
   const base = sameTierActive ? player.premium.expiresAt : now;
-  const expiresAt = base + tier.durationDays * DAY_MS;
+  const expiresAt = base + durationMs;
 
   let nextBank = bank;
   const targetPages = BANK_PAGES + tier.bankBonusPages;
@@ -73,11 +82,39 @@ export function buyPremium(player, tierId, bank) {
     nextBank = [...nextBank, ...Array.from({ length: targetPages - nextBank.length }, () => [])];
   }
 
-  let next = { ...player, diamonds: player.diamonds - tier.price, premium: { tier: tierId, expiresAt } };
+  let next = { ...player, premium: { tier: tierId, expiresAt } };
   for (let i = 0; i < tier.giftScrolls; i++) {
     const result = addItemToInventory(next, makeBonusScrollStack());
     next = result.player;
   }
+  return { player: next, bank: nextBank, expiresAt };
+}
 
-  return { player: next, bank: nextBank, bought: true };
+// Premium kuponu: envantere/depoya gelen, kullanılınca premium'u başlatan eşya. `track`:
+//  - "boost": çark/ödül gibi geçici premium (satın alınan aboneliği ezmez, süre aynı katmanda uzar),
+//  - "premium": 15 günlük abonelik (satın alma ile aynı kurallar ve ödüller).
+export function makePremiumVoucher(tierId, durationMs, { track = "boost", noTrade = false, count = 1 } = {}) {
+  const tier = PREMIUM_TIERS[tierId];
+  const id = `premiumVoucher:${tierId}:${track}:${durationMs}:${noTrade ? 1 : 0}`;
+  return {
+    id,
+    kind: "premiumVoucher",
+    premiumTier: tierId,
+    track,
+    durationMs,
+    name: `${tier.name} (${voucherDurationLabel(durationMs)})`,
+    desc: "Envanterden veya depodan kullanılınca Premium'u başlatır.",
+    color: tier.color,
+    count,
+    weight: 0,
+    stackable: true,
+    stackKey: id,
+    ...(noTrade ? { noTrade: true } : {}),
+  };
+}
+
+export function voucherDurationLabel(durationMs) {
+  const hours = Math.round(durationMs / 3600000);
+  if (hours < 24 || hours % 24 !== 0) return `${hours} Saat`;
+  return `${hours / 24} Gün`;
 }

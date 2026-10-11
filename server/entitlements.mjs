@@ -74,6 +74,15 @@ export function createEntitlements(db, { fail }) {
     insert(account, ck, 'premium', tier, now + PREMIUM_DURATION_DAYS * DAY_MS, source, now);
   };
 
+  // Premium kuponu kullanıldı: süreyi kuponun kendisi taşır (oyun kuralı hesapladı); hak burada kalıcı olur.
+  const grantVoucher = (account, ck, activate, keyOf, now = Date.now()) => {
+    if (!DIAMOND_PRICES.premium[activate?.tier] || !Number.isSafeInteger(activate.expiresAt) || activate.expiresAt <= now) throw fail(400, 'INVALID_PURCHASE');
+    ensure(account, keyOf, now);
+    const kind = activate.track === 'premium' ? 'premium' : 'premiumBoost';
+    db.prepare('DELETE FROM entitlements WHERE account=? AND character_key=? AND kind=?').run(account, ck, kind);
+    insert(account, ck, kind, activate.tier, activate.expiresAt, 'voucher', now);
+  };
+
   // Çark ödülü: aynı katman aktifse süre uzar, değilse şimdiden başlar.
   const grantBoost = (account, ck, prizeId, keyOf, now = Date.now()) => {
     const prize = WHEEL_PREMIUM_PRIZES[prizeId];
@@ -117,5 +126,5 @@ export function createEntitlements(db, { fail }) {
     return data;
   };
 
-  return { snapshot, ensure, pin, checkPremium, grantPremium, grantBoost, checkNotOwned, grantOwned, checkSlot, grantSlot };
+  return { snapshot, ensure, pin, checkPremium, grantPremium, grantBoost, grantVoucher, checkNotOwned, grantOwned, checkSlot, grantSlot };
 }

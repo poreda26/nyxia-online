@@ -19,6 +19,7 @@ import {createMailer} from './mailer.mjs';
 import {createTickets} from './tickets.mjs';
 import {createGame} from './game.mjs';
 import {WHEEL_PREMIUM_PRIZES} from '../src/data/diamondPrices.js';
+import {COMMUNITY_PLATFORMS, COMMUNITY_REWARD} from '../src/data/communityReward.js';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes, createHash, scrypt as derive, timingSafeEqual } from 'node:crypto';
@@ -511,6 +512,24 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const done = db.prepare("SELECT 1 FROM account_flags WHERE account=? AND flag='tutorialTopUp'").get(account);
         return { payload: { allowed: !done }, after: (result) => { if (!done && result.ok) db.prepare("INSERT OR IGNORE INTO account_flags(account,flag,created_at) VALUES(?,'tutorialTopUp',?)").run(account, Date.now()); } };
       },
+      // Topluluk ödülü (Instagram / Discord): hesap başına her platform için bir kez; elmas sunucu kasasından, eşyalar kuraldan.
+      // Çanta/depo doluysa eylem reddedilir ve işlem geri alınır (elmas da verilmez, hak harcanmaz).
+      'social/claim': ({ account, payload, now }) => {
+        const platform = String(payload?.platform);
+        if (!COMMUNITY_PLATFORMS.includes(platform)) return { fail: 'invalidReward' };
+        const flag = `social_${platform}`;
+        if (db.prepare('SELECT 1 FROM account_flags WHERE account=? AND flag=?').get(account, flag)) return { fail: 'alreadyClaimed' };
+        wallet.creditInTransaction(account, COMMUNITY_REWARD.diamonds, 'community-reward', platform, now);
+        return {
+          payload: { platform, diamonds: wallet.balance(account) },
+          after: () => db.prepare('INSERT OR IGNORE INTO account_flags(account,flag,created_at) VALUES(?,?,?)').run(account, flag, now),
+        };
+      },
+      // Premium kuponu: kural kuponun katman ve süresini hesaplar; hak (yetki) aynı işlemde sunucuda yazılır.
+      'premium/useVoucher': ({ account, characterKey: ck, payload, now }) => ({
+        payload,
+        after: (result) => entitlements.grantVoucher(account, ck, result.activate, characterKey, now),
+      }),
       // Çark: ödül, sunucunun çevirme sırasında seçtiği bekleyen kayıttır (premium ödüller ayrı yoldan).
       'wheel/claimItem': ({ account }) => {
         const pending = wheel.pendingPrize(account);

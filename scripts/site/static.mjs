@@ -59,6 +59,7 @@ export function buildStatic(data) {
     <section class="section cta follow">
       <h2>Topluluğumuza katıl</h2>
       <p>Duyurular, güncellemeler ve etkinlikler için <strong>Discord</strong> sunucumuza gel; haberleri <strong>@nyxiaonline</strong> Instagram hesabında takip et.</p>
+      <p><strong>Discord ve Instagram'da düzenli çekilişler yapıyoruz!</strong> Katıl, takipte kal. Oyunun Ayarlar bölümünden her platform için bir kez 50 Elmas, iksirler ve 1 saatlik Mythic Premium kuponu kazanabilirsin.</p>
       <div class="buttons"><a class="btn discord" href="${DISCORD}" target="_blank" rel="noopener">${discordIcon} Discord'a katıl</a><a class="btn ig-btn" href="${INSTAGRAM}" target="_blank" rel="noopener">${instagramIcon} @nyxiaonline</a></div>
     </section>
 

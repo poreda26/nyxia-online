@@ -216,6 +216,13 @@ export default function InventoryTab({ act, player, setPlayer, bank, setBank, ba
     setSelectedId(null);
   };
 
+  const useVoucher = async (item) => {
+    const result = await act("premium/useVoucher", { itemId: item.id });
+    if (!result.ok) { pushToast(result.reason === "network" ? t("battle.actionFailed") : t(result.reason === "higherPremiumActive" ? "voucher.higherPremiumActive" : "voucher.failed"), "warn"); return; }
+    pushToast(t("voucher.used", { name: displayItemName(item, lang) }), "loot");
+    if ((item.count || 1) <= 1) setSelectedId(null);
+  };
+
   const handleUseBoostScroll = async (item) => {
     const result = await act("inventory/useBoostScroll", { itemId: item.id });
     if (!result.ok) { pushToast(t("boosts.noScrollsLeft"), "warn"); return; }
@@ -477,6 +484,9 @@ export default function InventoryTab({ act, player, setPlayer, bank, setBank, ba
             <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
               {subtab === "bank" ? (
                 <>
+                  {selectedItem.kind === "premiumVoucher" && (
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: selectedItem.color || "#D4AF6A", color: "#15171E" }} onClick={() => useVoucher(selectedItem)}>{t("voucher.useBtn")}</button>
+                  )}
                   <button className="rpg-action" style={{ ...styles.tinyBtn, display: "flex", alignItems: "center", gap: 4 }} onClick={() => withdrawItem(selectedItem)}>
                     <ArrowUpFromLine size={11} /> {t("inventory.takeToBag")}
                   </button>
@@ -490,6 +500,8 @@ export default function InventoryTab({ act, player, setPlayer, bank, setBank, ba
                 <>
                   {selectedItem.kind === "potion" ? (
                     <span style={{fontSize: 11, color: "var(--text-muted)"}}>{lang === "tr" ? "İksirler savaş sırasında kullanılır." : "Potions are used during battle."}</span>
+                  ) : selectedItem.kind === "premiumVoucher" ? (
+                    <button className="rpg-action" style={{ ...styles.tinyBtn, background: selectedItem.color || "#D4AF6A", color: "#15171E" }} onClick={() => useVoucher(selectedItem)}>{t("voucher.useBtn")}</button>
                   ) : selectedItem.kind === "boostScroll" ? (
                     <button className="rpg-action" style={{ ...styles.tinyBtn, background: boostScrollDef(selectedItem.boostId)?.color }} onClick={() => handleUseBoostScroll(selectedItem)}>{t("boosts.useBtn")}</button>
                   ) : selectedItem.kind === "scroll" || selectedItem.kind === "bonusScroll" || selectedItem.kind === "accessoryScroll" ? (

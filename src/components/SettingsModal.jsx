@@ -10,6 +10,7 @@ import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 import { LEGAL_LINKS, COMMUNITY_LINKS } from "../data/legalLinks";
 import { DiscordIcon, InstagramIcon } from "./icons/BrandIcons";
+import CommunityRewards from "./CommunityRewards";
 import { isPushSupported, notificationPermission, getCurrentPushSubscription, enablePushNotifications, disablePushNotifications } from "../utils/pushNotifications";
 import { fetchPushPrefs, updatePushPrefs } from "../services/pushService";
 
@@ -295,7 +296,7 @@ function AccountSection({ tr, onDeleteAccount }) {
 export default function SettingsModal({
  musicVolume,musicMuted,onMusicVolumeChange,onToggleMusicMute,
  sfxVolume,sfxMuted,onSfxVolumeChange,onToggleSfxMute,
- lang,onLangChange,theme,onThemeChange,onClose,preferences={},onPreferenceChange=()=>{},onDeleteAccount,
+ lang,onLangChange,theme,onThemeChange,onClose,preferences={},onPreferenceChange=()=>{},onDeleteAccount,communityReward=null,
 }) {
  const {t}=useTranslation(),tr=lang==='tr';
  const [section,setSection]=useState('sound'),[tutorial,setTutorial]=useState(false);
@@ -337,7 +338,7 @@ export default function SettingsModal({
     {section==='help'&&<>
      <div className="settings-group"><h3>{tr?'Maceraya başlarken':'Getting started'}</h3><p>{tr?'Savaş, envanter, pazar ve yükseltme ekranlarını Kaptan ile tekrar keşfet.':'Explore battle, inventory, market and upgrades with the Captain.'}</p><button className="settings-guide" onClick={()=>setTutorial(true)}>{tr?'Oyun rehberini aç':'Open game guide'}</button></div>
      <div className="settings-group"><h3>{tr?'Kayıt ve gizlilik':'Saves & privacy'}</h3><p>{tr?'Oyun ilerlemen hesabına bağlı olarak sunucuda yedeklenir, cihazında da yerel bir kopya tutulur. Hesabını istediğin zaman Ayarlar > Hesap bölümünden kalıcı olarak silebilirsin.':'Your progress is backed up to the server under your account, with a local copy kept on this device. You can permanently delete your account any time from Settings > Account.'}</p><p>{tr?'Dil, ses ve görünüm tercihlerin de cihaza özeldir.':'Language, audio and display preferences are device-specific.'}</p></div>
-     <div className="settings-group"><h3>{tr?'Topluluk ve destek':'Community & support'}</h3><div className="settings-community">{COMMUNITY_LINKS.map(link=><a key={link.id} className={`settings-community-link ${link.id}`} href={link.href} target="_blank" rel="noopener noreferrer">{link.id==='discord'?<DiscordIcon/>:link.id==='instagram'?<InstagramIcon/>:null}<span>{tr?link.tr:link.en}</span></a>)}</div></div>
+     <div className="settings-group"><h3>{tr?'Topluluk ve destek':'Community & support'}</h3><div className="settings-community">{COMMUNITY_LINKS.map(link=><a key={link.id} className={`settings-community-link ${link.id}`} href={link.href} target="_blank" rel="noopener noreferrer">{link.id==='discord'?<DiscordIcon/>:link.id==='instagram'?<InstagramIcon/>:null}<span>{tr?link.tr:link.en}</span></a>)}</div>{communityReward&&<CommunityRewards {...communityReward}/>}</div>
      <div className="settings-group"><h3>{tr?'Yasal':'Legal'}</h3><p style={{display:'flex',flexWrap:'wrap',gap:'6px 16px'}}>{LEGAL_LINKS.map(link=><a key={link.id} href={link.href} target="_blank" rel="noopener noreferrer" style={{color:'var(--gold-text)'}}>{tr?link.tr:link.en}</a>)}</p><p>{tr?'Şikayet ve destek: onlinenyxia@gmail.com':'Reports and support: onlinenyxia@gmail.com'}</p></div>
      <div className="settings-build">NYXIA ONLINE <span>{tr?'Beta sürümü':'Beta version'}</span></div>
     </>}

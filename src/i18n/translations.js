@@ -17,6 +17,7 @@ import { socialSection } from "./sections/social";
 import { upgradeSection } from "./sections/upgrade";
 import { warzoneSection } from "./sections/warzone";
 import { wheelSection } from "./sections/wheel";
+import { communitySection } from "./sections/community";
 import { tutorialCoachSection } from "./sections/tutorialCoach";
 import { eventStripSection } from "./sections/eventStrip";
 import { friendDuelSection } from "./sections/friendDuel";
@@ -755,11 +756,11 @@ export const translations = {
   tr: {
     ...base.tr,
     ...boostsSection.tr, ...captainSection.tr, ...characterSection.tr, ...diamondShopSection.tr, ...inventorySection.tr,
-    ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr, ...wheelSection.tr, ...tutorialCoachSection.tr, ...eventStripSection.tr, ...friendDuelSection.tr, ...walletSection.tr,
+    ...monstersSection.tr, ...socialSection.tr, ...upgradeSection.tr, ...warzoneSection.tr, ...wheelSection.tr, ...communitySection.tr, ...tutorialCoachSection.tr, ...eventStripSection.tr, ...friendDuelSection.tr, ...walletSection.tr,
   },
   en: {
     ...base.en,
     ...boostsSection.en, ...captainSection.en, ...characterSection.en, ...diamondShopSection.en, ...inventorySection.en,
-    ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en, ...wheelSection.en, ...tutorialCoachSection.en, ...eventStripSection.en, ...friendDuelSection.en, ...walletSection.en,
+    ...monstersSection.en, ...socialSection.en, ...upgradeSection.en, ...warzoneSection.en, ...wheelSection.en, ...communitySection.en, ...tutorialCoachSection.en, ...eventStripSection.en, ...friendDuelSection.en, ...walletSection.en,
   },
 };
