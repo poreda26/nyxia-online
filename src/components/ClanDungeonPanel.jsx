@@ -20,7 +20,8 @@ import { mitigate, MONSTER_DEF_K, PLAYER_DEF_K, rollHit, varyDamage } from "../u
 import { wingDexBonus } from "../data/wings";
 import { applyDeathPenalty,armorSetDamageReduction,playerMaxHp,playerMaxMp } from "../utils/player";
 import { addItemToInventory, makeClanMaterialStack } from "../utils/inventory";
-import { CLAN_DUNGEON_MATERIALS, MID_BOSS_INDEX, FINAL_BOSS_INDEX } from "../data/clanDungeon";
+import { CLAN_DUNGEON_MATERIALS, MID_BOSS_INDEX, FINAL_BOSS_INDEX, clanDungeonStageName } from "../data/clanDungeon";
+import { CLAN_MATERIAL_NAME_EN } from "../data/itemNameTranslations";
 
 const fmtClock = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -129,10 +130,10 @@ export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def
         else if(ev.kind==='potion'){playPotion();if(ev.potion==='hp'&&ev.healed>0)outgoing={hit:true,heal:true,damage:ev.healed};}
         else if(ev.kind==='monster'){incoming={hit:ev.hit,damage:ev.dmg};if(ev.hit)playHurt();else playMiss();}
       }
-      if(res.droppedMaterial){await act('clan/claimMaterials');pushToast(t('clan.toastMaterialDropped',{material:CLAN_DUNGEON_MATERIALS[res.droppedMaterial].name}),'loot');}
+      if(res.droppedMaterial){await act('clan/claimMaterials');pushToast(t('clan.toastMaterialDropped',{material:(lang==='en'?CLAN_MATERIAL_NAME_EN[res.droppedMaterial]:null)||CLAN_DUNGEON_MATERIALS[res.droppedMaterial].name}),'loot');}
       if(res.stageCleared)pushToast(res.completed?t('clan.toastDungeonCompleted'):t('clan.toastStageCleared',{index:state.stageIndex}),'loot');
       setEffects({skillCooldowns:r.skillCooldowns,buffs:r.buffs,dot:r.dot,potionCooldowns:r.potionCooldowns});
-      setVisual({id:Date.now(),skillId,label:skill?.name||(potionKind?(potionKind==='hp'?'Can İksiri':'Mana İksiri'):t('clan.dungeonAttackBtn')),type:potionKind?'potion':skill?.effect.type||'attack',outgoing,incoming});
+      setVisual({id:Date.now(),skillId,label:(skill?t(`character.skills.${skill.id}.name`):null)||(potionKind?(potionKind==='hp'?(lang==='en'?'Health Potion':'Can İksiri'):(lang==='en'?'Mana Potion':'Mana İksiri')):t('clan.dungeonAttackBtn')),type:potionKind?'potion':skill?.effect.type||'attack',outgoing,incoming});
       setPlayer(p=>({...p,hp:r.died?playerMaxHp(p):r.hp,mp:r.died?playerMaxMp(p):r.mp}));
       if(r.died){setDefeated(true);pushToast(t('clan.toastDefeated'),'warn');await leaveClanDungeon();}
       await refresh();
@@ -173,12 +174,12 @@ export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def
       if(res.droppedMaterial){
         // Sunucu ekonomisinde düşen malzeme sunucuda beklemeye alınır, eylemle verilir; eski yolda burada eklenir.
         if(act.isServer()){await act('clan/claimMaterials');}else{setPlayer(p=>addItemToInventory(p,makeClanMaterialStack(res.droppedMaterial,1)).player);}
-        pushToast(t('clan.toastMaterialDropped',{material:CLAN_DUNGEON_MATERIALS[res.droppedMaterial].name}),'loot');}
+        pushToast(t('clan.toastMaterialDropped',{material:(lang==='en'?CLAN_MATERIAL_NAME_EN[res.droppedMaterial]:null)||CLAN_DUNGEON_MATERIALS[res.droppedMaterial].name}),'loot');}
       if(res.stageCleared)pushToast(res.completed?t('clan.toastDungeonCompleted'):t('clan.toastStageCleared',{index:state.stageIndex}),'loot');
       const potionCooldowns=Object.fromEntries(Object.entries(effects.potionCooldowns||{}).map(([k,v])=>[k,Math.max(0,v-1)]));
       if(potionKind)potionCooldowns[potionKind]=2;
       setEffects({...action.state,potionCooldowns});
-      setVisual({id:Date.now(),skillId,label:action.skill?.name||(potionKind?(potionKind==='hp'?'Can İksiri':'Mana İksiri'):t('clan.dungeonAttackBtn')),type:potionKind?'potion':action.skill?.effect.type||'attack',outgoing:{hit,crit:isCrit&&!skillId&&!potionKind,damage:potion?.healed||action.heal||Math.min(damage,state.monsterHp),heal:!!potionKind||action.heal>0},incoming:res.stageCleared?null:{hit:enemyHit,damage:incoming}});
+      setVisual({id:Date.now(),skillId,label:(action.skill?t(`character.skills.${action.skill.id}.name`):null)||(potionKind?(potionKind==='hp'?(lang==='en'?'Health Potion':'Can İksiri'):(lang==='en'?'Mana Potion':'Mana İksiri')):t('clan.dungeonAttackBtn')),type:potionKind?'potion':action.skill?.effect.type||'attack',outgoing:{hit,crit:isCrit&&!skillId&&!potionKind,damage:potion?.healed||action.heal||Math.min(damage,state.monsterHp),heal:!!potionKind||action.heal>0},incoming:res.stageCleared?null:{hit:enemyHit,damage:incoming}});
       const died=next.hp<=0;
       if(died){await act('battle/death',{wear:{}});next={...next,hp:playerMaxHp(next),mp:playerMaxMp(next)};setDefeated(true);pushToast(t('clan.toastDefeated'),'warn');}
       // Yalnızca canlı can/mana yazılır; envanter/XP değişimleri eylemlerin yamasıyla zaten uygulandı.
@@ -200,9 +201,9 @@ export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def
   const fightMonster = { ...stage, visualSourceId: bossId, id: bossId || `dungeon_ashen_canyon_${stageIndex}` };
 
   const logLine = (entry) => {
-    if (!entry.killed) return t("clan.dungeonLogHit", { name: entry.name, stage: entry.stageIndex, damage: fmtNum(entry.damage) });
+    if (!entry.killed) return t("clan.dungeonLogHit", { name: clanDungeonStageName(entry.name, lang), stage: entry.stageIndex, damage: fmtNum(entry.damage) });
     const isBoss = entry.stageIndex === MID_BOSS_INDEX || entry.stageIndex === FINAL_BOSS_INDEX;
-    return t(isBoss ? "clan.dungeonLogKillBoss" : "clan.dungeonLogKill", { name: entry.name, stage: entry.stageIndex });
+    return t(isBoss ? "clan.dungeonLogKillBoss" : "clan.dungeonLogKill", { name: clanDungeonStageName(entry.name, lang), stage: entry.stageIndex });
   };
 
   return (

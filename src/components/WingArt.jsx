@@ -3,12 +3,12 @@ import { useId } from 'react';
 import { wingDefinition } from '../data/wings';
 
 // The inventory icon and equipped layer share the exact same feather geometry.
-export default function WingArt({ wingId = 'dawn', size, className = '' }) {
+export default function WingArt({ wingId = 'dawn', size, className = '', label }) {
   const id = useId();
   const w = wingDefinition(wingId);
   if (!w) return null;
   const crystal = w.shape === 'crystal', flame = w.shape === 'flame', shadow = w.shape === 'shadow';
-  return <svg className={`wing-art ${className}`} viewBox="0 0 600 430" width={size || '100%'} height={size || '100%'} role="img" aria-label={w.name} data-wing-art={w.id} style={{'--wing-glow':w.color,'--wing-cycle':flame?'3.8s':shadow?'5.6s':'4.8s'}}>
+  return <svg className={`wing-art ${className}`} viewBox="0 0 600 430" width={size || '100%'} height={size || '100%'} role="img" aria-label={label || w.name} data-wing-art={w.id} style={{'--wing-glow':w.color,'--wing-cycle':flame?'3.8s':shadow?'5.6s':'4.8s'}}>
     <defs>
       <linearGradient id={`${id}-feather`} x1="0" y1="0" x2=".8" y2="1"><stop stopColor={w.light}/><stop offset=".35" stopColor={w.color}/><stop offset=".76" stopColor={w.dark}/><stop offset="1" stopColor={w.color}/></linearGradient>
       <linearGradient id={`${id}-metal`}><stop stopColor="#443123"/><stop offset=".3" stopColor="#f6d99b"/><stop offset=".55" stopColor="#87653c"/><stop offset=".8" stopColor="#edd5a0"/><stop offset="1" stopColor="#47321f"/></linearGradient>

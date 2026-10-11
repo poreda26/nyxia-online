@@ -1,9 +1,9 @@
 import {useId} from 'react';
 
-export default function MaterialArt({item,size=48}) {
+export default function MaterialArt({item,size=48,label}) {
  const id=useId(),key=item.materialKey||({Odun:'wood','Gümüş':'silver',Demir:'iron',Elmas:'diamond','Altın Külçesi':'goldBar'}[item.name]);
  const gold=key==='goldBar',silver=key==='silver';
- return <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={item.name||'Malzeme'} data-material-art={key} style={{display:'block',flexShrink:0}}>
+ return <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={label||item.name||'Material'} data-material-art={key} style={{display:'block',flexShrink:0}}>
   <defs>
    <linearGradient id={`${id}-bark`} x2=".8" y2="1"><stop stopColor="#b17842"/><stop offset=".45" stopColor="#70411f"/><stop offset="1" stopColor="#35251c"/></linearGradient>
    <linearGradient id={`${id}-metal`} x2=".5" y2="1"><stop stopColor={gold?'#fff2b2':'#f1f7fc'}/><stop offset=".4" stopColor={gold?'#e9b548':'#abbfce'}/><stop offset=".55" stopColor={gold?'#c18425':'#6a8295'}/><stop offset="1" stopColor={gold?'#8b571b':'#384b61'}/></linearGradient>

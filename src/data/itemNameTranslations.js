@@ -132,3 +132,12 @@ export const ACCESSORY_FAMILY_NAME_EN = {
   ranger: ["Trailblazer", "Ash Hunter", "Night Hunter", "Storm Hunter", "Star Hunter"],
   arcane: ["Apprentice's Arcanum", "Secret Arcanum", "Rune Arcanum", "Crystal Arcanum", "Astral Arcanum"],
 };
+
+// data/accessories.js ward accessories (family "ward_<weapon>", tier 6 = "Kadim"/Ancient).
+export const WARD_NAME_EN = {
+  sword: "Severed Moon", axe: "Unbreakable Seal", longspear: "Spearbreaker",
+  mace: "Stone Heart", bow: "Wind Veil", staff: "Silent Rune",
+};
+
+// data/clanDungeon.js#CLAN_DUNGEON_MATERIALS display names (keyed by materialKey).
+export const CLAN_MATERIAL_NAME_EN = { wood: "Wood", silver: "Silver", iron: "Iron", goldBar: "Gold Bar" };

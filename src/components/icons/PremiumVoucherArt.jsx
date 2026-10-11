@@ -1,11 +1,11 @@
 import { useId } from "react";
 
 // Premium kuponu: katman renginde, ortasında taç olan altın kenarlı bilet.
-export default function PremiumVoucherArt({ item = {}, size = 48 }) {
+export default function PremiumVoucherArt({ item = {}, size = 48, label }) {
   const id = useId();
   const color = item.color || "#D4AF6A";
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={item.name || "Premium"}>
+    <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={label || item.name || "Premium"}>
       <defs>
         <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#2b2438" /><stop offset="1" stopColor="#14111c" /></linearGradient>
         <linearGradient id={`${id}-gold`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fff0b8" /><stop offset=".5" stopColor="#d4af6a" /><stop offset="1" stopColor="#8a6a2f" /></linearGradient>

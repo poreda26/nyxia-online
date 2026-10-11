@@ -6,7 +6,7 @@ import { DiscordIcon, InstagramIcon } from "./icons/BrandIcons";
 
 // "Tıkla ve Al": düğme bağlantıyı açar ve ödülü verir (hesap başına her platform için bir kez; sunucu denetler).
 export default function CommunityRewards({ act, pushToast, enabled, claimed = [] }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const [busy, setBusy] = useState(null);
   const [localClaimed, setLocalClaimed] = useState([]);
   const isClaimed = (platform) => claimed.includes(platform) || localClaimed.includes(platform);
@@ -42,7 +42,7 @@ export default function CommunityRewards({ act, pushToast, enabled, claimed = []
               onClick={() => claim(platform)}
             >
               {platform === "discord" ? <DiscordIcon /> : <InstagramIcon />}
-              <span>{link?.tr && (done ? t("community.claimed") : `${link.tr} · ${t("community.claim")}`)}</span>
+              <span>{link && (done ? t("community.claimed") : `${lang === "en" ? link.en : link.tr} · ${t("community.claim")}`)}</span>
             </button>
           );
         })}

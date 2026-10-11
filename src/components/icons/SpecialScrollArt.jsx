@@ -1,11 +1,11 @@
 import {useId} from 'react';
 
 // Centered silhouettes share the same safe area in bags, shops and forge slots.
-export default function SpecialScrollArt({item,size=48}) {
+export default function SpecialScrollArt({item,size=48,label}) {
  const id=useId(),bonus=item.kind==='bonusScroll',race=item.kind==='raceScroll';
  const accent=bonus?'#c68aff':race?'#66e5ed':'#ffb85b';
  const dark=bonus?'#472668':race?'#164d61':'#633722';
- return <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={item.name||'Parşömen'} data-scroll-art={item.kind} style={{display:'block',flexShrink:0,overflow:'hidden'}}>
+ return <svg width={size} height={size} viewBox="0 0 100 100" role="img" aria-label={label||item.name||'Scroll'} data-scroll-art={item.kind} style={{display:'block',flexShrink:0,overflow:'hidden'}}>
   <defs>
    <linearGradient id={`${id}-paper`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fff6d8"/><stop offset=".45" stopColor="#e7cca0"/><stop offset="1" stopColor="#ad7843"/></linearGradient>
    <linearGradient id={`${id}-gold`} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#7c4b20"/><stop offset=".25" stopColor="#fff1b6"/><stop offset=".48" stopColor="#cc9146"/><stop offset=".7" stopColor="#ffe6a0"/><stop offset="1" stopColor="#87551f"/></linearGradient>

@@ -3,8 +3,9 @@ import { CLASSES } from "../data/classes";
 import { STAT_LABELS, STAT_KEYS, STAT_CAP, POINTS_PER_LEVEL } from "../data/stats";
 import { makePotionStack, addItemToInventory } from "./inventory";
 import { potionName } from "../data/potions";
-import { WEAPON_NAME_EN, STARTER_ACCESSORY_NAME_EN, ACCESSORY_FAMILY_NAME_EN } from "../data/itemNameTranslations";
+import { WEAPON_NAME_EN, STARTER_ACCESSORY_NAME_EN, ACCESSORY_FAMILY_NAME_EN, WARD_NAME_EN, CLAN_MATERIAL_NAME_EN } from "../data/itemNameTranslations";
 import { PLAYER_ACCESSORY_SLOT_LABEL } from "./itemDisplay";
+import { PREMIUM_TIERS } from "../data/premium";
 import { MAPS } from "../data/maps";
 import { currentWeekId } from "./week";
 import { STARTING_NATIONAL_POINT } from "./nationalPointConstants";
@@ -680,8 +681,19 @@ function translatedItemName(item, lang) {
   // Parşömen adı yalnızca ekranda nadirlik adıyla gösterilir (T1 yerine Sıradan);
   // kayıtlı eşya adına dokunulmaz.
   if (item.kind === "scroll" && item.tier) return lang === "en" ? `${tierName("en", item.tier)} Upgrade Scroll` : `${tierName("tr", item.tier)} Yükseltme Parşömeni`;
+  if (item.kind === "premiumVoucher") {
+    const tier = PREMIUM_TIERS[item.premiumTier];
+    const hours = Math.round((item.durationMs || 0) / 3600000);
+    const span = hours >= 24 && hours % 24 === 0 ? `${hours / 24} ${hours === 24 ? "Day" : "Days"}` : `${hours} ${hours === 1 ? "Hour" : "Hours"}`;
+    return lang === "en" ? `${tier?.name || "Premium"} (${span})` : item.name;
+  }
   if (lang !== "en") return item.name;
+  if (item.kind === "clanMaterial" && CLAN_MATERIAL_NAME_EN[item.materialKey]) return CLAN_MATERIAL_NAME_EN[item.materialKey];
   if (item.kind === "weapon" && WEAPON_NAME_EN[item.name]) return WEAPON_NAME_EN[item.name];
+  if (item.kind === "accessory" && /^ward_/.test(item.family || "") && WARD_NAME_EN[item.family.slice(5)]) {
+    const slotName = PLAYER_ACCESSORY_SLOT_LABEL.en[item.slot];
+    if (slotName) return `${item.tier === 6 ? "Ancient " : ""}${WARD_NAME_EN[item.family.slice(5)]} ${slotName}`;
+  }
   if (item.kind === "accessory") {
     if (ACCESSORY_FAMILY_NAME_EN[item.family] && item.tier) {
       const familyName = ACCESSORY_FAMILY_NAME_EN[item.family][item.tier - 1];

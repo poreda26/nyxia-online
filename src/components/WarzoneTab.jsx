@@ -399,7 +399,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       } else if (ev.kind === "skill") {
         playSkill(skill, player.class);
         dealt += ev.dmg || 0;
-        log.push(`${skill.name}: ${ev.effect === "heal" ? `+${ev.healed} HP` : ev.dmg ? `${ev.dmg} hasar` : "Etki uygulandı"}`);
+        log.push(`${t(`character.skills.${skill.id}.name`)}: ${ev.effect === "heal" ? `+${ev.healed} HP` : ev.dmg ? t("extra.damageShort", { dmg: ev.dmg }) : t("extra.effectApplied")}`);
         setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], outgoing: { hit: true, heal: ev.effect === "heal", damage: ev.effect === "heal" ? ev.healed : ev.dmg || 0 } } }));
       } else if (ev.kind === "monster") {
         setBossVisuals((bv) => ({ ...bv, [bossId]: { ...bv[bossId], incoming: { hit: ev.hit, damage: ev.dmg } } }));
@@ -730,7 +730,7 @@ export default function WarzoneTab({ player, setPlayer, pushToast, onEnteredChan
       } else if (ev.kind === "skill") {
         playSkill(skill, player.class);
         const shown = ev.effect === "heal" ? ev.healed : ev.dmg || 0;
-        log.push(`${skill.name}: ${ev.effect === "heal" ? `+${ev.healed} HP` : ev.dmg ? `${ev.dmg} hasar` : "Etki uygulandı"}`);
+        log.push(`${t(`character.skills.${skill.id}.name`)}: ${ev.effect === "heal" ? `+${ev.healed} HP` : ev.dmg ? t("extra.damageShort", { dmg: ev.dmg }) : t("extra.effectApplied")}`);
         setHuntVisual((v) => ({ ...v, label: skill.name, outgoing: { hit: true, heal: ev.effect === "heal", damage: shown } }));
       } else if (ev.kind === "potion") {
         potionUsed = ev;

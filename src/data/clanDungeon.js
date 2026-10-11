@@ -61,6 +61,15 @@ function scaleStage(base, mult) {
   };
 }
 
+// Ekranda gösterilen ad: veri adı Türkçe kalır (sunucu günlüğü de bunu yazar); İngilizce görünüm buradan.
+export function clanDungeonStageName(name, lang = "tr") {
+  if (lang !== "en" || typeof name !== "string") return name;
+  if (name === "Klan Zindanı Efendisi") return "Clan Dungeon Lord";
+  if (name === "Klan Zindanı Gözcüsü") return "Clan Dungeon Sentinel";
+  const match = /^Klan Zindanı Canavarı (\d+)$/.exec(name);
+  return match ? `Clan Dungeon Monster ${match[1]}` : name;
+}
+
 export function clanDungeonStage(index) {
   const clamped = Math.min(TOTAL_STAGES, Math.max(1, index));
   const isMidBoss = clamped === MID_BOSS_INDEX;

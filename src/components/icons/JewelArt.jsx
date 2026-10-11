@@ -1,9 +1,9 @@
 import {useId} from 'react';
-export default function JewelArt({item,size=40}){
+export default function JewelArt({item,size=40,label}){
  const id=useId(),tier=item.tier||1,ward=item.defenseAbility?.vs;
  const color=ward?({sword:'#e897ad',axe:'#edaf62',longspear:'#a6de91',mace:'#b1b9cc',bow:'#82ddce',staff:'#bd9df6'}[ward]):({guardian:'#f6ad72',ranger:'#8bd9ad',arcane:'#ada8f8',starter:'#a7b1b2'}[item.family]||'#9bd0e0');
  const metal=tier>=5?'#eac587':tier>=3?'#b8cad9':'#a5977e';
- return <svg width={size} height={size} viewBox="0 0 80 80" aria-label={item.name} role="img" data-jewel-art={`${item.slot}-${item.family}-${tier}`}><defs><radialGradient id={id}><stop stopColor="#fff7dd"/><stop offset=".35" stopColor={color}/><stop offset="1" stopColor="#233141"/></radialGradient></defs>
+ return <svg width={size} height={size} viewBox="0 0 80 80" aria-label={label||item.name} role="img" data-jewel-art={`${item.slot}-${item.family}-${tier}`}><defs><radialGradient id={id}><stop stopColor="#fff7dd"/><stop offset=".35" stopColor={color}/><stop offset="1" stopColor="#233141"/></radialGradient></defs>
  <rect x="2" y="2" width="76" height="76" rx="15" fill="#141b22"/>
  {tier===6&&<g fill={color} stroke={metal} strokeWidth="1"><path d="M8 22L5 8L21 5M59 5L75 8L72 22M8 58L5 72L21 75M59 75L75 72L72 58" fill="none"/>{[18,40,62].map(x=><path key={x} d={`M${x} 7l3 4-3 4-3-4Z`}/>)}</g>}
  <g fill="none" stroke={metal} strokeWidth="4">

@@ -1,7 +1,7 @@
 import {useId} from 'react';
-export default function RewardChest({size=88,tier=5,special=false}){
+export default function RewardChest({size=88,tier=5,special=false,label}){
  const id=useId(),color=special?'#a5e5ef':['#8cb69b','#63b9d2','#967cd0','#df9355','#ecc66a','#dd7798'][(tier-1)%6]||'#ecc66a';
- return <svg width={size} height={size} viewBox="0 0 100 100" fill="none" role="img" aria-label={special?'Özel sandık':`T${tier} sandık`} data-chest-art={special?'special':tier}>
+ return <svg width={size} height={size} viewBox="0 0 100 100" fill="none" role="img" aria-label={label||(special?'Special chest':`T${tier} chest`)} data-chest-art={special?'special':tier}>
  <defs><linearGradient id={id} x2="0" y2="1"><stop stopColor="#fff1b6"/><stop offset=".5" stopColor="#deb867"/><stop offset="1" stopColor="#855124"/></linearGradient><radialGradient id={`${id}-glow`}><stop stopColor={color} stopOpacity=".5"/><stop offset="1" stopColor={color} stopOpacity="0"/></radialGradient><linearGradient id={`${id}-wood`} x2="0" y2="1"><stop stopColor={color}/><stop offset=".45" stopColor="#393047"/><stop offset="1" stopColor="#171c2a"/></linearGradient><radialGradient id={`${id}-gem`}><stop stopColor="white"/><stop offset=".25" stopColor={color}/><stop offset="1" stopColor="#272039"/></radialGradient></defs>
  <circle cx="50" cy="49" r="48" fill={`url(#${id}-glow)`}/>
 

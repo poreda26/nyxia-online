@@ -86,7 +86,7 @@ export default function ChatTab({
       } else if (act.isServer()) {
         // Sunucu ekonomisinde komut sunucuda çalışır (yetki orada denetlenir); sonuç metni de oradan gelir.
         const ran = await act("gm/exec", { cmd: parsed.cmd, args: parsed.args });
-        resultText = ran.ok ? ran.resultText : (ran.reason === "notGm" ? "GM yetkin yok." : "Komut çalıştırılamadı.");
+        resultText = ran.ok ? ran.resultText : (ran.reason === "notGm" ? t("extra.notGm") : t("extra.commandFailed"));
       } else {
         setPlayer(nextPlayer);
         if (nextBank) setBank(nextBank);
@@ -99,7 +99,7 @@ export default function ChatTab({
 
     await chatService.sendMessage(displayName, text, playerAvatarId(player), player.avatarFrameId);
     refresh();
-    } catch(e) { setInput(text);pushToast(e.code==='ACCOUNT_MUTED'?'Sohbet yetkin geçici olarak kapatıldı.':'Mesaj gönderilemedi.','warn'); }
+    } catch(e) { setInput(text);pushToast(e.code==='ACCOUNT_MUTED'?t('extra.chatMuted'):t('extra.messageFailed'),'warn'); }
   };
 
   // ---- DM sekmesi ----
