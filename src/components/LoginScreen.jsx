@@ -5,7 +5,7 @@ import { useTranslation } from "../i18n/LanguageContext";
 import { isReservedUsername } from "../utils/storage";
 import { registerAccount, loginAccount } from "../utils/api";
 import { fetchAuthProviders, loginSocial, forgotPassword, resetPassword, startEmailRegister, confirmEmailRegister } from "../services/authService";
-import { socialIdToken, socialSignInAvailable } from "../utils/socialSignIn";
+import { socialIdToken, socialSignInAvailable, appleSignInAvailable } from "../utils/socialSignIn";
 import nyxiaLogo from "../assets/brand/nyxia-logo.png";
 import { LEGAL_LINKS } from "../data/legalLinks";
 
@@ -187,7 +187,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
       {socialSignInAvailable() && providers && (providers.google || providers.apple) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignSelf: "stretch", marginTop: 14 }}>
           <div style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center" }}>{t("login.or")}</div>
-          {providers.apple && <button style={{ ...styles.tinyBtn, background: "#fff", color: "#0B0C10", padding: "11px 0" }} disabled={busy} onClick={() => socialLogin("apple")}>{t("login.continueApple")}</button>}
+          {providers.apple && appleSignInAvailable() && <button style={{ ...styles.tinyBtn, background: "#fff", color: "#0B0C10", padding: "11px 0" }} disabled={busy} onClick={() => socialLogin("apple")}>{t("login.continueApple")}</button>}
           {providers.google && <button style={{ ...styles.tinyBtn, background: "var(--bg-panel-alt)", color: "var(--text-primary)", border: "1px solid var(--border)", padding: "11px 0" }} disabled={busy} onClick={() => socialLogin("google")}>{t("login.continueGoogle")}</button>}
         </div>
       )}

@@ -3,6 +3,8 @@ import { Capacitor } from "@capacitor/core";
 // Google/Apple penceresini açıp kimlik belgesini (idToken) döner. Belge sunucuda doğrulanır; burada hiçbir güven yok.
 // Yalnızca mağaza uygulamasında (Capacitor) çalışır. Kullanıcı vazgeçerse { cancelled: true } döner.
 export const socialSignInAvailable = () => Capacitor.isNativePlatform();
+// Apple ile giriş yalnızca iPhone/iPad uygulamasında gösterilir (Android'de gerek yok).
+export const appleSignInAvailable = () => Capacitor.getPlatform() === "ios";
 
 export async function socialIdToken(provider, config) {
   if (!Capacitor.isNativePlatform()) throw Object.assign(new Error("SOCIAL_UNSUPPORTED"), { code: "SOCIAL_UNSUPPORTED" });
