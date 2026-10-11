@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Ham AI görselleri — işlenmiş/küçültülmüş halleri zaten src/assets/items
+# içinde, orijinallere (yüzlerce MB) repo'da ihtiyaç yok.
+Görseller/
+
+# Üçüncü parti kaynak kodu — KnightOnline-master sızdırılmış KO sunucu
+# kaynağı, ko-item-tbl-to-sql-main da başka bir üçüncü parti araç.
+# İkisi de telif riski taşıdığı için repo'ya (private olsa bile) girmiyor.
+KnightOnline-master/
+ko-item-tbl-to-sql-main/
+
+# Eski, artık kullanılmayan yedek
+_legacy_items_backup/
+
+# Derlenmiş APK — burası sadece arkadaşlara dosya paylaşmak için, kaynak
+# değil; `npx cap sync && cd android && ./gradlew assembleDebug` ile her
+# zaman yeniden üretilebilir.
+apk/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

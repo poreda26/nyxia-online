@@ -10,7 +10,7 @@ export async function socialIdToken(provider, config) {
   try {
     if (provider === "google") {
       await SocialLogin.initialize({ google: { webClientId: config.clientId } });
-      const { result } = await SocialLogin.login({ provider: "google", options: { scopes: ["email", "profile"] } });
+      const { result } = await SocialLogin.login({ provider: "google", options: {} });
       if (!result.idToken) throw new Error("NO_ID_TOKEN");
       return { idToken: result.idToken };
     }
