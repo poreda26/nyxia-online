@@ -1,4 +1,4 @@
-package com.rpgmarket.testapp;
+package com.nyxiaonline.game;
 
 import com.getcapacitor.BridgeActivity;
 
