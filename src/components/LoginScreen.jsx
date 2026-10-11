@@ -176,6 +176,13 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
         </p>
       )}
 
+      <p style={{ ...styles.loginCaveat, marginTop: 0, marginBottom: 12, textAlign: "center" }}>
+        {t("login.consentLead")}{" "}
+        {LEGAL_LINKS.filter((link) => link.id === "terms" || link.id === "privacy").map((link, index) => (
+          <span key={link.id}>{index ? " · " : ""}<a href={link.href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold-text)" }}>{lang === "en" ? link.en : link.tr}</a></span>
+        ))}
+      </p>
+
       <button
         style={{ ...styles.primaryBtn, background: "#D4AF6A", alignSelf: "center", opacity: busy ? 0.6 : 1 }}
         disabled={!username.trim() || !password || busy}
