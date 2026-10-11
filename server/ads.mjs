@@ -7,7 +7,7 @@ import { randomBytes, randomInt, verify } from 'node:crypto';
 //    geliştirme/önizleme içindir, herkese açık ortamda KULLANILMAZ.
 // Ödül miktarını (5/10/15) her durumda sunucu rastgele seçer; bekleme süresi hesap başınadır.
 export const AD_REWARDS = [{ amount: 5, weight: 60 }, { amount: 10, weight: 30 }, { amount: 15, weight: 10 }];
-export const AD_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+export const AD_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 const TICKET_TTL_MS = 15 * 60 * 1000;
 const TEST_MIN_WATCH_MS = 4000;
 const KEYS_URL = 'https://www.gstatic.com/admob/reward/verifier-keys.json';
