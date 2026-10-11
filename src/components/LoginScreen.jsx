@@ -4,7 +4,7 @@ import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 import { isReservedUsername } from "../utils/storage";
 import { registerAccount, loginAccount } from "../utils/api";
-import { fetchAuthProviders, loginSocial, forgotPassword, resetPassword } from "../services/authService";
+import { fetchAuthProviders, loginSocial, forgotPassword, resetPassword, startEmailRegister, confirmEmailRegister } from "../services/authService";
 import { socialIdToken, socialSignInAvailable } from "../utils/socialSignIn";
 import nyxiaLogo from "../assets/brand/nyxia-logo.png";
 import { LEGAL_LINKS } from "../data/legalLinks";
@@ -17,6 +17,9 @@ function errorKey(code) {
   if (code === "TOO_MANY_ATTEMPTS") return "login.rateLimitedError";
   if (code === "INVALID_CREDENTIAL_FORMAT") return "login.invalidFormatError";
   if (code === "NAME_NOT_ALLOWED") return "login.nameNotAllowedError";
+  if (code === "EMAIL_TAKEN") return "login.emailTakenError";
+  if (code === "INVALID_EMAIL") return "login.invalidEmailError";
+  if (code === "TOO_MANY_REQUESTS") return "login.rateLimitedError";
   if (code === "INVALID_CODE") return "login.invalidCodeError";
   if (code === "CODE_TOO_SOON" || code === "TOO_MANY_CODES") return "login.codeTooSoonError";
   if (code === "MAIL_UNAVAILABLE") return "login.mailUnavailableError";
@@ -43,6 +46,8 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
   const [providers, setProviders] = useState(null);
   const [pendingSocial, setPendingSocial] = useState(null);
   const [forgot, setForgot] = useState(false);
+  const [regStep, setRegStep] = useState("email");
+  const [code, setCode] = useState("");
   useEffect(() => { fetchAuthProviders().then(setProviders).catch(() => {}); }, []);
 
   const socialLogin = async (provider, force = false, saved = null) => {
@@ -59,7 +64,27 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
     } finally { setBusy(false); }
   };
 
+  // E-postayla kayıt: 1) e-posta + şifre → kod gönderilir, 2) kod girilir → hesap açılır.
+  const emailRegister = mode === "register" && !!providers?.email;
+  const submitEmailRegister = async () => {
+    const email = username.trim().toLowerCase();
+    if (busy) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError(t("login.invalidEmailError")); return; }
+    if (password.length < 12) { setError(t("login.passwordTooShortError")); return; }
+    setError(""); setBusy(true);
+    try {
+      if (regStep === "email") { await startEmailRegister(email); setRegStep("code"); }
+      else {
+        if (code.length !== 6) { setError(t("login.invalidCodeError")); return; }
+        const { name } = await confirmEmailRegister(email, code, password);
+        onLogin(name);
+      }
+    } catch (err) { setError(t(errorKey(err.code))); }
+    finally { setBusy(false); }
+  };
+
   const submit = async (force = false) => {
+    if (emailRegister) { await submitEmailRegister(); return; }
     const trimmed = username.trim().toLowerCase();
     if (!trimmed || !password || busy) return;
     if (isReservedUsername(trimmed)) { setError(t("login.reservedNameError")); return; }
@@ -84,7 +109,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
         <img src={nyxiaLogo} alt="Nyxia" style={{ width: "100%", maxWidth: 240, margin: "0 auto 10px", display: "block" }} />
         <div style={styles.eyebrow}>{t("login.welcome")}</div>
         <h1 style={styles.h1}>{t(mode === "register" ? "login.registerTitle" : "login.title")}</h1>
-        <p style={styles.subtext}>{t("login.subtitle")}</p>
+        <p style={styles.subtext}>{t(emailRegister ? "login.emailSubtitle" : mode === "login" && providers?.email ? "login.loginEmailSubtitle" : "login.subtitle")}</p>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -92,12 +117,14 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
           <User size={18} color="var(--text-muted)" strokeWidth={1.6} />
         </div>
         <input
-          type="text"
           value={username}
           onChange={(e) => { setUsername(e.target.value); setError(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-          placeholder={t("login.placeholder")}
-          maxLength={mode === "login" ? 120 : 24}
+          type={emailRegister ? "email" : "text"}
+          autoComplete={emailRegister ? "email" : "username"}
+          disabled={emailRegister && regStep === "code"}
+          placeholder={t(emailRegister ? "login.emailPlaceholder" : mode === "login" && providers?.email ? "login.loginPlaceholder" : "login.placeholder")}
+          maxLength={mode === "login" || emailRegister ? 120 : 24}
           style={{ ...styles.loginInput, flex: 1, textAlign: "left" }}
           autoFocus
         />
@@ -118,6 +145,19 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
         />
       </div>
 
+      {emailRegister && regStep === "code" && (
+        <div style={{ marginTop: -6, marginBottom: 14 }}>
+          <p style={{ ...styles.loginCaveat, marginBottom: 8 }}>{t("login.codeSent", { email: username.trim().toLowerCase() })}</p>
+          <input
+            inputMode="numeric" maxLength={6} value={code} autoFocus
+            onChange={(e) => { setCode(e.target.value.replace(/\D/g, "")); setError(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+            placeholder="000000"
+            style={{ ...styles.loginInput, width: "100%", textAlign: "center", letterSpacing: 8 }}
+          />
+          <button onClick={() => { setRegStep("email"); setCode(""); setError(""); }} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, marginTop: 8, cursor: "pointer", textDecoration: "underline" }}>{t("login.changeEmail")}</button>
+        </div>
+      )}
       {notice && !error && !inUse && (
         <p style={{ ...styles.loginCaveat, color: "var(--gold-text)", marginTop: -10 }}>{t("login.signedOutElsewhere")}</p>
       )}
@@ -141,7 +181,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
         disabled={!username.trim() || !password || busy}
         onClick={() => submit()}
       >
-        {t(busy ? "login.submitting" : mode === "register" ? "login.registerSubmit" : "login.submit")} <ChevronRight size={16} />
+        {t(busy ? "login.submitting" : emailRegister ? (regStep === "code" ? "login.registerFinish" : "login.sendCode") : mode === "register" ? "login.registerSubmit" : "login.submit")} <ChevronRight size={16} />
       </button>
 
       {socialSignInAvailable() && providers && (providers.google || providers.apple) && (
@@ -159,7 +199,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
       )}
 
       <button
-        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); }}
+        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); setRegStep("email"); setCode(""); }}
         style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, marginTop: 12, cursor: "pointer", textDecoration: "underline" }}
       >
         {t(mode === "register" ? "login.switchToLogin" : "login.switchToRegister")}

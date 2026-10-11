@@ -223,6 +223,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   const loginNameLimit = makeRateLimiter(10);
   const registerLimit = makeRateLimiter(6);
   const passwordLimit = makeRateLimiter(10);
+  const emailRegisterLimit = makeRateLimiter(20);
   const supportLimit = makeRateLimiter(30);
   // Hesap başına, IP'den bağımsız (Caddy arkasında birçok oyuncu aynı IP'yi
   // paylaşabilir) — spam önleme, gerçek yetkilendirme değil.
@@ -766,6 +767,25 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if (path === '/api/support/tickets' && req.method === 'POST') { supportLimit(clientAddress(req)); const result = await tickets.create(await read(req)); return send(200, { code: result.code, key: result.key }); }
       if (path === '/api/support/tickets/view' && req.method === 'POST') { supportLimit(clientAddress(req)); const body = await read(req); return send(200, tickets.view(body?.code, body?.key)); }
       if (path === '/api/support/tickets/reply' && req.method === 'POST') { supportLimit(clientAddress(req)); const body = await read(req); return send(200, await tickets.reply(body?.code, body?.key, body?.message)); }
+      // E-postayla kayıt (iki adım): kod gönder, sonra kod + şifreyle hesabı aç.
+      if (path === '/api/register/email/start' && req.method === 'POST') {
+        emailRegisterLimit(clientAddress(req));
+        await identity.startRegister((await read(req))?.email);
+        return send(200, { ok: true });
+      }
+      if (path === '/api/register/email/confirm' && req.method === 'POST') {
+        const body = await read(req);
+        if (typeof body?.password !== 'string' || body.password.length < 12 || body.password.length > 128) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
+        emailRegisterLimit(clientAddress(req));
+        const email = identity.consumeRegisterCode(body?.email, body?.code);
+        registerLimit(clientAddress(req)); // yalnızca gerçekten hesap açılacaksa sayılır (yanlış kod denemeleri kod başına 5 ile sınırlı)
+        const name = identity.randomName();
+        const salt = randomBytes(16).toString('hex');
+        const hashed = (await scrypt(body.password, salt, 64)).toString('hex');
+        const id = Number(db.prepare('INSERT INTO accounts(name,salt,password) VALUES(?,?,?)').run(name, salt, hashed).lastInsertRowid);
+        identity.attachVerifiedEmail(id, email);
+        return issueSession(req, res, send, nativeOrigin, db.prepare('SELECT * FROM accounts WHERE id=?').get(id), body, false);
+      }
       // Giriş seçenekleri (oturumsuz): hangi sağlayıcılar açık.
       if (path === '/api/auth/providers' && req.method === 'GET') return send(200, identity.providersConfig());
       // Google / Apple ile giriş: kimlik belgesi sunucuda doğrulanır; hesap yoksa yeni hesap açılır.

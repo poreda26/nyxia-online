@@ -117,6 +117,22 @@ export function createIdentity(db, { fail, mailer, clientIds = {}, fetchJwks = d
     await sendCode(email, 'verify', account, now);
   };
 
+  // E-postayla kayıt: önce kod gönderilir (hesap henüz yok); kod doğrulanınca hesap açılır.
+  const startRegister = async (rawEmail, now = Date.now()) => {
+    const email = normalizeEmail(rawEmail);
+    if (!validEmail(email)) throw fail(400, 'INVALID_EMAIL');
+    if (emailOwner(email)) throw fail(409, 'EMAIL_TAKEN');
+    await sendCode(email, 'register', null, now);
+  };
+  const consumeRegisterCode = (rawEmail, code, now = Date.now()) => {
+    const email = normalizeEmail(rawEmail);
+    if (!validEmail(email)) throw fail(400, 'INVALID_EMAIL');
+    checkCode(email, 'register', code, now);
+    if (emailOwner(email)) throw fail(409, 'EMAIL_TAKEN');
+    return email;
+  };
+  const attachVerifiedEmail = (account, email, now = Date.now()) => { if (!setVerifiedEmail(account, email, now)) throw fail(409, 'EMAIL_TAKEN'); };
+
   const verifyEmail = (account, rawEmail, code, now = Date.now()) => {
     const email = normalizeEmail(rawEmail);
     if (!validEmail(email)) throw fail(400, 'INVALID_EMAIL');
@@ -154,7 +170,7 @@ export function createIdentity(db, { fail, mailer, clientIds = {}, fetchJwks = d
     return `oyuncu_${randomBytes(8).toString('hex')}`;
   };
 
-  return { providersConfig, verifyToken, identityOwner, link, security, emailOf, emailOwner, startEmail, verifyEmail, forgot, reset, randomName, normalizeEmail };
+  return { providersConfig, verifyToken, identityOwner, link, security, emailOf, emailOwner, startEmail, verifyEmail, startRegister, consumeRegisterCode, attachVerifiedEmail, forgot, reset, randomName, normalizeEmail };
 }
 
 async function defaultFetchJwks(url) {

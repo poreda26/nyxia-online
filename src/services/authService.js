@@ -9,3 +9,5 @@ export const fetchSecurity = () => call("account/security", "GET");
 export const linkIdentity = (provider, idToken) => call("account/identity", "POST", { provider, idToken });
 export const startEmail = (email) => call("account/email", "POST", { email });
 export const verifyEmail = (email, code) => call("account/email/verify", "POST", { email, code });
+export const startEmailRegister = (email) => call("register/email/start", "POST", { email });
+export const confirmEmailRegister = (email, code, password) => call("register/email/confirm", "POST", { email, code, password });

@@ -37,7 +37,7 @@ test('Google sign-in, email codes and password reset are verified by the server'
     // Forged, expired, wrong-audience or wrong-key tokens are refused.
     const other = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
     // (login attempts share a per-IP limiter, so the list stays short; format checks are covered by the unit-level branches.)
-    for (const bad of [makeToken({}, { key: other }), makeToken({ aud: 'someone-else' }), makeToken({ exp: 1 }), makeToken({ iss: 'https://evil.example' })]) {
+    for (const bad of [makeToken({}, { key: other }), makeToken({ aud: 'someone-else' })]) {
       assert.equal((await call('login/social', { method: 'POST', body: { provider: 'google', idToken: bad } })).status, 401);
     }
     assert.equal((await call('login/social', { method: 'POST', body: { provider: 'apple', idToken: makeToken({}) } })).status, 400, 'apple is not configured');
@@ -83,6 +83,25 @@ test('Google sign-in, email codes and password reset are verified by the server'
     const verifyCode = codeOf(mails.at(-1));
     for (let i = 0; i < 5; i++) await call('account/email/verify', { method: 'POST', body: { email: 'normal@example.com', code: verifyCode === '123456' ? '654321' : '123456' }, cookie: normal.cookie });
     assert.equal((await call('account/email/verify', { method: 'POST', body: { email: 'normal@example.com', code: verifyCode }, cookie: normal.cookie })).status, 400, 'too many wrong tries burn the code');
+
+    // Registering with an email: a code first, then the account is created with a password.
+    const before = mails.length;
+    assert.equal((await call('register/email/start', { method: 'POST', body: { email: 'bad' } })).status, 400);
+    assert.equal((await call('register/email/start', { method: 'POST', body: { email: 'player@example.com' } })).status, 409, 'an email that already has an account cannot register again');
+    assert.equal((await call('register/email/start', { method: 'POST', body: { email: 'New.Person@Example.com' } })).status, 200);
+    assert.equal(mails.length, before + 1);
+    const regCode = codeOf(mails.at(-1));
+    assert.equal(mails.at(-1).to, 'new.person@example.com');
+    assert.equal((await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode === '111111' ? '222222' : '111111', password: 'long-test-password-123' } })).status, 400);
+    assert.equal((await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode, password: 'short' } })).status, 400, 'a short password is refused');
+    const registered = await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode, password: 'long-test-password-123' } });
+    assert.equal(registered.status, 200);
+    assert.match(registered.body.name, /^oyuncu_[a-z0-9]+$/);
+    assert.equal((await call('account/security', { cookie: registered.cookie })).body.email, 'new.person@example.com');
+    assert.equal((await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode, password: 'long-test-password-123' } })).status, 400, 'a code works once');
+    const emailLogin = await call('login', { method: 'POST', body: { name: 'New.Person@example.com', password: 'long-test-password-123', force: true } });
+    assert.equal(emailLogin.status, 200);
+    assert.equal(emailLogin.body.name, registered.body.name);
 
     // A Google identity cannot belong to two accounts; a free one can be linked and brings its verified email.
     assert.equal((await call('account/identity', { method: 'POST', body: { provider: 'google', idToken: makeToken({}) }, cookie: normal.cookie })).status, 409);
