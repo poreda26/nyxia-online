@@ -25,7 +25,9 @@ export function buildStatic(data, lang = 'tr') {
       <div class="buttons">
         <a class="btn primary" href="wiki/">${L("Wiki'yi keşfet", 'Explore the wiki')}</a>
         <a class="btn" href="#trailer">${L('Fragmanı izle', 'Watch the trailer')}</a>
+        <a class="btn primary" href="${A}beta/">${L('Beta sürümünü oyna', 'Play the Beta')}</a>
       </div>
+      <p class="muted beta-note">${L('Tarayıcıdan oynanan Beta sürümü: hesabın mobil uygulamayla aynıdır, hatalar olabilir.', 'The Beta runs in your browser: your account is the same as in the mobile app, and bugs may occur.')}</p>
       <div class="stores">
         <span class="store" role="img" aria-label="Google Play: ${L('yakında', 'coming soon')}">${playIcon}<span><small>${L('YAKINDA', 'COMING SOON')}</small><strong>Google Play</strong></span></span>
         <span class="store" role="img" aria-label="App Store: ${L('yakında', 'coming soon')}">${appleIcon}<span><small>${L('YAKINDA', 'COMING SOON')}</small><strong>App Store</strong></span></span>

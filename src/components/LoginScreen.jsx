@@ -59,16 +59,18 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
   const [marketing, setMarketing] = useState(false);
   const [birth, setBirth] = useState("");
   const [socialBirth, setSocialBirth] = useState(null);
+  const [accepted, setAccepted] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   useEffect(() => { fetchAuthProviders().then(setProviders).catch(() => {}); }, []);
 
-  const socialLogin = async (provider, force = false, saved = null, birthDate = null) => {
+  const socialLogin = async (provider, force = false, saved = null, birthDate = null, terms = false) => {
     if (busy) return;
     setError(""); setBusy(true); setInUse(false);
     let picked = saved;
     try {
       picked = saved || await socialIdToken(provider, providers[provider]);
       if (picked.cancelled) return;
-      const { name } = await loginSocial(provider, picked.idToken, force, birthDate);
+      const { name } = await loginSocial(provider, picked.idToken, force, birthDate, terms);
       setSocialBirth(null);
       onLogin(name);
     } catch (err) {
@@ -88,12 +90,13 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
     if (password !== password2) { setError(t("login.passwordMismatchError")); return; }
     const birthIssue = birthProblem(birth);
     if (birthIssue) { setError(t(birthIssue)); return; }
+    if (!accepted) { setError(t("extra.acceptTermsRequired")); return; }
     setError(""); setBusy(true);
     try {
       if (regStep === "email") { await startEmailRegister(email, birth); setRegStep("code"); }
       else {
         if (code.length !== 6) { setError(t("login.invalidCodeError")); return; }
-        const { name } = await confirmEmailRegister(email, code, password, marketing, birth);
+        const { name } = await confirmEmailRegister(email, code, password, marketing, birth, accepted);
         onLogin(name);
       }
     } catch (err) { setError(t(errorKey(err.code))); }
@@ -109,10 +112,10 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
     if (!looksLikeEmail && !NAME_PATTERN.test(trimmed)) { setError(t("login.invalidFormatError")); return; }
     if (mode === "register" && !passwordStrong(password)) { setError(t("login.passwordTooShortError")); return; }
     if (mode === "register" && password !== password2) { setError(t("login.passwordMismatchError")); return; }
-    if (mode === "register") { const birthIssue = birthProblem(birth); if (birthIssue) { setError(t(birthIssue)); return; } }
+    if (mode === "register") { const birthIssue = birthProblem(birth); if (birthIssue) { setError(t(birthIssue)); return; } if (!accepted) { setError(t("extra.acceptTermsRequired")); return; } }
     setError(""); setBusy(true); setInUse(false);
     try {
-      const { name } = mode === "register" ? await registerAccount(trimmed, password, birth) : await loginAccount(trimmed, password, force === true);
+      const { name } = mode === "register" ? await registerAccount(trimmed, password, birth, accepted) : await loginAccount(trimmed, password, force === true);
       onLogin(name);
     } catch (err) {
       if (err.code === "ACCOUNT_IN_USE") setInUse(true);
@@ -154,7 +157,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
           <Lock size={18} color="var(--text-muted)" strokeWidth={1.6} />
         </div>
         <input
-          type="password"
+          type={showPw ? "text" : "password"}
           value={password}
           onChange={(e) => { setPassword(e.target.value); setError(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
@@ -163,6 +166,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
           maxLength={128}
           style={{ ...styles.loginInput, flex: 1, textAlign: "left" }}
         />
+        <EyeToggle shown={showPw} onToggle={() => setShowPw((v) => !v)} />
       </div>
 
       {mode === "register" && (
@@ -171,7 +175,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
             <Lock size={18} color="var(--text-muted)" strokeWidth={1.6} />
           </div>
           <input
-            type="password"
+            type={showPw ? "text" : "password"}
             value={password2}
             onChange={(e) => { setPassword2(e.target.value); setError(""); }}
             onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
@@ -216,12 +220,13 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
         </p>
       )}
 
-      <p style={{ ...styles.loginCaveat, marginTop: 0, marginBottom: 12, textAlign: "center" }}>
+      {mode === "register" && <TermsCheckbox checked={accepted} onChange={setAccepted} />}
+      {mode !== "register" && <p style={{ ...styles.loginCaveat, marginTop: 0, marginBottom: 12, textAlign: "center" }}>
         {t("login.consentLead")}{" "}
         {LEGAL_LINKS.filter((link) => link.id === "terms" || link.id === "privacy").map((link, index) => (
           <span key={link.id}>{index ? " · " : ""}<a href={(lang === "en" && link.hrefEn) || link.href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold-text)" }}>{lang === "en" ? link.en : link.tr}</a></span>
         ))}
-      </p>
+      </p>}
 
       {emailRegister && (
         <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 11, color: "var(--text-muted)", marginBottom: 12, textAlign: "left", cursor: "pointer" }}>
@@ -232,7 +237,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
 
       <button
         style={{ ...styles.primaryBtn, background: "#D4AF6A", alignSelf: "center", opacity: busy ? 0.6 : 1 }}
-        disabled={!username.trim() || !password || (mode === "register" && (!password2 || !birth)) || busy}
+        disabled={!username.trim() || !password || (mode === "register" && (!password2 || !birth || !accepted)) || busy}
         onClick={() => submit()}
       >
         {t(busy ? "login.submitting" : emailRegister ? (regStep === "code" ? "login.registerFinish" : "login.sendCode") : mode === "register" ? "login.registerSubmit" : "login.submit")} <ChevronRight size={16} />
@@ -242,10 +247,11 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
         <div style={{ alignSelf: "stretch", marginTop: 14 }}>
           <p style={{ ...styles.loginCaveat, marginBottom: 8 }}>{t("login.socialBirthText")}</p>
           <BirthDateInput value={birth} onChange={(v) => { setBirth(v); setError(""); }} />
+          <TermsCheckbox checked={accepted} onChange={setAccepted} />
           <button
             style={{ ...styles.primaryBtn, background: "#D4AF6A", opacity: busy ? 0.6 : 1 }}
-            disabled={!birth || busy}
-            onClick={() => { const issue = birthProblem(birth); if (issue) { setError(t(issue)); return; } socialLogin(socialBirth.provider, false, { idToken: socialBirth.idToken }, birth); }}
+            disabled={!birth || !accepted || busy}
+            onClick={() => { const issue = birthProblem(birth); if (issue) { setError(t(issue)); return; } socialLogin(socialBirth.provider, false, { idToken: socialBirth.idToken }, birth, accepted); }}
           >{t("login.gateSubmit")}</button>
         </div>
       )}
@@ -265,7 +271,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
       )}
 
       <button
-        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); setRegStep("email"); setCode(""); setPassword2(""); setBirth(""); }}
+        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); setRegStep("email"); setCode(""); setPassword2(""); setBirth(""); setAccepted(false); }}
         style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, marginTop: 12, cursor: "pointer", textDecoration: "underline" }}
       >
         {t(mode === "register" ? "login.switchToLogin" : "login.switchToRegister")}
@@ -285,6 +291,34 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
   );
 }
 
+// Şifre alanının yanındaki göz düğmesi: şifreyi gösterir/gizler.
+function EyeToggle({ shown, onToggle }) {
+  const { t } = useTranslation();
+  return (
+    <button type="button" onClick={onToggle} aria-pressed={shown} aria-label={t(shown ? "extra.hidePassword" : "extra.showPassword")} title={t(shown ? "extra.hidePassword" : "extra.showPassword")}
+      style={{ background: "none", border: "none", cursor: "pointer", color: shown ? "var(--gold-text)" : "var(--text-muted)", padding: 6, display: "flex", flexShrink: 0 }}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" />
+        {shown && <path d="M4 4l16 16" />}
+      </svg>
+    </button>
+  );
+}
+
+// Kayıtta zorunlu: Kullanım Koşulları ve Gizlilik Politikası'nın kabulü.
+function TermsCheckbox({ checked, onChange }) {
+  const { t, lang } = useTranslation();
+  const link = (id) => LEGAL_LINKS.find((l) => l.id === id);
+  const anchor = (id) => { const l = link(id); return <a key={id} href={(lang === "en" && l.hrefEn) || l.href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold-text)" }}>{lang === "en" ? l.en : l.tr}</a>; };
+  const parts = t("extra.acceptTerms").split(/(\{terms\}|\{privacy\})/).map((part, i) => (part === "{terms}" ? <span key={i}>{anchor("terms")}</span> : part === "{privacy}" ? <span key={i}>{anchor("privacy")}</span> : part));
+  return (
+    <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 11, color: "var(--text-muted)", marginBottom: 12, textAlign: "left", cursor: "pointer" }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ marginTop: 2 }} />
+      <span>{parts}</span>
+    </label>
+  );
+}
+
 // Şifremi unuttum: e-postaya 6 haneli kod gelir, kodla yeni şifre belirlenir. (Yalnızca doğrulanmış e-postası olan hesaplar.)
 function ForgotPassword({ onClose }) {
   const { t } = useTranslation();
@@ -294,6 +328,7 @@ function ForgotPassword({ onClose }) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const run = async (fn, next) => {
     if (busy) return;
     setBusy(true); setMessage("");
@@ -313,7 +348,8 @@ function ForgotPassword({ onClose }) {
         {step === "code" && <>
           <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", lineHeight: 1.6 }}>{t("login.forgotCodeText")}</div>
           <input inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder="000000" style={{ ...styles.loginInput, width: "100%", textAlign: "center", letterSpacing: 6 }} />
-          <input type="password" autoComplete="new-password" maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("login.newPasswordPlaceholder")} style={{ ...styles.loginInput, width: "100%", textAlign: "left" }} />
+          <input type={showPw ? "text" : "password"} autoComplete="new-password" maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("login.newPasswordPlaceholder")} style={{ ...styles.loginInput, width: "100%", textAlign: "left" }} />
+          <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 11, color: "var(--text-muted)", cursor: "pointer" }}><input type="checkbox" checked={showPw} onChange={(e) => setShowPw(e.target.checked)} />{t("extra.showPassword")}</label>
           <button style={{ ...styles.primaryBtn, background: "#D4AF6A" }} disabled={busy || code.length !== 6 || !passwordStrong(password)} onClick={() => run(() => resetPassword(email.trim(), code, password), "done")}>{t("login.resetPassword")}</button>
         </>}
         {step === "done" && <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", lineHeight: 1.6 }}>{t("login.resetDone")}</div>}

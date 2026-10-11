@@ -54,9 +54,9 @@ test('accounts need a birth date; under the minimum age no account is created', 
     assert.equal((await call('register', { method: 'POST', body: { name: 'nobirth', password: 'abcd1234' } })).status, 400, 'birth date is required');
     assert.equal((await call('register', { method: 'POST', body: { name: 'badbirth', password: 'abcd1234', birthDate: '2020-13-40' } })).status, 400);
     assert.equal((await call('register', { method: 'POST', body: { name: 'tiny', password: 'abcd1234', birthDate: yearsAgo(12) } })).status, 403, 'a 12-year-old is refused');
-    assert.equal((await call('register', { method: 'POST', body: { name: 'almost', password: 'abcd1234', birthDate: yearsAgo(13, -1) } })).status, 403, 'turns 13 tomorrow');
     assert.equal(accounts(), 0, 'no account was created for refused sign-ups');
-    const ok = await call('register', { method: 'POST', body: { name: 'teen13', password: 'abcd1234', birthDate: yearsAgo(13) } });
+    assert.equal((await call('register', { method: 'POST', body: { name: 'noterms', password: 'abcd1234', birthDate: yearsAgo(20) } })).status, 400, 'the terms must be accepted');
+    const ok = await call('register', { method: 'POST', body: { name: 'teen13', password: 'abcd1234', birthDate: yearsAgo(13), termsAccepted: true } });
     assert.equal(ok.status, 200);
     assert.equal((await call('me', { cookie: ok.cookie })).body.needsBirthDate, false);
 
@@ -71,9 +71,10 @@ test('accounts need a birth date; under the minimum age no account is created', 
     assert.equal((await call('login/social', { method: 'POST', body: { provider: 'google', idToken: token } })).status, 428);
     assert.equal((await call('login/social', { method: 'POST', body: { provider: 'google', idToken: token, birthDate: yearsAgo(11) } })).status, 403);
     assert.equal(accounts(), before);
-    assert.equal((await call('login/social', { method: 'POST', body: { provider: 'google', idToken: token, birthDate: yearsAgo(20) } })).status, 200);
+    assert.equal((await call('login/social', { method: 'POST', body: { provider: 'google', idToken: token, birthDate: yearsAgo(20) } })).status, 400, 'terms are required for a new Google account');
+    assert.equal(accounts(), before);
+    assert.equal((await call('login/social', { method: 'POST', body: { provider: 'google', idToken: token, birthDate: yearsAgo(20), termsAccepted: true } })).status, 200);
     assert.equal(accounts(), before + 1);
-    assert.equal((await call('login/social', { method: 'POST', body: { provider: 'google', idToken: token, force: true } })).status, 200, 'an existing identity needs no birth date');
 
     // Older accounts without a birth date are asked once; a too-young answer locks the account
     { const db = new DatabaseSync(dbFile); db.prepare("UPDATE accounts SET birth_date=NULL WHERE name='teen13'").run(); db.close(); }

@@ -4,6 +4,7 @@ import { itemTierColor, tierName } from "../data/itemRarity";
 import { scrollPrice } from "../utils/upgrade";
 import { formatGold } from "../utils/player";
 import { useTranslation } from "../i18n/LanguageContext";
+import { askConfirm } from "../utils/gameConfirm";
 import { styles } from "../styles";
 import SectionLabel from "./shared/SectionLabel";
 
@@ -18,13 +19,16 @@ export default function ScrollShop({ player, act, pushToast }) {
     result.reason === "notEnoughGold" ? t("shop.notEnoughGold")
       : result.reason === "network" ? t("battle.actionFailed")
         : t("shop.purchaseFailed", { reason: result.detail || result.reason }), "warn");
+  const confirmBuy = (name) => askConfirm({ title: t("extra.confirmBuyTitle"), text: t("extra.confirmBuyScrollText", { name }), confirmLabel: t("extra.confirmYes"), cancelLabel: t("extra.confirmNo") });
   const buyScroll = async (tierId) => {
+    if (!(await confirmBuy(lang === "en" ? `${tierName("en", tierId)} Upgrade Scroll` : `${tierName("tr", tierId)} Yükseltme Parşömeni`))) return;
     const result = await act("shop/buyScroll", { tier: tierId });
     if (!result.ok) { failToast(result); return; }
     pushToast(t("shop.upgradeScrollPurchased", { tier: tierName(lang, tierId) }), "loot");
   };
 
   const buyAccessoryScroll = async () => {
+    if (!(await confirmBuy(lang === "en" ? "Accessory Upgrade Scroll" : "Aksesuar Yükseltme Kağıdı"))) return;
     const result = await act("shop/buyAccessoryScroll");
     if (!result.ok) { failToast(result); return; }
     pushToast(t("shop.accessoryScrollPurchased"), "loot");

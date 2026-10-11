@@ -53,3 +53,4 @@ scripts/site/_trailer.log
 scripts/_probe_*
 scripts/_site_data.mjs
 scripts/site/wiki-data.json
+dist-beta

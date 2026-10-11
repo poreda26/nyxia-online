@@ -15,6 +15,7 @@ import { isConsumable } from "../utils/itemDisplay";
 import { newlyUnlocked } from "../utils/achievements";
 import { BAG_SLOTS, depositToBank, withdrawFromBank, buyExtraBankPage, EXTRA_BANK_PAGE_COST_DIAMONDS, MAX_BANK_PAGES } from "../utils/inventory";
 import { useBoostScroll } from "../utils/boosts";
+import { askConfirm } from "../utils/gameConfirm";
 import { boostScrollDef } from "../data/boostScrolls";
 import { learnFreeSkills } from "../utils/skills";
 import { premiumSellMultiplier, premiumRepairDiscount } from "../utils/premium";
@@ -135,6 +136,12 @@ export default function InventoryTab({ act, player, setPlayer, bank, setBank, ba
   };
 
   const bulkSell = async () => {
+    const sellable = bulkItems.filter((i) => !isConsumable(i) && !i.noTrade);
+    if (sellable.length) {
+      const total = sellable.reduce((sum, i) => sum + Math.round(sellPrice(i) * premiumSellMultiplier(player)), 0);
+      const ok = await askConfirm({ title: t("extra.confirmSellBulkTitle"), text: t("extra.confirmSellBulkText", { count: sellable.length, gold: formatGold(total) }), confirmLabel: t("extra.confirmYes"), cancelLabel: t("extra.confirmNo") });
+      if (!ok) return;
+    }
     // Pot/parşömen gibi tüketilebilirler ve takas edilemezler toplu satıştan bilerek dışlanır
     // (kural src/game/actions.js'te; sunucu da aynısını uygular).
     const result = await act("inventory/sellBulk", { itemIds: bulkItems.map((i) => i.id) });
@@ -171,6 +178,9 @@ export default function InventoryTab({ act, player, setPlayer, bank, setBank, ba
   };
 
   const sellItem = async (item) => {
+    const gold = Math.round(sellPrice(item) * premiumSellMultiplier(player));
+    const ok = await askConfirm({ title: t("extra.confirmSellTitle"), text: t("extra.confirmSellText", { item: displayItemName(item, lang), gold: formatGold(gold) }), confirmLabel: t("extra.confirmYes"), cancelLabel: t("extra.confirmNo") });
+    if (!ok) return;
     const result = await act("inventory/sell", { itemId: item.id });
     if (!result.ok) { pushToast(t(result.reason === "noTrade" ? "upgrade.itemNoTrade" : "wallet.unavailable"), "warn"); return; }
     pushToast(t("inventory.sold", { gold: formatGold(result.gold) }), "loot");

@@ -1,9 +1,3 @@
-# Eski adres (mevcut APK/web istemcileri): tüm uygulama
-__DOMAIN__ {
-	encode zstd gzip
-	reverse_proxy 127.0.0.1:3000
-}
-
 # Sahip paneli: https://panel.nyxiaonline.com
 panel.nyxiaonline.com {
 	encode zstd gzip
@@ -22,6 +16,12 @@ nyxiaonline.com {
 	encode zstd gzip
 	handle /api/* {
 		reverse_proxy 127.0.0.1:3000
+	}
+	# Beta: oyunun tarayıcı sürümü (/beta/, `vite build --base /beta/` çıktısı)
+	redir /beta /beta/ permanent
+	handle_path /beta/* {
+		root * /var/www/nyxia-beta
+		file_server
 	}
 	handle {
 		root * /var/www/nyxia-site

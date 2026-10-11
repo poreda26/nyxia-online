@@ -1,4 +1,5 @@
 import { startPolling } from "../utils/polling";
+import { askConfirm } from "../utils/gameConfirm";
 import MenuEmblem from './icons/MenuEmblem';
 import { useState, useEffect, useCallback } from "react";
 import { FlaskConical, Store, Tag, Plus, Minus, X, Gem, ScrollText, Crown, Check, Star, Shuffle, Clock, AlertTriangle, ChevronDown, ChevronUp, ShoppingBag, Package2 } from "./icons/GameIcons";
@@ -100,6 +101,8 @@ export default function MarketTab({ player, setPlayer, bank, setBank, act, pushT
   const buyPotion = async (potionType, tier, qty) => {
     const amount = Math.max(1, qty || 1);
     const price = potionPrice(potionType, tier) * amount;
+    const ok = await askConfirm({ title: t("extra.confirmBuyTitle"), text: t("extra.confirmBuyPotionText", { qty: amount, name: potionName(potionType, tier, lang), gold: formatGold(price) }), confirmLabel: t("extra.confirmYes"), cancelLabel: t("extra.confirmNo") });
+    if (!ok) return;
     const result = await act("shop/buyPotion", { potionType, tier, qty: amount });
     if (!result.ok) {
       pushToast(result.reason === "notEnoughGold" ? t("shop.notEnoughGold")
@@ -149,6 +152,8 @@ export default function MarketTab({ player, setPlayer, bank, setBank, act, pushT
     const price = parseInt(priceInput, 10);
     if (!pickedItem) return;
     if (!Number.isFinite(price) || price <= 0) { pushToast(t("market.enterValidPrice"), "warn"); return; }
+    const okStall = await askConfirm({ title: t("extra.confirmStallTitle"), text: t("extra.confirmStallText", { item: displayItemName(pickedItem, lang), gold: formatGold(price) }), confirmLabel: t("extra.confirmYes"), cancelLabel: t("extra.confirmNo") });
+    if (!okStall) return;
     if (act.isServer()) {
       const added = await act("market/addItem", { itemId: pickedItem.id, price, asChest: pickerMode === "chest" });
       if (!added.ok) { pushToast(reasonText({ ...added, reasonVars: { max: marketService.MARKET_STALL_MAX_ITEMS } }, "market.addFailed"), "warn"); refreshMarket(); return; }

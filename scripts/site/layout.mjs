@@ -41,8 +41,8 @@ export const altPagePath = (path, lang) => {
 };
 
 const UI = {
-  tr: { nav: [['', 'Ana sayfa', 'home'], ['wiki/', 'Wiki', 'wiki'], ['support.html', 'Destek', 'support']], menu: 'Ana menü', wikiMenu: '☰ Wiki menüsü', privacy: 'Gizlilik Politikası', terms: 'Kullanım Koşulları', del: 'Hesap Silme', support: 'Destek', other: 'EN', otherLabel: 'English' },
-  en: { nav: [['', 'Home', 'home'], ['wiki/', 'Wiki', 'wiki'], ['support.html', 'Support', 'support']], menu: 'Main menu', wikiMenu: '☰ Wiki menu', privacy: 'Privacy Policy', terms: 'Terms of Use', del: 'Delete Account', support: 'Support', other: 'TR', otherLabel: 'Türkçe' },
+  tr: { nav: [['', 'Ana sayfa', 'home'], ['wiki/', 'Wiki', 'wiki'], ['@beta/', 'Beta ▶', 'beta'], ['support.html', 'Destek', 'support']], menu: 'Ana menü', wikiMenu: '☰ Wiki menüsü', privacy: 'Gizlilik Politikası', terms: 'Kullanım Koşulları', del: 'Hesap Silme', support: 'Destek', other: 'EN', otherLabel: 'English' },
+  en: { nav: [['', 'Home', 'home'], ['wiki/', 'Wiki', 'wiki'], ['@beta/', 'Play Beta ▶', 'beta'], ['support.html', 'Support', 'support']], menu: 'Main menu', wikiMenu: '☰ Wiki menu', privacy: 'Privacy Policy', terms: 'Terms of Use', del: 'Delete Account', support: 'Support', other: 'TR', otherLabel: 'Türkçe' },
 };
 
 // path: sitedeki yol (ör. "en/wiki/classes.html"). root: o dilin kök klasörüne göreli yol, assetRoot: sitenin köküne.
@@ -53,7 +53,7 @@ export function page({ title, description, body, active = '', wikiActive = null,
   const root = lang === 'en' ? '../'.repeat(Math.max(0, depth - 1)) : assetRoot;
   const altPath = altPagePath(path, lang);
   const altLang = lang === 'en' ? 'tr' : 'en';
-  const nav = ui.nav.map(([href, label, id]) => `<a href="${root}${href}"${active === id ? ' class="on" aria-current="page"' : ''}>${label}</a>`).join('');
+  const nav = ui.nav.map(([href, label, id]) => `<a href="${href.startsWith('@') ? assetRoot + href.slice(1) : root + href}"${active === id ? ' class="on" aria-current="page"' : ''}>${label}</a>`).join('');
   const side = wikiActive === null ? '' : `<aside class="wiki-nav" aria-label="Wiki"><strong>Wiki</strong>${WIKI_PAGES.map(([slug, trLabel, enLabel]) => `<a href="${root}wiki/${slug === 'index' ? '' : wikiSlug(lang, slug) + '.html'}"${wikiActive === slug ? ' class="on"' : ''}>${esc(lang === 'en' ? enLabel : trLabel)}</a>`).join('')}</aside>`;
   const legal = (file) => `${assetRoot}${file}${lang === 'en' ? '#en' : ''}`;
   return `<!doctype html>

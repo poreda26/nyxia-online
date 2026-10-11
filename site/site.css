@@ -140,8 +140,8 @@ footer p{margin:0}
   .top{position:static;flex-wrap:wrap;row-gap:8px;padding:8px 12px}
   .brand{flex:1;min-width:0}.brand strong{font-size:15px;letter-spacing:.06em}
   .top .social{margin-left:auto}
-  .top .links{order:3;width:100%;margin-left:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-  .top .links a{text-align:center;padding:9px 6px;background:var(--panel);border:1px solid var(--border)}
+  .top .links{order:3;width:100%;margin-left:0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .top .links a{text-align:center;padding:9px 2px;font-size:14px;background:var(--panel);border:1px solid var(--border)}
   .top .links a.on{border-color:var(--gold2)}
   .stores{gap:10px}.store{flex:1 1 150px;justify-content:center;min-width:150px;max-width:230px;padding:9px 12px;gap:9px}.store strong{font-size:17px}.store svg{width:24px;height:24px}
 }
@@ -165,3 +165,4 @@ footer a.ig{color:var(--gold)}
 footer a.dc{color:#8f9bff}
 .lang-hint{display:flex;justify-content:center;align-items:center;gap:12px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--border);font-size:14px}
 .lang-hint a{color:var(--gold)}.lang-hint button{background:none;border:0;color:var(--text);font-size:20px;line-height:1;cursor:pointer}
+.beta-note{margin:10px auto 0;font-size:13px;max-width:560px}

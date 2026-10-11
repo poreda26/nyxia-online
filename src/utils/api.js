@@ -48,7 +48,7 @@ export async function call(path, method, body, characterKey=activeCharacterKey) 
   return data;
 }
 
-export const registerAccount = (name, password, birthDate) => call("register", "POST", { name, password, birthDate });
+export const registerAccount = (name, password, birthDate, termsAccepted = false) => call("register", "POST", { name, password, birthDate, termsAccepted });
 export const loginAccount = (name, password, force = false) => call("login", "POST", { name, password, ...(force ? { force: true } : {}) });
 export const logoutAccount = () => call("logout", "POST");
 export const fetchMe = () => call("me", "GET");

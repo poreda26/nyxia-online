@@ -183,6 +183,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   try { db.exec('ALTER TABLE accounts ADD COLUMN age_locked INTEGER NOT NULL DEFAULT 0'); } catch { /* sütun zaten var */ }
   // Yaş kapısı açıksa yeni hesap için doğum tarihi şart; kapalıyken (testler) denetlenmez.
   const birthFor = (value) => (ageGate ? requireAdultEnough(fail, value) : null);
+  // Kayıtta Kullanım Koşulları ve Gizlilik Politikası'nın kabulü zorunlu (yaş kapısıyla birlikte açılır); kabul anı saklanır.
+  try { db.exec('ALTER TABLE accounts ADD COLUMN terms_accepted_at INTEGER'); } catch { /* sütun zaten var */ }
+  const termsFor = (body) => { if (!ageGate) return null; if (body?.termsAccepted !== true) throw fail(400, 'TERMS_REQUIRED'); return Date.now(); };
   // Tek oturum: bir hesap aynı anda yalnızca tek yerde açık olabilir. `seen` son istek zamanı, `kind` oturum türü
   // ('game' oyun istemcisi, 'panel' sahip paneli — panel oyun oturumunu etkilemez).
   for (const column of ["seen INTEGER NOT NULL DEFAULT 0", "kind TEXT NOT NULL DEFAULT 'game'"]) { try { db.exec(`ALTER TABLE sessions ADD COLUMN ${column}`); } catch { /* sütun zaten var */ } }
@@ -776,12 +779,13 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (!/^[a-z0-9_]{3,24}$/.test(name) || typeof body?.password !== 'string' || body.password.length < 1 || body.password.length > 128 || (path === '/api/register' && !validPassword(body.password))) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
         let account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         if (path === '/api/register') {
-          registerLimit(clientAddress(req));
           const birth = birthFor(body?.birthDate);
+          const termsAt = termsFor(body);
+          registerLimit(clientAddress(req));
           if (containsProfanityLoose(name)) throw fail(400, 'NAME_NOT_ALLOWED');
           const salt = randomBytes(16).toString('hex');
           const password = (await scrypt(body.password, salt, 64)).toString('hex');
-          try { db.prepare('INSERT INTO accounts(name,salt,password,birth_date) VALUES(?,?,?,?)').run(name, salt, password, birth); }
+          try { db.prepare('INSERT INTO accounts(name,salt,password,birth_date,terms_accepted_at) VALUES(?,?,?,?,?)').run(name, salt, password, birth, termsAt); }
           catch (error) { if (error.code?.startsWith('ERR_SQLITE') && db.prepare('SELECT id FROM accounts WHERE name=?').get(name)) throw fail(409, 'ACCOUNT_UNAVAILABLE'); throw error; }
           account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         } else {
@@ -807,6 +811,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const body = await read(req);
         if (!validPassword(body?.password)) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
         const birth = birthFor(body?.birthDate);
+        const termsAt = termsFor(body);
         emailRegisterLimit(clientAddress(req));
         const email = identity.consumeRegisterCode(body?.email, body?.code);
         registerLimit(clientAddress(req)); // yalnızca gerçekten hesap açılacaksa sayılır (yanlış kod denemeleri kod başına 5 ile sınırlı)
@@ -815,7 +820,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const hashed = (await scrypt(body.password, salt, 64)).toString('hex');
         const id = Number(db.prepare('INSERT INTO accounts(name,salt,password) VALUES(?,?,?)').run(name, salt, hashed).lastInsertRowid);
         identity.attachVerifiedEmail(id, email);
-        if (birth) db.prepare('UPDATE accounts SET birth_date=? WHERE id=?').run(birth, id);
+        if (birth) db.prepare('UPDATE accounts SET birth_date=?, terms_accepted_at=? WHERE id=?').run(birth, termsAt, id);
         if (body?.marketing === true) db.prepare('UPDATE accounts SET marketing_optin=1, marketing_at=? WHERE id=?').run(Date.now(), id);
         return issueSession(req, res, send, nativeOrigin, db.prepare('SELECT * FROM accounts WHERE id=?').get(id), body, false);
       }
@@ -832,11 +837,12 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           // Yeni hesap: önce doğum tarihi (hesap oluşturulmadan). İstemci tarihi sorup aynı belgeyle yeniden dener.
           if (ageGate && !body?.birthDate) throw fail(428, 'BIRTHDATE_REQUIRED');
           const birth = birthFor(body?.birthDate);
+          const termsAt = termsFor(body);
           registerLimit(clientAddress(req));
           const name = identity.randomName();
           const salt = randomBytes(16).toString('hex');
           const password = (await scrypt(randomBytes(32).toString('hex'), salt, 64)).toString('hex');
-          accountId = Number(db.prepare('INSERT INTO accounts(name,salt,password,passwordless,birth_date) VALUES(?,?,?,1,?)').run(name, salt, password, birth).lastInsertRowid);
+          accountId = Number(db.prepare('INSERT INTO accounts(name,salt,password,passwordless,birth_date,terms_accepted_at) VALUES(?,?,?,1,?,?)').run(name, salt, password, birth, termsAt).lastInsertRowid);
           identity.link(accountId, provider, verified);
         }
         const account = db.prepare('SELECT * FROM accounts WHERE id=?').get(accountId);
