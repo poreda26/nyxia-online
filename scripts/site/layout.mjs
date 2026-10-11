@@ -48,7 +48,8 @@ ${extraHead}
 <body>
 <header class="top">
   <a class="brand" href="${root}./"><img src="${root}favicon.png" alt=""><strong>NYXIA ONLINE</strong></a>
-  <nav>${nav}<a class="ig-icon dc-icon" href="${DISCORD}" target="_blank" rel="noopener" aria-label="Discord" title="Discord">${discordIcon}</a><a class="ig-icon" href="${INSTAGRAM}" target="_blank" rel="noopener" aria-label="Instagram: @nyxiaonline" title="Instagram">${instagramIcon}</a><button id="lang" type="button" aria-label="Language" hidden>EN</button></nav>
+  <nav class="links" aria-label="Ana menü">${nav}</nav>
+  <div class="social"><a class="ig-icon dc-icon" href="${DISCORD}" target="_blank" rel="noopener" aria-label="Discord" title="Discord">${discordIcon}</a><a class="ig-icon" href="${INSTAGRAM}" target="_blank" rel="noopener" aria-label="Instagram: @nyxiaonline" title="Instagram">${instagramIcon}</a><button id="lang" type="button" aria-label="Language" hidden>EN</button></div>
 </header>
 ${wikiActive === null ? `<main class="page">${body}</main>` : `<div class="wiki"><button class="wiki-toggle" type="button" aria-expanded="false">☰ Wiki menüsü</button>${side}<main class="page wiki-main">${body}</main></div>`}
 <footer>

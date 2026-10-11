@@ -12,20 +12,26 @@ h3{font-size:19px;margin:22px 0 8px}
 .lead{font-size:18px;color:#cfc9bb;max-width:760px}
 
 /* üst menü */
-.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px max(16px,4vw);background:rgba(11,12,16,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
 .brand{display:flex;align-items:center;gap:12px;color:var(--gold)}.brand:hover{text-decoration:none}
 .brand img{width:38px;height:38px;border-radius:10px}
 .brand strong{font:600 17px Georgia,serif;letter-spacing:.09em}
-.top nav{display:flex;align-items:center;gap:6px}
-.top nav a{color:var(--text);padding:8px 14px;border-radius:10px}
-.top nav a:hover{background:var(--panel);text-decoration:none}
-.top nav a.on{background:var(--panel2);color:var(--gold)}
 #lang{background:transparent;border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:8px;cursor:pointer;font:inherit}
+
+/* üst menü */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:10px max(16px,4vw);background:rgba(11,12,16,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.top .links{display:flex;align-items:center;gap:4px;margin-left:auto}
+.top .links a{color:var(--text);padding:8px 14px;border-radius:10px;white-space:nowrap}
+.top .links a:hover{background:var(--panel);text-decoration:none}
+.top .links a.on{background:var(--panel2);color:var(--gold)}
+.top .social{display:flex;align-items:center;gap:2px}
+.top .social a{display:inline-flex;padding:8px 10px;color:var(--text);border-radius:10px}.top .social a:hover{background:var(--panel);color:var(--gold)}
+.top .social a.dc-icon{color:#8f9bff}.top .social a.dc-icon:hover{color:#fff}
+.brand{white-space:nowrap}
 
 /* sayfa */
 .page{flex:1;width:100%;max-width:1040px;margin:0 auto;padding:28px 16px 56px}
 .wiki{flex:1;width:100%;max-width:1240px;margin:0 auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:8px;padding:0 16px}
-.wiki-main{max-width:none;padding-left:24px}
+.wiki-main{max-width:none;min-width:0;padding-left:24px}
 .wiki-nav{position:sticky;top:64px;align-self:start;display:flex;flex-direction:column;gap:2px;padding:28px 0}
 .wiki-nav strong{font:600 13px Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .wiki-nav a{color:var(--text);padding:8px 12px;border-radius:10px;font-size:15px;border-left:2px solid transparent}
@@ -123,18 +129,27 @@ footer nav{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 22px;margi
 footer p{margin:0}
 
 @media(max-width:900px){
-  .wiki{grid-template-columns:1fr}
+  .wiki{grid-template-columns:minmax(0,1fr)}
   .wiki-toggle{display:block}
   .wiki-nav{display:none;position:static;padding:10px 0}
   .wiki-nav.open{display:flex}
   .wiki-main{padding-left:0}
 }
-@media(max-width:560px){.top nav a{padding:8px 10px}.hero{padding-top:40px}.class-head img{height:170px}th,td{padding:9px 10px;font-size:14px}}
+@media(max-width:700px){
+  .top{position:static;flex-wrap:wrap;row-gap:8px;padding:8px 12px}
+  .brand{flex:1;min-width:0}.brand strong{font-size:15px;letter-spacing:.06em}
+  .top .social{margin-left:auto}
+  .top .links{order:3;width:100%;margin-left:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .top .links a{text-align:center;padding:9px 6px;background:var(--panel);border:1px solid var(--border)}
+  .top .links a.on{border-color:var(--gold2)}
+  .stores{gap:10px}.store{flex:1 1 150px;justify-content:center;min-width:150px;max-width:230px;padding:9px 12px;gap:9px}.store strong{font-size:17px}.store svg{width:24px;height:24px}
+}
+@media(max-width:700px){.class-head{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}.class-head img{height:auto;max-height:200px;width:100%;object-fit:contain}.class-head div{grid-column:1/-1;min-width:0}.class{padding:16px}}
+@media(max-width:560px){.hero{padding-top:40px}.class-head img{height:170px}th,td{padding:9px 10px;font-size:14px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 
 /* Instagram */
 .ig,.ig-btn,.ig-icon{display:inline-flex;align-items:center;gap:8px}
-.top nav a.ig-icon{padding:8px 10px;color:var(--text)}.top nav a.ig-icon:hover{color:var(--gold)}
 .cta.follow{margin-bottom:0}
 footer a.ig{color:var(--gold)}
 
@@ -142,9 +157,8 @@ footer a.ig{color:var(--gold)}
 .store{display:inline-flex;align-items:center;gap:12px;padding:9px 20px 9px 16px;border:1px solid #a6a6a6;border-radius:12px;background:#000;color:#fff;text-align:left;line-height:1.15}
 .store span{display:flex;flex-direction:column}
 .store small{font-size:10px;letter-spacing:.14em;color:#c8c8c8}
-.store strong{font:600 19px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.store strong{font:600 19px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;white-space:nowrap}
 .btn.discord{background:#5865F2;border-color:#5865F2;color:#fff;display:inline-flex;align-items:center;gap:9px}
 .btn.discord:hover{filter:brightness(1.1);text-decoration:none}
 .buttons.social{margin-top:14px}
-.top nav a.dc-icon{color:#8f9bff}.top nav a.dc-icon:hover{color:#fff}
 footer a.dc{color:#8f9bff}

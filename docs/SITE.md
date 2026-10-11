@@ -16,3 +16,6 @@ Wiki sayıları `src/data` içinden okunur, elle yazılmış sayı yoktur. **Bil
 - Sahip panelinde **Destek talepleri** sekmesi: liste, konuşma, yanıt, yanıtla ve kapat, yeniden aç. Genel bakışta bekleyen sayısı görünür.
 - E-posta bildirimleri `RESEND_API_KEY` + `MAIL_FROM` tanımlıysa gider (oyuncuya "talebin alındı" ve "yanıt verildi", sahibe `SUPPORT_NOTIFY_EMAIL` adresine "yeni talep"). Tanımlı değilse talepler yine kaydedilir; panelden bakılır.
 - Sınırlar: e-posta başına saatte 3 / günde 8, tüm site için günde 300 talep (`TICKET_DAILY_LIMIT`), IP başına dakikada 30 istek, bal kabı alanı, mesaj uzunluğu sınırları.
+
+## Kontrol
+`node scripts/site/check-links.mjs https://nyxiaonline.com` tüm iç bağlantı ve görselleri dolaşır, bozuk olanları listeler. Mobil düzen 320, 375 ve 790 px genişliklerinde taşma (yatay kaydırma) için denendi. Yerel `server/start.mjs` dizin indeksini (`/wiki/`) desteklemez; bağlantı kontrolünü yayındaki siteye karşı çalıştır.
