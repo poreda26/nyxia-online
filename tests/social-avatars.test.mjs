@@ -12,7 +12,7 @@ test('avatar migration, public/private messages, clan selection and leader-only 
  const listen=async()=>{await new Promise(ok=>api.server.listen(0,'127.0.0.1',ok));url=`http://127.0.0.1:${api.server.address().port}/api/`;};
  const call=async(path,method='GET',body,cookie)=>{const r=await fetch(url+path,{method,headers:{Origin:origin,'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,body:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};};
  try{
-  await listen();const a=await call('register','POST',{name:'avataralice',password:'long-test-password'}),b=await call('register','POST',{name:'avatarbob',password:'long-test-password'});
+  await listen();const a=await call('register','POST',{name:'avataralice',password:'long-test-password1'}),b=await call('register','POST',{name:'avatarbob',password:'long-test-password1'});
   const oldRows=await call('chat/messages','GET',null,a.cookie);assert.equal(oldRows.body[0].text,'kept');assert.equal(oldRows.body[0].avatarId,'human-warrior');
   assert.equal((await call('chat/messages','POST',{author:'Alice',text:'hello',avatarId:'paint-dragon',frameId:'sun'},a.cookie)).status,200);
   assert.equal((await call('chat/messages','GET',null,b.cookie)).body.at(-1).avatarId,'paint-dragon');

@@ -18,7 +18,7 @@ test('four clan ranks: step-by-step promotion, rank-based kicking, deputy inheri
     return { status: r.status, data: await r.json().catch(() => ({})), cookie: r.headers.get('set-cookie')?.split(';')[0] };
   };
   try {
-    cookie = (await call('register', null, { name: 'roleowner', password: 'test-password-long' })).cookie;
+    cookie = (await call('register', null, { name: 'roleowner', password: 'test-password-long1' })).cookie;
     const chars = [{ id: 'c1', nickname: 'Leader1', level: 50 }, { id: 'c2', nickname: 'Second2', level: 40 }, { id: 'c3', nickname: 'Third33', level: 30 }];
     assert.equal((await call('backup', null, { revision: 0, data: { characters: chars, bank: [[]], diamonds: 10000 } }, 'PUT')).status, 200);
     { const db = new DatabaseSync(dbFile); db.prepare('UPDATE wallets SET diamonds=5000').run(); db.close(); }

@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import { fetchSecurity, linkIdentity, startEmail, verifyEmail } from '../services/authService';
+import { fetchSecurity, linkIdentity, startEmail, verifyEmail, setMarketingOptIn } from '../services/authService';
 import { socialIdToken, socialSignInAvailable } from '../utils/socialSignIn';
 import {createPortal} from 'react-dom';
 import {Capacitor} from '@capacitor/core';
@@ -238,6 +238,12 @@ function SecuritySection({ tr, info, reload }) {
             : <><input inputMode="numeric" maxLength={6} aria-label="Code" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} placeholder={tr ? '6 haneli kod' : '6-digit code'} />
               <button disabled={busy || code.length !== 6} style={accountButton} onClick={() => run(async () => { await verifyEmail(email.trim(), code); setSent(false); setCode(''); await reload(); })}>{tr ? 'Doğrula' : 'Verify'}</button></>}
         </>)}
+      {info.email && (
+        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!info.marketing} disabled={busy} onChange={(e) => run(async () => { await setMarketingOptIn(e.target.checked); await reload(); })} style={{ marginTop: 3 }} />
+          <span>{tr ? 'Yeni güncellemeler ve etkinliklerden e-posta ile haberdar olmak istiyorum.' : 'I would like to hear about new updates and events by email.'}</span>
+        </label>
+      )}
       {info.providers?.google && socialSignInAvailable() && (hasGoogle
         ? <p>{tr ? 'Google hesabın bağlı.' : 'Your Google account is linked.'}</p>
         : <button disabled={busy} style={accountButton} onClick={() => run(async () => { const picked = await socialIdToken('google', info.providers.google); if (picked.cancelled) return; await linkIdentity('google', picked.idToken); await reload(); })}>{tr ? 'Google hesabını bağla' : 'Link Google account'}</button>)}

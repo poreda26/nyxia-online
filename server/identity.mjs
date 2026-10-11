@@ -17,6 +17,9 @@ const normalizeEmail = (value) => (typeof value === 'string' ? value.trim().toLo
 const validEmail = (value) => value.length <= 120 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
 const digest = (email, code) => createHash('sha256').update(`${email}:${code}`).digest('hex');
 
+// Yeni şifre kuralı: 8-128 karakter, en az bir harf ve bir rakam. (Mevcut hesapların daha uzun şifreleri geçerli kalır; girişte kural aranmaz.)
+export const validPassword = (value) => typeof value === 'string' && value.length >= 8 && value.length <= 128 && /\p{L}/u.test(value) && /\d/.test(value);
+
 export function createIdentity(db, { fail, mailer, clientIds = {}, fetchJwks = defaultFetchJwks, setPassword, revokeSessions }) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS account_identities(provider TEXT NOT NULL, subject TEXT NOT NULL, account INTEGER NOT NULL REFERENCES accounts(id), email TEXT, created_at INTEGER NOT NULL, PRIMARY KEY(provider, subject));
@@ -153,7 +156,7 @@ export function createIdentity(db, { fail, mailer, clientIds = {}, fetchJwks = d
   const reset = async (rawEmail, code, newPassword, now = Date.now()) => {
     const email = normalizeEmail(rawEmail);
     if (!validEmail(email)) throw fail(400, 'INVALID_EMAIL');
-    if (typeof newPassword !== 'string' || newPassword.length < 12 || newPassword.length > 128) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
+    if (!validPassword(newPassword)) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
     const row = checkCode(email, 'reset', code, now);
     const account = emailOwner(email);
     if (!account || account !== row.account) throw fail(400, 'INVALID_CODE');

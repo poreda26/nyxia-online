@@ -94,12 +94,17 @@ test('Google sign-in, email codes and password reset are verified by the server'
     assert.equal(mails.at(-1).to, 'new.person@example.com');
     assert.equal((await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode === '111111' ? '222222' : '111111', password: 'long-test-password-123' } })).status, 400);
     assert.equal((await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode, password: 'short' } })).status, 400, 'a short password is refused');
-    const registered = await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode, password: 'long-test-password-123' } });
+    for (const weak of ['abcdefghijkl', '123456789012', 'ab12']) assert.equal((await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode, password: weak } })).status, 400, `weak password refused: ${weak}`);
+    const registered = await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode, password: 'abcd1234', marketing: true } });
     assert.equal(registered.status, 200);
     assert.match(registered.body.name, /^oyuncu_[a-z0-9]+$/);
     assert.equal((await call('account/security', { cookie: registered.cookie })).body.email, 'new.person@example.com');
-    assert.equal((await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode, password: 'long-test-password-123' } })).status, 400, 'a code works once');
-    const emailLogin = await call('login', { method: 'POST', body: { name: 'New.Person@example.com', password: 'long-test-password-123', force: true } });
+    assert.equal((await call('account/security', { cookie: registered.cookie })).body.marketing, true, 'the opt-in checkbox is stored');
+    assert.equal((await call('account/marketing', { method: 'POST', body: { optin: false }, cookie: registered.cookie })).status, 200);
+    assert.equal((await call('account/security', { cookie: registered.cookie })).body.marketing, false, 'the opt-in can be withdrawn');
+    assert.equal((await call('account/marketing', { method: 'POST', body: { optin: 'yes' }, cookie: registered.cookie })).status, 400);
+    assert.equal((await call('register/email/confirm', { method: 'POST', body: { email: 'new.person@example.com', code: regCode, password: 'abcd1234' } })).status, 400, 'a code works once');
+    const emailLogin = await call('login', { method: 'POST', body: { name: 'New.Person@example.com', password: 'abcd1234', force: true } });
     assert.equal(emailLogin.status, 200);
     assert.equal(emailLogin.body.name, registered.body.name);
 

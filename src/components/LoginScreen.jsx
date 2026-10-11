@@ -35,6 +35,9 @@ function errorKey(code) {
 // App.jsx#handleLogin bu ismi doğrudan yerel karakter kaydını açmak için
 // kullanıyor (bkz. utils/storage.js#loadAccount) — sunucu ve yerel kayıt
 // aynı anahtar üzerinden eşleşiyor.
+// Yeni şifre kuralı (sunucuyla aynı): en az 8 karakter, harf ve rakam içermeli.
+const passwordStrong = (value) => value.length >= 8 && value.length <= 128 && /\p{L}/u.test(value) && /\d/.test(value);
+
 export default function LoginScreen({ initialUsername, onLogin, notice }) {
   const { t, lang } = useTranslation();
   const [mode, setMode] = useState("login");
@@ -49,6 +52,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
   const [forgot, setForgot] = useState(false);
   const [regStep, setRegStep] = useState("email");
   const [code, setCode] = useState("");
+  const [marketing, setMarketing] = useState(false);
   useEffect(() => { fetchAuthProviders().then(setProviders).catch(() => {}); }, []);
 
   const socialLogin = async (provider, force = false, saved = null) => {
@@ -71,14 +75,14 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
     const email = username.trim().toLowerCase();
     if (busy) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError(t("login.invalidEmailError")); return; }
-    if (password.length < 12) { setError(t("login.passwordTooShortError")); return; }
+    if (!passwordStrong(password)) { setError(t("login.passwordTooShortError")); return; }
     if (password !== password2) { setError(t("login.passwordMismatchError")); return; }
     setError(""); setBusy(true);
     try {
       if (regStep === "email") { await startEmailRegister(email); setRegStep("code"); }
       else {
         if (code.length !== 6) { setError(t("login.invalidCodeError")); return; }
-        const { name } = await confirmEmailRegister(email, code, password);
+        const { name } = await confirmEmailRegister(email, code, password, marketing);
         onLogin(name);
       }
     } catch (err) { setError(t(errorKey(err.code))); }
@@ -92,7 +96,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
     if (isReservedUsername(trimmed)) { setError(t("login.reservedNameError")); return; }
     const looksLikeEmail = mode === "login" && trimmed.includes("@");
     if (!looksLikeEmail && !NAME_PATTERN.test(trimmed)) { setError(t("login.invalidFormatError")); return; }
-    if (password.length < 12) { setError(t("login.passwordTooShortError")); return; }
+    if (mode === "register" && !passwordStrong(password)) { setError(t("login.passwordTooShortError")); return; }
     if (mode === "register" && password !== password2) { setError(t("login.passwordMismatchError")); return; }
     setError(""); setBusy(true); setInUse(false);
     try {
@@ -205,6 +209,13 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
         ))}
       </p>
 
+      {emailRegister && (
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 11, color: "var(--text-muted)", marginBottom: 12, textAlign: "left", cursor: "pointer" }}>
+          <input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} style={{ marginTop: 2 }} />
+          <span>{t("login.marketingOptIn")}</span>
+        </label>
+      )}
+
       <button
         style={{ ...styles.primaryBtn, background: "#D4AF6A", alignSelf: "center", opacity: busy ? 0.6 : 1 }}
         disabled={!username.trim() || !password || (mode === "register" && !password2) || busy}
@@ -277,7 +288,7 @@ function ForgotPassword({ onClose }) {
           <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", lineHeight: 1.6 }}>{t("login.forgotCodeText")}</div>
           <input inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder="000000" style={{ ...styles.loginInput, width: "100%", textAlign: "center", letterSpacing: 6 }} />
           <input type="password" autoComplete="new-password" maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("login.newPasswordPlaceholder")} style={{ ...styles.loginInput, width: "100%", textAlign: "left" }} />
-          <button style={{ ...styles.primaryBtn, background: "#D4AF6A" }} disabled={busy || code.length !== 6 || password.length < 12} onClick={() => run(() => resetPassword(email.trim(), code, password), "done")}>{t("login.resetPassword")}</button>
+          <button style={{ ...styles.primaryBtn, background: "#D4AF6A" }} disabled={busy || code.length !== 6 || !passwordStrong(password)} onClick={() => run(() => resetPassword(email.trim(), code, password), "done")}>{t("login.resetPassword")}</button>
         </>}
         {step === "done" && <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", lineHeight: 1.6 }}>{t("login.resetDone")}</div>}
         {message && <div style={{ fontSize: 11, color: "#E8425A", textAlign: "center" }}>{message}</div>}

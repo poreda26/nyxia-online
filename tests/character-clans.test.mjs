@@ -13,7 +13,7 @@ test('characters isolate membership, invitations, rank, donations and dungeon tu
  let cookie;
  const call=async(path,key,body,method=body?'POST':'GET')=>{const r=await fetch(url+path,{method,headers:{Origin:'http://localhost:5177','Content-Type':'application/json',...(cookie?{Cookie:cookie}:{}),...(key?{'X-Character-Key':key}:{})},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};};
  try{
-  cookie=(await call('register',null,{name:'clantester',password:'test-password-long'})).cookie;
+  cookie=(await call('register',null,{name:'clantester',password:'test-password-long1'})).cookie;
   const data={characters:[{id:'hero',nickname:'MainHero',level:50},{id:'alt',nickname:'AltHero',level:20},null],bank:[[]],diamonds:10000};
   assert.equal((await call('backup',null,{revision:0,data},'PUT')).status,200);
   { const grant=new DatabaseSync(dbFile); grant.prepare('UPDATE wallets SET diamonds=5000').run(); grant.close(); }

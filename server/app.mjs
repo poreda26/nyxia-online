@@ -13,7 +13,7 @@ import {createWallet} from './wallet.mjs';
 import {createEntitlements} from './entitlements.mjs';
 import {createIap} from './iap.mjs';
 import {createAds} from './ads.mjs';
-import {createIdentity} from './identity.mjs';
+import {createIdentity, validPassword} from './identity.mjs';
 import {createMailer} from './mailer.mjs';
 import {createTickets} from './tickets.mjs';
 import {createGame} from './game.mjs';
@@ -173,6 +173,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     CREATE TABLE IF NOT EXISTS push_inactivity_sent(account_id INTEGER PRIMARY KEY REFERENCES accounts(id), sent_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS push_event_sent(event_id TEXT NOT NULL, day_key TEXT NOT NULL, PRIMARY KEY(event_id,day_key));`);
   try { db.exec('ALTER TABLE accounts ADD COLUMN passwordless INTEGER NOT NULL DEFAULT 0'); } catch { /* sütun zaten var */ }
+  // Duyuru e-postası izni (KVKK: varsayılan kapalı; açık rıza anı saklanır, istenince geri alınır)
+  try { db.exec('ALTER TABLE accounts ADD COLUMN marketing_optin INTEGER NOT NULL DEFAULT 0'); } catch { /* sütun zaten var */ }
+  try { db.exec('ALTER TABLE accounts ADD COLUMN marketing_at INTEGER'); } catch { /* sütun zaten var */ }
   // Tek oturum: bir hesap aynı anda yalnızca tek yerde açık olabilir. `seen` son istek zamanı, `kind` oturum türü
   // ('game' oyun istemcisi, 'panel' sahip paneli — panel oyun oturumunu etkilemez).
   for (const column of ["seen INTEGER NOT NULL DEFAULT 0", "kind TEXT NOT NULL DEFAULT 'game'"]) { try { db.exec(`ALTER TABLE sessions ADD COLUMN ${column}`); } catch { /* sütun zaten var */ } }
@@ -746,7 +749,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           const owner = identity.emailOwner(identity.normalizeEmail(name));
           name = (owner && db.prepare('SELECT name FROM accounts WHERE id=?').get(owner)?.name) || 'no_such_account';
         }
-        if (!/^[a-z0-9_]{3,24}$/.test(name) || typeof body?.password !== 'string' || body.password.length < 12 || body.password.length > 128) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
+        if (!/^[a-z0-9_]{3,24}$/.test(name) || typeof body?.password !== 'string' || body.password.length < 1 || body.password.length > 128 || (path === '/api/register' && !validPassword(body.password))) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
         let account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         if (path === '/api/register') {
           registerLimit(clientAddress(req));
@@ -775,7 +778,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       if (path === '/api/register/email/confirm' && req.method === 'POST') {
         const body = await read(req);
-        if (typeof body?.password !== 'string' || body.password.length < 12 || body.password.length > 128) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
+        if (!validPassword(body?.password)) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
         emailRegisterLimit(clientAddress(req));
         const email = identity.consumeRegisterCode(body?.email, body?.code);
         registerLimit(clientAddress(req)); // yalnızca gerçekten hesap açılacaksa sayılır (yanlış kod denemeleri kod başına 5 ile sınırlı)
@@ -784,6 +787,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const hashed = (await scrypt(body.password, salt, 64)).toString('hex');
         const id = Number(db.prepare('INSERT INTO accounts(name,salt,password) VALUES(?,?,?)').run(name, salt, hashed).lastInsertRowid);
         identity.attachVerifiedEmail(id, email);
+        if (body?.marketing === true) db.prepare('UPDATE accounts SET marketing_optin=1, marketing_at=? WHERE id=?').run(Date.now(), id);
         return issueSession(req, res, send, nativeOrigin, db.prepare('SELECT * FROM accounts WHERE id=?').get(id), body, false);
       }
       // Giriş seçenekleri (oturumsuz): hangi sağlayıcılar açık.
@@ -872,7 +876,14 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         return send(200, { ...result, diamonds: wallet.balance(account.id), ...ads.status(account.id, account.name) });
       }
       // Hesap güvenliği: bağlı girişler ve doğrulanmış e-posta.
-      if (path === '/api/account/security' && req.method === 'GET') return send(200, { ...identity.security(account.id), passwordless: !!db.prepare('SELECT passwordless FROM accounts WHERE id=?').get(account.id)?.passwordless, providers: identity.providersConfig() });
+      if (path === '/api/account/security' && req.method === 'GET') return send(200, { ...identity.security(account.id), passwordless: !!db.prepare('SELECT passwordless FROM accounts WHERE id=?').get(account.id)?.passwordless, marketing: !!db.prepare('SELECT marketing_optin FROM accounts WHERE id=?').get(account.id)?.marketing_optin, providers: identity.providersConfig() });
+      if (path === '/api/account/marketing' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        const body = await read(req);
+        if (typeof body?.optin !== 'boolean') throw fail(400, 'BAD_REQUEST');
+        db.prepare('UPDATE accounts SET marketing_optin=?, marketing_at=? WHERE id=?').run(body.optin ? 1 : 0, Date.now(), account.id);
+        return send(200, { marketing: body.optin });
+      }
       if (path === '/api/account/identity' && req.method === 'POST') {
         walletRateLimit(account.id);
         const body = await read(req);
