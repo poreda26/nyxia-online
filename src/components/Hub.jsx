@@ -35,6 +35,7 @@ import DailyLoginModal from "./DailyLoginModal";
 import WheelModal from "./WheelModal";
 import { fetchWheel } from "../services/wheelService";
 import { fetchAds } from "../services/adsService";
+import FreeDiamondsCard from "./FreeDiamondsCard";
 import DiamondShopModal from "./DiamondShopModal";
 import FirstPurchaseOfferModal from "./FirstPurchaseOfferModal";
 import EventReadyModal from "./EventReadyModal";
@@ -305,6 +306,9 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
       />
 
       <EventStrip player={player} act={act} pushToast={pushToast} onOpenWarzone={() => requestTabChange("warzone")} />
+
+      {/* Ücretsiz elmas (reklam izle) ana ekranda da görünür; sunucu kapalıysa kart hiç çıkmaz. */}
+      <div style={{ marginTop: -8 }}><FreeDiamondsCard setPlayer={setPlayer} pushToast={pushToast} onStatus={setAdsStatus} /></div>
 
       {!firstPurchaseClaimed && (
         <button
