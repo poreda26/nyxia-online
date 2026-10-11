@@ -25,6 +25,7 @@ import { styles } from "./styles";
 import GlobalStyle from "./components/GlobalStyle";
 import LoginScreen from "./components/LoginScreen";
 import ConfirmHost from "./components/ConfirmHost";
+import BirthDateGate from "./components/BirthDateGate";
 import CharacterSelectScreen from "./components/CharacterSelectScreen";
 import RaceSelect from "./components/RaceSelect";
 import ClassSelect from "./components/ClassSelect";
@@ -72,6 +73,7 @@ export default function App() {
   }, []);
   // GM yetkisi sunucudan gelir (hesaba bağlı); yerel kayıttaki hiçbir değer yetki vermez.
   const [isGm, setIsGm] = useState(false);
+  const [needsBirthDate, setNeedsBirthDate] = useState(false);
   const [username, setUsername] = useState("");
   const resetSessionRef = useRef(null);
   useEffect(() => { signedInRef.current = !!username; if (username) setSignedOutNotice(false); }, [username]);
@@ -246,7 +248,7 @@ export default function App() {
 
   const handleLogin = async (name) => {
     setUsername(name);
-    fetchMe().then((me) => { setIsGm(!!me.gm); economyRef.current = !!me.economy; }).catch(() => { setIsGm(false); economyRef.current = false; });
+    fetchMe().then((me) => { setIsGm(!!me.gm); economyRef.current = !!me.economy; setNeedsBirthDate(!!me.needsBirthDate); }).catch(() => { setIsGm(false); economyRef.current = false; });
     saveLastUsername(name);
     // CharacterSelectScreen render's straight from account.characters (bkz.
     // CLASSES[p.class] look-up'ı) — handlePlay'e kadar migratePlayer hiç
@@ -513,6 +515,7 @@ export default function App() {
     <div style={styles.appRoot}>
       <GlobalStyle />
       <ConfirmHost />
+      {needsBirthDate && <BirthDateGate onDone={() => setNeedsBirthDate(false)} onLocked={() => { window.location.reload(); }} />}
       {outdated && (
         <div role="alertdialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-base, #0B0C10)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 28, textAlign: "center", color: "var(--text-primary, #e8e6e0)" }}>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 22 }}>{translateWith(audioSettings.language, "app.outdatedTitle")}</div>

@@ -9,6 +9,7 @@ const api = createApi({
   database,
   origin: process.env.APP_ORIGIN || 'http://localhost:5173',
   secure: production,
+  ageGate: true,
   staticDir: process.env.STATIC_DIR || null,
   trustedProxy: process.env.TRUSTED_PROXY || null,
   iapWebhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || null,

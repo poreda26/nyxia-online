@@ -14,6 +14,7 @@ import {createEntitlements} from './entitlements.mjs';
 import {createIap} from './iap.mjs';
 import {createAds} from './ads.mjs';
 import {createIdentity, validPassword} from './identity.mjs';
+import {requireAdultEnough, parseBirthDate, ageOf, MIN_AGE} from './age.mjs';
 import {createMailer} from './mailer.mjs';
 import {createTickets} from './tickets.mjs';
 import {createGame} from './game.mjs';
@@ -140,7 +141,7 @@ export // Oyun mantığı paketi (npm run build:logic ile üretilir). Yoksa sunu
 const gameLogic = await import('./game-logic.generated.mjs').catch(() => null);
 
 const NATIVE_APP_ORIGINS = ['https://localhost', 'capacitor://localhost'];
-export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, extraOrigins = [], iapWebhookSecret = null, iapAllowSandbox = false, economyForAll = false, adsMode = 'off', adsTestAccounts = [], adsFetchKeys, authOptions = {} } = {}) {
+export function createApi({ database = ':memory:', origin = 'http://localhost:5177', secure = true, staticDir = null, trustedProxy = null, nativeOrigins = NATIVE_APP_ORIGINS, extraOrigins = [], iapWebhookSecret = null, iapAllowSandbox = false, economyForAll = false, adsMode = 'off', adsTestAccounts = [], adsFetchKeys, authOptions = {}, ageGate = false } = {}) {
   // Tarayıcı kaynakları (çerezli): ana adres + ek alan adları (ör. panel). Bunların dışındaki izinli kaynaklar yerel uygulamadır.
   const webOrigins = new Set([origin, ...extraOrigins]);
   const allowedOrigins = new Set([...webOrigins, ...nativeOrigins]);
@@ -176,6 +177,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   // Duyuru e-postası izni (KVKK: varsayılan kapalı; açık rıza anı saklanır, istenince geri alınır)
   try { db.exec('ALTER TABLE accounts ADD COLUMN marketing_optin INTEGER NOT NULL DEFAULT 0'); } catch { /* sütun zaten var */ }
   try { db.exec('ALTER TABLE accounts ADD COLUMN marketing_at INTEGER'); } catch { /* sütun zaten var */ }
+  // Doğum tarihi (yaş kapısı) ve yaş yüzünden kilitli hesaplar
+  try { db.exec('ALTER TABLE accounts ADD COLUMN birth_date TEXT'); } catch { /* sütun zaten var */ }
+  try { db.exec('ALTER TABLE accounts ADD COLUMN age_locked INTEGER NOT NULL DEFAULT 0'); } catch { /* sütun zaten var */ }
+  // Yaş kapısı açıksa yeni hesap için doğum tarihi şart; kapalıyken (testler) denetlenmez.
+  const birthFor = (value) => (ageGate ? requireAdultEnough(fail, value) : null);
   // Tek oturum: bir hesap aynı anda yalnızca tek yerde açık olabilir. `seen` son istek zamanı, `kind` oturum türü
   // ('game' oyun istemcisi, 'panel' sahip paneli — panel oyun oturumunu etkilemez).
   for (const column of ["seen INTEGER NOT NULL DEFAULT 0", "kind TEXT NOT NULL DEFAULT 'game'"]) { try { db.exec(`ALTER TABLE sessions ADD COLUMN ${column}`); } catch { /* sütun zaten var */ } }
@@ -684,6 +690,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   // Oturum açar: engel ve tek-oturum kuralını uygular, çerez ya da (yerel uygulamada) token döner.
   const issueSession = (req, res, send, nativeOrigin, account, body, checkBusy) => {
     if (admin.blocked(account.id)) throw fail(403, 'ACCOUNT_BLOCKED');
+    if (account.age_locked) throw fail(403, 'ACCOUNT_AGE_LOCKED');
     const token = randomBytes(32).toString('hex');
     const loginAt = Date.now();
     db.prepare('DELETE FROM sessions WHERE expires < ?').run(loginAt);
@@ -753,10 +760,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         let account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         if (path === '/api/register') {
           registerLimit(clientAddress(req));
+          const birth = birthFor(body?.birthDate);
           if (containsProfanityLoose(name)) throw fail(400, 'NAME_NOT_ALLOWED');
           const salt = randomBytes(16).toString('hex');
           const password = (await scrypt(body.password, salt, 64)).toString('hex');
-          try { db.prepare('INSERT INTO accounts(name,salt,password) VALUES(?,?,?)').run(name, salt, password); }
+          try { db.prepare('INSERT INTO accounts(name,salt,password,birth_date) VALUES(?,?,?,?)').run(name, salt, password, birth); }
           catch (error) { if (error.code?.startsWith('ERR_SQLITE') && db.prepare('SELECT id FROM accounts WHERE name=?').get(name)) throw fail(409, 'ACCOUNT_UNAVAILABLE'); throw error; }
           account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         } else {
@@ -773,12 +781,15 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       // E-postayla kayıt (iki adım): kod gönder, sonra kod + şifreyle hesabı aç.
       if (path === '/api/register/email/start' && req.method === 'POST') {
         emailRegisterLimit(clientAddress(req));
-        await identity.startRegister((await read(req))?.email);
+        const startBody = await read(req);
+        birthFor(startBody?.birthDate);
+        await identity.startRegister(startBody?.email);
         return send(200, { ok: true });
       }
       if (path === '/api/register/email/confirm' && req.method === 'POST') {
         const body = await read(req);
         if (!validPassword(body?.password)) throw fail(400, 'INVALID_CREDENTIAL_FORMAT');
+        const birth = birthFor(body?.birthDate);
         emailRegisterLimit(clientAddress(req));
         const email = identity.consumeRegisterCode(body?.email, body?.code);
         registerLimit(clientAddress(req)); // yalnızca gerçekten hesap açılacaksa sayılır (yanlış kod denemeleri kod başına 5 ile sınırlı)
@@ -787,6 +798,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const hashed = (await scrypt(body.password, salt, 64)).toString('hex');
         const id = Number(db.prepare('INSERT INTO accounts(name,salt,password) VALUES(?,?,?)').run(name, salt, hashed).lastInsertRowid);
         identity.attachVerifiedEmail(id, email);
+        if (birth) db.prepare('UPDATE accounts SET birth_date=? WHERE id=?').run(birth, id);
         if (body?.marketing === true) db.prepare('UPDATE accounts SET marketing_optin=1, marketing_at=? WHERE id=?').run(Date.now(), id);
         return issueSession(req, res, send, nativeOrigin, db.prepare('SELECT * FROM accounts WHERE id=?').get(id), body, false);
       }
@@ -800,11 +812,14 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const verified = await identity.verifyToken(provider, body?.idToken);
         let accountId = identity.identityOwner(provider, verified.subject);
         if (!accountId) {
+          // Yeni hesap: önce doğum tarihi (hesap oluşturulmadan). İstemci tarihi sorup aynı belgeyle yeniden dener.
+          if (ageGate && !body?.birthDate) throw fail(428, 'BIRTHDATE_REQUIRED');
+          const birth = birthFor(body?.birthDate);
           registerLimit(clientAddress(req));
           const name = identity.randomName();
           const salt = randomBytes(16).toString('hex');
           const password = (await scrypt(randomBytes(32).toString('hex'), salt, 64)).toString('hex');
-          accountId = Number(db.prepare('INSERT INTO accounts(name,salt,password,passwordless) VALUES(?,?,?,1)').run(name, salt, password).lastInsertRowid);
+          accountId = Number(db.prepare('INSERT INTO accounts(name,salt,password,passwordless,birth_date) VALUES(?,?,?,1,?)').run(name, salt, password, birth).lastInsertRowid);
           identity.link(accountId, provider, verified);
         }
         const account = db.prepare('SELECT * FROM accounts WHERE id=?').get(accountId);
@@ -844,7 +859,23 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if(path.startsWith('/api/admin/')) return await admin.handle(req,path,account,send);
       if(path === '/api/drop-settings' && req.method==='GET')return send(200,admin.drops.get());
       if(req.method==='POST' && (path==='/api/chat/messages'||/^\/api\/social\/messages\/\d+$/.test(path)) && admin.muted(account.id))throw fail(403,'ACCOUNT_MUTED');
-      if (path === '/api/me' && req.method === 'GET') return send(200, { id: account.id, name: account.name, gm: admin.isGm(account.id), economy: game.enabled(account.id) });
+      if (path === '/api/me' && req.method === 'GET') return send(200, { id: account.id, name: account.name, gm: admin.isGm(account.id), economy: game.enabled(account.id), needsBirthDate: ageGate && !db.prepare('SELECT birth_date FROM accounts WHERE id=?').get(account.id)?.birth_date });
+      // Eski hesaplar için doğum tarihi (bir kez; sonradan değiştirilemez). Yaş sınırının altındaysa hesap kilitlenir.
+      if (path === '/api/account/birthdate' && req.method === 'POST') {
+        walletRateLimit(account.id);
+        const body = await read(req);
+        const row = db.prepare('SELECT birth_date FROM accounts WHERE id=?').get(account.id);
+        if (row?.birth_date) throw fail(409, 'ALREADY_SET');
+        const parsed = parseBirthDate(body?.birthDate);
+        if (!parsed) throw fail(400, 'INVALID_BIRTHDATE');
+        if (ageOf(parsed) < MIN_AGE) {
+          db.prepare('UPDATE accounts SET birth_date=?, age_locked=1 WHERE id=?').run(body.birthDate, account.id);
+          db.prepare('DELETE FROM sessions WHERE account=?').run(account.id);
+          throw fail(403, 'UNDER_AGE');
+        }
+        db.prepare('UPDATE accounts SET birth_date=? WHERE id=?').run(body.birthDate, account.id);
+        return send(200, { ok: true });
+      }
       if (path === '/api/logout' && req.method === 'POST') {
         db.prepare('DELETE FROM sessions WHERE token=?').run(hash(token));
         res.setHeader('Set-Cookie', cookie('', 0)); return send(200, { ok: true });

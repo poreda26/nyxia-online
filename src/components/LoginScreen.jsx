@@ -8,6 +8,8 @@ import { fetchAuthProviders, loginSocial, forgotPassword, resetPassword, startEm
 import { socialIdToken, socialSignInAvailable, appleSignInAvailable } from "../utils/socialSignIn";
 import nyxiaLogo from "../assets/brand/nyxia-logo.png";
 import { LEGAL_LINKS } from "../data/legalLinks";
+import { birthProblem } from "../utils/birth";
+import BirthDateInput from "./BirthDateInput";
 
 const NAME_PATTERN = /^[a-z0-9_]{3,24}$/;
 
@@ -25,6 +27,8 @@ function errorKey(code) {
   if (code === "MAIL_UNAVAILABLE") return "login.mailUnavailableError";
   if (code === "INVALID_ID_TOKEN" || code === "PROVIDER_UNAVAILABLE") return "login.socialFailedError";
   if (code === "ACCOUNT_BLOCKED") return "login.blockedError";
+  if (code === "UNDER_AGE" || code === "ACCOUNT_AGE_LOCKED") return "login.underAgeError";
+  if (code === "INVALID_BIRTHDATE") return "login.birthRequiredError";
   return "login.networkError";
 }
 
@@ -53,18 +57,23 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
   const [regStep, setRegStep] = useState("email");
   const [code, setCode] = useState("");
   const [marketing, setMarketing] = useState(false);
+  const [birth, setBirth] = useState("");
+  const [socialBirth, setSocialBirth] = useState(null);
   useEffect(() => { fetchAuthProviders().then(setProviders).catch(() => {}); }, []);
 
-  const socialLogin = async (provider, force = false, saved = null) => {
+  const socialLogin = async (provider, force = false, saved = null, birthDate = null) => {
     if (busy) return;
     setError(""); setBusy(true); setInUse(false);
+    let picked = saved;
     try {
-      const picked = saved || await socialIdToken(provider, providers[provider]);
+      picked = saved || await socialIdToken(provider, providers[provider]);
       if (picked.cancelled) return;
-      const { name } = await loginSocial(provider, picked.idToken, force);
+      const { name } = await loginSocial(provider, picked.idToken, force, birthDate);
+      setSocialBirth(null);
       onLogin(name);
     } catch (err) {
-      if (err.code === "ACCOUNT_IN_USE") { setInUse(true); setPendingSocial({ provider, idToken: saved?.idToken }); }
+      if (err.code === "ACCOUNT_IN_USE") { setInUse(true); setPendingSocial({ provider, idToken: saved?.idToken || picked?.idToken }); }
+      else if (err.code === "BIRTHDATE_REQUIRED") setSocialBirth({ provider, idToken: picked.idToken });
       else setError(t(errorKey(err.code || "SOCIAL")));
     } finally { setBusy(false); }
   };
@@ -77,12 +86,14 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { setError(t("login.invalidEmailError")); return; }
     if (!passwordStrong(password)) { setError(t("login.passwordTooShortError")); return; }
     if (password !== password2) { setError(t("login.passwordMismatchError")); return; }
+    const birthIssue = birthProblem(birth);
+    if (birthIssue) { setError(t(birthIssue)); return; }
     setError(""); setBusy(true);
     try {
-      if (regStep === "email") { await startEmailRegister(email); setRegStep("code"); }
+      if (regStep === "email") { await startEmailRegister(email, birth); setRegStep("code"); }
       else {
         if (code.length !== 6) { setError(t("login.invalidCodeError")); return; }
-        const { name } = await confirmEmailRegister(email, code, password, marketing);
+        const { name } = await confirmEmailRegister(email, code, password, marketing, birth);
         onLogin(name);
       }
     } catch (err) { setError(t(errorKey(err.code))); }
@@ -98,9 +109,10 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
     if (!looksLikeEmail && !NAME_PATTERN.test(trimmed)) { setError(t("login.invalidFormatError")); return; }
     if (mode === "register" && !passwordStrong(password)) { setError(t("login.passwordTooShortError")); return; }
     if (mode === "register" && password !== password2) { setError(t("login.passwordMismatchError")); return; }
+    if (mode === "register") { const birthIssue = birthProblem(birth); if (birthIssue) { setError(t(birthIssue)); return; } }
     setError(""); setBusy(true); setInUse(false);
     try {
-      const { name } = mode === "register" ? await registerAccount(trimmed, password) : await loginAccount(trimmed, password, force === true);
+      const { name } = mode === "register" ? await registerAccount(trimmed, password, birth) : await loginAccount(trimmed, password, force === true);
       onLogin(name);
     } catch (err) {
       if (err.code === "ACCOUNT_IN_USE") setInUse(true);
@@ -171,6 +183,8 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
         </div>
       )}
 
+      {mode === "register" && <BirthDateInput value={birth} onChange={(v) => { setBirth(v); setError(""); }} onEnter={() => submit()} />}
+
       {emailRegister && regStep === "code" && (
         <div style={{ marginTop: -6, marginBottom: 14 }}>
           <p style={{ ...styles.loginCaveat, marginBottom: 8 }}>{t("login.codeSent", { email: username.trim().toLowerCase() })}</p>
@@ -218,11 +232,23 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
 
       <button
         style={{ ...styles.primaryBtn, background: "#D4AF6A", alignSelf: "center", opacity: busy ? 0.6 : 1 }}
-        disabled={!username.trim() || !password || (mode === "register" && !password2) || busy}
+        disabled={!username.trim() || !password || (mode === "register" && (!password2 || !birth)) || busy}
         onClick={() => submit()}
       >
         {t(busy ? "login.submitting" : emailRegister ? (regStep === "code" ? "login.registerFinish" : "login.sendCode") : mode === "register" ? "login.registerSubmit" : "login.submit")} <ChevronRight size={16} />
       </button>
+
+      {socialBirth && (
+        <div style={{ alignSelf: "stretch", marginTop: 14 }}>
+          <p style={{ ...styles.loginCaveat, marginBottom: 8 }}>{t("login.socialBirthText")}</p>
+          <BirthDateInput value={birth} onChange={(v) => { setBirth(v); setError(""); }} />
+          <button
+            style={{ ...styles.primaryBtn, background: "#D4AF6A", opacity: busy ? 0.6 : 1 }}
+            disabled={!birth || busy}
+            onClick={() => { const issue = birthProblem(birth); if (issue) { setError(t(issue)); return; } socialLogin(socialBirth.provider, false, { idToken: socialBirth.idToken }, birth); }}
+          >{t("login.gateSubmit")}</button>
+        </div>
+      )}
 
       {socialSignInAvailable() && providers && (providers.google || providers.apple) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignSelf: "stretch", marginTop: 14 }}>
@@ -239,7 +265,7 @@ export default function LoginScreen({ initialUsername, onLogin, notice }) {
       )}
 
       <button
-        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); setRegStep("email"); setCode(""); setPassword2(""); }}
+        onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); setRegStep("email"); setCode(""); setPassword2(""); setBirth(""); }}
         style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, marginTop: 12, cursor: "pointer", textDecoration: "underline" }}
       >
         {t(mode === "register" ? "login.switchToLogin" : "login.switchToRegister")}
