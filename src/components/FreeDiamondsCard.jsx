@@ -64,7 +64,7 @@ export default function FreeDiamondsCard({ setPlayer, pushToast, onStatus }) {
   const busy = phase !== "idle";
   const ready = status.canWatch;
   return (
-    <div style={{ ...styles.itemDetailCard, width: "100%", marginTop: 16, borderColor: "#8B6FC9", display: "flex", alignItems: "center", gap: 10 }}>
+    <div style={{ ...styles.itemDetailCard, width: "100%", boxSizing: "border-box", marginTop: 16, borderColor: "#8B6FC9", display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--bg-panel-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         <Gem size={18} color="#8B6FC9" strokeWidth={1.6} />
       </div>

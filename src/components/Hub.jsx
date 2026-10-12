@@ -308,7 +308,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
       <EventStrip player={player} act={act} pushToast={pushToast} onOpenWarzone={() => requestTabChange("warzone")} />
 
       {/* Ücretsiz elmas (reklam izle) ana ekranda da görünür; sunucu kapalıysa kart hiç çıkmaz. */}
-      <div style={{ marginTop: -8 }}><FreeDiamondsCard setPlayer={setPlayer} pushToast={pushToast} onStatus={setAdsStatus} /></div>
+      <div style={{ marginTop: -8, display: tab === "battle" ? "block" : "none" }}><FreeDiamondsCard setPlayer={setPlayer} pushToast={pushToast} onStatus={setAdsStatus} /></div>
 
       {!firstPurchaseClaimed && (
         <button
