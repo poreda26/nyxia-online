@@ -1,6 +1,9 @@
 import {createDropSettings,dropMetadata} from './drop-settings.mjs';
+import {GIFT_LIMITS} from './ops.mjs';
 // Owner identity is provisioned locally, never from a character flag or HTTP body.
-export function createAdmin(db, { read, fail, wallet }) {
+const MOD_GET = new Set(['overview','accounts','account','sanctions','chat','reports','clans','market','duels']);
+const MOD_POST = new Set(['account/mute','chat/remove','report/resolve']);
+export function createAdmin(db, { read, fail, wallet, ops }) {
   db.exec(`CREATE TABLE IF NOT EXISTS panel_owner(singleton INTEGER PRIMARY KEY CHECK(singleton=1), account INTEGER NOT NULL REFERENCES accounts(id));
     CREATE TABLE IF NOT EXISTS account_blocks(account INTEGER PRIMARY KEY REFERENCES accounts(id), reason TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS admin_audit(id INTEGER PRIMARY KEY, actor INTEGER NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, reason TEXT NOT NULL, created_at INTEGER NOT NULL);
@@ -47,13 +50,23 @@ export function createAdmin(db, { read, fail, wallet }) {
     return {revision:revision+1};
   };
   async function handle(req, path, account, send) {
-    if(!owner(account.id)) throw fail(403,'OWNER_ONLY');
+    // Rol: sahip her şeyi yapar; moderatör yalnızca izinli okuma/denetim uçlarını kullanır.
+    const role = owner(account.id) ? 'owner' : ops?.isMod(account.id) ? 'mod' : null;
+    if(!role) throw fail(403,'OWNER_ONLY');
+    const name = path.slice('/api/admin/'.length);
+    if(role === 'mod' && !(req.method === 'GET' ? MOD_GET : MOD_POST).has(name)) throw fail(403,'OWNER_ONLY');
     const url = new URL(req.url,'http://localhost');
     if(req.method === 'GET') {
+      if(ops && name === 'stats') return send(200,{...ops.stats(),health:ops.health(),watch:ops.watch(),purchases:ops.purchases()});
+      if(ops && name === 'mail') return send(200,{recent:ops.recentMail(),limits:GIFT_LIMITS});
+      if(ops && name === 'announce') return send(200,{announcement:JSON.parse(ops.cfg('announcement')||'null'),maintenance:JSON.parse(ops.cfg('maintenance')||'null'),minBuild:Number(ops.cfg('min_build')||0),updateUrl:ops.cfg('update_url')||null});
+      if(ops && name === 'marketing') return send(200,{eligible:ops.marketingEligible().length,campaigns:ops.campaigns(),mailConfigured:!!ops.health().mailConfigured});
+      if(ops && name === 'marketing/export') return send(200,ops.marketingEligible().map(r=>({name:r.name,email:r.email})));
+      if(ops && name === 'tools') return send(200,{staff:ops.staffList(),ageLocked:ops.ageLocked()});
       if(path === '/api/admin/drops')return send(200,{...drops.get(),...dropMetadata,history:db.prepare('SELECT revision,created_at FROM drop_settings_history ORDER BY revision DESC LIMIT 30').all()});
       if(path === '/api/admin/sanctions')return send(200,db.prepare("SELECT a.name,s.* FROM (SELECT account,reason,expires_at,'ban' type FROM account_blocks UNION ALL SELECT account,reason,expires_at,'mute' type FROM account_mutes) s JOIN accounts a ON a.id=s.account WHERE expires_at IS NULL OR expires_at>?").all(Date.now()));
       if(path === '/api/admin/overview') return send(200,{
-        owner:account.name, accounts:db.prepare('SELECT COUNT(*) n FROM accounts').get().n,
+        owner:account.name, role, accounts:db.prepare('SELECT COUNT(*) n FROM accounts').get().n,
         sessions:db.prepare('SELECT COUNT(DISTINCT account) n FROM sessions WHERE expires>?').get(Date.now()).n,
         clans:db.prepare('SELECT COUNT(*) n FROM clans').get().n,
         stalls:db.prepare('SELECT COUNT(*) n FROM market_stalls').get().n,
@@ -81,8 +94,49 @@ export function createAdmin(db, { read, fail, wallet }) {
       const b = await read(req);
       const reason = typeof b?.reason === 'string' ? b.reason.trim().slice(0,300) : '';
       if(reason.length<3) throw fail(400,'REASON_REQUIRED');
+      const asyncId = Number(b.id);
+      if(ops && name === 'account/temp-password'){
+        if(asyncId===account.id) throw fail(400,'OWNER_PROTECTED');
+        const out=await ops.tempPassword(asyncId); audit(account.id,path,asyncId,reason+' | geçici şifre verildi'); return send(200,out);
+      }
+      if(ops && (name === 'marketing/send' || name === 'marketing/continue')){
+        let campaign=Number(b.campaign);
+        if(name==='marketing/send'){
+          const subject=typeof b.subject==='string'?b.subject.trim().slice(0,120):''; const text=typeof b.text==='string'?b.text.trim().slice(0,3000):'';
+          if(subject.length<3||text.length<10) throw fail(400,'SUBJECT_AND_TEXT_REQUIRED');
+          if(b.confirm!=='GONDER') throw fail(400,'CONFIRM_REQUIRED');
+          campaign=ops.newCampaign(subject,text);
+        }
+        const out=await ops.marketingSendBatch(campaign,Number(b.limit)||80); audit(account.id,path,campaign,reason+' | gönderilen: '+out.sent+', kalan: '+out.remaining); return send(200,out);
+      }
       const result = transaction(()=>{
         const id = Number(b.id);
+        if(ops && name === 'mail/send'){ const out=ops.sendMail(b); audit(account.id,path,b.target==='all'?'herkes':String(b.name||''),reason+' | '+JSON.stringify(out.items)+' | alıcı: '+out.sent); return out; }
+        if(ops && name === 'announce/set'){
+          const tr=String(b.tr||'').trim().slice(0,300),en=String(b.en||'').trim().slice(0,300); if(!tr&&!en) throw fail(400,'TEXT_REQUIRED');
+          const hours=Number(b.hours)||0; if(hours<0||hours>24*60) throw fail(400,'INVALID_DURATION');
+          ops.setCfg('announcement',JSON.stringify({tr:tr||en,en:en||tr,level:b.level==='warn'?'warn':'info',until:hours?Date.now()+hours*3600000:null}));
+          audit(account.id,path,'duyuru',reason); return {ok:true};
+        }
+        if(ops && name === 'announce/clear'){ ops.delCfg('announcement'); audit(account.id,path,'duyuru',reason); return {ok:true}; }
+        if(ops && name === 'maintenance/set'){
+          if(typeof b.on!=='boolean') throw fail(400,'INVALID_MAINTENANCE');
+          ops.setCfg('maintenance',JSON.stringify({on:b.on,tr:String(b.tr||'Kısa bir bakım yapıyoruz. Birazdan tekrar dene.').slice(0,300),en:String(b.en||'We are doing a short maintenance. Please try again shortly.').slice(0,300)}));
+          audit(account.id,path+':'+b.on,'bakım',reason); return {ok:true};
+        }
+        if(ops && name === 'minbuild/set'){
+          const build=Number(b.build); if(!Number.isInteger(build)||build<0||build>9999) throw fail(400,'INVALID_BUILD');
+          ops.setCfg('min_build',build); if(typeof b.url==='string'&&b.url.trim()) ops.setCfg('update_url',b.url.trim().slice(0,300));
+          audit(account.id,path,String(build),reason); return {ok:true,build};
+        }
+        if(ops && name === 'staff/set'){
+          if(id===account.id) throw fail(400,'OWNER_PROTECTED');
+          if(b.role!==null && b.role!=='mod') throw fail(400,'INVALID_ROLE');
+          ops.setStaff(id,b.role); audit(account.id,path+':'+b.role,id,reason); return {ok:true};
+        }
+        if(ops && name === 'account/email'){ const out=ops.setEmail(id,b.email); audit(account.id,path,id,reason+' | '+out.email); return out; }
+        if(ops && name === 'account/email/clear'){ const out=ops.clearEmail(id); audit(account.id,path,id,reason); return out; }
+        if(ops && name === 'account/birth'){ const out=ops.setBirth(id,b.birthDate); audit(account.id,path,id,reason+' | '+b.birthDate+(out.locked?' (kilitli)':'')); return out; }
         if(path === '/api/admin/drops/save' || path === '/api/admin/drops/restore'){
           let data=b.data;
           if(path.endsWith('/restore')){const row=db.prepare('SELECT data FROM drop_settings_history WHERE revision=?').get(b.snapshot);if(!row)throw fail(404,'SNAPSHOT_NOT_FOUND');data=JSON.parse(row.data);}

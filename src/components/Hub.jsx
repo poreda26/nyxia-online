@@ -36,6 +36,8 @@ import WheelModal from "./WheelModal";
 import { fetchWheel } from "../services/wheelService";
 import { fetchAds } from "../services/adsService";
 import FreeDiamondsCard from "./FreeDiamondsCard";
+import MailModal from "./MailModal";
+import { fetchMail } from "../services/mailService";
 import DiamondShopModal from "./DiamondShopModal";
 import FirstPurchaseOfferModal from "./FirstPurchaseOfferModal";
 import EventReadyModal from "./EventReadyModal";
@@ -74,6 +76,13 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
   const [dailyLoginOpen, setDailyLoginOpen] = useState(canClaimDailyLogin(player));
   const dailyLoginAvailable = canClaimDailyLogin(player);
   const [diamondShopOpen, setDiamondShopOpen] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
+  const [mailCount, setMailCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const stop = startPolling(() => fetchMail().then((m) => { if (alive) setMailCount(m.unread); return true; }).catch(() => false), 3 * 60 * 1000);
+    return () => { alive = false; stop(); };
+  }, []);
 
   // Günlük Çark: hak/alınmamış ödül durumu sunucudan gelir; TopBar'da nokta
   // olarak gösterilir. Açılışta ve 5 dakikada bir tazelenir (gece yarısı yeni hak).
@@ -303,6 +312,8 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
         onOpenSettings={onOpenSettings}
         onOpenDiamondShop={() => setDiamondShopOpen(true)}
         adsReady={adsReady}
+        onOpenMail={() => setMailOpen(true)}
+        mailCount={mailCount}
       />
 
       <EventStrip player={player} act={act} pushToast={pushToast} onOpenWarzone={() => requestTabChange("warzone")} />
@@ -417,6 +428,7 @@ export default function Hub({ act, isGm = false, player, setPlayer, bank, setBan
         />
       )}
 
+      {mailOpen && <MailModal act={act} pushToast={pushToast} onChanged={setMailCount} onClose={() => setMailOpen(false)} />}
       {diamondShopOpen && (
         <DiamondShopModal
           act={act}

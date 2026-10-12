@@ -18,7 +18,7 @@ function formatMmSs(ms) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, wheelAvailable, onOpenWheel, onOpenSettings, onOpenDiamondShop, adsReady }) {
+export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyLoginAvailable, onOpenDailyLogin, wheelAvailable, onOpenWheel, onOpenSettings, onOpenDiamondShop, adsReady, onOpenMail, mailCount = 0 }) {
   const { t, lang } = useTranslation();
   // Aktif takviyelerin geri sayımı gerçek zamana (Date.now()) bağlı — bkz.
   // utils/boosts.js, premium ile aynı "duvar saati" deseni. Bu, o değeri
@@ -73,6 +73,16 @@ export default function TopBar({ player, setPlayer, cls, maxHp, def, atk, dailyL
           >
             <Gift size={16} strokeWidth={1.8} />
             {dailyLoginAvailable && <span style={{ ...styles.navNotifDot, top: 0, left: "auto", right: -1, marginLeft: 0 }} />}
+          </button>
+        )}
+        {onOpenMail && (
+          <button
+            onClick={onOpenMail}
+            title={t("extra.mailTitle")} aria-label={t("extra.mailTitle")}
+            style={{ position: "relative", background: "none", border: "none", color: mailCount > 0 ? "var(--gold-text)" : "var(--text-faint)", cursor: "pointer", padding: 4, flexShrink: 0 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>
+            {mailCount > 0 && <span style={{ ...styles.navNotifDot, top: 0, left: "auto", right: -1, marginLeft: 0 }} />}
           </button>
         )}
         {onOpenWheel && (

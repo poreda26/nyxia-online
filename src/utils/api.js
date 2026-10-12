@@ -44,6 +44,7 @@ export async function call(path, method, body, characterKey=activeCharacterKey) 
   if (res.status === 401 && data.error === "LOGIN_REQUIRED" && !["login", "register", "me", "logout"].includes(path) && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nyxia:signedout"));
   // Sunucu bu sürümü artık kabul etmiyor: uygulama güncelleme ekranını açar (bkz. App.jsx).
   if (res.status === 426 && data.error === "CLIENT_OUTDATED" && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("nyxia:outdated", { detail: data }));
+  if (res.status === 503 && data.error === "MAINTENANCE" && typeof window !== "undefined") window.dispatchEvent(new Event("nyxia:maintenance"));
   if (!res.ok) throw Object.assign(new Error(data.error || "REQUEST_FAILED"), { code: data.error });
   return data;
 }

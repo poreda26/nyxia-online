@@ -17,6 +17,7 @@ import {createIdentity, validPassword} from './identity.mjs';
 import {requireAdultEnough, parseBirthDate, ageOf, MIN_AGE} from './age.mjs';
 import {createMailer} from './mailer.mjs';
 import {createTickets} from './tickets.mjs';
+import {createOps} from './ops.mjs';
 import {createGame} from './game.mjs';
 import {WHEEL_PREMIUM_PRIZES} from '../src/data/diamondPrices.js';
 import {COMMUNITY_PLATFORMS, COMMUNITY_REWARD} from '../src/data/communityReward.js';
@@ -180,6 +181,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   try { db.exec('ALTER TABLE accounts ADD COLUMN marketing_at INTEGER'); } catch { /* sütun zaten var */ }
   // Doğum tarihi (yaş kapısı) ve yaş yüzünden kilitli hesaplar
   try { db.exec('ALTER TABLE accounts ADD COLUMN birth_date TEXT'); } catch { /* sütun zaten var */ }
+  try { db.exec('ALTER TABLE accounts ADD COLUMN created_at INTEGER'); } catch { /* sütun zaten var */ }
   try { db.exec('ALTER TABLE accounts ADD COLUMN age_locked INTEGER NOT NULL DEFAULT 0'); } catch { /* sütun zaten var */ }
   // Yaş kapısı açıksa yeni hesap için doğum tarihi şart; kapalıyken (testler) denetlenmez.
   const birthFor = (value) => (ageGate ? requireAdultEnough(fail, value) : null);
@@ -513,6 +515,21 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const done = db.prepare("SELECT 1 FROM account_flags WHERE account=? AND flag='tutorialTopUp'").get(account);
         return { payload: { allowed: !done }, after: (result) => { if (!done && result.ok) db.prepare("INSERT OR IGNORE INTO account_flags(account,flag,created_at) VALUES(?,'tutorialTopUp',?)").run(account, Date.now()); } };
       },
+      // Posta ödülü: elmas sunucu kasasından, diğer ödüller (altın, kupon, parşömen) kuraldan; çanta doluysa işlem geri alınır.
+      'mail/claim': ({ account, payload, now }) => {
+        const row = db.prepare('SELECT * FROM mail WHERE id=? AND account=?').get(Number(payload?.mailId), account);
+        if (!row) return { fail: 'mailNotFound' };
+        if (row.claimed_at) return { fail: 'alreadyClaimed' };
+        if (row.expires_at && row.expires_at < now) return { fail: 'mailExpired' };
+        let items = {};
+        try { items = JSON.parse(row.items) || {}; } catch { /* bozuk kayıt: ödülsüz say */ }
+        const diamonds = Number.isSafeInteger(items.diamonds) && items.diamonds > 0 ? items.diamonds : 0;
+        if (diamonds) wallet.creditInTransaction(account, diamonds, 'mail-gift', String(row.id), now);
+        return {
+          payload: { mailId: row.id, gold: Number.isSafeInteger(items.gold) ? items.gold : 0, ...(diamonds ? { diamonds: wallet.balance(account) } : {}), vouchers: Array.isArray(items.vouchers) ? items.vouchers : [], scrolls: Array.isArray(items.scrolls) ? items.scrolls : [] },
+          after: () => db.prepare('UPDATE mail SET claimed_at=? WHERE id=?').run(now, row.id),
+        };
+      },
       // Topluluk ödülü (Instagram / Discord): hesap başına her platform için bir kez; elmas sunucu kasasından, eşyalar kuraldan.
       // Çanta/depo doluysa eylem reddedilir ve işlem geri alınır (elmas da verilmez, hak harcanmaz).
       'social/claim': ({ account, payload, now }) => {
@@ -541,18 +558,22 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
   const actRateLimit = makeRateLimiter(240);
   const iap = createIap(db, { fail, wallet, secret: iapWebhookSecret, allowSandbox: iapAllowSandbox });
   const mailer = authOptions.mailer || createMailer(authOptions.mail || {});
+  const setAccountPassword = async (accountId, password) => {
+    const salt = randomBytes(16).toString('hex');
+    const hashed = (await scrypt(password, salt, 64)).toString('hex');
+    db.prepare('UPDATE accounts SET salt=?, password=?, passwordless=0 WHERE id=?').run(salt, hashed, accountId);
+  };
+  const revokeAccountSessions = (accountId) => { db.prepare('DELETE FROM sessions WHERE account=?').run(accountId); };
   const identity = createIdentity(db, {
     fail, mailer, clientIds: authOptions.clientIds || {}, ...(authOptions.fetchJwks ? { fetchJwks: authOptions.fetchJwks } : {}),
-    setPassword: async (accountId, password) => {
-      const salt = randomBytes(16).toString('hex');
-      const hashed = (await scrypt(password, salt, 64)).toString('hex');
-      db.prepare('UPDATE accounts SET salt=?, password=?, passwordless=0 WHERE id=?').run(salt, hashed, accountId);
-    },
-    revokeSessions: (accountId) => { db.prepare('DELETE FROM sessions WHERE account=?').run(accountId); },
+    setPassword: setAccountPassword,
+    revokeSessions: revokeAccountSessions,
   });
+  // İşletme araçları: posta/hediye, duyuru ve bakım, istatistik, duyuru e-postası, yetkililer, hesap kurtarma.
+  const ops = createOps(db, { fail, wallet, mailer, dbPath: database, setPassword: setAccountPassword, revokeSessions: revokeAccountSessions, onConfigChange: () => { configCache.at = 0; } });
   const tickets = createTickets(db, { fail, mailer, notifyEmail: authOptions.notifyEmail || process.env.SUPPORT_NOTIFY_EMAIL || null, siteUrl: authOptions.siteUrl || process.env.SITE_URL || 'https://nyxiaonline.com' });
   const ads = createAds(db, { fail, wallet, mode: adsMode, testAccounts: adsTestAccounts, ...(adsFetchKeys ? { fetchKeys: adsFetchKeys } : {}) });
-  const admin = createAdmin(db, { read, fail, wallet });
+  const admin = createAdmin(db, { read, fail, wallet, ops });
   const wheel = createWheel(db, { fail });
   const wheelRateLimit = makeRateLimiter(20);
   const walletRateLimit = makeRateLimiter(60);
@@ -685,6 +706,9 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         ['DELETE FROM boss_loot_claims WHERE account=?', [id]],
         ['DELETE FROM pending_grants WHERE account=?', [id]],
         ['DELETE FROM account_flags WHERE account=?', [id]],
+        ['DELETE FROM mail WHERE account=?', [id]],
+        ['DELETE FROM staff_roles WHERE account=?', [id]],
+        ['DELETE FROM marketing_sends WHERE account=?', [id]],
         ['DELETE FROM character_creations WHERE account=?', [id]],
         ['DELETE FROM shared_fighters WHERE account=?', [id]],
         ['DELETE FROM ad_tickets WHERE account=?', [id]],
@@ -717,7 +741,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
     const token = randomBytes(32).toString('hex');
     const loginAt = Date.now();
     db.prepare('DELETE FROM sessions WHERE expires < ?').run(loginAt);
-    const panel = body?.panel === true && !!db.prepare('SELECT 1 FROM panel_owner WHERE account=?').get(account.id);
+    const panel = body?.panel === true && (!!db.prepare('SELECT 1 FROM panel_owner WHERE account=?').get(account.id) || !!db.prepare('SELECT 1 FROM staff_roles WHERE account=?').get(account.id));
     if (!panel) {
       // Hesap başka bir yerde açıksa (son 3 dakikada etkin) kullanıcı onay vermeden giriş yapılmaz; onayla diğer oturum kapatılır.
       const busyElsewhere = checkBusy && db.prepare("SELECT 1 FROM sessions WHERE account=? AND kind='game' AND seen>?").get(account.id, loginAt - SESSION_ACTIVE_MS);
@@ -758,7 +782,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       }
       // En düşük istemci sürümü: eski kurallarla çalışan istemciler (ör. eski APK) sunucu ekonomisini bozmasın diye
       // reddedilir. Sağlık ucu, sahip paneli ve ödeme servisi (RevenueCat) bu denetimin dışındadır.
-      if (path.startsWith('/api/') && path !== '/api/health' && path !== '/api/version' && path !== '/api/ads/ssv' && !path.startsWith('/api/support/') && !path.startsWith('/api/admin')) {
+      if (path.startsWith('/api/') && path !== '/api/health' && path !== '/api/version' && path !== '/api/status' && path !== '/api/ads/ssv' && !path.startsWith('/api/support/') && !path.startsWith('/api/admin')) {
         const config = appConfig();
         const build = Number(req.headers['x-client-build']) || 0;
         if (config.minBuild > 0 && build < config.minBuild) return send(426, { error: 'CLIENT_OUTDATED', minBuild: config.minBuild, updateUrl: config.updateUrl || null });
@@ -769,6 +793,8 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         try { return send(200, await ads.ssv(query)); } catch (error) { if (error.status === 400) return send(400, { error: 'INVALID_SSV' }); throw error; }
       }
       if (path === '/api/version' && req.method === 'GET') { const config = appConfig(); return send(200, { minBuild: config.minBuild, updateUrl: config.updateUrl || null }); }
+      // Herkese açık durum: duyuru ve bakım bilgisi (istemci giriş ekranında da gösterir).
+      if (path === '/api/status' && req.method === 'GET') return send(200, ops.status());
       if (path === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')) return send(200, { ok: true, mode: 'account-backup', authoritative: false });
       if (['/api/register', '/api/login'].includes(path) && req.method === 'POST') {
         rateLimit(clientAddress(req));
@@ -788,7 +814,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           if (containsProfanityLoose(name)) throw fail(400, 'NAME_NOT_ALLOWED');
           const salt = randomBytes(16).toString('hex');
           const password = (await scrypt(body.password, salt, 64)).toString('hex');
-          try { db.prepare('INSERT INTO accounts(name,salt,password,birth_date,terms_accepted_at) VALUES(?,?,?,?,?)').run(name, salt, password, birth, termsAt); }
+          try { db.prepare('INSERT INTO accounts(name,salt,password,birth_date,terms_accepted_at,created_at) VALUES(?,?,?,?,?,?)').run(name, salt, password, birth, termsAt, Date.now()); }
           catch (error) { if (error.code?.startsWith('ERR_SQLITE') && db.prepare('SELECT id FROM accounts WHERE name=?').get(name)) throw fail(409, 'ACCOUNT_UNAVAILABLE'); throw error; }
           account = db.prepare('SELECT * FROM accounts WHERE name=?').get(name);
         } else {
@@ -821,7 +847,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         const name = identity.randomName();
         const salt = randomBytes(16).toString('hex');
         const hashed = (await scrypt(body.password, salt, 64)).toString('hex');
-        const id = Number(db.prepare('INSERT INTO accounts(name,salt,password) VALUES(?,?,?)').run(name, salt, hashed).lastInsertRowid);
+        const id = Number(db.prepare('INSERT INTO accounts(name,salt,password,created_at) VALUES(?,?,?,?)').run(name, salt, hashed, Date.now()).lastInsertRowid);
         identity.attachVerifiedEmail(id, email);
         if (birth) db.prepare('UPDATE accounts SET birth_date=?, terms_accepted_at=? WHERE id=?').run(birth, termsAt, id);
         if (body?.marketing === true) db.prepare('UPDATE accounts SET marketing_optin=1, marketing_at=? WHERE id=?').run(Date.now(), id);
@@ -845,7 +871,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
           const name = identity.randomName();
           const salt = randomBytes(16).toString('hex');
           const password = (await scrypt(randomBytes(32).toString('hex'), salt, 64)).toString('hex');
-          accountId = Number(db.prepare('INSERT INTO accounts(name,salt,password,passwordless,birth_date,terms_accepted_at) VALUES(?,?,?,1,?,?)').run(name, salt, password, birth, termsAt).lastInsertRowid);
+          accountId = Number(db.prepare('INSERT INTO accounts(name,salt,password,passwordless,birth_date,terms_accepted_at,created_at) VALUES(?,?,?,1,?,?,?)').run(name, salt, password, birth, termsAt, Date.now()).lastInsertRowid);
           identity.link(accountId, provider, verified);
         }
         const account = db.prepare('SELECT * FROM accounts WHERE id=?').get(accountId);
@@ -874,7 +900,7 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
       if(admin.blocked(account.id)) throw fail(403,'ACCOUNT_BLOCKED');
       admin.touch(account.id);
       if (path === '/api/admin/tickets' || path === '/api/admin/ticket' || path.startsWith('/api/admin/ticket/')) {
-        if (!admin.owner(account.id)) throw fail(403, 'OWNER_ONLY');
+        if (!admin.owner(account.id) && !ops.isMod(account.id)) throw fail(403, 'OWNER_ONLY');
         const url = new URL(req.url, 'http://localhost');
         if (req.method === 'GET' && path === '/api/admin/tickets') return send(200, { counts: tickets.counts(), items: tickets.list(url.searchParams.get('status')) });
         if (req.method === 'GET' && path === '/api/admin/ticket') return send(200, tickets.staffView(url.searchParams.get('id')));
@@ -882,6 +908,11 @@ export function createApi({ database = ':memory:', origin = 'http://localhost:51
         if (req.method === 'POST' && path === '/api/admin/ticket/status') { const b = await read(req); const out = tickets.staffSetStatus(b?.id, b?.status); admin.audit(account.id, path + ':' + b.status, b.id, 'ticket status'); return send(200, out); }
         throw fail(404, 'NOT_FOUND');
       }
+      // Bakım modu: sahip ve yetkililer dışındaki oyuncular oyun isteklerinden geri çevrilir.
+      if (ops.maintenanceOn() && !path.startsWith('/api/admin') && !['/api/me', '/api/logout', '/api/status', '/api/health'].includes(path) && !admin.owner(account.id) && !ops.isMod(account.id)) throw fail(503, 'MAINTENANCE');
+      // Posta kutusu (hediyeler): liste ve ödülsüz mesajı okundu yapma. Ödüllü postayı almak 'mail/claim' eylemiyle yapılır.
+      if (path === '/api/mail' && req.method === 'GET') return send(200, ops.mailList(account.id));
+      if (path === '/api/mail/read' && req.method === 'POST') { walletRateLimit(account.id); return send(200, ops.mailRead(account.id, Number((await read(req))?.id))); }
       if(path.startsWith('/api/admin/')) return await admin.handle(req,path,account,send);
       if(path === '/api/drop-settings' && req.method==='GET')return send(200,admin.drops.get());
       if(req.method==='POST' && (path==='/api/chat/messages'||/^\/api\/social\/messages\/\d+$/.test(path)) && admin.muted(account.id))throw fail(403,'ACCOUNT_MUTED');

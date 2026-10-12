@@ -26,6 +26,7 @@ import GlobalStyle from "./components/GlobalStyle";
 import LoginScreen from "./components/LoginScreen";
 import ConfirmHost from "./components/ConfirmHost";
 import BirthDateGate from "./components/BirthDateGate";
+import StatusHost from "./components/StatusHost";
 import CharacterSelectScreen from "./components/CharacterSelectScreen";
 import RaceSelect from "./components/RaceSelect";
 import ClassSelect from "./components/ClassSelect";
@@ -515,6 +516,7 @@ export default function App() {
     <div style={styles.appRoot}>
       <GlobalStyle />
       <ConfirmHost />
+      <StatusHost />
       {needsBirthDate && <BirthDateGate onDone={() => setNeedsBirthDate(false)} onLocked={() => { window.location.reload(); }} />}
       {outdated && (
         <div role="alertdialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-base, #0B0C10)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 28, textAlign: "center", color: "var(--text-primary, #e8e6e0)" }}>

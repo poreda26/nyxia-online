@@ -8659,6 +8659,29 @@ var communityReducers = {
     }
     return done12({ ...state, player, bank }, { platform });
   },
+  // Posta ödülü (yönetici hediyesi). Yük sunucu kancasından gelir; elmas kasadan, `diamonds` ödülden sonraki bakiyedir.
+  "mail/claim"(state, { gold, diamonds, vouchers, scrolls }) {
+    const items = [];
+    for (const v of Array.isArray(vouchers) ? vouchers : []) {
+      if (!["mythic", "apex"].includes(v?.tier) || !Number.isSafeInteger(v.hours) || v.hours < 1 || v.hours > 720) return fail12(state, "invalidReward");
+      items.push(makePremiumVoucher(v.tier, v.hours * 36e5, { track: "boost", noTrade: true, count: Math.min(10, Math.max(1, Number(v.count) || 1)) }));
+    }
+    for (const s of Array.isArray(scrolls) ? scrolls : []) {
+      if (!Number.isSafeInteger(s?.tier) || s.tier < 1 || s.tier > 6) return fail12(state, "invalidReward");
+      items.push(makeScrollStack(s.tier, Math.min(50, Math.max(1, Number(s.count) || 1))));
+    }
+    let player = { ...state.player };
+    if (Number.isSafeInteger(gold) && gold > 0) player.gold = Math.min(MAX_GOLD, (player.gold || 0) + gold);
+    if (Number.isSafeInteger(diamonds)) player.diamonds = diamonds;
+    let bank = state.bank;
+    for (const item of items) {
+      const placed = place(player, bank, item);
+      if (!placed) return fail12(state, "bagFull");
+      player = placed.player;
+      bank = placed.bank;
+    }
+    return done12({ ...state, player, bank });
+  },
   // Premium kuponunu kullanır (çantadan ya da depodan). Katman/süre eşyanın kendisinden gelir; sunucu hakkı aynı işlemde yazar.
   "premium/useVoucher"(state, { itemId }) {
     const found = findVoucher(state, itemId);
