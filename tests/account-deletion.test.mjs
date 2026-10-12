@@ -31,6 +31,11 @@ test('account deletion removes every trace, hands clans over and protects the pa
     assert.equal((await call('backup', { method: 'PUT', body: { revision: 0, data: backupOf('AliceHero') }, cookie: alice })).status, 200);
     assert.equal((await call('backup', { method: 'PUT', body: { revision: 0, data: backupOf('BobHero') }, cookie: bob })).status, 200);
 
+    // Rows that older code forgot to clean up (they block the deletion through foreign keys).
+    db.prepare('INSERT INTO character_creations(account,character_key,created_at) VALUES(?,?,?)').run(aliceId, 'alicehero', 1);
+    db.prepare("INSERT INTO shared_fighters(account,kind,ref,state,updated_at) VALUES(?,'worldBoss','x','{}',1)").run(aliceId);
+    db.prepare("INSERT INTO ad_tickets(ticket,account,created_at,state) VALUES('t-1',?,1,'started')").run(aliceId);
+
     // Alice founds a clan and invites Bob; both talk in chat, befriend each other and DM.
     db.exec('INSERT OR REPLACE INTO wallets(account,diamonds,updated_at) SELECT id,5000,0 FROM accounts');
     assert.equal((await call('clan', { method: 'POST', body: { name: 'Doomed Clan' }, cookie: alice, key: 'alicehero' })).status, 200);
