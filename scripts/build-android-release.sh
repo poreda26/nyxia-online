@@ -2,6 +2,9 @@
 # Release AAB + release APK + debug APK (test) derler ve release/ ile apk/ klasörlerine kopyalar.
 # Kullanım: bash scripts/build-android-release.sh <debug-apk-adı-eki>   (örn. 18d)
 set -e
+export JAVA_HOME="${JAVA_HOME:-/c/Program Files/Android/Android Studio/jbr}"
+export PATH="$JAVA_HOME/bin:$PATH"
+export ANDROID_HOME="${ANDROID_HOME:-/c/Users/akcel/AppData/Local/Android/Sdk}"
 cd "$(dirname "$0")/.."
 TAG="${1:-dev}"
 VERSION=$(grep -o 'versionName "[^"]*"' android/app/build.gradle | head -1 | sed 's/versionName "//;s/"//')
