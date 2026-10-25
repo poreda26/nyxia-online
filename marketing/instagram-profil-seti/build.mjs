@@ -68,7 +68,7 @@ const post2 = page(1080, 1350, `
     </div>
     <div class="ornament" style="margin:60px 0 34px"></div>
     <div class="sans" style="display:flex;justify-content:space-between;align-items:center;font-size:25px;color:#cfc5e6">
-      <span>Oyunda: Ayarlar → Topluluk ve destek → <b class="gold">Ödülü al</b></span><span style="font-size:22px;color:#9d92b8">Hesap başına bir kez</span>
+      <span>Oyunda: Ayarlar → Oyun rehberi → <b class="gold">Topluluk ödülü</b></span><span style="font-size:22px;color:#9d92b8">Hesap başına bir kez</span>
     </div>
     <div class="sans" style="margin-top:30px;font-size:27px;color:#e8c776;font-weight:600">🎁 Instagram ve Discord'da düzenli çekilişler yapıyoruz.</div>
   </div>

@@ -25,7 +25,7 @@ Mevcut "Çok Yakında" öne çıkanını silip yerine bu altısını koy; "Oyunu
 
 ## Gönderi açıklamaları
 1. **Beta açık**: "Nyxia Online beta herkese açık. Tarayıcından gir, hesabını aç, maceraya başla. Link profilde. Hangi sınıfla başlıyorsun: Warrior, Rogue, Mage? #NyxiaOnline #mobilrpg #rpg"
-2. **Takip ödülü**: "Instagram'ı takip et, Discord'a katıl, oyunda her biri için 50 Elmas + 5 HP/MP iksiri + 1 saat Mythic Premium kuponu al. Ayarlar → Topluluk ve destek → Ödülü al. Hesap başına bir kez. Düzenli çekilişler Instagram ve Discord'da."
+2. **Takip ödülü**: "Instagram'ı takip et, Discord'a katıl, oyunda her biri için 50 Elmas + 5 HP/MP iksiri + 1 saat Mythic Premium kuponu al. Ayarlar → Oyun rehberi → Topluluk ödülü. Hesap başına bir kez. Düzenli çekilişler Instagram ve Discord'da."
 3. **Altı bölge**: "Fallow Valley'den Crimson Battlefront'a altı bölge. Sen hangisinde takıldın? Yorumlara yaz."
 
 ## Sıra önerisi

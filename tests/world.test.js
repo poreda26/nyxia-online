@@ -482,9 +482,13 @@ test('wheel prizes land in the bag, fall back to the bank, and stay pending when
   const base = { ...player(), level: 30 };
   for (const id of WHEEL_SLICES) {
     const out = applyWheelPrize(base, [[]], id, 1000);
-    // Premium ödülünü sunucu verir (claim); istemci yerelde vermez.
-    if (id === 'mythic_1d' || id === 'apex_3d') { assert.equal(out.delivered, false, id); continue; }
     assert.ok(out.delivered, id);
+    // Premium ödülü envantere takas edilemez kupon olarak gelir; "Kullan" ile sunucu etkinleştirir.
+    if (id === 'mythic_1d' || id === 'apex_3d') {
+      const voucher = out.player.inventory.find((i) => i.kind === 'premiumVoucher' || i.premiumTier);
+      assert.ok(voucher, id);
+      assert.ok(voucher.noTrade || voucher.untradable || voucher.tradable === false, id);
+    }
     assert.equal(out.player.wheelAppliedAt, 1000);
   }
   assert.equal(new Set(WHEEL_SLICES).size, 12);

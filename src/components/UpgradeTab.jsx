@@ -168,6 +168,7 @@ export default function UpgradeTab({ player, setPlayer, act, pushToast }) {
           <div>
             <div style={styles.forgeColLabel}>{t("upgrade.itemLabel")}</div>
             <button
+              data-tut="item-box" data-filled={stagedItem ? "1" : "0"}
               style={{ ...styles.forgeItemSlot, ...(stagedItem ? { borderColor: `${itemTierColor(stagedItem.tier)}88`, background: `${itemTierColor(stagedItem.tier)}1c` } : styles.bagSlotEmpty) }}
               onClick={returnStagedItem}
             >

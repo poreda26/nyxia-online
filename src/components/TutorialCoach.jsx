@@ -23,6 +23,7 @@ const PROBES = {
   shopOpen: '[data-tut="buy-scroll-1"]',
   learnBtn: ".skill-card.is-locked .rpg-action",
   boxFilled: '[data-tut="scroll-box"][data-filled="1"]',
+  weaponStaged: '[data-tut="item-box"][data-filled="1"]',
 };
 
 // Sayfadaki öğeleri periyodik olarak okur: rehber, bileşenlerin içine girmeden
@@ -141,6 +142,12 @@ export default function TutorialCoach({ player, setPlayer, act, tab, onFinish })
     else if (probe.inFight) hint = { key: "fight", soft: true, targets: [".battle-skill-dock", ".battle-action-dock button:first-child"] };
     else hint = { key: "pickMonster", targets: [".monster-attack:not([disabled])"] };
   } else if (section === SECTION.upgrade) {
+    // Yeni karakterin başlangıç eşyalarını sunucu kendi kimlikleriyle verir (ilk eylem yanıtıyla gelir). Takip
+    // edilen kimlik ne çantada, ne üstünde ne de forge'da kalmışsa silahı yeniden bul; yoksa rehber takılır.
+    if (weaponId.current && !probe.weaponStaged && findTutorialWeapon(player, weaponId.current).where === "staged") {
+      const again = findTutorialWeapon(player, null);
+      if (again.weapon) weaponId.current = again.weapon.id;
+    }
     const h = upgradeHint(player, tab, weaponId.current, probe);
     hint = { key: h.key, done: h.done, targets: h.nav ? [NAV[h.nav]] : h.target ? [h.target] : [] };
   }
