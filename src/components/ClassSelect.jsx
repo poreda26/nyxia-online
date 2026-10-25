@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronRight } from "./icons/GameIcons";
 import { CLASSES } from "../data/classes";
+import { initialPlayer, totalStats, playerDef, playerMaxHp, playerMaxMp } from "../utils/player";
 import { styles } from "../styles";
 import { useTranslation } from "../i18n/LanguageContext";
 import { containsProfanityLoose } from "../data/profanity";
@@ -13,6 +14,13 @@ function StatPill({ label, value }) {
     </div>
   );
 }
+
+// Kartlardaki sayılar, yeni karakterin oyunda gerçekten göreceği değerlerdir (başlangıç silahı dahil);
+// CLASSES içindeki eski taban değerler değil. Irktan bağımsızdır.
+const START_STATS = Object.fromEntries(Object.keys(CLASSES).map((key) => {
+  const p = initialPlayer(key, "human", "Hero");
+  return [key, { atk: totalStats(p).atk, def: playerDef(p), hp: playerMaxHp(p), mp: playerMaxMp(p) }];
+}));
 
 export default function ClassSelect({ onChoose }) {
   const { t } = useTranslation();
@@ -73,10 +81,10 @@ export default function ClassSelect({ onChoose }) {
               <div style={{ fontFamily: "var(--font-display)", fontSize: 17, letterSpacing: 0.3, marginTop: 10 }}>{c.name}</div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>{t(`classes.${key}`)}</div>
               <div style={styles.classStatRow}>
-                <StatPill label="ATK" value={c.atk} />
-                <StatPill label="DEF" value={c.def} />
-                <StatPill label="HP" value={c.maxHp} />
-                <StatPill label="MP" value={c.maxMp} />
+                <StatPill label="ATK" value={START_STATS[key].atk} />
+                <StatPill label="DEF" value={START_STATS[key].def} />
+                <StatPill label="HP" value={START_STATS[key].hp} />
+                <StatPill label="MP" value={START_STATS[key].mp} />
               </div>
             </button>
           );
