@@ -117,10 +117,36 @@ const cover = (key, label) => page(1080, 1920, `
   <div style="position:absolute;left:0;right:0;top:50%;margin-top:190px;text-align:center;font:700 74px Georgia,serif;letter-spacing:3px;color:#f6e7bd;text-shadow:0 4px 24px rgba(0,0,0,.8)">${label}</div>
 </div>`);
 
+
+// ---------- Test ekibi duyurusu (gönderi 1080x1350 + hikâye 1080x1920) ----------
+const step = (n, title, sub) => `<div style="display:flex;align-items:center;gap:26px;padding:26px 32px;border-radius:24px;background:linear-gradient(90deg,rgba(139,77,255,.22),rgba(255,255,255,.04));border:1px solid rgba(232,199,118,.35)"><div style="flex:none;width:76px;height:76px;border-radius:50%;background:linear-gradient(180deg,#f3d98d,#c9972f);color:#1a1020;display:grid;place-items:center;font:700 40px Georgia,serif">${n}</div><div><div style="font:700 38px Georgia,serif;color:#f6e7bd">${title}</div><div class="sans" style="font-size:24px;color:#bfb5d6;margin-top:4px">${sub}</div></div></div>`;
+const chip = (t) => `<span class="sans" style="display:inline-block;padding:12px 24px;border-radius:40px;border:1px solid rgba(232,199,118,.5);color:#e8c776;font-size:24px;font-weight:600;background:rgba(11,8,22,.55)">${t}</span>`;
+const testBody = (h, extraTop) => `
+  <div class="bg" style="background-image:url(${img('site/img/regions/ruined_sanctuary.webp')});filter:blur(14px) saturate(1.1);transform:scale(1.15)"></div>
+  <div class="shade" style="background:linear-gradient(180deg,rgba(10,6,22,.74),rgba(10,6,22,.95))"></div>
+  <div class="shade" style="background:radial-gradient(70% 40% at 50% 0%,rgba(139,77,255,.42),transparent 70%)"></div>
+  <div style="position:absolute;inset:0;padding:${extraTop}px 80px 70px">
+    <div style="display:flex;align-items:center;gap:20px"><img src="${img('site/nyxia-logo.png')}" style="height:92px"><div class="sans" style="font-size:22px;letter-spacing:7px;color:#b9a3ff;font-weight:600">NYXIA ONLINE</div></div>
+    <div class="sans" style="margin-top:${h.gap}px;font-size:22px;letter-spacing:8px;color:#b9a3ff;font-weight:600">ANDROID TEST EKİBİ</div>
+    <h1 style="margin:18px 0 0;font-size:${h.size}px;line-height:1.02;letter-spacing:-2px;color:#f6e7bd">Test ekibine<br><span class="gold">katıl.</span></h1>
+    <p class="sans" style="margin:26px 0 ${h.after}px;font-size:30px;line-height:1.4;color:#d8d0e6">Nyxia Online, Google Play'de yayınlanmadan önce ilk oynayanlardan ol. Bulduğun her hata oyunu daha iyi yapar.</p>
+    <div style="display:grid;gap:22px">
+      ${step(1, 'Gmail adresini gönder', 'Bize DM at ya da Discord\'da yaz')}
+      ${step(2, 'Davet bağlantısını al', 'Sana Play Store test bağlantısını göndereceğiz')}
+      ${step(3, 'İndir ve oyna', '14 gün boyunca testte kal, gördüğün hatayı yaz')}
+    </div>
+    <div style="margin-top:44px;display:flex;gap:16px;flex-wrap:wrap">${chip('Android telefon')}${chip('Gmail hesabı')}${chip('14 gün')}</div>
+    <div class="sans" style="margin-top:34px;font-size:26px;color:#e8c776;font-weight:600">Kontenjan sınırlı. Hemen yaz.</div>
+  </div>`;
+const testPost = page(1080, 1350, `<div class="post">${testBody({ size: 108, gap: 44, after: 34 }, 60)}</div>`);
+const testStory = page(1080, 1920, `<div class="cover">${testBody({ size: 124, gap: 230, after: 70 }, 250)}</div>`);
+
 const files = {
   'gonderi-1-beta-acik': [post1, 1080, 1350],
   'gonderi-2-takip-et-odul-al': [post2, 1080, 1350],
   'gonderi-3-alti-bolge': [post3, 1080, 1350],
+  'gonderi-4-test-ekibi': [testPost, 1080, 1350],
+  'hikaye-test-ekibi': [testStory, 1080, 1920],
   'kapak-1-oyna': [cover('oyna', 'OYNA'), 1080, 1920],
   'kapak-2-siniflar': [cover('siniflar', 'SINIFLAR'), 1080, 1920],
   'kapak-3-bolgeler': [cover('bolgeler', 'BÖLGELER'), 1080, 1920],
