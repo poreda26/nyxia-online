@@ -1,8 +1,8 @@
 # Nyxia Online reklam videosu
 
-Güncel çıktı: **nyxia-short-v4-1080x1920.mp4** — 24 saniye, 1080×1920, 24 fps, H.264/AAC.
+Güncel çıktı: **nyxia-short-v5-1080x1920.mp4** — 32 saniye, 1080×1920, 24 fps, H.264/AAC. (v4: eski 24 saniyelik sürüm.)
 
-Gerçek oyun bileşenleri: savaş, +7 → +8 yükseltme gösterimi, üç sınıfın kanatlı karakterleri, ekipman vitrini ve mağaza duyurusu. Müzik oyunun `mist-valley.mp3` dosyasıdır. Canlı hesaplar değiştirilmez; yükseltme tanıtım gösterimidir.
+Gerçek oyun bileşenleri: savaş, +7 → +8 yükseltme gösterimi, üç sınıfın kanatlı karakterleri, ekipman vitrini zindan ve klan ekranları (store/screenshots) ve mağaza duyurusu (Google Play, "Çok Yakında"). Yayın günü bitiş kartındaki "Çok Yakında" yazısı değiştirilir. Müzik oyunun `mist-valley.mp3` dosyasıdır. Canlı hesaplar değiştirilmez; yükseltme tanıtım gösterimidir.
 
 ## Yeniden üretme
 
