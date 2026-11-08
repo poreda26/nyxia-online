@@ -56,3 +56,8 @@ scripts/site/wiki-data.json
 dist-beta
 release
 dist-local
+
+# Video ara dosyaları (build-audio.mjs ile yeniden üretilir) ve Apple/Google'ın telifli rozet sanatı
+# (resmi kaynaklardan indirilir, bkz. marketing/nyxia-fragman/badges/README.md)
+marketing/**/*-audio.wav
+marketing/nyxia-fragman/badges/*.svg
