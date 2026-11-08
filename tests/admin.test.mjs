@@ -65,6 +65,16 @@ test('owner panel: deny GM/anonymous, preserve revisions, restore, ban, audit, s
   socialDb.prepare('UPDATE account_mutes SET expires_at=? WHERE account=2').run(Date.now()-1);
   assert.equal((await call('chat/messages',{author:'friend',text:'hello'},c)).status,200);
   assert.equal((await call('social/messages/1',{text:'hello'},c)).status,200);
+  // Canlı sohbet akışı: yeni mesajlar (after), hesap kimliği ve ceza durumu; 10 dk'lık (kesirli saat) sustur ve kaldır.
+  const feed=(await call('admin/chat',null,a.cookie)).data;
+  assert.equal(feed[0].text,'hello');assert.equal(feed[0].account,2);assert.equal(feed[0].muted,0);
+  assert.deepEqual((await call('admin/chat?after='+feed[0].id,null,a.cookie)).data,[]);
+  assert.equal((await call('admin/chat',null,c)).status,403);
+  assert.equal((await call('admin/account/mute',{id:2,muted:true,hours:10/60,reason:'ten minute test'},a.cookie)).status,200);
+  assert.equal((await call('admin/chat',null,a.cookie)).data[0].muted,1);
+  assert.equal((await call('chat/messages',{author:'friend',text:'again'},c)).status,403);
+  assert.equal((await call('admin/account/mute',{id:2,muted:false,reason:'unmute test'},a.cookie)).status,200);
+  assert.equal((await call('chat/messages',{author:'friend',text:'again'},c)).status,200);
   assert.equal((await call('admin/account/block',{id:2,blocked:true,hours:-1,reason:'bad duration'},a.cookie)).status,400);
   assert.equal((await call('admin/account/block',{id:2,blocked:true,hours:1,reason:'one hour ban'},a.cookie)).status,200);
   assert.equal((await call('login',{name:'friend',password:'test-long-password-123'})).status,403);

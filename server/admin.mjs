@@ -85,7 +85,11 @@ export function createAdmin(db, { read, fail, wallet, ops }) {
       }
       if(path === '/api/admin/audit') return send(200,db.prepare('SELECT * FROM admin_audit ORDER BY id DESC LIMIT 200').all());
       if(path === '/api/admin/reports') return send(200,db.prepare("SELECT r.id,r.target,r.target_name,r.context,r.content,r.reason,r.details,r.created_at,r.status,r.resolved_at,r.resolution,(SELECT name FROM accounts WHERE id=r.reporter) reporter_name FROM user_reports r ORDER BY (r.status='open') DESC, r.id DESC LIMIT 200").all());
-      if(path === '/api/admin/chat') return send(200,db.prepare('SELECT id,author,text,created_at FROM chat_messages ORDER BY id DESC LIMIT 100').all());
+      if(path === '/api/admin/chat'){
+        // Canlı akış: ?after=<son görülen id> verilirse yalnızca yeni mesajlar döner. Hesap kimliği ve ceza durumu yalnız panelde görünür.
+        const after=Math.max(0,Math.floor(Number(url.searchParams.get('after')))||0);
+        return send(200,db.prepare("SELECT m.id,m.author,m.text,m.created_at,m.is_gm gm,m.account_id account,EXISTS(SELECT 1 FROM account_mutes x WHERE x.account=m.account_id AND (x.expires_at IS NULL OR x.expires_at>?)) muted,EXISTS(SELECT 1 FROM account_blocks x WHERE x.account=m.account_id AND (x.expires_at IS NULL OR x.expires_at>?)) banned FROM chat_messages m WHERE m.id>? ORDER BY m.id DESC LIMIT 100").all(Date.now(),Date.now(),after));
+      }
       if(path === '/api/admin/clans') return send(200,db.prepare('SELECT c.*, (SELECT COUNT(*) FROM clan_members m WHERE m.clan_id=c.id) members FROM clans c ORDER BY id DESC LIMIT 200').all());
       if(path === '/api/admin/market') return send(200,db.prepare('SELECT account,seller_name,items,listed_at,duration_hours FROM market_stalls ORDER BY listed_at DESC LIMIT 200').all().map(r=>({...r,items:JSON.parse(r.items)})));
       if(path === '/api/admin/duels') return send(200,db.prepare('SELECT * FROM duel_history ORDER BY id DESC LIMIT 100').all());

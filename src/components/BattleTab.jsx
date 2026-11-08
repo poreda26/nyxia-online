@@ -740,7 +740,7 @@ export default function BattleTab({ player, setPlayer, cls, def, atk, pushToast,
             {battle.log.map((l, i) => <div key={i} style={styles.combatLogLine}>{l}</div>)}
           </div></details>
 
-          <div className="battle-skill-dock" aria-label={t("battle.skillsAriaLabel")} style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, marginBottom: 8 }}>
+          <div className="battle-skill-dock" aria-label={t("battle.skillsAriaLabel")} style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 6, marginBottom: 8 }}>
             {player.skills.loadout.map((skillId, i) => {
               if (!skillId) {
                 return (

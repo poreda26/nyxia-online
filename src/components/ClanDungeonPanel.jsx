@@ -235,7 +235,7 @@ export default function ClanDungeonPanel({ player, setPlayer, act, cls, atk, def
             <div style={styles.combatLog}>{log.map((entry) => <div key={entry.id} style={styles.combatLogLine}>{logLine(entry)}</div>)}</div>
           </details>
 
-          <div className="battle-skill-dock" aria-label={t("battle.skillsAriaLabel")} style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, marginBottom: 8 }}>
+          <div className="battle-skill-dock" aria-label={t("battle.skillsAriaLabel")} style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 6, marginBottom: 8 }}>
             {player.skills.loadout.map((skillId, i) => {
               if (!skillId) {
                 return (
